@@ -1,0 +1,1143 @@
+<%- include("partials/header") %>
+
+<section class="builder-section">
+  <div class="builder-header-row">
+    <div>
+      <h1>Resume Builder</h1>
+      <p class="section-subtitle">
+        Using template: <strong><%= template %></strong>
+        &nbsp;·&nbsp;
+        <a href="/resume-templates">Change template</a>
+      </p>
+    </div>
+    <div class="builder-hint-pill">
+      Step <span id="rbStepCounter">1</span> of 4
+    </div>
+  </div>
+
+  <div class="builder-main">
+    <!-- LEFT: FORM -->
+    <div class="builder-left">
+      <form id="resumeBuilderForm" action="/resume-builder/preview" method="POST">
+        <input type="hidden" name="template" value="<%= template %>">
+          <input
+            type="hidden"
+            name="resumeId"
+            id="resumeId"
+            value="<%= typeof resumeId !== 'undefined' && resumeId ? resumeId : '' %>"
+          >
+
+        <!-- STEP 1: YOUR DETAILS -->
+        <div class="rb-step active" data-step="1">
+          <h2 class="rb-step-title">Your Details</h2>
+          <p class="rb-step-subtitle">
+            Start with your basic information. We’ll reuse these details across all templates.
+          </p>
+
+          <div class="rb-grid-2">
+            <div class="rb-field">
+              <label for="fullName">Full Name<span class="req">*</span></label>
+              <input
+                type="text"
+                id="fullName"
+                name="fullName"
+                required
+                value="<%= (draft && draft.fullName) || (profile && profile.full_name) || '' %>"
+              />
+            </div>
+
+            <div class="rb-field">
+              <label for="roleTitle">Job Title<span class="req">*</span></label>
+              <input
+                type="text"
+                id="roleTitle"
+                name="roleTitle"
+                placeholder="e.g. Account Support Coordinator"
+                value="<%= (draft && draft.roleTitle) || (profile && profile.role_title) || '' %>"
+              />
+            </div>
+
+            <div class="rb-field">
+              <label for="email">Email Address<span class="req">*</span></label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                required
+                value="<%= (draft && draft.email) || (profile && profile.email) || (user && user.email) || '' %>"
+              />
+            </div>
+
+            <div class="rb-field">
+              <label for="phone">Mobile No.<span class="req">*</span></label>
+              <input
+                type="text"
+                id="phone"
+                name="phone"
+                required
+                value="<%= (draft && draft.phone) || (profile && profile.phone) || '' %>"
+              />
+            </div>
+
+
+            <div class="rb-field">
+              <label for="location">Location<span class="req">*</span></label>
+              <input
+                type="text"
+                id="location"
+                name="location"
+                placeholder="Bangalore, Karnataka"
+                value="<%= (draft && draft.location) || (profile && profile.location) || '' %>"
+              />
+            </div>
+
+            <div class="rb-field">
+              <label for="profileImageUrl">Profile Photo URL (optional)</label>
+              <input
+                type="text"
+                id="profileImageUrl"
+                name="profileImageUrl"
+                placeholder="https://photo-link..."
+                value="<%= (draft && draft.profileImageUrl) || (profile && profile.profile_image_url) || '' %>"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 2: SUMMARY -->
+        <div class="rb-step" data-step="2">
+          <h2 class="rb-step-title">Professional Summary</h2>
+          <p class="rb-step-subtitle">
+            Write 3–5 lines about your professional background, strengths, and the value you bring.
+            This section appears at the top of your resume.
+          </p> 
+
+          <div class="rb-field rb-field-full ai-field-wrap">
+            <div class="ai-field-label">
+              <label for="summary">Professional Summary</label>
+              <div class="ai-btn-group">
+                <button type="button" class="ai-btn" data-field="summary">✨ AI Suggest</button>
+                <button type="button" class="ai-undo-btn" data-field="summary" disabled>↩ Undo</button>
+              </div>
+            </div>
+            <textarea
+              id="summary"
+              name="summary"
+              rows="7"
+              placeholder="Example: A highly motivated and results-oriented professional..."
+            ><%= (draft && draft.summary) || (profile && profile.summary) || '' %></textarea>
+          </div>
+        </div>
+
+        <!-- STEP 3: EXPERIENCE -->
+        <div class="rb-step" data-step="3">
+          <h2 class="rb-step-title">Experience</h2>
+
+          <p class="rb-step-subtitle">
+            List your roles and achievements. We’ll format them neatly in the resume.
+          </p>
+
+          <p class="rb-tip">
+            <strong>Tip:</strong>
+            Start each job on the first line like:
+            <em>- Account Support Coordinator [Danaher] (Feb-2021 – Present)</em><br />
+            Then, on the lines below, add responsibilities and achievements.
+            We’ll keep them together under the same bullet point.
+          </p>
+
+          <div class="rb-field rb-field-full ai-field-wrap">
+            <div class="ai-field-label">
+              <label for="experience">Experience</label>
+              <div class="ai-btn-group">
+                <button type="button" class="ai-btn" data-field="experience">✨ AI Suggest</button>
+                <button type="button" class="ai-undo-btn" data-field="experience" disabled>↩ Undo</button>
+              </div>
+            </div>
+            <textarea
+              id="experience"
+              name="experience"
+              rows="10"
+              placeholder="- Account Support Coordinator..."
+            ><%= (draft && draft.experience) || (profile && profile.experience) || '' %></textarea>
+          </div>
+        </div>
+
+        <!-- STEP 4: EDUCATION, LANGUAGES, SKILLS -->
+        <div class="rb-step" data-step="4">
+          <h2 class="rb-step-title">Education, Languages &amp; Skills</h2>
+          <p class="rb-step-subtitle">
+            Add your education details, languages, and key skills. For skills you can again
+            use one line per skill – we’ll show them as bullet points.
+          </p>
+
+          <div class="rb-grid-2">
+            <div class="rb-field rb-field-full ai-field-wrap">
+              <div class="ai-field-label">
+                <label for="education">Education</label>
+                <div class="ai-btn-group">
+                  <button type="button" class="ai-btn" data-field="education">✨ AI Suggest</button>
+                  <button type="button" class="ai-undo-btn" data-field="education" disabled>↩ Undo</button>
+                </div>
+              </div>
+              <textarea
+                id="education"
+                name="education"
+                rows="4"
+              ><%= (draft && draft.education) || '' %></textarea>
+            </div>
+
+            <div class="rb-field ai-field-wrap">
+              <div class="ai-field-label">
+                <label for="languages">Languages</label>
+                <div class="ai-btn-group">
+                  <button type="button" class="ai-btn" data-field="languages">✨ AI Suggest</button>
+                  <button type="button" class="ai-undo-btn" data-field="languages" disabled>↩ Undo</button>
+                </div>
+              </div>
+              <textarea
+                id="languages"
+                name="languages"
+                rows="4"
+              ><%= (draft && draft.languages) || '' %></textarea>
+            </div>
+
+            <div class="rb-field ai-field-wrap">
+              <div class="ai-field-label">
+                <label for="skills">Skills</label>
+                <div class="ai-btn-group">
+                  <button type="button" class="ai-btn" data-field="skills">✨ AI Suggest</button>
+                  <button type="button" class="ai-undo-btn" data-field="skills" disabled>↩ Undo</button>
+                </div>
+              </div>
+              <textarea
+                id="skills"
+                name="skills"
+                rows="4"
+              ><%= (draft && draft.skills) || '' %></textarea>
+            </div>
+          </div>
+        </div>
+        <!-- NAVIGATION -->
+        <div class="rb-nav">
+          <button type="button" class="btn-ghost" id="rbBackBtn">Back</button>
+
+          <div>
+            <!-- NEW: Save Draft button (AJAX, does NOT submit the form) -->
+            <button type="button" class="btn-ghost" id="rbSaveBtn">
+              Save Draft
+            </button>
+
+            <button type="button" class="btn-primary" id="rbNextBtn">
+              Next
+            </button>
+            <button type="submit" class="btn-primary" id="rbSubmitBtn" style="display:none;">
+              Preview Resume
+            </button>
+          </div>
+        </div>
+
+
+        <!-- STEP DOTS -->
+        <div class="rb-step-indicator">
+          <span class="rb-step-dot active"></span>
+          <span class="rb-step-dot"></span>
+          <span class="rb-step-dot"></span>
+          <span class="rb-step-dot"></span>
+        </div>
+      </form>
+    </div>
+
+    <!-- RIGHT: MINI LIVE PREVIEW (scaled-down modern-1 layout) -->
+    <aside class="builder-right">
+      <div class="modern-mini-preview">
+        <div class="modern-mini-page">
+          <!-- LEFT SIDEBAR (navy + yellow, like A4) -->
+          <div class="modern-mini-left">
+            <div class="modern-mini-avatar">
+              <!-- tiny avatar frame (we don't load image yet, just placeholder) -->
+              <div class="modern-mini-avatar-inner"></div>
+            </div>
+
+            <div class="modern-mini-name-block">
+              <div class="modern-mini-name" id="pvName">Your Name</div>
+              <div class="modern-mini-role" id="pvRole">Your Job Title</div>
+            </div>
+
+            <div class="modern-mini-sidebar-section">
+              <h3>CONTACT</h3>
+              <p><span>📞</span><span id="pvPhone">+91 0000000000</span></p>
+              <p><span>✉️</span><span id="pvEmail">email@example.com</span></p>
+              <p><span>📍</span><span id="pvLocation">City, Country</span></p>
+            </div>
+
+            <div class="modern-mini-sidebar-section">
+              <h3>EDUCATION</h3>
+              <p id="pvEducation">Your education entries will appear here.</p>
+            </div>
+
+            <div class="modern-mini-sidebar-section">
+              <h3>LANGUAGES</h3>
+              <p id="pvLanguages">Languages will appear here.</p>
+            </div>
+          </div>
+
+          <!-- RIGHT CONTENT -->
+          <div class="modern-mini-right">
+            <section class="modern-mini-main-section">
+              <h3>PROFESSIONAL SUMMARY</h3>
+              <div class="modern-mini-summary-box">
+                <p id="pvSummary">
+                  Your concise professional summary will appear here.
+                </p>
+              </div>
+            </section>
+
+            <section class="modern-mini-main-section">
+              <h3>EXPERIENCE</h3>
+              <p id="pvExperience">
+                Your experience lines will appear here as you type.
+              </p>
+            </section>
+
+            <section class="modern-mini-main-section">
+              <h3>SKILLS</h3>
+              <div id="pvSkills" class="modern-mini-skills">
+                <span>Skills will appear here.</span>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<style>
+  .builder-section {
+    max-width: 1160px;
+    margin: 1.5rem auto 2.5rem;
+    padding: 0 1rem 1rem;
+  }
+
+  .builder-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 1rem;
+  }
+
+  .builder-section h1 {
+    margin-bottom: 0.3rem;
+  }
+
+  .section-subtitle {
+    font-size: 0.9rem;
+    color: #6b7280;
+  }
+
+  .builder-hint-pill {
+    align-self: flex-start;
+    font-size: 0.85rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+    white-space: nowrap;
+  }
+
+  .builder-hint-pill span {
+    font-weight: 600;
+  }
+
+  .builder-main {
+    margin-top: 1.2rem;
+    display: flex;
+    gap: 1.5rem;
+    align-items: flex-start;
+  }
+
+  .builder-left {
+    flex: 1.2;
+    min-width: 0;
+  }
+
+  .builder-right {
+    flex: 1;
+    min-width: 280px;
+    position: sticky;
+    top: 5.5rem;
+  }
+
+  .rb-step {
+    display: none;
+    background: #ffffff;
+    padding: 1.8rem 2.2rem;
+    border-radius: 18px;
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
+    margin: 0 auto 0;
+  }
+
+  .rb-step + .rb-step {
+    margin-top: 1.8rem;
+  }
+
+  .rb-step.active {
+    display: block;
+    animation: rbFadeIn 0.18s ease-out;
+  }
+
+  @keyframes rbFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .rb-step-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 0.5rem;
+    text-align: left;
+  }
+
+  .rb-step-subtitle {
+    font-size: 0.95rem;
+    color: #4b5563;
+    margin-bottom: 1.1rem;
+    line-height: 1.6;
+    text-align: left;
+  }
+
+  .rb-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem 1.25rem;
+  }
+
+  .rb-field {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+  }
+
+  .rb-field-full {
+    grid-column: 1 / -1;
+  }
+
+  .rb-field label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 0.25rem;
+  }
+
+  .rb-field input,
+  .rb-field textarea {
+    padding: 0.55rem 0.7rem;
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+    font-size: 0.9rem;
+    background: #f9fafb;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  }
+
+  .rb-field input:focus,
+  .rb-field textarea:focus {
+    outline: none;
+    border-color: #2563eb;
+    background: #ffffff;
+    box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.3);
+  }
+
+  .rb-field textarea {
+    min-height: 130px;
+    resize: vertical;
+    overflow-wrap: anywhere;
+  }
+
+  .ai-field-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ai-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.ai-btn,
+.ai-undo-btn {
+  border: none;
+  font-size: 0.8rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.05s ease;
+  white-space: nowrap;
+}
+
+.ai-btn {
+  background: #facc15;
+  color: #111827;
+  font-weight: 600;
+}
+
+.ai-btn:hover {
+  background: #eab308;
+}
+
+.ai-undo-btn {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.ai-undo-btn:hover {
+  background: #d1d5db;
+}
+
+.ai-btn:disabled,
+.ai-undo-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+  .rb-tip {
+    margin: 0.4rem 0 0.9rem;
+    padding: 0.75rem 0.85rem;
+    border-radius: 10px;
+    background: #eff6ff;
+    border: 1px dashed #bfdbfe;
+    font-size: 0.85rem;
+    color: #1f2937;
+  }
+
+  .rb-tip strong {
+    color: #1d4ed8;
+  }
+
+  .req {
+    color: #ef4444;
+    margin-left: 2px;
+  }
+
+  .rb-nav {
+    max-width: 850px;
+    margin: 1.3rem auto 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .rb-step-indicator {
+    margin-top: 0.9rem;
+    display: flex;
+    justify-content: center;
+    gap: 0.4rem;
+  }
+
+  .rb-step-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: #e5e7eb;
+    transition: background 0.2s ease, transform 0.2s ease;
+  }
+
+  .rb-step-dot.active {
+    background: #2563eb;
+    transform: scale(1.3);
+  }
+
+  .rb-step-dot.done {
+    background: #22c55e;
+  }
+
+  .btn-ghost-disabled,
+  .btn-ghost[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* MINI PREVIEW - exact modern-1 layout (small, auto-scaling) */
+  .modern-mini-preview {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    position: relative;
+    overflow: visible;
+  }
+
+  .modern-mini-page {
+    position: relative;
+    width: 420px;          /* base width for scaling */
+    max-width: none;
+    aspect-ratio: 210 / 297; /* A4 ratio */
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18);
+    overflow: hidden;
+    display: flex;
+    font-family: "Segoe UI", Arial, sans-serif;
+    transform-origin: top center;
+    border: 1px solid #e5e7eb;
+  }
+
+  .modern-mini-left {
+    width: 32%;
+    background: #27355a;
+    color: #ffffff;
+    padding: 0.7rem 0.6rem;
+    border-right: 3px solid #facc15;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-sizing: border-box;
+  }
+
+  .modern-mini-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 6px;
+    border: 3px solid #facc15;
+    overflow: hidden;
+    background: #facc15;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modern-mini-avatar-inner {
+    width: 70px;
+    height: 70px;
+    border-radius: 4px;
+    background: #fbbf24;
+  }
+
+  .modern-mini-name-block {
+    text-align: center;
+    margin-top: 0.4rem;
+  }
+
+  .modern-mini-name {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: none;
+    color: #ffffff;
+  }
+
+  .modern-mini-role {
+    font-size: 0.7rem;
+    color: #e5e7eb;
+    margin-top: 0.1rem;
+  }
+
+  .modern-mini-sidebar-section {
+    width: 100%;
+    margin-top: 0.8rem;
+    text-align: left;
+  }
+
+  .modern-mini-sidebar-section h3 {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border-bottom: 1px solid #facc15;
+    padding-bottom: 0.25rem;
+    margin-bottom: 0.3rem;
+  }
+
+  .modern-mini-sidebar-section p {
+    font-size: 0.63rem;
+    line-height: 1.4;
+    margin: 0.15rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    white-space: normal;
+    word-wrap: break-word;
+  }
+
+  .modern-mini-sidebar-section span:first-child {
+    font-size: 0.7rem;
+    color: #facc15;
+  }
+
+  .modern-mini-right {
+    width: 68%;
+    padding: 0.7rem 0.8rem 0.7rem 0.9rem;
+    box-sizing: border-box;
+    background: #ffffff;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+
+  .modern-mini-main-section {
+    margin-bottom: 0.1rem;
+  }
+
+  /* section headings */
+  .modern-mini-main-section h3 {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #111827;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-bottom: 1px solid #facc15;
+    padding-bottom: 0.2rem;
+    margin-bottom: 0.28rem;
+  }
+
+  /* summary box */
+  .modern-mini-summary-box {
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    background: #f9fafb;
+    padding: 0.35rem 0.45rem;
+  }
+
+  .modern-mini-main-section p {
+    font-size: 0.65rem;
+    line-height: 1.4;
+    color: #111827;
+    margin: 0;
+    max-height: 4.2rem;
+    overflow: hidden;
+    white-space: normal;
+    word-wrap: break-word;
+  }
+
+  /* skills container */
+  .modern-mini-skills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.22rem;
+  }
+
+  .modern-mini-skills span {
+    background: #facc15;
+    color: #111827;
+    border-radius: 999px;
+    padding: 0.16rem 0.5rem;
+    font-size: 0.6rem;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  /* --- extra tweaks: spacing + smaller experience/skills --- */
+  .modern-mini-main-section {
+    margin-bottom: 0.5rem;
+  }
+
+  #pvExperience {
+    font-size: 0.61rem;
+    line-height: 1.35;
+    color: #111827;
+    margin-top: 0.18rem;
+    white-space: normal;
+    word-wrap: break-word;
+    overflow: hidden;
+  }
+
+  .modern-mini-skills {
+    gap: 0.22rem 0.3rem;
+    margin-top: 0.25rem;
+    padding-top: 0.1rem;
+  }
+
+  .modern-mini-skills span {
+    padding: 0.1rem 0.4rem;
+    font-size: 0.55rem;
+    line-height: 1.25;
+  }
+
+  @media (max-width: 1024px) {
+    .builder-main {
+      flex-direction: column;
+    }
+
+    .builder-right {
+      position: static;
+      width: 100%;
+    }
+
+    .modern-mini-page {
+      margin: 1rem auto 0;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .builder-header-row {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .rb-step {
+      padding: 1.3rem 1.5rem;
+    }
+
+    .rb-grid-2 {
+      grid-template-columns: 1fr;
+    }
+
+    .rb-nav {
+      flex-direction: row;
+      gap: 0.75rem;
+    }
+  }
+</style>
+
+<script>
+  (function () {
+    const steps = Array.from(document.querySelectorAll(".rb-step"));
+    const dots = Array.from(document.querySelectorAll(".rb-step-dot"));
+    const backBtn = document.getElementById("rbBackBtn");
+    const nextBtn = document.getElementById("rbNextBtn");
+    const submitBtn = document.getElementById("rbSubmitBtn");
+    const stepCounter = document.getElementById("rbStepCounter");
+
+    let current = 0;
+
+    function updateUI() {
+      steps.forEach((step, i) => {
+        step.classList.toggle("active", i === current);
+      });
+
+      dots.forEach((dot, i) => {
+        dot.classList.toggle("active", i === current);
+        dot.classList.toggle("done", i < current);
+      });
+
+      backBtn.disabled = current === 0;
+      backBtn.classList.toggle("btn-ghost-disabled", current === 0);
+
+      if (current === steps.length - 1) {
+        nextBtn.style.display = "none";
+        submitBtn.style.display = "inline-block";
+      } else {
+        nextBtn.style.display = "inline-block";
+        submitBtn.style.display = "none";
+      }
+
+      if (stepCounter) {
+        stepCounter.textContent = current + 1;
+      }
+    }
+
+    backBtn.addEventListener("click", () => {
+      if (current > 0) {
+        current--;
+        updateUI();
+      }
+    });
+
+    nextBtn.addEventListener("click", () => {
+      if (current < steps.length - 1) {
+        current++;
+        updateUI();
+      }
+    });
+
+    // Auto-expand textareas
+    const textareas = document.querySelectorAll(".rb-field textarea");
+    function autoResize(el) {
+      el.style.height = "auto";
+      el.style.height = el.scrollHeight + "px";
+    }
+    textareas.forEach((ta) => {
+      autoResize(ta);
+      ta.addEventListener("input", () => autoResize(ta));
+    });
+
+    updateUI();
+
+    // ===== MINI LIVE PREVIEW BINDINGS =====
+    function nl2br(text) {
+      return (text || "").replace(/\n/g, "<br>");
+    }
+
+    function bindText(inputId, previewId, placeholder, multiline) {
+      const input = document.getElementById(inputId);
+      const preview = document.getElementById(previewId);
+      if (!input || !preview) return;
+
+      function sync() {
+        const val = input.value.trim();
+        if (!val) {
+          if (multiline) {
+            preview.innerHTML = placeholder;
+          } else {
+            preview.textContent = placeholder;
+          }
+        } else if (multiline) {
+          preview.innerHTML = nl2br(val);
+        } else {
+          preview.textContent = val;
+        }
+      }
+
+      input.addEventListener("input", sync);
+      sync(); // initial
+    }
+
+    bindText("fullName", "pvName", "Your Name", false);
+    bindText("roleTitle", "pvRole", "Your Job Title", false);
+
+    bindText("email", "pvEmail", "email@example.com", false);
+    bindText("phone", "pvPhone", "+91 0000000000", false);
+    bindText("location", "pvLocation", "City, Country", false);
+
+    bindText("summary", "pvSummary", "Your concise professional summary will appear here.", true);
+    bindText("experience", "pvExperience", "Your experience lines will appear here as you type.", true);
+    bindText("education", "pvEducation", "Your education entries will appear here.", true);
+    bindText("languages", "pvLanguages", "Languages will appear here.", true);
+
+    // special binding for skills as yellow pills
+    function bindSkillsPills() {
+      const input = document.getElementById("skills");
+      const container = document.getElementById("pvSkills");
+      if (!input || !container) return;
+
+      function sync() {
+        const val = input.value.trim();
+        container.innerHTML = "";
+
+        if (!val) {
+          const span = document.createElement("span");
+          span.textContent = "Skills will appear here.";
+          container.appendChild(span);
+          return;
+        }
+
+        val
+          .split(/\r?\n+/)
+          .map(line => line.replace(/^\s*[-*•]\s*/, "").trim())
+          .filter(Boolean)
+          .forEach(line => {
+            const pill = document.createElement("span");
+            pill.textContent = line;
+            container.appendChild(pill);
+          });
+      }
+
+      input.addEventListener("input", sync);
+      sync();
+    }
+
+    bindSkillsPills();
+
+    // === AUTO-SCALE MINI PREVIEW TO FIT COLUMN WIDTH ===
+    function setupMiniScaling() {
+      const preview = document.querySelector(".modern-mini-preview");
+      const page = document.querySelector(".modern-mini-page");
+      if (!preview || !page) return;
+
+      const BASE_WIDTH = 420; // must match CSS width
+
+      function applyScale() {
+        const containerWidth = preview.clientWidth;
+        if (!containerWidth) return;
+
+        const scale = Math.min(1, containerWidth / BASE_WIDTH);
+        page.style.transform = "scale(" + scale + ")";
+        page.style.transformOrigin = "top center";
+
+        const scaledHeight = page.offsetHeight * scale;
+        preview.style.height = scaledHeight + "px";
+      }
+
+      window.addEventListener("resize", applyScale);
+      applyScale();
+    }
+
+        // ===== SAVE DRAFT (manual + auto) =====
+    const form = document.getElementById("resumeBuilderForm");
+    const saveBtn = document.getElementById("rbSaveBtn");
+    const resumeIdInput = document.getElementById("resumeId");
+
+    let autoSaveTimer = null;
+
+    async function saveResume(isAuto = false) {
+      if (!form) return;
+
+      const formData = new FormData(form);
+      const payload = Object.fromEntries(formData.entries());
+
+      if (!isAuto && saveBtn) {
+        saveBtn.disabled = true;
+        var originalText = saveBtn.textContent;
+        saveBtn.textContent = "Saving...";
+      }
+
+      try {
+        const res = await fetch("/resume/save", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        let data;
+        try {
+          data = await res.json();
+        } catch (e) {
+          throw new Error("Non-JSON response from server");
+        }
+
+        if (data.success) {
+          if (resumeIdInput) {
+            resumeIdInput.value = data.resumeId;
+          }
+          if (!isAuto) {
+            alert("Resume saved!");
+          } else {
+            console.log("Auto-saved resume", data.resumeId);
+          }
+        } else {
+          if (!isAuto) {
+            alert(data.error || "Failed to save resume.");
+          } else {
+            console.warn("Auto-save failed:", data.error);
+          }
+        }
+      } catch (err) {
+        console.error("Error saving resume:", err);
+        if (!isAuto) {
+          alert("Something went wrong while saving.");
+        }
+      } finally {
+        if (!isAuto && saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = originalText;
+        }
+      }
+    }
+
+    // Manual save
+    if (saveBtn) {
+      saveBtn.addEventListener("click", () => {
+        saveResume(false);
+      });
+    }
+
+    // Auto-save: 5 seconds after user stops typing
+    if (form) {
+      const watchedSelectors = "input[type='text'], input[type='email'], textarea";
+      const watchedFields = form.querySelectorAll(watchedSelectors);
+
+      watchedFields.forEach((el) => {
+        el.addEventListener("input", () => {
+          if (autoSaveTimer) clearTimeout(autoSaveTimer);
+          autoSaveTimer = setTimeout(() => {
+            saveResume(true);
+          }, 5000); // 5 seconds of inactivity
+        });
+      });
+    }
+    setupMiniScaling();
+  })();
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const aiButtons = document.querySelectorAll(".ai-btn");
+  const roleInput = document.getElementById("roleTitle");
+
+  // Store last AI operation per field for undo
+  const lastAIStates = {}; // { field: { before, after } }
+
+  aiButtons.forEach((btn) => {
+    const field = btn.dataset.field;
+    const textarea = document.getElementById(field);
+    const undoBtn = document.querySelector(
+      `.ai-undo-btn[data-field="${field}"]`
+    );
+
+    if (!textarea) return;
+
+    // --- AI Suggest click ---
+    btn.addEventListener("click", async () => {
+      const currentText = textarea.value.trim();
+      const roleTitle = roleInput ? roleInput.value : "";
+
+      btn.disabled = true;
+      const oldText = btn.textContent;
+      btn.textContent = "⏳ Thinking...";
+
+      if (undoBtn) undoBtn.disabled = true;
+
+      try {
+        const res = await fetch("/api/ai/suggest", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ field, currentText, roleTitle }),
+        });
+
+        const data = await res.json();
+        if (data.success && data.text) {
+          const existing = textarea.value.trim();
+          const suggestion = data.text.trim();
+
+          const before = textarea.value;
+          const combined = existing
+            ? existing + "\n\n" + suggestion
+            : suggestion;
+
+          textarea.value = combined;
+          textarea.dispatchEvent(new Event("input")); // auto-resize + autosave
+
+          lastAIStates[field] = { before, after: combined };
+
+          if (undoBtn) {
+            undoBtn.disabled = false;
+          }
+
+          textarea.style.background = "#e0ffe0";
+          setTimeout(() => (textarea.style.background = "white"), 1200);
+        } else {
+          if (data.error === "insufficient_quota") {
+            alert("⚠️ AI helper is temporarily unavailable (quota finished). Please check your API key or try later.");
+          } else {
+            alert("⚠️ Could not generate suggestion. Try again.");
+          }
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Error contacting AI helper.");
+      } finally {
+        btn.textContent = oldText;
+        btn.disabled = false;
+      }
+    });
+
+    // --- Undo click ---
+    if (undoBtn) {
+      undoBtn.addEventListener("click", () => {
+        const state = lastAIStates[field];
+        if (!state) return;
+
+        textarea.value = state.before;
+        textarea.dispatchEvent(new Event("input")); // keep autosave + preview in sync
+
+        delete lastAIStates[field];
+        undoBtn.disabled = true;
+
+        textarea.style.background = "#fee2e2";
+        setTimeout(() => (textarea.style.background = "white"), 800);
+      });
+    }
+  });
+});
+</script>
+
+<%- include("partials/footer") %>

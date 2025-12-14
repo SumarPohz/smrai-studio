@@ -1,0 +1,900 @@
+<%- include("partials/header") %>
+
+<%
+  // Normalize template name
+  const tpl = template || "modern-1";
+
+  // Parse multi-line experience into {title, dates, description} objects
+  function parseExperience(text) {
+    if (!text || typeof text !== "string") return [];
+
+    const lines = text
+      .split(/\r?\n+/)
+      .map(l => l.trim())
+      .filter(l => l.length > 0);
+
+    const jobs = [];
+    let currentHeading = null;
+    let currentDesc = [];
+
+    for (const line of lines) {
+      if (/^[-•]/.test(line)) {
+        if (currentHeading) {
+          jobs.push({
+            heading: currentHeading,
+            description: currentDesc.join(" ")
+          });
+        }
+        currentHeading = line.replace(/^[-•]\s*/, "");
+        currentDesc = [];
+      } else {
+        currentDesc.push(line);
+      }
+    }
+
+    if (currentHeading) {
+      jobs.push({
+        heading: currentHeading,
+        description: currentDesc.join(" ")
+      });
+    }
+
+    // Split heading into title + dates (if present)
+    return jobs.map(job => {
+      const m = job.heading.match(/^(.*?)(\(\s*\d{4}.*\))\s*$/);
+      let title = job.heading;
+      let dates = "";
+
+      if (m) {
+        title = m[1].trim();
+        dates = m[2].trim();
+      }
+
+      return {
+        title,
+        dates,
+        description: job.description
+      };
+    });
+  }
+
+  // Simple bullets for skills: 1 line = 1 pill
+  function renderBullets(text) {
+    if (!text || typeof text !== "string") return [];
+    return text
+      .split(/\r?\n+/)
+      .map(line => line.replace(/^\s*[-*•]\s*/, ""))
+      .map(line => line.trim())
+      .filter(line => line.length > 0);
+  }
+
+  const experienceItems = parseExperience(data.experience || "");
+  const skillsLines = renderBullets(data.skills || "");
+%>
+
+<style>
+  /* ==== Preview / A4 wrapper ==== */
+  .preview-section {
+    padding: 1.5rem 1rem 2.5rem;
+  }
+
+  .preview-section h1 {
+    margin-bottom: 0.25rem;
+  }
+
+  .preview-section p {
+    margin-top: 0.2rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .resume-wrapper {
+    margin: 1rem auto;
+    display: flex;
+    justify-content: center;
+  }
+
+  /* A4 container that we capture as JPG */
+  .resume-a4 {
+    background: #ffffff;
+    box-shadow: 0 18px 40px rgba(15,23,42,0.18);
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    overflow: visible;
+    position: relative;
+    box-sizing: border-box;
+  }
+
+  @media screen {
+    .resume-a4 {
+      width: 794px;
+      min-height: 1123px;
+      height: auto;
+    }
+  }
+
+  @media print {
+    @page {
+      size: A4;
+      margin: 0;
+    }
+
+    body {
+      margin: 0;
+      background: #ffffff;
+    }
+
+    .preview-section h1,
+    .preview-section > p,
+    #download-image-btn,
+    #print-btn,
+    .preview-section a[href="/resume-builder"] {
+      display: none !important;
+    }
+
+    .resume-wrapper {
+      margin: 0;
+      display: flex;
+      justify-content: center;
+    }
+
+    .resume-a4 {
+      width: 210mm;
+      border: none;
+      box-shadow: none;
+      border-radius: 0;
+      min-height: auto;
+      height: auto;
+      margin: 0 auto;
+      transform: scale(0.9);
+      transform-origin: top center;
+    }
+  }
+
+  .resume-page {
+    font-family: "Segoe UI", Arial, sans-serif;
+    color: #111827;
+    overflow: visible;
+    width: 100%;
+    min-height: 100%;
+    height: auto;
+  }
+
+  button,
+  .btn-primary {
+    background: #111827;
+    color: #fff;
+    border: none;
+    padding: 0.6rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+  }
+
+  button:hover,
+  .btn-primary:hover {
+    background: #facc15;
+    color: #111827;
+  }
+
+  a {
+    color: #2563eb;
+  }
+
+  /* ==== MODERN-1 (two-column) ==== */
+  .resume-page.modern-1 {
+    display: flex;
+  }
+
+  .modern-left {
+    width: 32%;
+    background: #27355a;
+    color: #ffffff;
+    padding: 1.8rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border-right: 3px solid #facc15;
+  }
+
+  .modern-avatar img {
+    width: 120px;
+    height: 120px;
+    border-radius: 8px;
+    border: 3px solid #facc15;
+    object-fit: cover;
+    box-shadow: 0 0 10px rgba(250, 204, 21, 0.4);
+  }
+
+  .modern-avatar-placeholder {
+    width: 120px;
+    height: 120px;
+    border-radius: 8px;
+    border: 3px dashed #facc15;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    color: #facc15;
+  }
+
+  .modern-name-block {
+    text-align: center;
+    margin-top: 1rem;
+    color: #ffffff;
+  }
+
+  .modern-name-block h2 {
+    font-size: 1.3rem;
+    margin: 0;
+    font-weight: 700;
+    color: #ffffff;
+  }
+
+  .modern-name-block .role {
+    font-size: 0.9rem;
+    color: #e4e6ef;
+    margin-top: 0.2rem;
+  }
+
+  .modern-sidebar-section {
+    margin-top: 1.8rem;
+    width: 100%;
+    color: #ffffff;
+  }
+
+  .modern-sidebar-section h3 {
+    font-size: 0.85rem;
+    letter-spacing: 1px;
+    border-bottom: 1px solid #facc15;
+    padding-bottom: 0.4rem;
+    margin-bottom: 0.6rem;
+    font-weight: 700;
+    color: #ffffff;
+    text-transform: uppercase;
+  }
+
+  .modern-sidebar-section p {
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: #ffffff;
+    margin: 0.3rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+  }
+
+  .modern-sidebar-section span {
+    color: #facc15;
+    font-size: 0.9rem;
+  }
+
+  .modern-right {
+    width: 68%;
+    padding: 1.8rem 2rem;
+    background: #ffffff;
+  }
+
+  .modern-section-block {
+    margin-bottom: 1.8rem;
+  }
+
+  .modern-section-block h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #111827;
+    border-bottom: 2px solid #facc15;
+    padding-bottom: 0.25rem;
+    margin-bottom: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .modern-section-block p {
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: #111827;
+    padding: 0.3rem 0.6rem;
+    border: 1px solid #f4f4f4;
+    border-radius: 6px;
+    background: #fafafa;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+  }
+
+  .modern-section-block ul:not(.experience-list) {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .modern-section-block ul:not(.experience-list) li {
+    background: #facc15;
+    color: #111827;
+    font-weight: 500;
+    padding: 0.25rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+
+  .modern-section-block ul:not(.experience-list) li strong {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.2rem;
+    color: #000;
+  }
+
+  /* ==== MINIMAL-1 ==== */
+  .resume-page.minimal-1 {
+    padding: 1.5rem 2rem;
+  }
+
+  .min-header {
+    border-bottom: 2px solid #e5e7eb;
+    padding-bottom: 0.75rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .min-name {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin: 0;
+  }
+
+  .min-role {
+    font-size: 1rem;
+    color: #6b7280;
+  }
+
+  .min-contact {
+    font-size: 0.9rem;
+    color: #4b5563;
+    margin-top: 0.4rem;
+  }
+
+  .min-contact span {
+    margin-right: 0.75rem;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+  }
+
+  .min-section {
+    margin-bottom: 1.2rem;
+  }
+
+  .min-section h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #111827;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.4rem;
+  }
+
+  .min-section p {
+    font-size: 0.9rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+  }
+
+  .min-section ul {
+    margin-top: 0.3rem;
+    padding-left: 1.2rem;
+  }
+
+  .min-section ul li {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-bottom: 0.25rem;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+  }
+
+  .experience-list {
+    list-style: none;
+    padding-left: 0;
+    margin-top: 0.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .experience-list li {
+    background: #f3f4f6;
+    border-left: 4px solid #eab308;
+    padding: 0.8rem 1rem;
+    border-radius: 6px;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  }
+
+  .exp-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #111827;
+  }
+
+  .exp-title {
+    font-weight: 600;
+  }
+
+  .exp-dates {
+    font-weight: 600;
+    color: #374151;
+  }
+
+  .exp-body {
+    margin-top: 0.4rem;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: #111827;
+  }
+
+  .modern-section-block ul li,
+  .min-section ul li {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-bottom: 0.25rem;
+    color: #111827;
+    white-space: normal;
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+  }
+
+  .modern-section-block p,
+  .min-section p {
+    white-space: normal;
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+  }
+</style>
+
+<section class="preview-section">
+  <h1>Resume Preview</h1>
+  <p>
+    Review your resume below. You can download it as JPG (A4).
+    <br />
+    Template: <strong><%= tpl %></strong>
+    &nbsp;·&nbsp; <a href="/resume-templates">Change template</a>
+  </p>
+
+  <div class="resume-wrapper">
+    <!-- A4 container we capture for JPG / print -->
+    <div
+      id="resumeA4"
+      class="resume-a4"
+      data-is-modern="<%= tpl === 'modern-1' ? 'true' : 'false' %>"
+    >
+      <div class="resume-page <%= tpl %>">
+
+        <% if (tpl === "modern-1") { %>
+          <!-- MODERN-1 -->
+          <div class="modern-left">
+            <div class="modern-avatar">
+              <% if (data.profileImageUrl) { %>
+                <img src="<%= data.profileImageUrl %>" alt="Profile" />
+              <% } else { %>
+                <div class="modern-avatar-placeholder">PHOTO</div>
+              <% } %>
+            </div>
+
+            <div class="modern-name-block">
+              <h2><%= data.fullName || "" %></h2>
+              <p class="role"><%= data.roleTitle || "" %></p>
+            </div>
+
+            <div class="modern-sidebar-section">
+              <h3>CONTACT</h3>
+              <p><span>📞</span> <%= data.phone || "" %></p>
+              <p><span>✉️</span> <%= data.email || "" %></p>
+              <% if (data.location) { %>
+                <p><span>📍</span> <%= data.location %></p>
+              <% } %>
+            </div>
+
+            <div class="modern-sidebar-section">
+              <h3>EDUCATION</h3>
+              <p><%= data.education || "" %></p>
+            </div>
+
+            <div class="modern-sidebar-section">
+              <h3>LANGUAGES</h3>
+              <p><%= data.languages || "" %></p>
+            </div>
+          </div>
+
+          <div class="modern-right">
+            <div class="modern-section-block">
+              <h3>PROFESSIONAL SUMMARY</h3>
+              <p><%= data.summary || "" %></p>
+            </div>
+
+            <div class="modern-section-block">
+              <h3>EXPERIENCE</h3>
+
+              <% if (experienceItems.length) { %>
+                <ul class="experience-list">
+                  <% experienceItems.forEach(exp => { %>
+                    <li>
+                      <div class="exp-heading">
+                        <span class="exp-title"><strong><%= exp.title %></strong></span>
+                        <% if (exp.dates) { %>
+                          <span class="exp-dates"><%= exp.dates %></span>
+                        <% } %>
+                      </div>
+                      <% if (exp.description) { %>
+                        <div class="exp-body">
+                          <%= exp.description %>
+                        </div>
+                      <% } %>
+                    </li>
+                  <% }) %>
+                </ul>
+              <% } else { %>
+                <p><%= data.experience || "" %></p>
+              <% } %>
+            </div>
+
+            <div class="modern-section-block">
+              <h3>SKILLS</h3>
+              <% if (skillsLines.length) { %>
+                <ul>
+                  <% skillsLines.forEach(line => { %>
+                    <li><%= line %></li>
+                  <% }) %>
+                </ul>
+              <% } else { %>
+                <p><%= data.skills || "" %></p>
+              <% } %>
+            </div>
+          </div>
+
+        <% } else if (tpl === "minimal-1") { %>
+          <!-- MINIMAL-1 -->
+          <div class="min-header">
+            <h2 class="min-name"><%= data.fullName || "" %></h2>
+            <p class="min-role"><%= data.roleTitle || "" %></p>
+            <div class="min-contact">
+              <span><strong>📞</strong> <%= data.phone || "" %></span>
+              <span><strong>✉️</strong> <%= data.email || "" %></span>
+              <% if (data.location) { %>
+                <span><strong>📍</strong> <%= data.location %></span>
+              <% } %>
+            </div>
+          </div>
+
+          <div class="min-section">
+            <h3>Professional Summary</h3>
+            <p><%= data.summary || "" %></p>
+          </div>
+
+          <div class="min-section">
+            <h3>Experience</h3>
+            <% if (experienceItems.length) { %>
+              <ul>
+                <% experienceItems.forEach(exp => { %>
+                  <li>
+                    <strong><%= exp.title %></strong>
+                    <% if (exp.dates) { %> <span><%= exp.dates %></span><% } %>
+                    <% if (exp.description) { %><br><%= exp.description %><% } %>
+                  </li>
+                <% }) %>
+              </ul>
+            <% } else { %>
+              <p><%= data.experience || "" %></p>
+            <% } %>
+          </div>
+
+          <div class="min-section">
+            <h3>Education</h3>
+            <p><%= data.education || "" %></p>
+          </div>
+
+          <div class="min-section">
+            <h3>Skills</h3>
+            <% if (skillsLines.length) { %>
+              <ul>
+                <% skillsLines.forEach(line => { %>
+                  <li><%= line %></li>
+                <% }) %>
+              </ul>
+            <% } else { %>
+              <p><%= data.skills || "" %></p>
+            <% } %>
+          </div>
+
+          <div class="min-section">
+            <h3>Languages</h3>
+            <p><%= data.languages || "" %></p>
+          </div>
+
+        <% } else { %>
+          <!-- Fallback: modern-style -->
+          <div class="modern-left">
+            <div class="modern-avatar">
+              <% if (data.profileImageUrl) { %>
+                <img src="<%= data.profileImageUrl %>" alt="Profile" />
+              <% } else { %>
+                <div class="modern-avatar-placeholder">PHOTO</div>
+              <% } %>
+            </div>
+
+            <div class="modern-name-block">
+              <h2><%= data.fullName || "" %></h2>
+              <p class="role"><%= data.roleTitle || "" %></p>
+            </div>
+
+            <div class="modern-sidebar-section">
+              <h3>CONTACT</h3>
+              <p><span>📞</span> <%= data.phone || "" %></p>
+              <p><span>✉️</span> <%= data.email || "" %></p>
+              <% if (data.location) { %>
+                <p><span>📍</span> <%= data.location %></p>
+              <% } %>
+            </div>
+
+            <div class="modern-sidebar-section">
+              <h3>EDUCATION</h3>
+              <p><%= data.education || "" %></p>
+            </div>
+
+            <div class="modern-sidebar-section">
+              <h3>LANGUAGES</h3>
+              <p><%= data.languages || "" %></p>
+            </div>
+          </div>
+
+          <div class="modern-right">
+            <div class="modern-section-block">
+              <h3>PROFESSIONAL SUMMARY</h3>
+              <p><%= data.summary || "" %></p>
+            </div>
+
+            <div class="modern-section-block">
+              <h3>EXPERIENCE</h3>
+              <% if (experienceItems.length) { %>
+                <ul class="experience-list">
+                  <% experienceItems.forEach(exp => { %>
+                    <li>
+                      <div class="exp-heading">
+                        <span class="exp-title"><strong><%= exp.title %></strong></span>
+                        <% if (exp.dates) { %>
+                          <span class="exp-dates"><%= exp.dates %></span>
+                        <% } %>
+                      </div>
+                      <% if (exp.description) { %>
+                        <div class="exp-body">
+                          <%= exp.description %>
+                        </div>
+                      <% } %>
+                    </li>
+                  <% }) %>
+                </ul>
+              <% } else { %>
+                <p><%= data.experience || "" %></p>
+              <% } %>
+            </div>
+
+            <div class="modern-section-block">
+              <h3>SKILLS</h3>
+              <% if (skillsLines.length) { %>
+                <ul>
+                  <% skillsLines.forEach(line => { %>
+                    <li><%= line %></li>
+                  <% }) %>
+                </ul>
+              <% } else { %>
+                <p><%= data.skills || "" %></p>
+              <% } %>
+            </div>
+          </div>
+        <% } %>
+
+      </div>
+    </div>
+  </div>
+
+  <% if (tpl === "modern-1") { %>
+    <button id="download-image-btn" style="margin-top:1rem;">
+      PAY ₹49 &amp; DOWNLOAD AS JPG (A4)
+    </button>
+
+    <!-- <button type="button" id="print-btn" style="margin-top:0.5rem;">
+      PAY ₹49 &amp; PRINT / SAVE AS PDF (A4)
+    </button> -->
+  <% } else { %>
+    <button id="download-image-btn" style="margin-top:1rem;">
+      DOWNLOAD AS JPG (A4)
+    </button>
+
+    <button type="button" id="print-btn" style="margin-top:0.5rem;">
+      PRINT / SAVE AS PDF (A4)
+    </button>
+  <% } %>
+
+  <p style="margin-top:1rem;">
+    <a href="/resume-builder">Edit details</a>
+  </p>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+<script>
+  (function () {
+    const resumeNode = document.getElementById("resumeA4");
+    const downloadBtn = document.getElementById("download-image-btn");
+    const printBtn = document.getElementById("print-btn");
+    if (!resumeNode || !downloadBtn) return;
+
+    // TRUE on modern-1, FALSE otherwise (from data attribute)
+    const isModern1 = resumeNode.dataset.isModern === "true";
+    const resumeId = "<%= data.resumeId || '' %>";
+
+        // Log download/print events (used mainly for free templates)
+    async function logEvent(kind) {
+      try {
+        await fetch("/resume/event", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ kind, resumeId: resumeId || null }),
+        });
+      } catch (err) {
+        console.warn("Failed to log event:", err);
+      }
+    }
+
+    // ---- JPG generation (A4) ----
+    async function generateJpg() {
+      downloadBtn.disabled = true;
+      const originalText = downloadBtn.textContent;
+      downloadBtn.textContent = "Preparing A4 JPG...";
+
+      try {
+        const A4_WIDTH_PX = 2480;
+        const A4_HEIGHT_PX = 3508;
+
+        const baseWidth = resumeNode.offsetWidth;
+        const baseHeight = resumeNode.offsetHeight;
+
+        const scaleX = A4_WIDTH_PX / baseWidth;
+        const scaleY = A4_HEIGHT_PX / baseHeight;
+        const scale = Math.min(scaleX, scaleY);
+
+        const canvas = await html2canvas(resumeNode, {
+          scale: scale,
+          backgroundColor: "#ffffff",
+          scrollX: 0,
+          scrollY: -window.scrollY
+        });
+
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.95);
+        const link = document.createElement("a");
+        link.download = "SmrAI-Studio-Resume-A4.jpg";
+        link.href = dataUrl;
+        link.click();
+      } catch (err) {
+        console.error(err);
+        alert("Failed to generate JPG. Check console for details.");
+      } finally {
+        downloadBtn.disabled = false;
+        downloadBtn.textContent = originalText;
+      }
+    }
+
+    // ---- Razorpay helpers ----
+    async function createOrder() {
+      const res = await fetch("/api/razorpay/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error("Order creation failed");
+      return json;
+    }
+
+    async function startPayment(action) {
+      try {
+        const orderData = await createOrder();
+
+        const options = {
+          key: orderData.key,
+          amount: orderData.amount,
+          currency: orderData.currency,
+          name: "SmrAI-Studio",
+          description: "Modern-1 Resume " + (action === "print" ? "Print" : "Download"),
+          order_id: orderData.orderId,
+                    handler: async function (response) {
+            try {
+              const verifyRes = await fetch("/api/razorpay/verify", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                  purpose: action === "print" ? "print" : "download",
+                  resumeId: resumeId || null,
+                }),
+              });
+
+              const verifyData = await verifyRes.json();
+
+              if (!verifyData.success) {
+                alert("Payment verification failed. Please contact support.");
+                return;
+              }
+
+              if (action === "download") {
+                await generateJpg();
+              } else if (action === "print") {
+                window.print();
+              }
+            } catch (err) {
+              console.error("Verify/payment error:", err);
+              alert("Something went wrong while verifying payment.");
+            }
+          },
+          prefill: {
+            name: "<%= data.fullName || '' %>",
+            email: "<%= data.email || '' %>",
+            contact: "<%= data.phone || '' %>"
+          },
+          theme: {
+            color: "#27355a"
+          }
+        };
+
+        const rzp = new Razorpay(options);
+        rzp.open();
+      } catch (err) {
+        console.error(err);
+        alert("Unable to start payment. Please try again.");
+      }
+    }
+
+    // ---- Event bindings ----
+    if (isModern1) {
+      // Paid for modern-1
+      downloadBtn.addEventListener("click", function () {
+        startPayment("download");
+      });
+
+      if (printBtn) {
+        printBtn.addEventListener("click", function () {
+          startPayment("print");
+        });
+      }
+        } else {
+      // Free for other templates, but still log usage
+      downloadBtn.addEventListener("click", async function () {
+        await generateJpg();
+        logEvent("download");
+      });
+
+      if (printBtn) {
+        printBtn.addEventListener("click", function () {
+          window.print();
+          logEvent("print");
+        });
+      }
+    }
+  })();
+</script>
+
+<%- include("partials/footer") %>

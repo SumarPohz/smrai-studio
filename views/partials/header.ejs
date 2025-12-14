@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>SmrAI-Studio</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body onload="document.body.classList.add('fade-in')">
+  <header class="top-header">
+  <div class="header-left">
+    <!-- NEW: mobile hamburger -->
+    <button
+      class="menu-toggle"
+      id="main-menu-toggle"
+      type="button"
+      aria-label="Toggle navigation"
+    >
+      ☰
+    </button>
+
+    <a href="/" class="brand">SmrAI-Studio</a>
+  </div>
+
+  <!-- add id so JS can toggle -->
+  <nav class="header-nav" id="main-nav">
+    <a href="/">Home</a>
+    <% if (currentUser) { %>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/resume-builder">Resume Builder</a>
+      <!-- 🔹 New links -->
+      <a href="/resumes">My Resumes</a>
+      <a href="/payments">Payments</a>
+    <% } else { %>
+      <a href="/login">Login</a>
+      <a href="/register">Register</a>
+    <% } %>
+  </nav>
+
+  <div class="header-right">
+    <% if (currentUser) { %>
+      <button id="user-menu-toggle" class="user-avatar-btn" type="button">
+        <% if (userProfile && userProfile.profile_image_url) { %>
+          <img src="<%= userProfile.profile_image_url %>" alt="User" />
+        <% } else { %>
+          <span><%= (currentUser.name || currentUser.email).charAt(0).toUpperCase() %></span>
+        <% } %>
+      </button>
+    <% } %>
+  </div>
+</header>
+
+
+  <% if (currentUser) { %>
+    <div id="user-sidebar-backdrop" class="user-sidebar-backdrop"></div>
+    <aside id="user-sidebar" class="user-sidebar">
+      <div class="user-sidebar-header">
+        <h2>User Details</h2>
+        <button id="user-sidebar-close" type="button" aria-label="Close Sidebar">&times;</button>
+      </div>
+
+      <div class="user-sidebar-body">
+        <!-- Avatar block -->
+        <div class="sidebar-avatar-block">
+          <div class="sidebar-avatar">
+            <% if (userProfile && userProfile.profile_image_url) { %>
+              <img src="<%= userProfile.profile_image_url %>" alt="User" />
+            <% } else { %>
+              <div class="avatar-placeholder-big">
+                <span><%= (currentUser.name || currentUser.email).charAt(0).toUpperCase() %></span>
+              </div>
+            <% } %>
+          </div>
+          <div class="sidebar-avatar-meta">
+            <p class="sidebar-name">
+              <%= userProfile?.full_name || currentUser.name || "Your name" %>
+            </p>
+            <p class="sidebar-email"><%= currentUser.email %></p>
+          </div>
+        </div>
+
+        <!-- Edit profile -->
+        <div class="sidebar-section">
+          <h3 class="sidebar-section-title">Profile</h3>
+
+          <form action="/profile/update" method="POST" class="sidebar-profile-form">
+            <label for="sidebar-name">Name</label>
+            <input
+              type="text"
+              id="sidebar-name"
+              name="name"
+              value="<%= userProfile?.full_name || currentUser.name || '' %>"
+              placeholder="Your name"
+            />
+
+            <label for="sidebar-phone">Phone</label>
+            <input
+              type="text"
+              id="sidebar-phone"
+              name="phone"
+              value="<%= userProfile?.phone || '' %>"
+              placeholder="+91 ..."
+            />
+
+            <label for="sidebar-location">Location</label>
+            <input
+              type="text"
+              id="sidebar-location"
+              name="location"
+              value="<%= userProfile?.location || '' %>"
+              placeholder="City, Country"
+            />
+
+            <button type="submit" class="sidebar-save-btn">
+              <i class="fas fa-save"></i>
+              Save changes
+            </button>
+          </form>
+        </div>
+
+        <!-- Photo -->
+        <div class="sidebar-section">
+          <h3 class="sidebar-section-title">Profile photo</h3>
+          <p class="sidebar-help-text">This photo is used in your resume templates.</p>
+          <form action="/profile/photo" method="POST" enctype="multipart/form-data" class="sidebar-photo-form">
+            <input type="file" name="profilePhoto" accept="image/*" />
+            <button type="submit" class="sidebar-upload-btn">
+              <i class="fas fa-upload"></i>
+              Upload
+            </button>
+          </form>
+        </div>
+
+        <!-- Logout -->
+        <div class="sidebar-section sidebar-section-footer">
+          <form action="/logout" method="POST">
+            <button type="submit" class="logout-btn">
+              <i class="fas fa-sign-out-alt"></i>
+              Logout
+            </button>
+          </form>
+        </div>
+      </div>
+    </aside>
+
+    <script>
+      const toggleBtn = document.getElementById("user-menu-toggle");
+      const sidebar = document.getElementById("user-sidebar");
+      const backdrop = document.getElementById("user-sidebar-backdrop");
+      const closeBtn = document.getElementById("user-sidebar-close");
+
+      function openSidebar() {
+        sidebar.classList.add("open");
+        backdrop.classList.add("open");
+      }
+      function closeSidebar() {
+        sidebar.classList.remove("open");
+        backdrop.classList.remove("open");
+      }
+
+      if (toggleBtn) toggleBtn.addEventListener("click", openSidebar);
+      if (closeBtn) closeBtn.addEventListener("click", closeSidebar);
+      if (backdrop) backdrop.addEventListener("click", closeSidebar);
+    </script>
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const menuToggle = document.getElementById("main-menu-toggle");
+        const mainNav = document.getElementById("main-nav");
+
+        if (menuToggle && mainNav) {
+          // Toggle open/close when clicking hamburger
+          menuToggle.addEventListener("click", (e) => {
+            e.stopPropagation(); // prevent closing immediately
+            mainNav.classList.toggle("nav-open");
+          });
+
+          // Close when clicking a nav link
+          const navLinks = mainNav.querySelectorAll("a");
+          navLinks.forEach((link) => {
+            link.addEventListener("click", () => {
+              mainNav.classList.remove("nav-open");
+            });
+          });
+
+          // Close when clicking outside menu or toggle (anywhere else)
+          document.addEventListener("click", (e) => {
+            if (!mainNav.classList.contains("nav-open")) return;
+
+            const clickedInsideNav = mainNav.contains(e.target);
+            const clickedToggle = menuToggle.contains(e.target);
+
+            if (!clickedInsideNav && !clickedToggle) {
+              mainNav.classList.remove("nav-open");
+            }
+          });
+        }
+      });
+    </script>
+  <% } %>
+
+  <main>

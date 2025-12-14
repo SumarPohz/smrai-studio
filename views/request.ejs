@@ -1,0 +1,29 @@
+<%- include("partials/header") %>
+
+    <section>
+      <h1>Request a Service</h1>
+      <p>Fill in the form below and SmrAI-Studio will contact you.</p>
+
+      <form action="/request" method="POST" class="form-card">
+        <label for="name">Your Name</label>
+        <input type="text" id="name" name="name" required />
+
+        <label for="email">Your Email</label>
+        <input type="email" id="email" name="email" required />
+
+        <label for="service_type">Service Type</label>
+        <select id="service_type" name="service_type" required>
+          <option value="">-- Select a service --</option>
+          <option value="resume">AI Resume & Cover Letter</option>
+          <option value="logo">Logo + Brand Kit</option>
+          <option value="landing_page">Landing Page Copy + Design</option>
+        </select>
+
+        <label for="details">Project Details</label>
+        <textarea id="details" name="details" rows="5" placeholder="Tell me about your job, brand, or product."></textarea>
+
+        <button type="submit">Submit Request</button>
+      </form>
+    </section>
+    
+<%- include("partials/footer") %>

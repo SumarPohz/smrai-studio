@@ -1,0 +1,20 @@
+<%- include("partials/header") %>
+
+<section>
+  <h1>Welcome to SmrAI-Studio, <%= currentUser ? currentUser.name : "" %>!</h1>
+  <p>This is your space to create AI-powered resumes and manage your requests.</p>
+
+  <div class="card-grid">
+    <div class="card">
+      <h2>Create Your Resume</h2>
+      <p>Use the SmrAI-Studio resume builder to generate a professional resume and download it as PDF or JPG.</p>
+      <a href="/resume-templates" class="btn-primary">Start Building Resume</a>
+    <div class="card">
+      <h2>Service Requests</h2>
+      <p>In the future, you’ll see your submitted service requests and their status here.</p>
+      <p style="font-size:0.9rem; color:#6b7280;">(Coming soon)</p>
+    </div>
+  </div>
+</section>
+
+<%- include("partials/footer") %>

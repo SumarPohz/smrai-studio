@@ -1,0 +1,217 @@
+</main>
+
+<footer class="site-footer">
+  <div class="footer-container">
+    <div class="footer-columns">
+      <div class="footer-col">
+        <h4>INFORMATION</h4>
+        <a href="/about"  class="footer-card">About Us</a>
+        <a href="/news"   class="footer-card">News</a>
+        <a href="/terms"  class="footer-card">Terms &amp; Privacy Policy</a>
+      </div>
+
+      <div class="footer-col">
+        <h4>ACCOUNT</h4>
+        <a href="/login"    class="footer-card">Login</a>
+        <a href="/register" class="footer-card">Register</a>
+      </div>
+
+      <div class="footer-col">
+        <h4>CONNECT</h4>
+        <a href="/contact" class="footer-card">Contact</a>
+        <a href="/support" class="footer-card">Support</a>
+      </div>
+
+      <div class="footer-col">
+        <h4>HELP</h4>
+        <a href="/help" class="footer-card">Help Center</a>
+        <a href="/faq"  class="footer-card">FAQ</a>
+        <a href="/contact-support" class="footer-card">Contact Support</a>
+      </div>
+
+      <div class="footer-col footer-social">
+        <h4>CONNECT WITH US</h4>
+        <div class="social-icons">
+          <a href="#" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+          <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+          <a href="#" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+          <a href="#" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>© <%= new Date().getFullYear() %> SmrAI-Studio. All rights reserved.</p>
+    </div>
+  </div>
+</footer>
+
+<!-- Font Awesome (CDN version, no API key needed) -->
+<link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+/>
+
+<style>
+  /* ====== FOOTER ====== */
+  .site-footer {
+    background: #e5e7eb;
+    border-top: 1px solid #d1d5db;
+    padding: 1rem 0 0.45rem;   /* ↓ was 2.5rem 0 1.25rem */
+    margin-top: 1.5rem;            /* ↓ was 3rem */
+    font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  /* Full-width grey bar, content has side padding */
+  .footer-container {
+    width: 100%;
+    padding: 0 2rem;
+    box-sizing: border-box;
+  }
+
+  .footer-columns {
+    width: 100%;               /* stretch with screen */
+    margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 1rem;                 /* ↓ was 1.5rem */
+    padding-bottom: 0.75rem;   /* ↓ was 1.25rem */
+    border-bottom: 1px solid #d1d5db;
+  }
+
+  .footer-col {
+    flex: 1 1 160px;
+    min-width: 160px;
+  }
+
+  .footer-col h4 {
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 0.6rem;     /* slightly tighter */
+    color: #111827;
+  }
+
+  .footer-card {
+    display: block;
+    margin-bottom: 0.35rem;    /* ↓ was 0.5rem */
+    padding: 0.45rem 0.8rem;   /* ↓ was 0.55rem 0.9rem */
+    border-radius: 12px;
+    background: #ffffff;
+    color: #111827;
+    text-decoration: none;
+    font-size: 0.9rem;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+    border: 1px solid #e5e7eb;
+    transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+  }
+
+  .footer-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(15, 23, 42, 0.12);
+    border-color: #facc15;
+  }
+
+  /* ====== SOCIAL ICONS ====== */
+  .footer-social {
+    text-align: left;
+  }
+
+  .social-icons {
+    margin-top: 0.6rem;        /* ↓ was 0.8rem */
+    display: flex;
+    gap: 0.6rem;
+  }
+
+  .social-icons a {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #d1d5db;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #111827;
+    font-size: 0.9rem;
+    transition: all 0.25s ease;
+  }
+
+  .social-icons a:hover {
+    background: #facc15; /* gold hover for AI theme */
+    color: #111827;
+    transform: translateY(-2px);
+  }
+
+  .footer-bottom {
+    width: 100%;               /* stretch with screen */
+    margin: 0.5rem auto 0;     /* ↓ was 1rem */
+    text-align: center;
+    font-size: 0.85rem;
+    color: #6b7280;
+  }
+
+  /* ====== RESPONSIVE ====== */
+  @media (max-width: 768px) {
+    .footer-container {
+      padding: 0 1rem; /* slight padding on smaller screens */
+    }
+
+    /* keep row layout even on mobile */
+    .footer-columns {
+      flex-direction: row;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 0.8rem;            /* a bit tighter on mobile */
+    }
+
+    .footer-col {
+      flex: 1 1 150px;
+      min-width: 150px;
+      width: auto;
+    }
+
+    /* make cards look like plain text links on mobile */
+    .footer-card {
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      border-radius: 0;
+      padding: 0.35rem 0.6rem; /* ↓ slightly smaller */
+      margin-bottom: 0.15rem;
+      font-size: 0.85rem;
+    }
+
+    .footer-card:hover {
+      transform: none;
+      box-shadow: none;
+      border-color: transparent;
+      text-decoration: underline;
+    }
+
+    .footer-col h4 {
+      margin-bottom: 0.3rem;
+    }
+
+    .social-icons {
+      margin-top: 0.35rem;
+    }
+
+    .social-icons a {
+      width: 30px;
+      height: 30px;
+    }
+
+    .footer-bottom {
+      margin-top: 0.4rem;
+      padding-top: 0.4rem;
+      border-top: 1px solid #d1d5db;
+      font-size: 0.8rem;
+    }
+  }
+</style>
+
+
+</body>
+</html>

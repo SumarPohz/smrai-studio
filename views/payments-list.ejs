@@ -1,0 +1,147 @@
+<%- include("partials/header") %>
+
+<section class="page-section">
+  <div class="page-header-row">
+    <div>
+      <h1>Payment History</h1>
+      <p class="section-subtitle">
+        All your SmrAI-Studio payments for resume downloads and prints.
+      </p>
+    </div>
+  </div>
+
+  <% if (!payments || payments.length === 0) { %>
+    <div class="empty-state-card">
+      <h3>No payments yet</h3>
+      <p>Once you purchase a paid resume download/print, it will show up here.</p>
+      <a href="/resume-builder" class="btn-primary">Go to Resume Builder</a>
+    </div>
+  <% } else { %>
+    <div class="table-wrapper">
+      <table class="nice-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Purpose</th>
+            <th>Resume</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Order ID</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% payments.forEach(p => { %>
+            <tr>
+              <td>
+                <%= p.created_at ? new Date(p.created_at).toLocaleString("en-IN") : "-" %>
+              </td>
+              <td>
+                <span class="badge"><%= (p.purpose || "download").toUpperCase() %></span>
+              </td>
+              <td>
+                <% if (p.resume_title) { %>
+                  <%= p.resume_title %>
+                  <small style="color:#6b7280;">
+                    (<%= (p.resume_template || '').replace('-', ' ') %>)
+                  </small>
+                <% } else { %>
+                  -
+                <% } %>
+              </td>
+              <td>
+                ₹ <%= (p.amount || 0) / 100 %> <%= p.currency || "INR" %>
+              </td>
+              <td>
+                <span class="badge" style="background:#dcfce7;border-color:#bbf7d0;color:#15803d;">
+                  <%= p.status || "captured" %>
+                </span>
+              </td>
+              <td style="max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                <%= p.razorpay_order_id || "-" %>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</section>
+
+<style>
+  .page-section {
+    max-width: 980px;
+    margin: 1.5rem auto 2.5rem;
+    padding: 0 1rem 1rem;
+  }
+
+  .page-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .section-subtitle {
+    font-size: 0.9rem;
+    color: #6b7280;
+  }
+
+  .table-wrapper {
+    overflow-x: auto;
+    margin-top: 0.75rem;
+  }
+
+  .nice-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+
+  .nice-table th,
+  .nice-table td {
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid #e5e7eb;
+    text-align: left;
+  }
+
+  .nice-table th {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #6b7280;
+  }
+
+  .nice-table tbody tr:hover {
+    background: #f9fafb;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+  }
+
+  .empty-state-card {
+    margin-top: 1.5rem;
+    padding: 1.5rem 1.75rem;
+    border-radius: 16px;
+    border: 1px dashed #e5e7eb;
+    background: #f9fafb;
+  }
+
+  .empty-state-card h3 {
+    margin-bottom: 0.25rem;
+  }
+
+  .empty-state-card p {
+    color: #6b7280;
+    margin-bottom: 0.75rem;
+  }
+</style>
+
+<%- include("partials/footer") %>
