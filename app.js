@@ -835,12 +835,6 @@ app.post("/resume/event", ensureAuthenticated, async (req, res) => {
     return res.status(500).json({ success: false });
   }
 });
-
-// ---------- AI Resume Suggestion Routes (commented out) ----------
-// ... (unchanged, still commented)
-
-// ========== Service Request Routes ==========
-
 // Show request form
 app.get("/request", (req, res) => {
   res.render("request");
