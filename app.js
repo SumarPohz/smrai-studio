@@ -74,7 +74,6 @@ const upload = multer({ storage });
 // ---------- View Engine & Static ----------
 app.set("view engine", "ejs");
 app.set("views", "views");
-app.use(express.static("public"));
 // ---------- Session & Passport ----------
 app.use(
   session({
