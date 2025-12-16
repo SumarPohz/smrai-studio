@@ -157,6 +157,8 @@
     width: 100%;
     min-height: 100%;
     height: auto;
+    position: relative;
+  z-index: 1;
   }
 
   button,
@@ -462,6 +464,24 @@
     word-wrap: break-word;
     overflow-wrap: anywhere;
   }
+
+.resume-watermark {
+  position: absolute;
+  inset: 0;
+  z-index: 999;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3.2rem;
+  font-weight: 700;
+  color: rgba(17, 24, 39, 0.08);
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  transform: rotate(-30deg);
+  user-select: none;
+}
+
 </style>
 
 <section class="preview-section">
@@ -480,6 +500,11 @@
       class="resume-a4"
       data-is-modern="<%= tpl === 'modern-1' ? 'true' : 'false' %>"
     >
+    <!-- 🔒 WATERMARK (VISIBLE UNTIL PAYMENT) -->
+      <div class="resume-watermark">
+        SmrAI-Studio • Preview • Not Paid
+      </div>
+
       <div class="resume-page <%= tpl %>">
 
         <% if (tpl === "modern-1") { %>
@@ -841,10 +866,17 @@
               }
 
               if (action === "download") {
-                await generateJpg();
-              } else if (action === "print") {
-                window.print();
-              }
+            // ✅ REMOVE WATERMARK AFTER PAYMENT
+            const wm = document.querySelector(".resume-watermark");
+            if (wm) wm.remove();
+
+            await generateJpg();
+            } else if (action === "print") {
+              const wm = document.querySelector(".resume-watermark");
+              if (wm) wm.remove();
+
+              window.print();
+            }
             } catch (err) {
               console.error("Verify/payment error:", err);
               alert("Something went wrong while verifying payment.");
