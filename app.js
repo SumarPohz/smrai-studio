@@ -50,11 +50,14 @@ app.use(express.static(path.join(__dirname, "public")));
 const uploadDir = path.join(__dirname, "public", "uploads");
 
 app.get("/env-test", (req, res) => {
- res.json({
- mysqlHostDefined: !!process.env.MYSQL_HOST,
- mysqlUserDefined: !!process.env.MYSQL_USER,
- mysqlDbDefined: !!process.env.MYSQL_DATABASE,
- });
+res.json({
+mysqlHostDefined: !!process.env.MYSQL_HOST,
+mysqlUserDefined: !!process.env.MYSQL_USER,
+mysqlDbDefined: !!process.env.MYSQL_DATABASE,
+testVar: process.env.TEST_VAR || null,
+nodeEnv: process.env.NODE_ENV || null,
+port: process.env.PORT || null,
+});
 });
 
 app.get("/db-test", async (req, res) => {
