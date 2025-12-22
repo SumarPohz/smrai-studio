@@ -1,7 +1,5 @@
 import mysql from "mysql2/promise";
-// import env from "dotenv";
-
-// env.config();
+require('dotenv').config();
 
 console.log("DB CONFIG CHECK (raw):", {
  MYSQL_HOST: process.env.MYSQL_HOST,

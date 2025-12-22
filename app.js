@@ -1,3 +1,4 @@
+require('dotenv').config();
 import db from "./db.js";
 import express from "express";
 import bodyParser from "body-parser";
