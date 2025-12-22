@@ -38,11 +38,6 @@ if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
   );
 }
 
-// // ----- OpenAI setup (optional, for AI content suggestions) -----
-// const openai = new OpenAI({
-//   apiKey: process.env.OPENAI_API_KEY,
-// });
-
 const app = express();
 const port = process.env.PORT || 3000;
 const saltRounds = 10;
@@ -53,6 +48,14 @@ app.use(express.json());
 // Static files
 app.use(express.static(path.join(__dirname, "public")));
 const uploadDir = path.join(__dirname, "public", "uploads");
+
+app.get("/env-test", (req, res) => {
+ res.json({
+ mysqlHostDefined: !!process.env.MYSQL_HOST,
+ mysqlUserDefined: !!process.env.MYSQL_USER,
+ mysqlDbDefined: !!process.env.MYSQL_DATABASE,
+ });
+});
 
 app.get("/db-test", async (req, res) => {
  try {

@@ -13,10 +13,10 @@ console.log("DB CONFIG CHECK (raw):", {
 });
 
 const pool = mysql.createPool({
- host: process.env.MYSQL_HOST,
- user: process.env.MYSQL_USER,
- password: process.env.MYSQL_PASSWORD,
- database: process.env.MYSQL_DATABASE,
+ host: "YOUR_DB_HOST", // from hPanel → Databases → MySQL Databases → Host
+ user: "YOUR_DB_USER", // your MySQL username
+ password: "YOUR_DB_PASSWORD",
+ database: "YOUR_DB_NAME", // your MySQL database name
  waitForConnections: true,
  connectionLimit: 10,
  queueLimit: 0,
