@@ -22,7 +22,7 @@ const db = {
       return { rows: result };
     }
 
-    // INSERT / UPDATE / DELETE
+    // INSERT / UPDATE / DELETEE
     return {
       rows: [],
       insertId: result.insertId || null,
