@@ -1,7 +1,7 @@
 import mysql from "mysql2/promise";
-import env from "dotenv";
+// import env from "dotenv";
 
-env.config();
+// env.config();
 
 console.log("DB CONFIG CHECK (raw):", {
  MYSQL_HOST: process.env.MYSQL_HOST,
@@ -9,16 +9,17 @@ console.log("DB CONFIG CHECK (raw):", {
  MYSQL_PASSWORD: process.env.MYSQL_PASSWORD ? "***set***" : undefined,
  MYSQL_DATABASE: process.env.MYSQL_DATABASE,
  MYSQL_PORT: process.env.MYSQL_PORT,
+ NODE_ENV: process.env.NODE_ENV,
 });
 
 const pool = mysql.createPool({
-  host: process.env.MYSQL_HOST,
-  user: process.env.MYSQL_USER,
-  password: process.env.MYSQL_PASSWORD,
-  database: process.env.MYSQL_DATABASE,
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
+ host: process.env.MYSQL_HOST,
+ user: process.env.MYSQL_USER,
+ password: process.env.MYSQL_PASSWORD,
+ database: process.env.MYSQL_DATABASE,
+ waitForConnections: true,
+ connectionLimit: 10,
+ queueLimit: 0,
 });
 
 const db = {

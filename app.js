@@ -6,7 +6,7 @@ import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import GoogleStrategy from "passport-google-oauth2";
 import session from "express-session";
-import env from "dotenv";
+// import env from "dotenv";
 import nodemailer from "nodemailer";
 import PDFDocument from "pdfkit";
 import fs from "fs";
@@ -21,7 +21,7 @@ import crypto from "crypto";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-env.config();
+// env.config();
 
 // ----- Razorpay setup (optional, for payments) -----
 let razorpay = null;
