@@ -54,6 +54,16 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 const uploadDir = path.join(__dirname, "public", "uploads");
 
+app.get("/db-test", async (req, res) => {
+ try {
+ const result = await db.query("SELECT COUNT(*) AS user_count FROM users");
+ res.json(result.rows[0]);
+ } catch (err) {
+ console.error("DB TEST ERROR:", err);
+ res.status(500).send("DB test failed");
+ }
+});
+
 // Create "public/uploads" if it doesn't exist
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
@@ -742,48 +752,48 @@ app.post("/resume-builder/preview", ensureAuthenticated, async (req, res) => {
 });
 
 // Generate PDF for download
-app.post("/resume-builder/pdf", ensureAuthenticated, (req, res) => {
-  const { fullName, email, phone, summary, experience, education, skills } =
-    req.body;
+// app.post("/resume-builder/pdf", ensureAuthenticated, (req, res) => {
+//   const { fullName, email, phone, summary, experience, education, skills } =
+//     req.body;
 
-  const doc = new PDFDocument({ margin: 50 });
+//   const doc = new PDFDocument({ margin: 50 });
 
-  res.setHeader("Content-Type", "application/pdf");
-  res.setHeader(
-    "Content-Disposition",
-    'attachment; filename="SmrAI-Studio-Resume.pdf"'
-  );
+//   res.setHeader("Content-Type", "application/pdf");
+//   res.setHeader(
+//     "Content-Disposition",
+//     'attachment; filename="SmrAI-Studio-Resume.pdf"'
+//   );
 
-  doc.pipe(res);
+//   doc.pipe(res);
 
-  doc.fontSize(22).text(fullName || "", { align: "center" });
-  doc.moveDown(0.5);
+//   doc.fontSize(22).text(fullName || "", { align: "center" });
+//   doc.moveDown(0.5);
 
-  const contactLine = `${email || ""} | ${phone || ""}`;
-  doc.fontSize(10).text(contactLine, { align: "center" });
+//   const contactLine = `${email || ""} | ${phone || ""}`;
+//   doc.fontSize(10).text(contactLine, { align: "center" });
 
-  doc.moveDown(1);
-  doc.fontSize(14).text("Summary");
-  doc.moveDown(0.2);
-  doc.fontSize(11).text(summary || "");
+//   doc.moveDown(1);
+//   doc.fontSize(14).text("Summary");
+//   doc.moveDown(0.2);
+//   doc.fontSize(11).text(summary || "");
 
-  doc.moveDown(0.8);
-  doc.fontSize(14).text("Experience");
-  doc.moveDown(0.2);
-  doc.fontSize(11).text(experience || "");
+//   doc.moveDown(0.8);
+//   doc.fontSize(14).text("Experience");
+//   doc.moveDown(0.2);
+//   doc.fontSize(11).text(experience || "");
 
-  doc.moveDown(0.8);
-  doc.fontSize(14).text("Education");
-  doc.moveDown(0.2);
-  doc.fontSize(11).text(education || "");
+//   doc.moveDown(0.8);
+//   doc.fontSize(14).text("Education");
+//   doc.moveDown(0.2);
+//   doc.fontSize(11).text(education || "");
 
-  doc.moveDown(0.8);
-  doc.fontSize(14).text("Skills");
-  doc.moveDown(0.2);
-  doc.fontSize(11).text(skills || "");
+//   doc.moveDown(0.8);
+//   doc.fontSize(14).text("Skills");
+//   doc.moveDown(0.2);
+//   doc.fontSize(11).text(skills || "");
 
-  doc.end();
-});
+//   doc.end();
+// });
 
 // Google Auth routes (will only work if strategy is enabled)
 app.get(
@@ -1029,15 +1039,6 @@ app.post("/api/razorpay/verify", ensureAuthenticated, async (req, res) => {
   }
 });
 
-app.get("/db-test", async (req, res) => {
-try {
-const result = await db.query("SELECT COUNT(*) AS user_count FROM users");
-res.json(result.rows[0]);
-} catch (err) {
-console.error("DB TEST ERROR:", err);
-res.status(500).send("DB test failed");
-}
-});
 
 // ---------- Health check ----------
 app.get("/health", (req, res) => {
