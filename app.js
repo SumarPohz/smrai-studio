@@ -1029,6 +1029,16 @@ app.post("/api/razorpay/verify", ensureAuthenticated, async (req, res) => {
   }
 });
 
+app.get("/db-test", async (req, res) => {
+try {
+const result = await db.query("SELECT COUNT(*) AS user_count FROM users");
+res.json(result.rows[0]);
+} catch (err) {
+console.error("DB TEST ERROR:", err);
+res.status(500).send("DB test failed");
+}
+});
+
 // ---------- Health check ----------
 app.get("/health", (req, res) => {
   res.send("OK");
