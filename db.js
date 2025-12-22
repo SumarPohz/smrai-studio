@@ -3,13 +3,13 @@ import env from "dotenv";
 
 env.config();
 
-console.log("DB CONFIG CHECK:", {
-host: process.env.MYSQL_HOST,
-user: process.env.MYSQL_USER,
-database: process.env.MYSQL_DATABASE,
-port: process.env.MYSQL_PORT,
+console.log("DB CONFIG CHECK (raw):", {
+ MYSQL_HOST: process.env.MYSQL_HOST,
+ MYSQL_USER: process.env.MYSQL_USER,
+ MYSQL_PASSWORD: process.env.MYSQL_PASSWORD ? "***set***" : undefined,
+ MYSQL_DATABASE: process.env.MYSQL_DATABASE,
+ MYSQL_PORT: process.env.MYSQL_PORT,
 });
-
 
 const pool = mysql.createPool({
   host: process.env.MYSQL_HOST,
