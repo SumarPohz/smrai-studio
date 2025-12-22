@@ -115,6 +115,7 @@ passport.use(
 
       return done(null, user);
     } catch (err) {
+      console.error("Error in LocalStrategy:", err);
       return done(err);
     }
   })
@@ -174,17 +175,20 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
 
 // ---------- Serialize / Deserialize ----------
 passport.serializeUser((user, done) => {
-  done(null, user.id);
+ done(null, user.id);
 });
 
 passport.deserializeUser(async (id, done) => {
-  try {
-    const result = await db.query("SELECT * FROM users WHERE id = ?", [id]);
-    done(null, result.rows[0]);
-  } catch (err) {
-    done(err, null);
-  }
+ try {
+ const result = await db.query("SELECT * FROM users WHERE id = ?", [id]);
+ const user = result.rows[0] || null; // ensure null if not found
+ done(null, user);
+ } catch (err) {
+ done(err, null);
+ }
 });
+
+
 
 // ---------- Middleware to inject user into views ----------
 app.use((req, res, next) => {
@@ -277,7 +281,8 @@ app.post("/register", async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    res.send("Error while registering");
+    console.error('Register error:', err); // <– add this
+    res.status(500).send('Error while registering');
   }
 });
 
