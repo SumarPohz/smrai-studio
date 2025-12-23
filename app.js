@@ -10,9 +10,23 @@ const fs = require("fs");
 const multer = require("multer");
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
-
+const dotenv = require("dotenv");
 const db = require("./db");
 
+// Hostinger injects env OUTSIDE public_html
+const hostingerEnvPath = path.join(
+  process.cwd(),      // /home/uXXXX/domains/sumarpohz.com
+  ".builds",
+  "config",
+  ".env"
+);
+
+if (fs.existsSync(hostingerEnvPath)) {
+  dotenv.config({ path: hostingerEnvPath });
+  console.log("✅ Loaded Hostinger .env from", hostingerEnvPath);
+} else {
+  console.warn("❌ Hostinger .env NOT found at", hostingerEnvPath);
+}
 // ----- Razorpay setup (optional, for payments) -----
 let razorpay = null;
 
@@ -31,7 +45,12 @@ if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
 const app = express();
 app.set("trust proxy", 1); // ✅ REQUIRED for Hostinger
 
-const port = process.env.PORT || 3000;
+const port = process.env.PORT;
+if (!port) {
+  console.error("❌ PORT missing — Hostinger runtime broken");
+  process.exit(1);
+}
+
 const saltRounds = 10;
 
 app.use(express.urlencoded({ extended: true }));
