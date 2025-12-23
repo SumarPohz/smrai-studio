@@ -1,8 +1,6 @@
 import dotenv from "dotenv";
-dotenv.config({
-  path: "/home/u148730246/domains/sumarpohz.com/public_html/.builds/config/.env"
-});
-
+import path from "path";
+import { fileURLToPath } from "url";
 import db from "./db.js";
 import express from "express";
 import bcrypt from "bcrypt";
@@ -13,8 +11,6 @@ import session from "express-session";
 import nodemailer from "nodemailer";
 import fs from "fs";
 import multer from "multer";
-import path from "path";
-import { fileURLToPath } from "url";
 import Razorpay from "razorpay";
 import crypto from "crypto";
 // import OpenAI from "openai";
@@ -22,7 +18,9 @@ import crypto from "crypto";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-
+dotenv.config({
+  path: path.join(__dirname, ".builds", "config", ".env"),
+});
 // ----- Razorpay setup (optional, for payments) -----
 let razorpay = null;
 
