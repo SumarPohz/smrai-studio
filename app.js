@@ -108,7 +108,8 @@ const upload = multer({ storage });
 
 // ---------- View Engine & Static ----------
 app.set("view engine", "ejs");
-app.set("views", "views");
+app.set("views", path.join(__dirname, "views"));
+
 
 // ---------- Session ----------
 app.use(
@@ -267,37 +268,52 @@ app.post("/register", async (req, res) => {
   const { name, email, password } = req.body;
 
   try {
-    const check = await db.query("SELECT * FROM users WHERE email = ?", [email]);
+    // 1. Check existing user
+    const check = await db.query(
+      "SELECT id FROM users WHERE email = ?",
+      [email]
+    );
 
     if (check.rows.length > 0) {
       return res.render("already-registered");
     }
 
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    // 2. Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    const insertResult = await db.query(
+    // 3. Insert user
+    await db.query(
       "INSERT INTO users (name, email, password) VALUES (?, ?, ?)",
       [name, email, hashedPassword]
     );
 
-    const userResult = await db.query("SELECT * FROM users WHERE id = ?", [
-      insertResult.insertId,
-    ]);
+    // 4. Re-fetch user SAFELY (by email, not insertId)
+    const userResult = await db.query(
+      "SELECT * FROM users WHERE email = ?",
+      [email]
+    );
+
+    if (!userResult.rows.length) {
+      throw new Error("User inserted but not found");
+    }
+
     const user = userResult.rows[0];
 
+    // 5. Login
     req.login(user, (err) => {
       if (err) {
-        console.log(err);
+        console.error("req.login error:", err);
         return res.redirect("/login");
       }
-      res.redirect("/dashboard");
+      return res.redirect("/dashboard");
     });
+
   } catch (err) {
-    console.error(err);
-    console.error('Register error:', err); // <– add this
-    res.status(500).send('Error while registering');
+    console.error("REGISTER ERROR:", err);
+    res.status(500).send(err.message);
   }
 });
+
 
 // Login
 app.get("/login", (req, res) => {
