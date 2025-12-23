@@ -1,4 +1,3 @@
-import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 import db from "./db.js";
@@ -18,9 +17,6 @@ import crypto from "crypto";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-dotenv.config({
-  path: path.join(__dirname, ".builds", "config", ".env"),
-});
 // ----- Razorpay setup (optional, for payments) -----
 let razorpay = null;
 
@@ -39,7 +35,11 @@ if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
 const app = express();
 app.set("trust proxy", 1); // ✅ REQUIRED for Hostinger
 
-const port = process.env.PORT || 3000;
+const port = process.env.PORT;
+if (!port) {
+  console.error("❌ PORT is not defined by Hostinger");
+  process.exit(1);
+}
 const saltRounds = 10;
 
 app.use(express.urlencoded({ extended: true }));
@@ -1038,6 +1038,6 @@ app.get("/health", (req, res) => {
 });
 
 // ---------- Start server ----------
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+app.listen(port, "0.0.0.0", () => {
+  console.log(`✅ Server running on port ${port}`);
 });
