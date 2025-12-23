@@ -13,9 +13,6 @@ const crypto = require("crypto");
 
 const db = require("./db");
 
-const __dirname = __dirname || process.cwd();
-
-
 // ----- Razorpay setup (optional, for payments) -----
 let razorpay = null;
 
