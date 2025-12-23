@@ -31,11 +31,7 @@ if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
 const app = express();
 app.set("trust proxy", 1); // ✅ REQUIRED for Hostinger
 
-const port = process.env.PORT;
-if (!port) {
-  console.error("❌ PORT is not defined by Hostinger");
-  process.exit(1);
-}
+const port = process.env.PORT || 3000;
 const saltRounds = 10;
 
 app.use(express.urlencoded({ extended: true }));
