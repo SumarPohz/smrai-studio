@@ -70,6 +70,10 @@ app.get("/db-test", async (req, res) => {
  }
 });
 
+app.get("/node-version", (req, res) => {
+  res.send(process.version);
+});
+
 // Create "public/uploads" if it doesn't exist
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
