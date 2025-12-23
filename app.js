@@ -1,5 +1,7 @@
 import dotenv from "dotenv";
-dotenv.config();
+dotenv.config({
+  path: "/home/u148730246/domains/sumarpohz.com/public_html/.builds/config/.env"
+});
 
 import db from "./db.js";
 import express from "express";
