@@ -1,8 +1,8 @@
-import mysql from "mysql2/promise";
+const mysql = require("mysql2/promise");
 
 let pool = null;
 
-// Only initialize MySQL if env vars exist
+// Initialize pool lazily (only once)
 function initPool() {
   if (pool) return pool;
 
@@ -54,4 +54,4 @@ const db = {
   },
 };
 
-export default db;
+module.exports = db;

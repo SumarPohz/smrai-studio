@@ -1,21 +1,20 @@
-import path from "path";
-import { fileURLToPath } from "url";
-import db from "./db.js";
-import express from "express";
-import bcrypt from "bcrypt";
-import passport from "passport";
-import { Strategy as LocalStrategy } from "passport-local";
-import GoogleStrategy from "passport-google-oauth2";
-import session from "express-session";
-import nodemailer from "nodemailer";
-import fs from "fs";
-import multer from "multer";
-import Razorpay from "razorpay";
-import crypto from "crypto";
-// import OpenAI from "openai";
+const path = require("path");
+const express = require("express");
+const bcrypt = require("bcrypt");
+const passport = require("passport");
+const LocalStrategy = require("passport-local").Strategy;
+const GoogleStrategy = require("passport-google-oauth2").Strategy;
+const session = require("express-session");
+const nodemailer = require("nodemailer");
+const fs = require("fs");
+const multer = require("multer");
+const Razorpay = require("razorpay");
+const crypto = require("crypto");
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const db = require("./db");
+
+const __dirname = __dirname || process.cwd();
+
 
 // ----- Razorpay setup (optional, for payments) -----
 let razorpay = null;

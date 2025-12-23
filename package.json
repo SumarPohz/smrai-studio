@@ -3,8 +3,6 @@
   "version": "1.0.0",
   "description": "AI Micro-Service Studio built by Sumarbha Pohsnem",
   "main": "app.js",
-  "type": "module",
-
   "engines": {
     "node": ">=18 <19"
   },
