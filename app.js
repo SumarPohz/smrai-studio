@@ -1,4 +1,6 @@
-require('dotenv').config();
+import dotenv from "dotenv";
+dotenv.config();
+
 import db from "./db.js";
 import express from "express";
 import bodyParser from "body-parser";
@@ -7,7 +9,6 @@ import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import GoogleStrategy from "passport-google-oauth2";
 import session from "express-session";
-// import env from "dotenv";
 import nodemailer from "nodemailer";
 import PDFDocument from "pdfkit";
 import fs from "fs";
@@ -18,11 +19,9 @@ import Razorpay from "razorpay";
 import crypto from "crypto";
 // import OpenAI from "openai";
 
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// env.config();
 
 // ----- Razorpay setup (optional, for payments) -----
 let razorpay = null;
