@@ -3,14 +3,12 @@ dotenv.config();
 
 import db from "./db.js";
 import express from "express";
-import bodyParser from "body-parser";
 import bcrypt from "bcrypt";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import GoogleStrategy from "passport-google-oauth2";
 import session from "express-session";
 import nodemailer from "nodemailer";
-import PDFDocument from "pdfkit";
 import fs from "fs";
 import multer from "multer";
 import path from "path";
@@ -39,6 +37,8 @@ if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
 }
 
 const app = express();
+app.set("trust proxy", 1); // ✅ REQUIRED for Hostinger
+
 const port = process.env.PORT || 3000;
 const saltRounds = 10;
 
@@ -80,24 +80,32 @@ const storage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
+    const userId = req.user?.id || "guest";
     const ext = path.extname(file.originalname) || ".jpg";
-    cb(null, `user-${req.user.id}-${Date.now()}${ext}`);
+    cb(null, `user-${userId}-${Date.now()}${ext}`);
   },
 });
+
+
+
 
 const upload = multer({ storage });
 
 // ---------- View Engine & Static ----------
 app.set("view engine", "ejs");
 app.set("views", "views");
-// ---------- Session & Passport ----------
+
+// ---------- Session ----------
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "supersecret",
     resave: false,
     saveUninitialized: false,
     cookie: {
-      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 1000 * 60 * 60 * 24 * 7,
     },
   })
 );
@@ -105,42 +113,31 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
-// ---------- Passport Local Strategy ----------
+// ---------- Passport Local ----------
 passport.use(
   new LocalStrategy({ usernameField: "email" }, async (email, password, done) => {
     try {
       const result = await db.query("SELECT * FROM users WHERE email = ?", [email]);
-
-      if (result.rows.length === 0) {
+      if (result.rows.length === 0)
         return done(null, false, { message: "No user with that email" });
-      }
 
       const user = result.rows[0];
-
-      if (!user.password) {
-        return done(null, false, {
-          message: "Use Google login for this account",
-        });
-      }
+      if (!user.password)
+        return done(null, false, { message: "Use Google login" });
 
       const match = await bcrypt.compare(password, user.password);
-
-      if (!match) {
+      if (!match)
         return done(null, false, { message: "Incorrect password" });
-      }
 
       return done(null, user);
     } catch (err) {
-      console.error("Error in LocalStrategy:", err);
       return done(err);
     }
   })
 );
 
-// ---------- Passport Google Strategy (conditionally enabled) ----------
+// ---------- Google OAuth ----------
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-  console.log("✅ Google OAuth enabled");
-
   passport.use(
     "google",
     new GoogleStrategy(
@@ -148,44 +145,31 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
         clientID: process.env.GOOGLE_CLIENT_ID,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET,
         callbackURL: "/auth/google/callback",
-        passReqToCallback: true,
       },
-      async (request, accessToken, refreshToken, profile, done) => {
+      async (_req, _a, _r, profile, done) => {
         try {
           const email = profile.email;
-          const googleId = profile.id;
-          const name = profile.displayName;
-
-          // Try by google_id or email to avoid duplicates
           let result = await db.query(
             "SELECT * FROM users WHERE google_id = ? OR email = ?",
-            [googleId, email]
+            [profile.id, email]
           );
 
           if (result.rows.length === 0) {
-            const insertResult = await db.query(
+            const insert = await db.query(
               "INSERT INTO users (email, google_id, name) VALUES (?, ?, ?)",
-              [email, googleId, name]
+              [email, profile.id, profile.displayName]
             );
-
-            const newUserResult = await db.query(
-              "SELECT * FROM users WHERE id = ?",
-              [insertResult.insertId]
-            );
-            result = newUserResult;
+            result = await db.query("SELECT * FROM users WHERE id = ?", [
+              insert.insertId,
+            ]);
           }
 
-          const user = result.rows[0];
-          return done(null, user);
+          return done(null, result.rows[0]);
         } catch (err) {
-          return done(err, null);
+          return done(err);
         }
       }
     )
-  );
-} else {
-  console.warn(
-    "⚠️ Google OAuth disabled: GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET missing in env."
   );
 }
 
@@ -204,7 +188,11 @@ passport.deserializeUser(async (id, done) => {
  }
 });
 
-
+// ---------- Auth helper ----------
+function ensureAuthenticated(req, res, next) {
+  if (req.isAuthenticated()) return next();
+  res.redirect("/login");
+}
 
 // ---------- Middleware to inject user into views ----------
 app.use((req, res, next) => {
@@ -247,12 +235,6 @@ app.use(async (req, res, next) => {
 
   next();
 });
-
-// ---------- Helper: auth middleware ----------
-function ensureAuthenticated(req, res, next) {
-  if (req.isAuthenticated && req.isAuthenticated()) return next();
-  res.redirect("/login");
-}
 
 // ---------- Routes ----------
 
