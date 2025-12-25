@@ -91,6 +91,7 @@
     margin: 1rem auto;
     display: flex;
     justify-content: center;
+    overflow-x: auto;
   }
 
   /* A4 container that we capture as JPG */
@@ -480,6 +481,29 @@
   text-transform: uppercase;
   transform: rotate(-30deg);
   user-select: none;
+}
+/* ================= MOBILE PREVIEW SCALING (SAFE) ================= */
+@media (max-width: 768px) {
+
+  .resume-wrapper {
+    overflow-x: hidden;
+  }
+
+  .resume-a4 {
+    transform: scale(0.48);          /* visually shrink A4 */
+    transform-origin: top center;
+    margin-top: -220px;              /* pull up after scaling */
+    margin-bottom: -260px;
+  }
+}
+
+/* Extra small phones */
+@media (max-width: 420px) {
+  .resume-a4 {
+    transform: scale(0.42);
+    margin-top: -260px;
+    margin-bottom: -300px;
+  }
 }
 
 </style>
