@@ -324,23 +324,29 @@ app.post("/login", (req, res, next) => {
   passport.authenticate("local", (err, user, info) => {
     if (err) {
       console.error("Login error:", err);
-      return next(err);
+      return res.status(500).render("login", {
+        error: "Something went wrong. Please try again.",
+      });
     }
 
     if (!user) {
-      // Authentication failed – show message
-      return res.render("login", { error: info?.message || "Login failed" });
+      return res.render("login", {
+        error: info?.message || "Invalid email or password",
+      });
     }
 
     req.logIn(user, (err) => {
       if (err) {
-        console.error("Error in req.logIn:", err);
-        return next(err);
+        console.error("req.logIn error:", err);
+        return res.status(500).render("login", {
+          error: "Login failed. Please try again.",
+        });
       }
       return res.redirect("/dashboard");
     });
   })(req, res, next);
 });
+
 
 // Forget Password
 app.get("/forgot-password", (req, res) => {
@@ -968,7 +974,7 @@ app.post("/api/razorpay/create-order", ensureAuthenticated, async (req, res) => 
   
   try {
     const options = {
-      amount: 49 * 100, // ₹49 in paise
+      amount: 1 * 100, // ₹49 in paise
       currency: "INR",
       receipt: "resume_" + Date.now(),
     };
@@ -1020,7 +1026,7 @@ app.post("/api/razorpay/verify", ensureAuthenticated, async (req, res) => {
     }
 
     const userId = req.user.id;
-    const amount = 49 * 100; // ₹49 in paise
+    const amount = 1 * 100; // ₹49 in paise
     const currency = "INR";
     const finalPurpose = purpose || "download";
 
