@@ -15,7 +15,7 @@ const db = require("./db");
 
 // Hostinger injects env OUTSIDE public_html
 const hostingerEnvPath = path.join(
-  process.cwd(),      // /home/uXXXX/domains/sumarpohz.com
+  process.cwd(),
   ".builds",
   "config",
   ".env"
@@ -52,7 +52,10 @@ if (!port) {
 }
 
 const saltRounds = 10;
-
+app.use(
+  "/webhook/razorpay",
+  express.raw({ type: "application/json" })
+);
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
@@ -70,21 +73,6 @@ nodeEnv: process.env.NODE_ENV || null,
 port: process.env.PORT || null,
 });
 });
-
-app.get("/db-test", async (req, res) => {
- try {
- const result = await db.query("SELECT COUNT(*) AS user_count FROM users");
- res.json(result.rows[0]);
- } catch (err) {
- console.error("DB TEST ERROR:", err);
- res.status(500).send("DB test failed");
- }
-});
-
-app.get("/node-version", (req, res) => {
-  res.send(process.version);
-});
-
 // Create "public/uploads" if it doesn't exist
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
@@ -100,10 +88,6 @@ const storage = multer.diskStorage({
     cb(null, `user-${userId}-${Date.now()}${ext}`);
   },
 });
-
-
-
-
 const upload = multer({ storage });
 
 // ---------- View Engine & Static ----------
@@ -129,6 +113,42 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
+app.post("/webhook/razorpay", async (req, res) => {
+  try {
+    const signature = req.headers["x-razorpay-signature"];
+    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+
+    const expected = crypto
+      .createHmac("sha256", secret)
+      .update(req.body)
+      .digest("hex");
+
+    if (expected !== signature) {
+      console.error("❌ Razorpay webhook signature mismatch");
+      return res.status(400).send("Invalid signature");
+    }
+
+    const event = JSON.parse(req.body.toString());
+
+    if (event.event === "payment.captured") {
+      const payment = event.payload.payment.entity;
+
+      await db.query(
+        `UPDATE payments
+         SET status = 'captured'
+         WHERE razorpay_payment_id = ?`,
+        [payment.id]
+      );
+
+      console.log("✅ Payment captured via webhook:", payment.id);
+    }
+
+    res.json({ received: true });
+  } catch (err) {
+    console.error("Webhook error:", err);
+    res.status(500).send("Webhook error");
+  }
+});
 // ---------- Passport Local ----------
 passport.use(
   new LocalStrategy({ usernameField: "email" }, async (email, password, done) => {
