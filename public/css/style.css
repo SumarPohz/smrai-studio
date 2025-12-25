@@ -1,19 +1,54 @@
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 /* Layout basics */
 body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 72px 1rem 2rem;
+  margin: 0;
   background: #f3f4f6;
   opacity: 0;
   transition: opacity 0.4s ease-in-out;
 }
+
+.page-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 1rem 2rem;
+}
+
 body.fade-in {
   opacity: 1;
 }
 
 main {
   margin-top: 0.5rem;
+}
+@media (max-width: 768px) {
+  .resume-page {
+    flex-direction: column;
+    min-height: auto;
+  }
+
+  .resume-left,
+  .resume-right {
+    width: 100%;
+  }
+
+  .resume-right {
+    padding: 1.2rem 1.2rem;
+  }
+
+  .avatar-box img,
+  .avatar-placeholder {
+    width: 120px;
+    height: 120px;
+  }
 }
 
 /* Hero */
@@ -98,30 +133,6 @@ main {
   border-color: #9ca3af;
 }
 
-/* ================= FIXED HEADER (ONLY REQUIRED CHANGE) ================= */
-
-.top-header {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 1000;
-  background: #ffffff;
-  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.08);
-
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.75rem 1.25rem;
-}
-
-
-/* Ensure mobile dropdown opens below fixed header */
-@media (max-width: 768px) {
-  .header-nav {
-    top: 72px;
-  }
-}
 /* Hero illustration card */
 .hero-illustration {
   flex: 1 1 320px;
@@ -388,15 +399,19 @@ main {
 /* Responsive tweaks */
 @media (max-width: 768px) {
   .hero {
-    padding-top: 1.5rem;
+    flex-direction: column;
+    text-align: center;
   }
-  .hero h1 {
-    font-size: 1.7rem;
+
+  .hero-actions {
+    justify-content: center;
   }
-  body {
-    max-width: 100%;
+
+  .hero-illustration {
+    margin-top: 1rem;
   }
 }
+
 
 
 h1, h2, h3 {
@@ -521,15 +536,17 @@ ul li {
 
 /* PAGE LAYOUT FOR RESUME */
 .resume-page {
-  width: 900px;
+  width: 100%;
+  max-width: 900px;
   min-height: 1200px;
   display: flex;
   border-radius: 8px;
   overflow: hidden;
   background: #f3f4f6;
   box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-  margin-top: 1.5rem;
+  margin: 1.5rem auto;
 }
+
 
 /* LEFT COLUMN */
 .resume-left {
@@ -690,6 +707,13 @@ main section {
   margin-right: 0.35rem;
 }
 
+/* Make sure header is flex (you probably already have this) */
+.top-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.25rem;
+}
 
 /* === Mobile layout === */
 @media (max-width: 768px) {
@@ -707,7 +731,7 @@ main section {
   /* collapse nav into dropdown */
   .header-nav {
     position: absolute;
-    top: 72px;          /* just under the header */
+    top: 60px;          /* just under the header */
     left: 0;
     right: 0;
     background: #ffffff;
@@ -1618,9 +1642,4 @@ main section {
 .rb-tip em {
   font-style: normal;
   font-weight: 500;
-}
-@media (max-width: 768px) {
-  body {
-    background: red !important;
-  }
 }
