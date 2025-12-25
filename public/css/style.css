@@ -689,7 +689,7 @@ main section {
 
   /* collapse nav into dropdown */
   .header-nav {
-    position: fixed;
+    position: absolute;
     top: 60px;          /* just under the header */
     left: 0;
     right: 0;
