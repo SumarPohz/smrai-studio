@@ -1,181 +1,182 @@
 <%- include("partials/header") %>
+<div class="page-container">
+  <section class="hero">
+    <div class="hero-content">
+      <p class="hero-tag">AI-Powered Resume Studio</p>
+      <h1>Build a job-ready resume in minutes, not hours.</h1>
+      <p class="hero-subtitle">
+        SmrAI-Studio helps you create clean, modern resumes with AI guidance,
+        professional layouts, and instant download as PDF or JPG.
+      </p>
 
-<section class="hero">
-  <div class="hero-content">
-    <p class="hero-tag">AI-Powered Resume Studio</p>
-    <h1>Build a job-ready resume in minutes, not hours.</h1>
-    <p class="hero-subtitle">
-      SmrAI-Studio helps you create clean, modern resumes with AI guidance,
-      professional layouts, and instant download as PDF or JPG.
-    </p>
+      <div class="hero-actions">
+        <% if (currentUser) { %>
+          <a href="/resume-templates" class="btn-primary hero-btn">Start Building Resume</a>
+        <% } else { %>
+          <a href="/register" class="btn-primary hero-btn">Get Started Free</a>
+          <a href="/login" class="btn-ghost hero-btn">Log in</a>
+        <% } %>
+      </div>
 
-    <div class="hero-actions">
-      <% if (currentUser) { %>
-        <a href="/resume-templates" class="btn-primary hero-btn">Start Building Resume</a>
-      <% } else { %>
-        <a href="/register" class="btn-primary hero-btn">Get Started Free</a>
-        <a href="/login" class="btn-ghost hero-btn">Log in</a>
-      <% } %>
+      <p class="hero-note">No design skills needed. Just answer a few questions and let SmrAI do the rest.</p>
     </div>
 
-    <p class="hero-note">No design skills needed. Just answer a few questions and let SmrAI do the rest.</p>
-  </div>
-
-  <div class="hero-illustration">
-    <div class="hero-card">
-      <div class="hero-card-header">
-        <span class="badge">Live Preview</span>
-        <span class="dot-group">
-          <span></span><span></span><span></span>
-        </span>
-      </div>
-      <div class="hero-card-body">
-        <div class="hero-avatar"></div>
-        <div class="hero-lines">
-          <span></span><span></span><span class="short"></span>
+    <div class="hero-illustration">
+      <div class="hero-card">
+        <div class="hero-card-header">
+          <span class="badge">Live Preview</span>
+          <span class="dot-group">
+            <span></span><span></span><span></span>
+          </span>
+        </div>
+        <div class="hero-card-body">
+          <div class="hero-avatar"></div>
+          <div class="hero-lines">
+            <span></span><span></span><span class="short"></span>
+          </div>
+        </div>
+        <div class="hero-card-footer">
+          <span class="pill">PDF</span>
+          <span class="pill">JPG</span>
+          <span class="pill accent">1-Click Download</span>
         </div>
       </div>
-      <div class="hero-card-footer">
-        <span class="pill">PDF</span>
-        <span class="pill">JPG</span>
-        <span class="pill accent">1-Click Download</span>
+    </div>
+  </section>
+
+  <section class="services-section">
+    <h2>What you can do with SmrAI-Studio</h2>
+    <p class="section-subtitle">
+      From your first resume to your next promotion, SmrAI-Studio grows with your career.
+    </p>
+
+    <div class="service-cards">
+      <article class="service-card">
+        <div class="service-image resume-bg"></div>
+        <div class="service-card-body">
+          <h3>Resume Making</h3>
+          <p>
+            Generate a clean, ATS-friendly resume with professional wording and layout in minutes.
+          </p>
+        </div>
+      </article>
+
+      <article class="service-card">
+        <div class="service-image cover-bg"></div>
+        <div class="service-card-body">
+          <h3>AI Cover Letters</h3>
+          <p>
+            Tailored cover letters for each job description, matching your skills and experience.
+          </p>
+        </div>
+      </article>
+
+      <article class="service-card">
+        <div class="service-image portfolio-bg"></div>
+        <div class="service-card-body">
+          <h3>Profile & Portfolio</h3>
+          <p>
+            Keep your details saved, update once, and export resumes or profiles whenever you need.
+          </p>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="features-section">
+    <h2>Our Main Features</h2>
+    <p class="section-subtitle">
+      Start building your resume today and land your next role faster.
+    </p>
+
+    <div class="feature-dots">
+      <span class="dot active"></span>
+      <span class="dot"></span>
+      <span class="dot"></span>
+      <span class="dot"></span>
+      <span class="dot"></span>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon orange">📄</div>
+        <h3>Proven Templates</h3>
+        <p>Layouts designed to pass ATS scans and impress hiring managers.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon blue">🎨</div>
+        <h3>Modern & Clean Design</h3>
+        <p>Balanced typography, spacing, and structure—no messy Word docs.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon red">⚙️</div>
+        <h3>AI Writing Assistance</h3>
+        <p>SmrAI helps with bullet points, summaries, and role descriptions.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon green">⚡</div>
+        <h3>1-Click Download</h3>
+        <p>Export as high quality PDF or JPG, ready to send anywhere.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon yellow">🔔</div>
+        <h3>Profile Saved</h3>
+        <p>Your details stay saved—update once, reuse in multiple templates.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon purple">🌐</div>
+        <h3>Accessible Anywhere</h3>
+        <p>Works from any device with a browser—no installs needed.</p>
       </div>
     </div>
-  </div>
-</section>
+  </section>
 
-<section class="services-section">
-  <h2>What you can do with SmrAI-Studio</h2>
-  <p class="section-subtitle">
-    From your first resume to your next promotion, SmrAI-Studio grows with your career.
-  </p>
+  <section class="testimonials-section">
+    <h2>Your Success, Our Inspiration</h2>
+    <p class="section-subtitle">
+      Don’t just take it from us. Here’s what users say about SmrAI-Studio.
+    </p>
 
-  <div class="service-cards">
-    <article class="service-card">
-      <div class="service-image resume-bg"></div>
-      <div class="service-card-body">
-        <h3>Resume Making</h3>
-        <p>
-          Generate a clean, ATS-friendly resume with professional wording and layout in minutes.
+    <div class="testimonials-grid">
+      <article class="testimonial-card">
+        <div class="quote-flag">❝</div>
+        <div class="testimonial-avatar"></div>
+        <p class="testimonial-text">
+          SmrAI-Studio made my resume look 10x more professional. I updated everything in under an hour
+          and started getting callbacks within a week.
         </p>
-      </div>
-    </article>
+        <p class="testimonial-name">Ajay Mehra</p>
+        <p class="testimonial-role">Full Stack Developer</p>
+      </article>
 
-    <article class="service-card">
-      <div class="service-image cover-bg"></div>
-      <div class="service-card-body">
-        <h3>AI Cover Letters</h3>
-        <p>
-          Tailored cover letters for each job description, matching your skills and experience.
+      <article class="testimonial-card">
+        <div class="quote-flag">❝</div>
+        <div class="testimonial-avatar"></div>
+        <p class="testimonial-text">
+          Clean design and very easy to use. I update my resume for different roles and download new
+          versions instantly. Huge time saver.
         </p>
-      </div>
-    </article>
+        <p class="testimonial-name">Suchi Gupta</p>
+        <p class="testimonial-role">HR Manager</p>
+      </article>
 
-    <article class="service-card">
-      <div class="service-image portfolio-bg"></div>
-      <div class="service-card-body">
-        <h3>Profile & Portfolio</h3>
-        <p>
-          Keep your details saved, update once, and export resumes or profiles whenever you need.
+      <article class="testimonial-card">
+        <div class="quote-flag">❝</div>
+        <div class="testimonial-avatar"></div>
+        <p class="testimonial-text">
+          The AI suggestions for bullet points helped me describe my experience clearly and confidently.
+          Highly recommended.
         </p>
-      </div>
-    </article>
-  </div>
-</section>
-
-<section class="features-section">
-  <h2>Our Main Features</h2>
-  <p class="section-subtitle">
-    Start building your resume today and land your next role faster.
-  </p>
-
-  <div class="feature-dots">
-    <span class="dot active"></span>
-    <span class="dot"></span>
-    <span class="dot"></span>
-    <span class="dot"></span>
-    <span class="dot"></span>
-  </div>
-
-  <div class="features-grid">
-    <div class="feature-card">
-      <div class="feature-icon orange">📄</div>
-      <h3>Proven Templates</h3>
-      <p>Layouts designed to pass ATS scans and impress hiring managers.</p>
+        <p class="testimonial-name">Puneet Srivastava</p>
+        <p class="testimonial-role">Sales Manager</p>
+      </article>
     </div>
-
-    <div class="feature-card">
-      <div class="feature-icon blue">🎨</div>
-      <h3>Modern & Clean Design</h3>
-      <p>Balanced typography, spacing, and structure—no messy Word docs.</p>
-    </div>
-
-    <div class="feature-card">
-      <div class="feature-icon red">⚙️</div>
-      <h3>AI Writing Assistance</h3>
-      <p>SmrAI helps with bullet points, summaries, and role descriptions.</p>
-    </div>
-
-    <div class="feature-card">
-      <div class="feature-icon green">⚡</div>
-      <h3>1-Click Download</h3>
-      <p>Export as high quality PDF or JPG, ready to send anywhere.</p>
-    </div>
-
-    <div class="feature-card">
-      <div class="feature-icon yellow">🔔</div>
-      <h3>Profile Saved</h3>
-      <p>Your details stay saved—update once, reuse in multiple templates.</p>
-    </div>
-
-    <div class="feature-card">
-      <div class="feature-icon purple">🌐</div>
-      <h3>Accessible Anywhere</h3>
-      <p>Works from any device with a browser—no installs needed.</p>
-    </div>
-  </div>
-</section>
-
-<section class="testimonials-section">
-  <h2>Your Success, Our Inspiration</h2>
-  <p class="section-subtitle">
-    Don’t just take it from us. Here’s what users say about SmrAI-Studio.
-  </p>
-
-  <div class="testimonials-grid">
-    <article class="testimonial-card">
-      <div class="quote-flag">❝</div>
-      <div class="testimonial-avatar"></div>
-      <p class="testimonial-text">
-        SmrAI-Studio made my resume look 10x more professional. I updated everything in under an hour
-        and started getting callbacks within a week.
-      </p>
-      <p class="testimonial-name">Ajay Mehra</p>
-      <p class="testimonial-role">Full Stack Developer</p>
-    </article>
-
-    <article class="testimonial-card">
-      <div class="quote-flag">❝</div>
-      <div class="testimonial-avatar"></div>
-      <p class="testimonial-text">
-        Clean design and very easy to use. I update my resume for different roles and download new
-        versions instantly. Huge time saver.
-      </p>
-      <p class="testimonial-name">Suchi Gupta</p>
-      <p class="testimonial-role">HR Manager</p>
-    </article>
-
-    <article class="testimonial-card">
-      <div class="quote-flag">❝</div>
-      <div class="testimonial-avatar"></div>
-      <p class="testimonial-text">
-        The AI suggestions for bullet points helped me describe my experience clearly and confidently.
-        Highly recommended.
-      </p>
-      <p class="testimonial-name">Puneet Srivastava</p>
-      <p class="testimonial-role">Sales Manager</p>
-    </article>
-  </div>
-</section>
+  </section>
+</div>
 
 <%- include("partials/footer") %>
