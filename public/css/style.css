@@ -1619,3 +1619,8 @@ main section {
   font-style: normal;
   font-weight: 500;
 }
+@media (max-width: 768px) {
+  body {
+    background: red !important;
+  }
+}
