@@ -46,7 +46,11 @@ const app = express();
 app.set("trust proxy", 1); // ✅ REQUIRED for Hostinger
 
 const port = process.env.PORT || 3000;
+
 const saltRounds = 10;
+
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 
 // Razorpay webhook MUST come before body parsers
 app.post(
@@ -89,10 +93,6 @@ app.post(
     }
   }
 );
-
-
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
 
 // Static files
 app.use(express.static(path.join(__dirname, "public")));
@@ -147,23 +147,20 @@ app.set("views", path.join(__dirname, "views"));
 
 
 // ---------- Session ----------
-const isProd = process.env.NODE_ENV === "production";
-
 app.use(
   session({
     name: "smrai.sid",
-    secret: process.env.SESSION_SECRET,
+    secret: process.env.SESSION_SECRET || "supersecret",
     resave: false,
     saveUninitialized: false,
     cookie: {
-      httpOnly: true,
-      secure: isProd,                 // true on HTTPS
-      sameSite: isProd ? "none" : "lax",
-      maxAge: 1000 * 60 * 60 * 24 * 7,
-    },
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "none",
+        maxAge: 1000 * 60 * 60 * 24 * 7,
+      },
   })
 );
-
 
 app.use(passport.initialize());
 app.use(passport.session());
@@ -1019,7 +1016,7 @@ app.post("/api/razorpay/create-order", ensureAuthenticated, async (req, res) => 
   
   try {
     const options = {
-      amount: 1 * 100, // ₹50 in paise
+      amount: 50 * 100, // ₹50 in paise
       currency: "INR",
       receipt: "resume_" + Date.now(),
     };
@@ -1097,7 +1094,7 @@ app.post("/api/razorpay/verify", async (req, res) => {
       [
         userId,
         resumeId || null,
-        1 * 100,
+        50 * 100,
         "INR",
         purpose || "download",
         razorpay_order_id,
@@ -1132,4 +1129,3 @@ app.get("/health", (req, res) => {
 app.listen(port, () => {
   console.log(`✅ Server running on port ${port}`);
 });
-
