@@ -982,7 +982,7 @@ app.post(
   }
 );
 
-// Create Razorpay order for ₹49 (modern-1 download/print)
+// Create Razorpay order for ₹50 (modern-1 download/print)
 app.post("/api/razorpay/create-order", ensureAuthenticated, async (req, res) => {
   if (!razorpay) {
     return res.status(503).json({
@@ -993,7 +993,7 @@ app.post("/api/razorpay/create-order", ensureAuthenticated, async (req, res) => 
   
   try {
     const options = {
-      amount: 1 * 100, // ₹49 in paise
+      amount: 50 * 100, // ₹50 in paise
       currency: "INR",
       receipt: "resume_" + Date.now(),
     };
@@ -1071,7 +1071,7 @@ app.post("/api/razorpay/verify", async (req, res) => {
       [
         userId,
         resumeId || null,
-        1 * 100,
+        50 * 100,
         "INR",
         purpose || "download",
         razorpay_order_id,
