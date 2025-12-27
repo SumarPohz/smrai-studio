@@ -1002,7 +1002,7 @@ app.post("/api/razorpay/create-order", ensureAuthenticated, async (req, res) => 
   
   try {
     const options = {
-      amount: 49 * 100, // ₹49 in paise
+      amount: 1 * 100, // ₹49 in paise
       currency: "INR",
       receipt: "resume_" + Date.now(),
     };
@@ -1080,7 +1080,7 @@ app.post("/api/razorpay/verify", async (req, res) => {
       [
         userId,
         resumeId || null,
-        49 * 100,
+        1 * 100,
         "INR",
         purpose || "download",
         razorpay_order_id,
