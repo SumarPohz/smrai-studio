@@ -45,17 +45,9 @@ if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
 const app = express();
 app.set("trust proxy", 1); // ✅ REQUIRED for Hostinger
 
-const port = process.env.PORT;
-if (!port) {
-  console.error("❌ PORT missing — Hostinger runtime broken");
-  process.exit(1);
-}
+const port = process.env.PORT || 3000;
 
 const saltRounds = 10;
-app.use(
-  "/webhook/razorpay",
-  express.raw({ type: "application/json" })
-);
 
 // Razorpay webhook MUST come before body parsers
 app.post(
@@ -147,11 +139,11 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: {
-      httpOnly: true,
-      secure: true,        // MUST be true in production HTTPS
-      sameSite: "none",    // MUST be "none" for Razorpay
-      maxAge: 1000 * 60 * 60 * 24 * 7,
-    },
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "none",
+        maxAge: 1000 * 60 * 60 * 24 * 7,
+      },
   })
 );
 
