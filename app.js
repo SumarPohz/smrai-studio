@@ -56,6 +56,50 @@ app.use(
   "/webhook/razorpay",
   express.raw({ type: "application/json" })
 );
+
+// Razorpay webhook MUST come before body parsers
+app.post(
+  "/webhook/razorpay",
+  express.raw({ type: "application/json" }),
+  async (req, res) => {
+    try {
+      const signature = req.headers["x-razorpay-signature"];
+      const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+
+      const expected = crypto
+        .createHmac("sha256", secret)
+        .update(req.body)
+        .digest("hex");
+
+      if (expected !== signature) {
+        console.error("❌ Razorpay webhook signature mismatch");
+        return res.status(400).send("Invalid signature");
+      }
+
+      const event = JSON.parse(req.body.toString());
+
+      if (event.event === "payment.captured") {
+        const payment = event.payload.payment.entity;
+
+        await db.query(
+          `UPDATE payments
+           SET status = 'captured'
+           WHERE razorpay_payment_id = ?`,
+          [payment.id]
+        );
+
+        console.log("✅ Payment captured via webhook:", payment.id);
+      }
+
+      res.json({ received: true });
+    } catch (err) {
+      console.error("Webhook error:", err);
+      res.status(500).send("Webhook error");
+    }
+  }
+);
+
+
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
@@ -113,43 +157,6 @@ app.use(
 
 app.use(passport.initialize());
 app.use(passport.session());
-
-app.post("/webhook/razorpay", async (req, res) => {
-  try {
-    const signature = req.headers["x-razorpay-signature"];
-    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
-
-    const expected = crypto
-      .createHmac("sha256", secret)
-      .update(req.body)
-      .digest("hex");
-
-    if (expected !== signature) {
-      console.error("❌ Razorpay webhook signature mismatch");
-      return res.status(400).send("Invalid signature");
-    }
-
-    const event = JSON.parse(req.body.toString());
-
-    if (event.event === "payment.captured") {
-      const payment = event.payload.payment.entity;
-
-      await db.query(
-        `UPDATE payments
-         SET status = 'captured'
-         WHERE razorpay_payment_id = ?`,
-        [payment.id]
-      );
-
-      console.log("✅ Payment captured via webhook:", payment.id);
-    }
-
-    res.json({ received: true });
-  } catch (err) {
-    console.error("Webhook error:", err);
-    res.status(500).send("Webhook error");
-  }
-});
 // ---------- Passport Local ----------
 passport.use(
   new LocalStrategy({ usernameField: "email" }, async (email, password, done) => {
@@ -866,7 +873,7 @@ app.post("/logout", (req, res, next) => {
     if (err) return next(err);
 
     req.session.destroy(() => {
-      res.clearCookie("connect.sid"); // name of the session cookie
+      res.clearCookie("smrai.sid"); // name of the session cookie
       res.redirect("/login");
     });
   });
@@ -1053,6 +1060,16 @@ app.post("/api/razorpay/verify", async (req, res) => {
       });
     }
 
+  // 🔒 Prevent duplicate verification
+    const existing = await db.query(
+      `SELECT id FROM payments WHERE razorpay_payment_id = ?`,
+      [razorpay_payment_id]
+    );
+
+    if (existing.rows.length > 0) {
+      return res.json({ success: true });
+    }
+    
     const userId = req.user ? req.user.id : null;
 
     await db.query(
