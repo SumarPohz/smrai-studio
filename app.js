@@ -49,6 +49,9 @@ const port = process.env.PORT || 3000;
 
 const saltRounds = 10;
 
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+
 // Razorpay webhook MUST come before body parsers
 app.post(
   "/webhook/razorpay",
@@ -90,10 +93,6 @@ app.post(
     }
   }
 );
-
-
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
 
 // Static files
 app.use(express.static(path.join(__dirname, "public")));
