@@ -1667,6 +1667,11 @@ main section {
   border-radius:50%;
   box-shadow:0 15px 35px rgba(0,0,0,.4);
   transition:.3s;
+  animation: popIn .6s ease-out;
+}
+@keyframes popIn {
+  from { transform: scale(0); }
+  to { transform: scale(1); }
 }
 .whatsapp-float:hover{
   transform:scale(1.1);
@@ -1694,4 +1699,7 @@ main section {
     width: 46px;
     height: 46px;
   }
+}
+@media print {
+  .whatsapp-float { display: none !important; }
 }
