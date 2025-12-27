@@ -97,6 +97,10 @@ app.post(
 // Static files
 app.use(express.static(path.join(__dirname, "public")));
 const uploadDir = path.join(__dirname, "public", "uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+  console.log("✅ public/uploads folder created");
+}
 
 app.get("/env-test", (req, res) => {
 res.json({
