@@ -98,13 +98,14 @@ app.set("views", path.join(__dirname, "views"));
 // ---------- Session ----------
 app.use(
   session({
+    name: "smrai.sid",
     secret: process.env.SESSION_SECRET || "supersecret",
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      secure: true,        // MUST be true in production HTTPS
+      sameSite: "none",    // MUST be "none" for Razorpay
       maxAge: 1000 * 60 * 60 * 24 * 7,
     },
   })
@@ -1016,14 +1017,14 @@ app.post("/api/razorpay/create-order", ensureAuthenticated, async (req, res) => 
   }
 });
 
-app.post("/api/razorpay/verify", ensureAuthenticated, async (req, res) => {
+app.post("/api/razorpay/verify", async (req, res) => {
   try {
     const {
       razorpay_order_id,
       razorpay_payment_id,
       razorpay_signature,
-      purpose, // 'download' or 'print'
-      resumeId, // can be null/empty
+      purpose,
+      resumeId,
     } = req.body;
 
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
@@ -1034,23 +1035,26 @@ app.post("/api/razorpay/verify", ensureAuthenticated, async (req, res) => {
     }
 
     // Verify signature
-    const hmac = crypto.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET);
-    hmac.update(razorpay_order_id + "|" + razorpay_payment_id);
+    const hmac = crypto.createHmac(
+      "sha256",
+      process.env.RAZORPAY_KEY_SECRET
+    );
+    hmac.update(`${razorpay_order_id}|${razorpay_payment_id}`);
     const generatedSignature = hmac.digest("hex");
 
     if (generatedSignature !== razorpay_signature) {
-      console.error("Razorpay signature mismatch");
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid payment signature" });
+      console.error("❌ Signature mismatch", {
+        razorpay_order_id,
+        razorpay_payment_id,
+      });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid payment signature",
+      });
     }
 
-    const userId = req.user.id;
-    const amount = 49 * 100; // ₹49 in paise
-    const currency = "INR";
-    const finalPurpose = purpose || "download";
+    const userId = req.user ? req.user.id : null;
 
-    // Store payment
     await db.query(
       `INSERT INTO payments
        (user_id, resume_id, amount, currency, purpose,
@@ -1059,28 +1063,28 @@ app.post("/api/razorpay/verify", ensureAuthenticated, async (req, res) => {
       [
         userId,
         resumeId || null,
-        amount,
-        currency,
-        finalPurpose,
+        49 * 100,
+        "INR",
+        purpose || "download",
         razorpay_order_id,
         razorpay_payment_id,
         razorpay_signature,
       ]
     );
 
-    // Also log an event (for counter stats)
     await db.query(
       `INSERT INTO resume_events (user_id, resume_id, kind)
        VALUES (?, ?, ?)`,
-      [userId, resumeId || null, finalPurpose]
+      [userId, resumeId || null, purpose || "download"]
     );
 
     return res.json({ success: true });
   } catch (err) {
-    console.error("Razorpay verify error:", err);
-    return res
-      .status(500)
-      .json({ success: false, message: "Payment verification failed" });
+    console.error("❌ Razorpay verify error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Payment verification failed",
+    });
   }
 });
 
