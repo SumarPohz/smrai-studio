@@ -147,20 +147,23 @@ app.set("views", path.join(__dirname, "views"));
 
 
 // ---------- Session ----------
+const isProd = process.env.NODE_ENV === "production";
+
 app.use(
   session({
     name: "smrai.sid",
-    secret: process.env.SESSION_SECRET || "supersecret",
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "none",
-        maxAge: 1000 * 60 * 60 * 24 * 7,
-      },
+      httpOnly: true,
+      secure: isProd,                 // true on HTTPS
+      sameSite: isProd ? "none" : "lax",
+      maxAge: 1000 * 60 * 60 * 24 * 7,
+    },
   })
 );
+
 
 app.use(passport.initialize());
 app.use(passport.session());
