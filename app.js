@@ -287,6 +287,14 @@ app.use(async (req, res, next) => {
   next();
 });
 
+
+// ---------- Make auth state available to all EJS views ----------
+app.use((req, res, next) => {
+  res.locals.isAuthenticated = req.isAuthenticated();
+  res.locals.currentUser = req.user || null;
+  next();
+});
+
 // ---------- Routes ----------
 
 // Home: your AI services landing page
