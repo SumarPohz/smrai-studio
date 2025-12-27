@@ -164,30 +164,6 @@ app.use(
 
 app.use(passport.initialize());
 app.use(passport.session());
-
-// ---------- Global view data ----------
-app.use(async (req, res, next) => {
-  res.locals.isAuthenticated = req.isAuthenticated();
-  res.locals.currentUser = req.user || null;
-  res.locals.userProfile = null;
-
-  if (req.user) {
-    try {
-      const profileResult = await db.query(
-        "SELECT * FROM user_profiles WHERE user_id = ?",
-        [req.user.id]
-      );
-      if (profileResult.rows.length > 0) {
-        res.locals.userProfile = profileResult.rows[0];
-      }
-    } catch (err) {
-      console.error("Error loading user profile:", err);
-    }
-  }
-
-  next();
-});
-
 // ---------- Passport Local ----------
 passport.use(
   new LocalStrategy({ usernameField: "email" }, async (email, password, done) => {
@@ -268,20 +244,38 @@ function ensureAuthenticated(req, res, next) {
   if (req.isAuthenticated()) return next();
   res.redirect("/login");
 }
-const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST,
-  port: process.env.EMAIL_PORT,
-  secure: false, // true for 465, false for 587
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
+
+// ---------- Global middleware: auth + user + profile ----------
+app.use(async (req, res, next) => {
+  // Auth state (IMPORTANT for WhatsApp visibility)
+  res.locals.isAuthenticated =
+    req.isAuthenticated && req.isAuthenticated();
+
+  // User
+  res.locals.currentUser = req.user || null;
+
+  // User profile (optional extended data)
+  res.locals.userProfile = null;
+
+  if (req.user) {
+    try {
+      const [rows] = await db.query(
+        "SELECT * FROM user_profiles WHERE user_id = ?",
+        [req.user.id]
+      );
+
+      if (rows.length > 0) {
+        res.locals.userProfile = rows[0];
+      }
+    } catch (err) {
+      console.error("Error loading user profile:", err);
+    }
+  }
+
+  next();
 });
 
-function generateOTP() {
-  // 6-digit numeric OTP
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
+
 // ---------- Routes ----------
 
 // Home: your AI services landing page
@@ -1124,4 +1118,3 @@ app.get("/health", (req, res) => {
 app.listen(port, () => {
   console.log(`✅ Server running on port ${port}`);
 });
-
