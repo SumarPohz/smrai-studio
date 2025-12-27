@@ -164,6 +164,30 @@ app.use(
 
 app.use(passport.initialize());
 app.use(passport.session());
+
+// ---------- Global view data ----------
+app.use(async (req, res, next) => {
+  res.locals.isAuthenticated = req.isAuthenticated();
+  res.locals.currentUser = req.user || null;
+  res.locals.userProfile = null;
+
+  if (req.user) {
+    try {
+      const profileResult = await db.query(
+        "SELECT * FROM user_profiles WHERE user_id = ?",
+        [req.user.id]
+      );
+      if (profileResult.rows.length > 0) {
+        res.locals.userProfile = profileResult.rows[0];
+      }
+    } catch (err) {
+      console.error("Error loading user profile:", err);
+    }
+  }
+
+  next();
+});
+
 // ---------- Passport Local ----------
 passport.use(
   new LocalStrategy({ usernameField: "email" }, async (email, password, done) => {
@@ -244,29 +268,6 @@ function ensureAuthenticated(req, res, next) {
   if (req.isAuthenticated()) return next();
   res.redirect("/login");
 }
-// ---------- Global view data ----------
-app.use(async (req, res, next) => {
-  res.locals.isAuthenticated = req.isAuthenticated();
-  res.locals.currentUser = req.user || null;
-  res.locals.userProfile = null;
-
-  if (req.user) {
-    try {
-      const profileResult = await db.query(
-        "SELECT * FROM user_profiles WHERE user_id = ?",
-        [req.user.id]
-      );
-      if (profileResult.rows.length > 0) {
-        res.locals.userProfile = profileResult.rows[0];
-      }
-    } catch (err) {
-      console.error("Error loading user profile:", err);
-    }
-  }
-
-  next();
-});
-
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST,
   port: process.env.EMAIL_PORT,
