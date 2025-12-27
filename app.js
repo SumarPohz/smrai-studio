@@ -46,11 +46,7 @@ const app = express();
 app.set("trust proxy", 1); // ✅ REQUIRED for Hostinger
 
 const port = process.env.PORT || 3000;
-
 const saltRounds = 10;
-
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
 
 // Razorpay webhook MUST come before body parsers
 app.post(
@@ -93,6 +89,10 @@ app.post(
     }
   }
 );
+
+
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 
 // Static files
 app.use(express.static(path.join(__dirname, "public")));
