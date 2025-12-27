@@ -187,12 +187,6 @@ passport.use(
   })
 );
 
-app.use((req, res, next) => {
-  res.locals.isAuthenticated = req.isAuthenticated && req.isAuthenticated();
-  res.locals.user = req.user || null;
-  next();
-});
-
 // ---------- Google OAuth ----------
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   passport.use(
