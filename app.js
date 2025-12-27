@@ -123,7 +123,19 @@ const storage = multer.diskStorage({
     cb(null, `user-${userId}-${Date.now()}${ext}`);
   },
 });
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: 2 * 1024 * 1024, // 2MB
+  },
+  fileFilter: (req, file, cb) => {
+    if (!file.mimetype.startsWith("image/")) {
+      return cb(new Error("Only image files allowed"), false);
+    }
+    cb(null, true);
+  },
+});
+
 
 // ---------- View Engine & Static ----------
 app.set("view engine", "ejs");
@@ -954,13 +966,20 @@ app.post("/profile/update", ensureAuthenticated, async (req, res) => {
 app.post(
   "/profile/photo",
   ensureAuthenticated,
-  upload.single("profilePhoto"),
+  (req, res, next) => {
+    upload.single("profilePhoto")(req, res, function (err) {
+      if (err) {
+        console.error("❌ Multer upload error:", err);
+        return res.redirect("/dashboard");
+      }
+      next();
+    });
+  },
   async (req, res) => {
     if (!req.file) {
       return res.redirect("/dashboard");
     }
 
-    // This is the path the browser will use (because "public" is the static root)
     const imagePath = "/uploads/" + req.file.filename;
 
     try {
@@ -973,14 +992,14 @@ app.post(
         [req.user.id, imagePath]
       );
     } catch (err) {
-      console.error("Error saving profile photo:", err);
+      console.error("❌ DB error saving profile photo:", err);
     }
 
-    // 👇 go back to the page the user was on (dashboard or resume-builder)
     const referer = req.get("referer") || "/dashboard";
     res.redirect(referer);
   }
 );
+
 
 // Create Razorpay order for ₹50 (modern-1 download/print)
 app.post("/api/razorpay/create-order", ensureAuthenticated, async (req, res) => {
