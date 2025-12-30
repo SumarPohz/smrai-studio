@@ -13,20 +13,28 @@ const crypto = require("crypto");
 const dotenv = require("dotenv");
 const db = require("./db");
 
-// Hostinger injects env OUTSIDE public_html
-const hostingerEnvPath = path.join(
-  process.cwd(),
-  ".builds",
-  "config",
-  ".env"
-);
+// // Hostinger injects env OUTSIDE public_html
+// const hostingerEnvPath = path.join(
+//   process.cwd(),
+//   ".builds",
+//   "config",
+//   ".env"
+// );
 
-if (fs.existsSync(hostingerEnvPath)) {
-  dotenv.config({ path: hostingerEnvPath });
-  console.log("✅ Loaded Hostinger .env from", hostingerEnvPath);
+// if (fs.existsSync(hostingerEnvPath)) {
+//   dotenv.config({ path: hostingerEnvPath });
+//   console.log("✅ Loaded Hostinger .env from", hostingerEnvPath);
+// } else {
+//   console.warn("❌ Hostinger .env NOT found at", hostingerEnvPath);
+// }
+// Load local .env for development
+if (process.env.NODE_ENV !== "production") {
+  dotenv.config();
+  console.log("✅ Loaded local .env");
 } else {
-  console.warn("❌ Hostinger .env NOT found at", hostingerEnvPath);
+  console.log("✅ Running in production (Render env vars)");
 }
+
 // ----- Razorpay setup (optional, for payments) -----
 let razorpay = null;
 
@@ -52,6 +60,9 @@ const saltRounds = 10;
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+if (!process.env.RAZORPAY_WEBHOOK_SECRET) {
+  return res.status(500).send("Webhook secret not configured");
+}
 // Razorpay webhook MUST come before body parsers
 app.post(
   "/webhook/razorpay",
@@ -150,7 +161,7 @@ app.set("views", path.join(__dirname, "views"));
 app.use(
   session({
     name: "smrai.sid",
-    secret: process.env.SESSION_SECRET || "supersecret",
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -195,7 +206,9 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
       {
         clientID: process.env.GOOGLE_CLIENT_ID,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        callbackURL: "/auth/google/callback",
+        callbackURL:
+          process.env.GOOGLE_CALLBACK_URL ||
+          "http://localhost:3000/auth/google/callback",
       },
       async (_req, _a, _r, profile, done) => {
         try {
