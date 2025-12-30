@@ -4,8 +4,8 @@
   "description": "AI Micro-Service Studio built by Sumarbha Pohsnem",
   "main": "app.js",
   "engines": {
-    "node": ">=18 <19"
-  },
+  "node": "18.x"
+},
 
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
