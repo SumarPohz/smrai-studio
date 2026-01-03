@@ -1,19 +1,3 @@
-<<<<<<< HEAD
-const path = require("path");
-const express = require("express");
-const bcrypt = require("bcrypt");
-const passport = require("passport");
-const LocalStrategy = require("passport-local").Strategy;
-const GoogleStrategy = require("passport-google-oauth2").Strategy;
-const session = require("express-session");
-const nodemailer = require("nodemailer");
-const fs = require("fs");
-const multer = require("multer");
-const Razorpay = require("razorpay");
-const crypto = require("crypto");
-const dotenv = require("dotenv");
-const db = require("./db");
-=======
 import express from "express";
 import pg from "pg";
 import bcrypt from "bcrypt";
@@ -31,61 +15,27 @@ import { fileURLToPath } from "url";
 import Razorpay from "razorpay";
 import crypto from "crypto";
 import OpenAI from "openai";   
->>>>>>> postgresql
 
-// // Hostinger injects env OUTSIDE public_html
-// const hostingerEnvPath = path.join(
-//   process.cwd(),
-//   ".builds",
-//   "config",
-//   ".env"
-// );
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-// if (fs.existsSync(hostingerEnvPath)) {
-//   dotenv.config({ path: hostingerEnvPath });
-//   console.log("✅ Loaded Hostinger .env from", hostingerEnvPath);
-// } else {
-//   console.warn("❌ Hostinger .env NOT found at", hostingerEnvPath);
-// }
-// Load local .env for development
-if (process.env.NODE_ENV !== "production") {
-  dotenv.config();
-  console.log("✅ Loaded local .env");
-} else {
-  console.log("✅ Running in production (Render env vars)");
-}
+env.config();
 
-// ----- Razorpay setup (optional, for payments) -----
-let razorpay = null;
-
-if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
-  razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET,
-  });
-  console.log("✅ Razorpay initialized");
-} else {
-  console.warn(
-    "⚠️ RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET missing in env. Payment routes will be disabled."
-  );
+// ----- Razorpay setup (needed for payments) -----
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
+});
+// ----- OpenAI setup (optional, for AI content suggestions) -----
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+// Optional: helpful warning in dev
+if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+  console.warn("⚠️ RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET missing in .env. Payment routes will fail.");
 }
 
 const app = express();
-<<<<<<< HEAD
-app.set("trust proxy", 1); // ✅ REQUIRED for Hostinger
-
-const port = process.env.PORT || 3000;
-
-const saltRounds = 10;
-
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
-
-if (!process.env.RAZORPAY_WEBHOOK_SECRET) {
-  return res.status(500).send("Webhook secret not configured");
-}
-// Razorpay webhook MUST come before body parsers
-=======
 // ---------- PostgreSQL ----------
 const db = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
@@ -196,7 +146,6 @@ await db.query(`
 }
 
 /* 🔴 WEBHOOK MUST COME FIRST 🔴 */
->>>>>>> postgresql
 app.post(
   "/webhook/razorpay",
   express.raw({ type: "application/json" }),
@@ -205,40 +154,21 @@ app.post(
       const signature = req.headers["x-razorpay-signature"];
       const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
-<<<<<<< HEAD
-      const expected = crypto
-=======
       if (!signature || !secret) {
         return res.status(400).send("Webhook secret/signature missing");
       }
 
       const expectedSignature = crypto
->>>>>>> postgresql
         .createHmac("sha256", secret)
         .update(req.body)
         .digest("hex");
 
-<<<<<<< HEAD
-      if (expected !== signature) {
-=======
       if (expectedSignature !== signature) {
->>>>>>> postgresql
         console.error("❌ Razorpay webhook signature mismatch");
         return res.status(400).send("Invalid signature");
       }
 
       const event = JSON.parse(req.body.toString());
-<<<<<<< HEAD
-
-      if (event.event === "payment.captured") {
-        const payment = event.payload.payment.entity;
-
-        await db.query(
-          `UPDATE payments
-           SET status = 'captured'
-           WHERE razorpay_payment_id = ?`,
-          [payment.id]
-=======
       if (event.event === "payment.captured") {
         const payment = event.payload.payment.entity;
         await db.query(
@@ -249,18 +179,11 @@ app.post(
           DO UPDATE SET status = 'captured'
           `,
           [payment.id, payment.amount, payment.currency]
->>>>>>> postgresql
         );
 
         console.log("✅ Payment captured via webhook:", payment.id);
       }
 
-<<<<<<< HEAD
-      res.json({ received: true });
-    } catch (err) {
-      console.error("Webhook error:", err);
-      res.status(500).send("Webhook error");
-=======
       if (event.event === "payment.failed") {
         const payment = event.payload.payment.entity;
 
@@ -279,31 +202,10 @@ app.post(
     } catch (err) {
       console.error("Webhook error:", err);
       return res.status(500).send("Webhook error");
->>>>>>> postgresql
     }
   }
 );
 
-<<<<<<< HEAD
-// Static files
-app.use(express.static(path.join(__dirname, "public")));
-const uploadDir = path.join(__dirname, "public", "uploads");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-  console.log("✅ public/uploads folder created");
-}
-
-app.get("/env-test", (req, res) => {
-res.json({
-mysqlHostDefined: !!process.env.MYSQL_HOST,
-mysqlUserDefined: !!process.env.MYSQL_USER,
-mysqlDbDefined: !!process.env.MYSQL_DATABASE,
-testVar: process.env.TEST_VAR || null,
-nodeEnv: process.env.NODE_ENV || null,
-port: process.env.PORT || null,
-});
-});
-=======
 
 (async () => {
   await initDb();
@@ -320,7 +222,6 @@ const saltRounds = 10;
 app.use(express.static(path.join(__dirname, "public")));
 const uploadDir = path.join(__dirname, "public", "uploads");
 
->>>>>>> postgresql
 // Create "public/uploads" if it doesn't exist
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
@@ -331,33 +232,6 @@ const storage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-<<<<<<< HEAD
-    const userId = req.user?.id || "guest";
-    const ext = path.extname(file.originalname) || ".jpg";
-    cb(null, `user-${userId}-${Date.now()}${ext}`);
-  },
-});
-const upload = multer({
-  storage,
-  limits: {
-    fileSize: 2 * 1024 * 1024, // 2MB
-  },
-  fileFilter: (req, file, cb) => {
-    if (!file.mimetype.startsWith("image/")) {
-      return cb(new Error("Only image files allowed"), false);
-    }
-    cb(null, true);
-  },
-});
-
-
-// ---------- View Engine & Static ----------
-app.set("view engine", "ejs");
-app.set("views", path.join(__dirname, "views"));
-
-
-// ---------- Session ----------
-=======
     const ext = path.extname(file.originalname) || ".jpg";
     const userId = req.user?.id || "guest";
     cb(null, `user-${userId}-${Date.now()}${ext}`);
@@ -375,24 +249,12 @@ const isProd = process.env.NODE_ENV === "production";
 
 app.set("trust proxy", 1);
 
->>>>>>> postgresql
 app.use(
   session({
-    name: "smrai.sid",
-    secret: process.env.SESSION_SECRET,
+    secret: process.env.SESSION_SECRET || "supersecret",
     resave: false,
     saveUninitialized: false,
     cookie: {
-<<<<<<< HEAD
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "none",
-        maxAge: 1000 * 60 * 60 * 24 * 7,
-      },
-  })
-);
-
-=======
       httpOnly: true,
       secure: isProd,                  // ✅ HTTPS only in prod
       sameSite: isProd ? "none" : "lax",// ✅ FIX: localhost vs prod
@@ -403,97 +265,99 @@ app.use(
 
 
 
->>>>>>> postgresql
 app.use(passport.initialize());
 app.use(passport.session());
-// ---------- Passport Local ----------
+
+// ---------- Passport Local Strategy ----------
 passport.use(
-  new LocalStrategy({ usernameField: "email" }, async (email, password, done) => {
-    try {
-      const result = await db.query("SELECT * FROM users WHERE email = ?", [email]);
-      if (result.rows.length === 0)
-        return done(null, false, { message: "No user with that email" });
+  new LocalStrategy(
+    { usernameField: "email" },
+    async (email, password, done) => {
+      try {
+        const result = await db.query("SELECT * FROM users WHERE email = $1", [
+          email,
+        ]);
 
-      const user = result.rows[0];
-      if (!user.password)
-        return done(null, false, { message: "Use Google login" });
+        if (result.rows.length === 0) {
+          return done(null, false, { message: "No user with that email" });
+        }
 
-      const match = await bcrypt.compare(password, user.password);
-      if (!match)
-        return done(null, false, { message: "Incorrect password" });
+        const user = result.rows[0];
 
-      return done(null, user);
-    } catch (err) {
-      return done(err);
+        if (!user.password) {
+          return done(null, false, { message: "Use Google login for this account" });
+        }
+
+        const match = await bcrypt.compare(password, user.password);
+
+        if (!match) {
+          return done(null, false, { message: "Incorrect password" });
+        }
+
+        return done(null, user);
+      } catch (err) {
+        return done(err);
+      }
     }
-  })
+  )
 );
 
-// ---------- Google OAuth ----------
-if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-  passport.use(
-    "google",
-    new GoogleStrategy(
-      {
-        clientID: process.env.GOOGLE_CLIENT_ID,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        callbackURL:
-          process.env.GOOGLE_CALLBACK_URL ||
-          "http://localhost:3000/auth/google/callback",
-      },
-      async (_req, _a, _r, profile, done) => {
-        try {
-          const email = profile.email;
-          let result = await db.query(
-            "SELECT * FROM users WHERE google_id = ? OR email = ?",
-            [profile.id, email]
+// ---------- Passport Google Strategy (Scaffold) ----------
+passport.use(
+  "google",
+  new GoogleStrategy(
+    {
+      clientID: process.env.GOOGLE_CLIENT_ID || "",
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+      callbackURL: "/auth/google/callback",
+      passReqToCallback: true,
+    },
+    async (request, accessToken, refreshToken, profile, done) => {
+      try {
+        const email = profile.email;
+        const googleId = profile.id;
+        const name = profile.displayName;
+
+        let result = await db.query("SELECT * FROM users WHERE google_id = $1", [
+          googleId,
+        ]);
+
+        if (result.rows.length === 0) {
+          result = await db.query(
+            "INSERT INTO users (email, google_id, name) VALUES ($1, $2, $3) RETURNING *",
+            [email, googleId, name]
           );
-
-          if (result.rows.length === 0) {
-            const insert = await db.query(
-              "INSERT INTO users (email, google_id, name) VALUES (?, ?, ?)",
-              [email, profile.id, profile.displayName]
-            );
-            result = await db.query("SELECT * FROM users WHERE id = ?", [
-              insert.insertId,
-            ]);
-          }
-
-          return done(null, result.rows[0]);
-        } catch (err) {
-          return done(err);
         }
+
+        const user = result.rows[0];
+        return done(null, user);
+      } catch (err) {
+        return done(err, null);
       }
-    )
-  );
-}
+    }
+  )
+);
 
 // ---------- Serialize / Deserialize ----------
 passport.serializeUser((user, done) => {
- done(null, user.id);
+  done(null, user.id);
 });
 
 passport.deserializeUser(async (id, done) => {
- try {
- const result = await db.query("SELECT * FROM users WHERE id = ?", [id]);
- const user = result.rows[0] || null; // ensure null if not found
- done(null, user);
- } catch (err) {
- done(err, null);
- }
+  try {
+    const result = await db.query("SELECT * FROM users WHERE id = $1", [id]);
+    done(null, result.rows[0]);
+  } catch (err) {
+    done(err, null);
+  }
 });
-
-// ---------- Auth helper ----------
-function ensureAuthenticated(req, res, next) {
-  if (req.isAuthenticated()) return next();
-  res.redirect("/login");
-}
 
 // ---------- Middleware to inject user into views ----------
 app.use((req, res, next) => {
   res.locals.currentUser = req.user;
   next();
 });
+
 
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST,
@@ -517,7 +381,7 @@ app.use(async (req, res, next) => {
   if (req.user) {
     try {
       const profileResult = await db.query(
-        "SELECT * FROM user_profiles WHERE user_id = ?",
+        "SELECT * FROM user_profiles WHERE user_id = $1",
         [req.user.id]
       );
       if (profileResult.rows.length > 0) {
@@ -547,52 +411,31 @@ app.post("/register", async (req, res) => {
   const { name, email, password } = req.body;
 
   try {
-    // 1. Check existing user
-    const check = await db.query(
-      "SELECT id FROM users WHERE email = ?",
-      [email]
-    );
+    const check = await db.query("SELECT * FROM users WHERE email = $1", [email]);
 
     if (check.rows.length > 0) {
-      return res.render("already-registered");
-    }
+  return res.render("already-registered");
+}
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    // 2. Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // 3. Insert user
-    await db.query(
-      "INSERT INTO users (name, email, password) VALUES (?, ?, ?)",
+    const result = await db.query(
+      "INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING *",
       [name, email, hashedPassword]
     );
 
-    // 4. Re-fetch user SAFELY (by email, not insertId)
-    const userResult = await db.query(
-      "SELECT * FROM users WHERE email = ?",
-      [email]
-    );
-
-    if (!userResult.rows.length) {
-      throw new Error("User inserted but not found");
-    }
-
-    const user = userResult.rows[0];
-
-    // 5. Login
+    const user = result.rows[0];
     req.login(user, (err) => {
       if (err) {
-        console.error("req.login error:", err);
+        console.log(err);
         return res.redirect("/login");
       }
-      return res.redirect("/dashboard");
+      res.redirect("/dashboard");
     });
-
   } catch (err) {
-    console.error("REGISTER ERROR:", err);
-    res.status(500).send(err.message);
+    console.error(err);
+    res.send("Error while registering");
   }
 });
-
 
 // Login
 app.get("/login", (req, res) => {
@@ -603,29 +446,23 @@ app.post("/login", (req, res, next) => {
   passport.authenticate("local", (err, user, info) => {
     if (err) {
       console.error("Login error:", err);
-      return res.status(500).render("login", {
-        error: "Something went wrong. Please try again.",
-      });
+      return next(err);
     }
 
     if (!user) {
-      return res.render("login", {
-        error: info?.message || "Invalid email or password",
-      });
+      // Authentication failed – show message
+      return res.render("login", { error: info?.message || "Login failed" });
     }
 
     req.logIn(user, (err) => {
       if (err) {
-        console.error("req.logIn error:", err);
-        return res.status(500).render("login", {
-          error: "Login failed. Please try again.",
-        });
+        console.error("Error in req.logIn:", err);
+        return next(err);
       }
       return res.redirect("/dashboard");
     });
   })(req, res, next);
 });
-
 
 // Forget Password
 app.get("/forgot-password", (req, res) => {
@@ -636,7 +473,7 @@ app.post("/forgot-password", async (req, res) => {
   const { email } = req.body;
 
   try {
-    const result = await db.query("SELECT * FROM users WHERE email = ?", [email]);
+    const result = await db.query("SELECT * FROM users WHERE email = $1", [email]);
 
     if (result.rows.length === 0) {
       // For security, we don't say "no such email"
@@ -653,7 +490,7 @@ app.post("/forgot-password", async (req, res) => {
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 min from now
 
     await db.query(
-      "INSERT INTO password_reset_tokens (user_id, otp_hash, expires_at) VALUES (?, ?, ?)",
+      "INSERT INTO password_reset_tokens (user_id, otp_hash, expires_at) VALUES ($1, $2, $3)",
       [user.id, otpHash, expiresAt]
     );
 
@@ -665,6 +502,10 @@ app.post("/forgot-password", async (req, res) => {
       text: `Your OTP for resetting your SmrAI-Studio password is: ${otp}. It is valid for 15 minutes.`,
     });
     return res.redirect(`/reset-password?email=${encodeURIComponent(email)}`);
+    // return res.render("forgot-password", {
+    //   message: "If an account exists with this email, an OTP has been sent.",
+    //   error: null,
+    // });
   } catch (err) {
     console.error("Error in /forgot-password:", err);
     return res.render("forgot-password", {
@@ -683,11 +524,12 @@ app.get("/reset-password", (req, res) => {
   });
 });
 
+
 app.post("/reset-password", async (req, res) => {
   const { email, otp, newPassword } = req.body;
 
   try {
-    const userResult = await db.query("SELECT * FROM users WHERE email = ?", [email]);
+    const userResult = await db.query("SELECT * FROM users WHERE email = $1", [email]);
 
     if (userResult.rows.length === 0) {
       return res.render("reset-password", {
@@ -702,7 +544,7 @@ app.post("/reset-password", async (req, res) => {
     // Get latest unused token for this user
     const tokenResult = await db.query(
       `SELECT * FROM password_reset_tokens 
-       WHERE user_id = ? AND used = FALSE 
+       WHERE user_id = $1 AND used = FALSE 
        ORDER BY created_at DESC
        LIMIT 1`,
       [user.id]
@@ -739,12 +581,12 @@ app.post("/reset-password", async (req, res) => {
     // OTP ok → update password & mark token used
     const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
 
-    await db.query("UPDATE users SET password = ? WHERE id = ?", [
+    await db.query("UPDATE users SET password = $1 WHERE id = $2", [
       hashedPassword,
       user.id,
     ]);
 
-    await db.query("UPDATE password_reset_tokens SET used = TRUE WHERE id = ?", [
+    await db.query("UPDATE password_reset_tokens SET used = TRUE WHERE id = $1", [
       token.id,
     ]);
 
@@ -763,12 +605,16 @@ app.post("/reset-password", async (req, res) => {
   }
 });
 
+
 app.post("/resume/save", ensureAuthenticated, async (req, res) => {
   const userId = req.user.id;
 
   try {
     const body = req.body || {};
-    // console.log("SAVE RESUME BODY:", body);
+
+    // log once to confirm we’re actually receiving data
+    console.log("SAVE RESUME BODY:", body);
+
     const {
       resumeId,
       title,
@@ -805,40 +651,31 @@ app.post("/resume/save", ensureAuthenticated, async (req, res) => {
     if (resumeId) {
       const result = await db.query(
         `UPDATE resumes
-         SET title = ?,
-             template = ?,
-             data = ?,
+         SET title = $1,
+             template = $2,
+             data = $3,
              updated_at = NOW()
-         WHERE id = ? AND user_id = ?`,
-        [
-          title || "Untitled Resume",
-          template || "modern-1",
-          JSON.stringify(data),
-          resumeId,
-          userId,
-        ]
+         WHERE id = $4 AND user_id = $5
+         RETURNING id`,
+        [title || "Untitled Resume", template || "modern-1", data, resumeId, userId]
       );
 
-      if (result.affectedRows === 0) {
+      if (result.rows.length === 0) {
         return res
           .status(404)
           .json({ success: false, error: "Resume not found." });
       }
 
-      savedId = Number(resumeId);
+      savedId = result.rows[0].id;
     } else {
-      const insertResult = await db.query(
-        `INSERT INTO resumes (user_id, title, template, data, created_at, updated_at)
-         VALUES (?, ?, ?, ?, NOW(), NOW())`,
-        [
-          userId,
-          title || "Untitled Resume",
-          template || "modern-1",
-          JSON.stringify(data),
-        ]
+      const result = await db.query(
+        `INSERT INTO resumes (user_id, title, template, data)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id`,
+        [userId, title || "Untitled Resume", template || "modern-1", data]
       );
 
-      savedId = insertResult.insertId;
+      savedId = result.rows[0].id;
     }
 
     req.session.currentResumeId = savedId;
@@ -852,6 +689,7 @@ app.post("/resume/save", ensureAuthenticated, async (req, res) => {
       .json({ success: false, error: "Failed to save resume." });
   }
 });
+
 
 // Show resume builder form
 app.get("/resume-builder", ensureAuthenticated, (req, res) => {
@@ -874,8 +712,8 @@ app.get("/resume-builder", ensureAuthenticated, (req, res) => {
     profile,
     template,
     draft,
-    currentUser: req.user, // used by header
-    user: req.user, // used in this EJS for email fallback
+    currentUser: req.user,   // used by header
+    user: req.user,          // used in this EJS for email fallback
     resumeId: req.session.currentResumeId || null, // safe even if undefined
   });
 });
@@ -905,7 +743,7 @@ app.get("/resumes", ensureAuthenticated, async (req, res, next) => {
          WHERE kind = 'print'
          GROUP BY resume_id
        ) prints ON prints.resume_id = r.id
-       WHERE r.user_id = ?
+       WHERE r.user_id = $1
        ORDER BY r.updated_at DESC`,
       [userId]
     );
@@ -939,7 +777,7 @@ app.get("/payments", ensureAuthenticated, async (req, res, next) => {
         r.template AS resume_template
       FROM payments p
       LEFT JOIN resumes r ON r.id = p.resume_id
-      WHERE p.user_id = ?
+      WHERE p.user_id = $1
       ORDER BY p.created_at DESC
       `,
       [userId]
@@ -954,6 +792,7 @@ app.get("/payments", ensureAuthenticated, async (req, res, next) => {
     next(err);
   }
 });
+
 
 const RESUME_TEMPLATES = [
   {
@@ -977,27 +816,20 @@ const RESUME_TEMPLATES = [
 ];
 
 app.get("/resume-templates", ensureAuthenticated, (req, res) => {
-  const RESUME_TEMPLATES_VIEW = [
+  const RESUME_TEMPLATES = [
     {
       id: "modern-1",
       title: "Modern Professional",
-      description:
-        "Clean two-column layout, great for experienced professionals.",
+      description: "Clean two-column layout, great for experienced professionals.",
       previewClass: "template-1",
       available: true,
       paid: true,
     },
-    {
-      id: "minimal-1",
-      title: "Simple & Minimal",
-      description:
-        "Single-column layout, perfect for freshers and minimalist profiles.",
-      previewClass: "template-3",
-      available: false,
-    },
+    { id: "minimal-1", title: "Simple & Minimal", description: "Single-column layout, perfect for freshers and minimalist profiles.", previewClass: "template-3", available: false },
+    // Add others as needed
   ];
 
-  res.render("resume-templates", { RESUME_TEMPLATES: RESUME_TEMPLATES_VIEW });
+  res.render("resume-templates", { RESUME_TEMPLATES });
 });
 
 // Show preview after form submit
@@ -1006,26 +838,27 @@ app.post("/resume-builder/preview", ensureAuthenticated, async (req, res) => {
   const template = data.template || req.session?.lastTemplate || "modern-1";
 
   try {
-    // upsert profile using MySQL ON DUPLICATE KEY
+    // upsert profile
     await db.query(
       `INSERT INTO user_profiles
         (user_id, full_name, role_title, location, phone, email, summary,
          experience, education, languages, skills, profile_image_url, updated_at)
        VALUES
-        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-       ON DUPLICATE KEY UPDATE
-        full_name = VALUES(full_name),
-        role_title = VALUES(role_title),
-        location  = VALUES(location),
-        phone     = VALUES(phone),
-        email     = VALUES(email),
-        summary   = VALUES(summary),
-        experience = VALUES(experience),
-        education  = VALUES(education),
-        languages  = VALUES(languages),
-        skills     = VALUES(skills),
-        profile_image_url = VALUES(profile_image_url),
-        updated_at = NOW()`,
+        ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12, NOW())
+       ON CONFLICT (user_id)
+       DO UPDATE SET
+        full_name=$2,
+        role_title=$3,
+        location=$4,
+        phone=$5,
+        email=$6,
+        summary=$7,
+        experience=$8,
+        education=$9,
+        languages=$10,
+        skills=$11,
+        profile_image_url=$12,
+        updated_at=NOW()`,
       [
         req.user.id,
         data.fullName,
@@ -1055,14 +888,6 @@ app.post("/resume-builder/preview", ensureAuthenticated, async (req, res) => {
   }
 });
 
-<<<<<<< HEAD
-// Generate PDF for download
-// app.post("/resume-builder/pdf", ensureAuthenticated, (req, res) => {
-//   const { fullName, email, phone, summary, experience, education, skills } =
-//     req.body;
-
-//   const doc = new PDFDocument({ margin: 50 });
-=======
 
 app.post("/resume-builder/pdf", ensureAuthenticated, async (req, res) => {
   const {
@@ -1093,43 +918,21 @@ app.post("/resume-builder/pdf", ensureAuthenticated, async (req, res) => {
 
   /* ✅ PAYMENT CONFIRMED → GENERATE PDF */
   const doc = new PDFDocument({ margin: 50 });
->>>>>>> postgresql
 
-//   res.setHeader("Content-Type", "application/pdf");
-//   res.setHeader(
-//     "Content-Disposition",
-//     'attachment; filename="SmrAI-Studio-Resume.pdf"'
-//   );
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader(
+    "Content-Disposition",
+    'attachment; filename="SmrAI-Studio-Resume.pdf"'
+  );
 
-//   doc.pipe(res);
+  doc.pipe(res);
 
-//   doc.fontSize(22).text(fullName || "", { align: "center" });
-//   doc.moveDown(0.5);
+  doc.fontSize(22).text(fullName || "", { align: "center" });
+  doc.moveDown(0.5);
 
-//   const contactLine = `${email || ""} | ${phone || ""}`;
-//   doc.fontSize(10).text(contactLine, { align: "center" });
+  const contactLine = `${email || ""} | ${phone || ""}`;
+  doc.fontSize(10).text(contactLine, { align: "center" });
 
-<<<<<<< HEAD
-//   doc.moveDown(1);
-//   doc.fontSize(14).text("Summary");
-//   doc.moveDown(0.2);
-//   doc.fontSize(11).text(summary || "");
-
-//   doc.moveDown(0.8);
-//   doc.fontSize(14).text("Experience");
-//   doc.moveDown(0.2);
-//   doc.fontSize(11).text(experience || "");
-
-//   doc.moveDown(0.8);
-//   doc.fontSize(14).text("Education");
-//   doc.moveDown(0.2);
-//   doc.fontSize(11).text(education || "");
-
-//   doc.moveDown(0.8);
-//   doc.fontSize(14).text("Skills");
-//   doc.moveDown(0.2);
-//   doc.fontSize(11).text(skills || "");
-=======
   doc.moveDown(1);
   doc.fontSize(14).text("Summary");
   doc.fontSize(11).text(summary || "");
@@ -1145,12 +948,13 @@ app.post("/resume-builder/pdf", ensureAuthenticated, async (req, res) => {
   doc.moveDown(0.8);
   doc.fontSize(14).text("Skills");
   doc.fontSize(11).text(skills || "");
->>>>>>> postgresql
 
-//   doc.end();
-// });
+  doc.end();
+});
 
-// Google Auth routes (will only work if strategy is enabled)
+
+
+// Google Auth
 app.get(
   "/auth/google",
   passport.authenticate("google", { scope: ["email", "profile"] })
@@ -1165,6 +969,11 @@ app.get(
 );
 
 // Dashboard (protected)
+function ensureAuthenticated(req, res, next) {
+  if (req.isAuthenticated()) return next();
+  res.redirect("/login");
+}
+
 app.get("/dashboard", ensureAuthenticated, (req, res) => {
   res.render("dashboard");
 });
@@ -1175,7 +984,7 @@ app.post("/logout", (req, res, next) => {
     if (err) return next(err);
 
     req.session.destroy(() => {
-      res.clearCookie("smrai.sid"); // name of the session cookie
+      res.clearCookie("connect.sid"); // name of the session cookie
       res.redirect("/login");
     });
   });
@@ -1187,25 +996,16 @@ app.post("/resume/event", ensureAuthenticated, async (req, res) => {
   const { kind, resumeId } = req.body || {};
 
   if (!kind) {
-    return res
-      .status(400)
-      .json({ success: false, message: "kind is required" });
+    return res.status(400).json({ success: false, message: "kind is required" });
   }
 
   try {
     await db.query(
-<<<<<<< HEAD
-      `INSERT INTO resume_events (user_id, resume_id, kind, meta)
-       VALUES (?, ?, ?, ?)`,
-      [userId, resumeId || null, kind, null]
-    );
-=======
   `INSERT INTO resume_events (user_id, resume_id, kind)
    VALUES ($1, $2, $3)`,
   [userId, resumeId || null, kind]
 );
 
->>>>>>> postgresql
 
     return res.json({ success: true });
   } catch (err) {
@@ -1213,8 +1013,6 @@ app.post("/resume/event", ensureAuthenticated, async (req, res) => {
     return res.status(500).json({ success: false });
   }
 });
-<<<<<<< HEAD
-=======
 // ---------- AI Resume Suggestion Route ----------
 app.post("/api/ai/suggest", ensureAuthenticated, async (req, res) => {
   const { field, currentText, roleTitle } = req.body || {};
@@ -1331,7 +1129,6 @@ app.listen(port, () => {
 
 // ========== Service Request Routes ==========
 
->>>>>>> postgresql
 // Show request form
 app.get("/request", (req, res) => {
   res.render("request");
@@ -1343,39 +1140,37 @@ app.post("/request", async (req, res) => {
 
   try {
     await db.query(
-      "INSERT INTO service_requests (name, email, service_type, details) VALUES (?, ?, ?, ?)",
+      "INSERT INTO service_requests (name, email, service_type, details) VALUES ($1, $2, $3, $4)",
       [name, email, service_type, details]
     );
 
     res.render("request-success");
   } catch (err) {
     console.error("Error saving request:", err);
-    res.send(
-      "Something went wrong while saving your request. Please try again."
-    );
+    res.send("Something went wrong while saving your request. Please try again.");
   }
 });
-
 app.post("/profile/update", ensureAuthenticated, async (req, res) => {
   const { name, phone, location } = req.body;
 
   try {
     // Update users table (name)
     if (name && name.trim() !== "") {
-      await db.query("UPDATE users SET name = ? WHERE id = ?", [
+      await db.query("UPDATE users SET name = $1 WHERE id = $2", [
         name.trim(),
         req.user.id,
       ]);
     }
 
-    // Upsert into user_profiles (MySQL)
+    // Upsert into user_profiles
     await db.query(
       `INSERT INTO user_profiles (user_id, full_name, phone, location, updated_at)
-       VALUES (?, ?, ?, ?, NOW())
-       ON DUPLICATE KEY UPDATE
-         full_name = VALUES(full_name),
-         phone = VALUES(phone),
-         location = VALUES(location),
+       VALUES ($1, $2, $3, $4, NOW())
+       ON CONFLICT (user_id)
+       DO UPDATE SET
+         full_name = $2,
+         phone = $3,
+         location = $4,
          updated_at = NOW()`,
       [req.user.id, name?.trim() || null, phone || null, location || null]
     );
@@ -1392,58 +1187,38 @@ app.post("/profile/update", ensureAuthenticated, async (req, res) => {
 app.post(
   "/profile/photo",
   ensureAuthenticated,
-  (req, res, next) => {
-    upload.single("profilePhoto")(req, res, function (err) {
-      if (err) {
-        console.error("❌ Multer upload error:", err);
-        return res.redirect("/dashboard");
-      }
-      next();
-    });
-  },
+  upload.single("profilePhoto"),
   async (req, res) => {
     if (!req.file) {
       return res.redirect("/dashboard");
     }
 
+    // This is the path the browser will use (because "public" is the static root)
     const imagePath = "/uploads/" + req.file.filename;
 
     try {
       await db.query(
         `INSERT INTO user_profiles (user_id, profile_image_url, updated_at)
-         VALUES (?, ?, NOW())
-         ON DUPLICATE KEY UPDATE
-           profile_image_url = VALUES(profile_image_url),
-           updated_at = NOW()`,
+         VALUES ($1, $2, NOW())
+         ON CONFLICT (user_id)
+         DO UPDATE SET profile_image_url = $2, updated_at = NOW()`,
         [req.user.id, imagePath]
       );
     } catch (err) {
-      console.error("❌ DB error saving profile photo:", err);
+      console.error("Error saving profile photo:", err);
     }
 
+    // 👇 go back to the page the user was on (dashboard or resume-builder)
     const referer = req.get("referer") || "/dashboard";
     res.redirect(referer);
   }
 );
 
-<<<<<<< HEAD
-
-// Create Razorpay order for ₹50 (modern-1 download/print)
-app.post("/api/razorpay/create-order", ensureAuthenticated, async (req, res) => {
-  if (!razorpay) {
-    return res.status(503).json({
-      success: false,
-      message: "Payments are currently unavailable",
-    });
-  } 
-  
-=======
 // Create Razorpay order for ₹29 (modern-1 download/print)
 app.post("/api/razorpay/create-order", ensureAuthenticated, async (req, res) => {
->>>>>>> postgresql
   try {
     const options = {
-      amount: 50 * 100, // ₹50 in paise
+      amount: 49 * 100,          // ₹49 in paise
       currency: "INR",
       receipt: "resume_" + Date.now(),
     };
@@ -1459,61 +1234,42 @@ app.post("/api/razorpay/create-order", ensureAuthenticated, async (req, res) => 
     });
   } catch (err) {
     console.error("Razorpay order error:", err);
-    res
-      .status(500)
-      .json({ success: false, message: "Unable to create order" });
+    res.status(500).json({ success: false, message: "Unable to create order" });
   }
 });
 
-app.post("/api/razorpay/verify", async (req, res) => {
+app.post("/api/razorpay/verify", ensureAuthenticated, async (req, res) => {
   try {
     const {
       razorpay_order_id,
       razorpay_payment_id,
       razorpay_signature,
-      purpose,
-      resumeId,
+      purpose,    // 'download' or 'print'
+      resumeId,   // can be null/empty
     } = req.body;
 
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-      return res.status(400).json({
-        success: false,
-        message: "Missing Razorpay payment data",
-      });
+    if (
+      !razorpay_order_id ||
+      !razorpay_payment_id ||
+      !razorpay_signature
+    ) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Missing Razorpay payment data" });
     }
 
     // Verify signature
-    const hmac = crypto.createHmac(
-      "sha256",
-      process.env.RAZORPAY_KEY_SECRET
-    );
-    hmac.update(`${razorpay_order_id}|${razorpay_payment_id}`);
+    const hmac = crypto.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET);
+    hmac.update(razorpay_order_id + "|" + razorpay_payment_id);
     const generatedSignature = hmac.digest("hex");
 
     if (generatedSignature !== razorpay_signature) {
-      console.error("❌ Signature mismatch", {
-        razorpay_order_id,
-        razorpay_payment_id,
-      });
-      return res.status(400).json({
-        success: false,
-        message: "Invalid payment signature",
-      });
+      console.error("Razorpay signature mismatch");
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid payment signature" });
     }
 
-<<<<<<< HEAD
-  // 🔒 Prevent duplicate verification
-    const existing = await db.query(
-      `SELECT id FROM payments WHERE razorpay_payment_id = ?`,
-      [razorpay_payment_id]
-    );
-
-    if (existing.rows.length > 0) {
-      return res.json({ success: true });
-    }
-    
-    const userId = req.user ? req.user.id : null;
-=======
     const userId = req.user.id;
     const amount = 49 * 100; // ₹49 in paise
     const currency = "INR";
@@ -1535,57 +1291,41 @@ if (existing.rows.length > 0) {
   });
 }
 
->>>>>>> postgresql
 
+    // Store payment
     await db.query(
       `INSERT INTO payments
        (user_id, resume_id, amount, currency, purpose,
         razorpay_order_id, razorpay_payment_id, razorpay_signature, status)
-<<<<<<< HEAD
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'captured')`,
-=======
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending')`,
->>>>>>> postgresql
       [
         userId,
         resumeId || null,
-        50 * 100,
-        "INR",
-        purpose || "download",
+        amount,
+        currency,
+        finalPurpose,
         razorpay_order_id,
         razorpay_payment_id,
         razorpay_signature,
       ]
     );
 
+    // Also log an event (for counter stats)
     await db.query(
       `INSERT INTO resume_events (user_id, resume_id, kind)
-       VALUES (?, ?, ?)`,
-      [userId, resumeId || null, purpose || "download"]
+       VALUES ($1, $2, $3)`,
+      [userId, resumeId || null, finalPurpose]
     );
 
     return res.json({ success: true });
   } catch (err) {
-    console.error("❌ Razorpay verify error:", err);
-    return res.status(500).json({
-      success: false,
-      message: "Payment verification failed",
-    });
+    console.error("Razorpay verify error:", err);
+    return res
+      .status(500)
+      .json({ success: false, message: "Payment verification failed" });
   }
 });
 
-<<<<<<< HEAD
-
-// ---------- Health check ----------
-app.get("/health", (req, res) => {
-  res.send("OK");
-});
-
-// ---------- Start server ----------
-app.listen(port, () => {
-  console.log(`✅ Server running on port ${port}`);
-=======
 db.on("connect", () => {
   console.log("✅ PostgreSQL connected");
->>>>>>> postgresql
 });
