@@ -3,7 +3,7 @@ import pg from "pg";
 import bcrypt from "bcrypt";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
-import GoogleStrategy from "passport-google-oauth2";
+import { Strategy as GoogleStrategy } from "passport-google-oauth2";
 import session from "express-session";
 import env from "dotenv";
 import nodemailer from "nodemailer";
@@ -15,7 +15,9 @@ import { fileURLToPath } from "url";
 import Razorpay from "razorpay";
 import crypto from "crypto";
 import OpenAI from "openai";   
+import connectPgSimple from "connect-pg-simple"; 
 
+const PgSession = connectPgSimple(session);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -251,19 +253,22 @@ app.set("trust proxy", 1);
 
 app.use(
   session({
+    store: new PgSession({
+      pool : db,                // Use your existing Postgres pool
+      tableName : 'session',    // Optional: defaults to 'session'
+      createTableIfMissing: true // Handy to auto-create the table
+    }),
     secret: process.env.SESSION_SECRET || "supersecret",
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: isProd,                  // ✅ HTTPS only in prod
-      sameSite: isProd ? "none" : "lax",// ✅ FIX: localhost vs prod
+      secure: isProd,                     // HTTPS only in production
+      sameSite: isProd ? "none" : "lax",  // ✅ REQUIRED for OAuth on Render
       maxAge: 1000 * 60 * 60 * 24 * 7,
     },
   })
 );
-
-
 
 app.use(passport.initialize());
 app.use(passport.session());
@@ -351,13 +356,6 @@ passport.deserializeUser(async (id, done) => {
     done(err, null);
   }
 });
-
-// ---------- Middleware to inject user into views ----------
-app.use((req, res, next) => {
-  res.locals.currentUser = req.user;
-  next();
-});
-
 
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST,
