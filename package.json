@@ -1,40 +1,38 @@
 {
   "name": "smrai-studio",
   "version": "1.0.0",
+  "type": "module",
   "description": "AI Micro-Service Studio built by Sumarbha Pohsnem",
   "main": "app.js",
   "engines": {
-  "node": "18.x"
-},
-
+    "node": "18.x"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node app.js",
     "dev": "nodemon app.js"
   },
-
   "keywords": [],
   "author": "",
   "license": "ISC",
-
   "dependencies": {
     "bcrypt": "^6.0.0",
     "body-parser": "^2.2.1",
+    "connect-pg-simple": "^10.0.0",
     "dotenv": "^17.2.3",
     "ejs": "^3.1.10",
     "express": "^4.19.2",
     "express-session": "^1.18.2",
     "multer": "^2.0.2",
-    "mysql2": "^3.15.3",
     "nodemailer": "^7.0.11",
     "openai": "^6.10.0",
     "passport": "^0.7.0",
     "passport-google-oauth2": "^0.2.0",
     "passport-local": "^1.0.0",
     "pdfkit": "^0.17.2",
+    "pg": "^8.16.3",
     "razorpay": "^2.9.6"
   },
-
   "devDependencies": {
     "nodemon": "^3.1.11"
   }
