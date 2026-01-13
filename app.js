@@ -5,7 +5,6 @@ import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { Strategy as GoogleStrategy } from "passport-google-oauth2";
 import session from "express-session";
-import env from "dotenv";
 import nodemailer from "nodemailer";
 import PDFDocument from "pdfkit";
 import fs from "fs";
@@ -16,12 +15,15 @@ import Razorpay from "razorpay";
 import crypto from "crypto";
 import OpenAI from "openai";   
 import connectPgSimple from "connect-pg-simple"; 
+import dotenv from "dotenv";
 
 const PgSession = connectPgSimple(session);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-env.config();
+if (process.env.NODE_ENV !== "production") {
+  dotenv.config();
+}
 
 // ----- Razorpay setup (needed for payments) -----
 const razorpay = new Razorpay({
@@ -1126,6 +1128,36 @@ app.listen(port, () => {
 });
 
 // ========== Service Request Routes ==========
+app.get("/terms-privacy", (req, res) => {
+  res.render("terms-privacy");
+});
+// Contact page
+app.get("/contact", (req, res) => {
+  res.render("contact");
+});
+
+// Support page
+app.get("/support", (req, res) => {
+  res.render("support");
+});
+// Help Center
+app.get("/help", (req, res) => {
+  res.render("help");
+});
+
+// FAQ
+app.get("/faq", (req, res) => {
+  res.render("faq");
+});
+// About Us
+app.get("/about", (req, res) => {
+  res.render("about");
+});
+
+// News
+app.get("/news", (req, res) => {
+  res.render("news");
+});
 
 // Show request form
 app.get("/request", (req, res) => {
