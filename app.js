@@ -14,10 +14,8 @@ import { fileURLToPath } from "url";
 import Razorpay from "razorpay";
 import crypto from "crypto";
 import { VertexAI } from "@google-cloud/vertexai";
-import connectPgSimple from "connect-pg-simple";
+import connectPgSimple from "connect-pg-simple"; 
 import dotenv from "dotenv";
-import helmet from "helmet";
-import rateLimit from "express-rate-limit";
 import { TEMPLATES, getTemplateById } from "./config/templates-config.js";
 import { getFieldsForTemplate, isPhotoTemplate } from "./config/template-fields.js";
 
@@ -48,8 +46,6 @@ if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
 }
 
 const app = express();
-app.use(helmet());
-
 // ---------- PostgreSQL ----------
 const db = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
@@ -146,18 +142,11 @@ await db.query(`
         amount INTEGER,
         currency VARCHAR(10),
         razorpay_order_id TEXT,
-        razorpay_payment_id TEXT UNIQUE,
+        razorpay_payment_id TEXT,
         razorpay_signature TEXT,
         status VARCHAR(30) DEFAULT 'captured',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
-    `);
-
-    // Ensure UNIQUE constraint exists on existing DBs (safe to run repeatedly)
-    await db.query(`
-      ALTER TABLE payments
-      ADD CONSTRAINT IF NOT EXISTS payments_razorpay_payment_id_key
-      UNIQUE (razorpay_payment_id);
     `);
 
     console.log("✅ Tables ready: service_requests, resumes, resume_events, payments");
@@ -634,10 +623,8 @@ app.post("/resume/save", ensureAuthenticated, async (req, res) => {
   try {
     const body = req.body || {};
 
-    // log once to confirm we’re actually receiving data (dev only)
-    if (!isProd) {
-      console.log("SAVE RESUME BODY:", body);
-    }
+    // log once to confirm we’re actually receiving data
+    console.log("SAVE RESUME BODY:", body);
 
     const {
       resumeId,
@@ -1133,15 +1120,6 @@ app.post("/resume/event", ensureAuthenticated, async (req, res) => {
     return res.status(500).json({ success: false });
   }
 });
-// ---------- AI Rate Limiter ----------
-const aiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20,
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-app.use("/api/ai/", aiLimiter);
-
 // ---------- AI Resume Suggestion Route ----------
 app.post("/api/ai/suggest", ensureAuthenticated, async (req, res) => {
   const { field, currentText, roleTitle } = req.body || {};

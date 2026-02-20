@@ -1,0 +1,6 @@
+{
+  "watch": ["app.js", "views", "public", "config"],
+  "ext": "js,ejs,css",
+  "ignore": ["node_modules", "uploads", "gcp-service-account.json", "package-lock.json", "*.log"],
+  "delay": 500
+}
