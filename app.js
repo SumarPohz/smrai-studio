@@ -934,6 +934,7 @@ app.post("/resume-builder/pdf", ensureAuthenticated, async (req, res) => {
     experienceJson,
     education,
     skills,
+    profileImageUrl,
   } = req.body;
 
   // Resolve experience: prefer structured JSON array when present
@@ -985,11 +986,18 @@ app.post("/resume-builder/pdf", ensureAuthenticated, async (req, res) => {
     }
   }
 
+  // Only add vertical gap when not already at the top of a fresh page.
+  // Prevents blank space appearing at the start of a page after PDFKit
+  // automatically wrapped long text onto a new page.
+  function safeDown(lines) {
+    if (doc.y > margin + 12) doc.moveDown(lines);
+  }
+
   // --- Helper: draw a section heading + body text ---
   function drawSection(title, body) {
     if (!body || !body.trim()) return;
-    // 80pt = heading (16) + separator (6) + at least 2 body lines (28) + gap — avoids orphaned heads
-    ensureSpace(80);
+    // heading (~16pt) + separator (~8pt) + 2 minimum body lines — avoids orphaned heads
+    ensureSpace(60);
     doc
       .fontSize(13)
       .font("Helvetica-Bold")
@@ -1007,7 +1015,21 @@ app.post("/resume-builder/pdf", ensureAuthenticated, async (req, res) => {
       .fontSize(10.5)
       .font("Helvetica")
       .text(body, { align: "left", lineGap: 3 });
-    doc.moveDown(0.8);
+    // Don't add bottom gap if PDFKit just broke onto a new page mid-text
+    safeDown(0.8);
+  }
+
+  // === Profile photo (optional) ===
+  if (profileImageUrl && typeof profileImageUrl === "string" && profileImageUrl.startsWith("/uploads/")) {
+    const imgPath = path.join(__dirname, "public", profileImageUrl);
+    if (fs.existsSync(imgPath)) {
+      try {
+        const photoSize = 72;
+        const photoX = (doc.page.width - photoSize) / 2;
+        doc.image(imgPath, photoX, margin, { width: photoSize, height: photoSize });
+        doc.y = margin + photoSize + 10;
+      } catch (_) { /* skip if image unreadable */ }
+    }
   }
 
   // === Header ===
@@ -1031,24 +1053,33 @@ app.post("/resume-builder/pdf", ensureAuthenticated, async (req, res) => {
 
   // --- Experience: handle both array (AI Interview) and string (textarea) ---
   if (Array.isArray(experienceData) && experienceData.length) {
-    ensureSpace(60);
+    // Reserve space for heading + separator + at least the first item's title line
+    ensureSpace(80);
     doc.fontSize(13).font("Helvetica-Bold").text("Experience").moveDown(0.2);
     doc.strokeColor("#d1d5db").lineWidth(0.5)
        .moveTo(margin, doc.y).lineTo(doc.page.width - margin, doc.y).stroke();
     doc.moveDown(0.3);
 
     for (const item of experienceData) {
-      // 80pt ensures title line + at least 3 description lines before a new page starts
-      ensureSpace(80);
+      // Reserve space for job title + 2 description lines before allowing natural wrap
+      ensureSpace(55);
       const parts = [item.title, item.company, item.dates].filter(Boolean);
       doc.fontSize(11).font("Helvetica-Bold").text(parts.join("  ·  ")).moveDown(0.15);
       if (item.description) {
-        doc.fontSize(10.5).font("Helvetica").text(item.description, { align: "left", lineGap: 3 }).moveDown(0.6);
+        // Apply same line cleanup as the preview (trim each line, drop blanks)
+        const cleanDesc = item.description
+          .split(/\r?\n/)
+          .map(l => l.trim())
+          .filter(l => l.length > 0)
+          .join("\n");
+        doc.fontSize(10.5).font("Helvetica")
+           .text(cleanDesc, { align: "left", lineGap: 3 });
+        safeDown(0.6);
       } else {
-        doc.moveDown(0.4);
+        safeDown(0.4);
       }
     }
-    doc.moveDown(0.5);
+    safeDown(0.5);
   } else if (typeof experienceData === "string") {
     drawSection("Experience", experienceData);
   }
@@ -1551,7 +1582,7 @@ app.post(
 app.post("/api/razorpay/create-order", ensureAuthenticated, async (req, res) => {
   try {
     const options = {
-      amount: 49 * 100,          // ₹49 in paise
+      amount: 1 * 100,          // ₹49 in paise
       currency: "INR",
       receipt: "resume_" + Date.now(),
     };
@@ -1604,7 +1635,7 @@ app.post("/api/razorpay/verify", ensureAuthenticated, async (req, res) => {
     }
 
     const userId = req.user.id;
-    const amount = 49 * 100; // ₹49 in paise
+    const amount = 1 * 100; // ₹49 in paise
     const currency = "INR";
     const finalPurpose = purpose || "download";
 const existing = await db.query(

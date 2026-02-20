@@ -24,7 +24,12 @@
           title: item.title || "",
           company: item.company || "",
           dates: item.dates || "",
-          description: (item.description || "").trim().replace(/\n{2,}/g, "\n")
+          // Split on any newline variant, trim each line, remove blank-only lines
+          description: (item.description || "")
+            .split(/\r?\n/)
+            .map(l => l.trim())
+            .filter(l => l.length > 0)
+            .join("\n")
         }));
     }
 
@@ -106,7 +111,8 @@
   /* Scope UI styles to preview-section ONLY — not into the resume */
   .preview-section > button,
   .preview-section > .btn-primary,
-  #download-image-btn {
+  #download-image-btn,
+  #download-pdf-btn {
     background: #111827;
     color: #fff;
     border: none;
@@ -118,9 +124,18 @@
 
   .preview-section > button:hover,
   .preview-section > .btn-primary:hover,
-  #download-image-btn:hover {
+  #download-image-btn:hover,
+  #download-pdf-btn:hover {
     background: #facc15;
     color: #111827;
+  }
+
+  /* Row wrapper for the two download buttons */
+  .download-btn-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1rem;
   }
 
   .preview-section > p > a,
@@ -287,12 +302,40 @@
     transform: rotate(-30deg);
     user-select: none;
   }
+
+  /* ===== MULTI-PAGE: visual page-break dividers ===== */
+  .pg-break {
+    position: absolute;
+    left: 0;
+    right: 0;
+    pointer-events: none;
+    z-index: 60;
+    /* 16px band: top 8px = shadow of page above, bottom 8px = shadow of page below */
+    height: 16px;
+    background:
+      linear-gradient(to bottom, rgba(0,0,0,0.12) 0%, transparent 100%);
+  }
+
+  .pg-break::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: #b0b8c9;
+  }
+
+  /* Stack multiple page cards with a visible gap */
+  .preview-scale-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0;          /* pages are continuous — breaks shown as overlays */
+  }
 </style>
 
 <section class="preview-section">
   <h1>Resume Preview</h1>
   <p>
-    Review your resume below. You can download it as JPG (A4).
+    Review your resume below. Download as JPG or PDF after payment.
     <br />
     Template: <strong><%= tpl %></strong>
     &nbsp;&middot;&nbsp; <a href="/resume-templates">Change template</a>
@@ -316,19 +359,43 @@
     </div>
   </div>
 
-  <button id="download-image-btn" style="margin-top:1rem;">
-    PAY ₹49 &amp; DOWNLOAD AS JPG (A4)
-  </button>
+  <!-- Download buttons — both unlock after a single payment -->
+  <div class="download-btn-row">
+    <button id="download-image-btn">PAY ₹49 &amp; DOWNLOAD JPG (A4)</button>
+    <button id="download-pdf-btn">PAY ₹49 &amp; DOWNLOAD PDF (A4)</button>
+  </div>
 
   <p style="margin-top:1rem;">
     <a href="/resume-builder">Edit details</a>
   </p>
 </section>
 
-<!-- ===== DYNAMIC MOBILE SCALING SCRIPT ===== -->
+<!-- ===== DYNAMIC MOBILE SCALING + MULTI-PAGE BREAKS ===== -->
 <script>
   (function () {
-    var A4_WIDTH = 794;
+    var A4_WIDTH  = 794;
+    var A4_HEIGHT = 1123;   /* px at screen resolution */
+
+    /* Inject/refresh visual page-break dividers */
+    function refreshPageBreaks() {
+      var a4 = document.getElementById("resumeA4");
+      if (!a4) return;
+
+      /* Remove stale indicators */
+      var old = a4.querySelectorAll(".pg-break");
+      for (var i = 0; i < old.length; i++) old[i].parentNode.removeChild(old[i]);
+
+      var totalH = a4.offsetHeight;
+      var pages  = Math.ceil(totalH / A4_HEIGHT);
+      if (pages <= 1) return;
+
+      for (var p = 1; p < pages; p++) {
+        var div = document.createElement("div");
+        div.className = "pg-break";
+        div.style.top = (p * A4_HEIGHT - 8) + "px";  /* straddle the boundary */
+        a4.appendChild(div);
+      }
+    }
 
     function scalePreview() {
       var wrapper   = document.querySelector(".preview-wrapper");
@@ -387,6 +454,9 @@
         container.style.margin          = "0";
         wrapper.style.height            = Math.ceil(naturalHeight * scale) + "px";
       }
+
+      /* Show page-break dividers whenever content exceeds one A4 height */
+      refreshPageBreaks();
     }
 
     /*
@@ -415,101 +485,251 @@
   })();
 </script>
 
+<!-- JSZip: used to package multi-page JPG exports into a single ZIP download -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+<!-- Resume data embedded safely for PDF form submission (type=application/json prevents execution) -->
+<script id="resume-payload" type="application/json">
+<%- JSON.stringify({
+  resumeId:        data.resumeId        || "",
+  fullName:        data.fullName        || "",
+  email:           data.email           || "",
+  phone:           data.phone           || "",
+  summary:         data.summary         || "",
+  experience:      data.experience      || "",
+  experienceJson:  data.experienceJson  || "",
+  education:       data.education       || "",
+  skills:          data.skills          || "",
+  profileImageUrl: data.profileImageUrl || ""
+}) %>
+</script>
 
 <script>
   (function () {
     const resumeNode = document.getElementById("resumeA4");
     const downloadBtn = document.getElementById("download-image-btn");
-    if (!resumeNode || !downloadBtn) return;
+    const pdfBtn      = document.getElementById("download-pdf-btn");
+    if (!resumeNode || !downloadBtn || !pdfBtn) return;
 
-    const resumeId = "<%= data.resumeId || '' %>";
+    const resumeId    = "<%= data.resumeId || '' %>";
     const templateName = "<%= safeTpl %>";
 
-    // ---- JPG generation (multi-page A4) ----
+    // Parse the safely-embedded resume data (used for PDF form submission)
+    let resumePayload = {};
+    try {
+      const el = document.getElementById("resume-payload");
+      if (el) resumePayload = JSON.parse(el.textContent);
+    } catch (_) {}
+
+    // Shared payment flag — only one Razorpay transaction needed for both exports
+    let paymentVerified = false;
+
+    // ================================================================
+    // Image helpers — convert <img> src to data URLs before capture
+    // so html2canvas can read pixel data regardless of CORS headers.
+    // ================================================================
+    async function preloadImagesAsDataUrls(container) {
+      const imgs = Array.from(container.querySelectorAll("img"));
+      for (var i = 0; i < imgs.length; i++) {
+        var img = imgs[i];
+        if (!img.src || img.src.startsWith("data:")) continue;
+
+        // Wait for the image to finish loading if it hasn't yet
+        if (!img.complete) {
+          await new Promise(function (resolve) {
+            img.addEventListener("load",  resolve, { once: true });
+            img.addEventListener("error", resolve, { once: true });
+          });
+        }
+
+        // Fetch the image and convert to a base-64 data URL
+        try {
+          var res  = await fetch(img.src, { credentials: "same-origin" });
+          var blob = await res.blob();
+          var dataUrl = await new Promise(function (resolve) {
+            var reader = new FileReader();
+            reader.onload = function () { resolve(reader.result); };
+            reader.readAsDataURL(blob);
+          });
+          img.setAttribute("data-orig-src", img.src);
+          img.src = dataUrl;
+        } catch (e) {
+          console.warn("Could not preload image as data URL:", img.src, e);
+        }
+      }
+    }
+
+    function restoreImageSrcs(container) {
+      container.querySelectorAll("img[data-orig-src]").forEach(function (img) {
+        img.src = img.getAttribute("data-orig-src");
+        img.removeAttribute("data-orig-src");
+      });
+    }
+
+    // ================================================================
+    // JPG generation — single page = direct download, multi-page = ZIP
+    // ================================================================
     async function generateJpg() {
       downloadBtn.disabled = true;
-      const originalText = downloadBtn.textContent;
-      downloadBtn.textContent = "Preparing A4 JPG...";
+      pdfBtn.disabled      = true;
+      const origText = downloadBtn.textContent;
+      downloadBtn.textContent = "Preparing JPG…";
 
       try {
-        const A4_WIDTH_PX = 2480;
+        const A4_WIDTH_PX  = 2480;
         const A4_HEIGHT_PX = 3508;
 
-        // Temporarily remove CSS transform so html2canvas captures full size
+        // Remove CSS transform so html2canvas sees the full unscaled element
         const scaleContainer = document.getElementById("scaleContainer");
-        const prevTransform = scaleContainer ? scaleContainer.style.transform : "";
-        const wrapperEl = document.querySelector(".preview-wrapper");
-        const prevWrapperH = wrapperEl ? wrapperEl.style.height : "";
-
+        const prevTransform  = scaleContainer ? scaleContainer.style.transform : "";
+        const wrapperEl      = document.querySelector(".preview-wrapper");
+        const prevWrapperH   = wrapperEl ? wrapperEl.style.height : "";
         if (scaleContainer) scaleContainer.style.transform = "none";
         if (wrapperEl) wrapperEl.style.height = "auto";
 
-        const baseWidth = resumeNode.offsetWidth;
-        const scale = A4_WIDTH_PX / baseWidth;
+        // Hide page-break overlays — must not appear in the exported images
+        const pgBreaks = resumeNode.querySelectorAll(".pg-break");
+        pgBreaks.forEach(function (el) { el.style.display = "none"; });
 
-        // Capture the full content at A4-width resolution
+        // Convert all <img> src values to data URLs so html2canvas can
+        // render them without hitting browser CORS/canvas-taint restrictions
+        await preloadImagesAsDataUrls(resumeNode);
+
+        const baseWidth = resumeNode.offsetWidth;
+        const scale     = A4_WIDTH_PX / baseWidth;
+
         const fullCanvas = await html2canvas(resumeNode, {
-          scale: scale,
+          scale:           scale,
           backgroundColor: "#ffffff",
-          scrollX: 0,
-          scrollY: -window.scrollY,
-          windowWidth: resumeNode.scrollWidth,
-          windowHeight: resumeNode.scrollHeight,
+          useCORS:         true,   /* fallback for any img not converted above */
+          allowTaint:      false,
+          scrollX:         0,
+          scrollY:         -window.scrollY,
+          windowWidth:     resumeNode.scrollWidth,
+          windowHeight:    resumeNode.scrollHeight,
         });
 
-        // Restore transforms
+        // Restore transforms, overlays, and original image src attributes
         if (scaleContainer) scaleContainer.style.transform = prevTransform;
         if (wrapperEl) wrapperEl.style.height = prevWrapperH;
+        pgBreaks.forEach(function (el) { el.style.display = ""; });
+        restoreImageSrcs(resumeNode);
 
         const fullHeight = fullCanvas.height;
         const totalPages = Math.ceil(fullHeight / A4_HEIGHT_PX);
 
-        for (let i = 0; i < totalPages; i++) {
-          const pageCanvas = document.createElement("canvas");
-          pageCanvas.width = A4_WIDTH_PX;
-          // Last page may be shorter
-          const sliceH = Math.min(A4_HEIGHT_PX, fullHeight - i * A4_HEIGHT_PX);
-          pageCanvas.height = sliceH;
-
-          const ctx = pageCanvas.getContext("2d");
-          // Fill white background
-          ctx.fillStyle = "#ffffff";
-          ctx.fillRect(0, 0, A4_WIDTH_PX, sliceH);
-          // Draw the slice from the full canvas
-          ctx.drawImage(
-            fullCanvas,
-            0, i * A4_HEIGHT_PX,          // source x, y
-            A4_WIDTH_PX, sliceH,           // source w, h
-            0, 0,                          // dest x, y
-            A4_WIDTH_PX, sliceH            // dest w, h
-          );
-
-          const dataUrl = pageCanvas.toDataURL("image/jpeg", 0.95);
-          const link = document.createElement("a");
-          const suffix = totalPages > 1 ? "-page" + (i + 1) : "";
-          link.download = "SmrAI-Studio-Resume" + suffix + ".jpg";
-          link.href = dataUrl;
-          link.click();
-
-          // Small delay between downloads so browser doesn't block them
-          if (totalPages > 1 && i < totalPages - 1) {
-            await new Promise(function (r) { setTimeout(r, 400); });
-          }
+        // Slice canvas at page index i → JPEG Blob
+        function sliceToBlob(i) {
+          return new Promise(function (resolve) {
+            const pc    = document.createElement("canvas");
+            const sliceH = Math.min(A4_HEIGHT_PX, fullHeight - i * A4_HEIGHT_PX);
+            pc.width  = A4_WIDTH_PX;
+            pc.height = sliceH;
+            const ctx = pc.getContext("2d");
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, A4_WIDTH_PX, sliceH);
+            ctx.drawImage(fullCanvas,
+              0, i * A4_HEIGHT_PX, A4_WIDTH_PX, sliceH,
+              0, 0,                A4_WIDTH_PX, sliceH);
+            pc.toBlob(resolve, "image/jpeg", 0.95);
+          });
         }
+
+        if (totalPages === 1) {
+          // ── Single page: direct JPEG download ──────────────────────
+          const blob = await sliceToBlob(0);
+          const url  = URL.createObjectURL(blob);
+          const a    = document.createElement("a");
+          a.download = "SmrAI-Studio-Resume.jpg";
+          a.href     = url;
+          a.click();
+          setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
+
+        } else {
+          // ── Multiple pages: ZIP all pages then download ─────────────
+          if (typeof JSZip === "undefined") {
+            throw new Error("JSZip not loaded — cannot create ZIP file.");
+          }
+          downloadBtn.textContent = "Packaging " + totalPages + " pages…";
+          const zip = new JSZip();
+          for (var i = 0; i < totalPages; i++) {
+            const blob = await sliceToBlob(i);
+            zip.file("resume-page-" + (i + 1) + ".jpg", blob);
+          }
+          downloadBtn.textContent = "Building ZIP…";
+          const zipBlob = await zip.generateAsync({
+            type: "blob",
+            compression: "DEFLATE",
+            compressionOptions: { level: 6 },
+          });
+          const url = URL.createObjectURL(zipBlob);
+          const a   = document.createElement("a");
+          a.download = "SmrAI-Studio-Resume-Pages.zip";
+          a.href     = url;
+          a.click();
+          setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+        }
+
       } catch (err) {
-        console.error(err);
-        alert("Failed to generate JPG. Check console for details.");
+        console.error("JPG export error:", err);
+        alert("Failed to generate image. Check console for details.");
       } finally {
-        downloadBtn.disabled = false;
-        downloadBtn.textContent = originalText;
+        downloadBtn.disabled    = false;
+        pdfBtn.disabled         = false;
+        downloadBtn.textContent = paymentVerified ? "Download JPG (A4)" : origText;
       }
     }
 
-    // ---- Razorpay helpers ----
+    // ================================================================
+    // PDF download — POST resume data to /resume-builder/pdf
+    // Backend streams back a PDF file (payment check done server-side)
+    // ================================================================
+    function downloadPdf() {
+      pdfBtn.disabled     = true;
+      pdfBtn.textContent  = "Preparing PDF…";
+
+      try {
+        const form = document.createElement("form");
+        form.method = "POST";
+        form.action = "/resume-builder/pdf";
+
+        ["resumeId", "fullName", "email", "phone", "summary",
+         "experience", "experienceJson", "education", "skills",
+         "profileImageUrl"
+        ].forEach(function (key) {
+          const inp   = document.createElement("input");
+          inp.type    = "hidden";
+          inp.name    = key;
+          inp.value   = resumePayload[key] || "";
+          form.appendChild(inp);
+        });
+
+        document.body.appendChild(form);
+        form.submit();  // triggers browser PDF download via Content-Disposition header
+
+        // Page unloads on submission; restore state as a safety fallback
+        setTimeout(function () {
+          if (document.body.contains(form)) document.body.removeChild(form);
+          pdfBtn.disabled    = false;
+          pdfBtn.textContent = "Download PDF (A4)";
+        }, 4000);
+
+      } catch (err) {
+        console.error("PDF download error:", err);
+        alert("Failed to initiate PDF download. Please try again.");
+        pdfBtn.disabled    = false;
+        pdfBtn.textContent = "Download PDF (A4)";
+      }
+    }
+
+    // ================================================================
+    // Razorpay payment — shared between JPG and PDF actions
+    // Only ONE transaction is triggered; both buttons unlock after it
+    // ================================================================
     async function createOrder() {
-      const res = await fetch("/api/razorpay/create-order", {
+      const res  = await fetch("/api/razorpay/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });
@@ -523,69 +743,84 @@
         const orderData = await createOrder();
 
         const options = {
-          key: orderData.key,
-          amount: orderData.amount,
-          currency: orderData.currency,
-          name: "SmrAI-Studio",
-          description: templateName + " Resume " + (action === "print" ? "Print" : "Download"),
-          order_id: orderData.orderId,
+          key:         orderData.key,
+          amount:      orderData.amount,
+          currency:    orderData.currency,
+          name:        "SmrAI-Studio",
+          description: templateName + " Resume Download",
+          order_id:    orderData.orderId,
+
           handler: async function (response) {
             try {
               const verifyRes = await fetch("/api/razorpay/verify", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_order_id:   response.razorpay_order_id,
                   razorpay_payment_id: response.razorpay_payment_id,
-                  razorpay_signature: response.razorpay_signature,
-                  purpose: action === "print" ? "print" : "download",
-                  resumeId: resumeId || null,
+                  razorpay_signature:  response.razorpay_signature,
+                  purpose:             "download",
+                  resumeId:            resumeId || null,
                 }),
               });
 
               const verifyData = await verifyRes.json();
-
               if (!verifyData.success) {
                 alert("Payment verification failed. Please contact support.");
                 return;
               }
 
-              // Remove watermark after payment
+              // Mark payment done — shared state, no second charge needed
+              paymentVerified = true;
+
+              // Remove watermark
               const wm = document.querySelector(".resume-watermark");
               if (wm) wm.remove();
 
-              if (action === "download") {
+              // Unlock both button labels
+              downloadBtn.textContent = "Download JPG (A4)";
+              pdfBtn.textContent      = "Download PDF (A4)";
+
+              // Run the action that originally triggered the payment
+              if (action === "jpg") {
                 await generateJpg();
-              } else if (action === "print") {
-                window.print();
+              } else if (action === "pdf") {
+                downloadPdf();
               }
+
             } catch (err) {
               console.error("Verify/payment error:", err);
               alert("Something went wrong while verifying payment.");
             }
           },
+
           prefill: {
-            name: "<%= data.fullName || '' %>",
-            email: "<%= data.email || '' %>",
-            contact: "<%= data.phone || '' %>"
+            name:    resumePayload.fullName || "",
+            email:   resumePayload.email    || "",
+            contact: resumePayload.phone    || "",
           },
-          theme: {
-            color: "#27355a"
-          }
+          theme: { color: "#27355a" },
         };
 
-        const rzp = new Razorpay(options);
-        rzp.open();
+        new Razorpay(options).open();
+
       } catch (err) {
         console.error(err);
         alert("Unable to start payment. Please try again.");
       }
     }
 
-    // ---- All templates require payment ----
+    // ================================================================
+    // Button click handlers
+    // ================================================================
     downloadBtn.addEventListener("click", function () {
-      startPayment("download");
+      if (paymentVerified) { generateJpg(); } else { startPayment("jpg"); }
     });
+
+    pdfBtn.addEventListener("click", function () {
+      if (paymentVerified) { downloadPdf(); } else { startPayment("pdf"); }
+    });
+
   })();
 </script>
 

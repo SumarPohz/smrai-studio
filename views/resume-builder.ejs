@@ -354,12 +354,14 @@
       </form>
     </div>
 
-    <!-- RIGHT: MINI LIVE PREVIEW (bold-sidebar layout) -->
+    <!-- RIGHT: MINI LIVE PREVIEW -->
     <aside class="builder-right">
       <div class="modern-mini-preview">
-        <div class="modern-mini-page">
 
-          <!-- HEADER: photo + name / role / contact -->
+        <% if (template === 'bold-sidebar') { %>
+        <!-- Bold-sidebar: header + divider + two-column body -->
+        <div class="modern-mini-page bs-mode">
+
           <div class="bsmini-header">
             <div class="bsmini-photo"></div>
             <div class="bsmini-header-info">
@@ -375,10 +377,7 @@
 
           <div class="bsmini-divider"></div>
 
-          <!-- BODY: two columns -->
           <div class="bsmini-body">
-
-            <!-- Left: About, Education, Skills, Languages -->
             <div class="bsmini-left">
               <div class="bsmini-section">
                 <h3>ABOUT ME</h3>
@@ -399,17 +398,59 @@
                 <p id="pvLanguages">Languages will appear here.</p>
               </div>
             </div>
-
-            <!-- Right: Work Experience -->
             <div class="bsmini-right">
               <div class="bsmini-section">
                 <h3>WORK EXPERIENCE</h3>
                 <p id="pvExperience">Your experience lines will appear here as you type.</p>
               </div>
             </div>
-
           </div>
+
         </div>
+        <% } else { %>
+        <!-- Modern-1 / generic: navy sidebar + right content -->
+        <div class="modern-mini-page">
+
+          <div class="m1mini-left">
+            <div class="m1mini-avatar"></div>
+            <div id="pvName" class="m1mini-name">Your Name</div>
+            <div id="pvRole" class="m1mini-role">Your Job Title</div>
+            <div class="m1mini-section">
+              <h3>CONTACT</h3>
+              <p>📞 <span id="pvPhone">+91 0000000000</span></p>
+              <p>✉️ <span id="pvEmail">email@example.com</span></p>
+              <p>📍 <span id="pvLocation">City, Country</span></p>
+            </div>
+            <div class="m1mini-section">
+              <h3>EDUCATION</h3>
+              <p id="pvEducation">Your education entries will appear here.</p>
+            </div>
+            <div class="m1mini-section">
+              <h3>LANGUAGES</h3>
+              <p id="pvLanguages">Languages will appear here.</p>
+            </div>
+          </div>
+
+          <div class="m1mini-right">
+            <div class="m1mini-section">
+              <h3>SUMMARY</h3>
+              <p id="pvSummary">Your concise professional summary will appear here.</p>
+            </div>
+            <div class="m1mini-section">
+              <h3>EXPERIENCE</h3>
+              <p id="pvExperience">Your experience lines will appear here as you type.</p>
+            </div>
+            <div class="m1mini-section">
+              <h3>SKILLS</h3>
+              <div id="pvSkills" class="m1mini-skills">
+                <span>Skills will appear here.</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <% } %>
+
       </div>
     </aside>
   </div>
@@ -731,10 +772,126 @@
     box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18);
     overflow: hidden;
     display: flex;
-    flex-direction: column;       /* header stacked above body */
+    flex-direction: row;          /* default: sidebar + right (modern-1) */
     font-family: "Segoe UI", Arial, sans-serif;
     transform-origin: top center;
     border: 1px solid #e5e7eb;
+  }
+
+  /* Bold-sidebar: header stacked above two-column body */
+  .modern-mini-page.bs-mode {
+    flex-direction: column;
+  }
+
+  /* ── Modern-1 / generic mini layout ── */
+  .m1mini-left {
+    width: 37%;
+    background: #1e2d4f;
+    padding: 0.65rem 0.5rem 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .m1mini-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.2);
+    border: 2px solid #fbbf24;
+    margin: 0 auto 0.4rem;
+    flex-shrink: 0;
+  }
+
+  .m1mini-name {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #fff;
+    text-align: center;
+    line-height: 1.2;
+    margin-bottom: 0.1rem;
+  }
+
+  .m1mini-role {
+    font-size: 0.55rem;
+    color: rgba(255,255,255,0.72);
+    text-align: center;
+    margin-bottom: 0.45rem;
+    line-height: 1.3;
+  }
+
+  .m1mini-section {
+    margin-bottom: 0.35rem;
+  }
+
+  /* Left sidebar section headings: yellow text + yellow underline */
+  .m1mini-left .m1mini-section h3 {
+    font-size: 0.5rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #fbbf24;
+    border-bottom: 1.5px solid #fbbf24;
+    padding-bottom: 0.06rem;
+    margin-bottom: 0.15rem;
+  }
+
+  .m1mini-left p {
+    font-size: 0.5rem;
+    color: rgba(255,255,255,0.82);
+    margin: 0.05rem 0;
+    line-height: 1.35;
+    overflow: hidden;
+  }
+
+  .m1mini-right {
+    flex: 1;
+    padding: 0.6rem 0.5rem 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    overflow: hidden;
+  }
+
+  /* Right section headings: navy text + yellow underline */
+  .m1mini-right .m1mini-section h3 {
+    font-size: 0.5rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #1e2d4f;
+    border-bottom: 1.5px solid #fbbf24;
+    padding-bottom: 0.06rem;
+    margin-bottom: 0.15rem;
+  }
+
+  .m1mini-right p {
+    font-size: 0.5rem;
+    color: #374151;
+    margin: 0;
+    line-height: 1.35;
+    overflow: hidden;
+    max-height: 3.2rem;
+    white-space: normal;
+    word-wrap: break-word;
+  }
+
+  /* Skills: yellow pills matching actual template */
+  .m1mini-skills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.15rem;
+  }
+
+  .m1mini-skills span {
+    background: #fbbf24;
+    color: #1e2d4f;
+    font-size: 0.45rem;
+    font-weight: 600;
+    padding: 0.05rem 0.25rem;
+    border-radius: 3px;
   }
 
   /* ── Header ── */
