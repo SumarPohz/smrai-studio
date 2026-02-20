@@ -125,6 +125,34 @@
   overflow-wrap: anywhere;
 }
 
+/* ===== SHARED: Experience entry — compact, no card ===== */
+.exp-entry {
+  margin-bottom: 0.6rem;
+  padding-left: 10px;
+  border-left: 3px solid #eab308;
+}
+
+.exp-entry:last-child {
+  margin-bottom: 0;
+}
+
+/* String-format experience fallback */
+.exp-text {
+  font-size: 0.83rem;
+  line-height: 1.5;
+  color: #374151;
+  white-space: pre-line;
+}
+
+/* Template accent overrides */
+.resume-page.tech-focused   .exp-entry   { border-left-color: #10b981; }
+.resume-page.tech-focused   .exp-heading { color: #e2e8f0; }
+.resume-page.tech-focused   .exp-body    { color: #cbd5e1; }
+.resume-page.tech-focused   .exp-text    { color: #94a3b8; white-space: pre-line; }
+.resume-page.classic-border .exp-entry   { border-left-color: #2563eb; }
+.resume-page.classic-border .exp-dates   { color: #3b82f6; }
+.resume-page.elegant-serif  .exp-dates   { color: #d97706; font-style: italic; }
+
 /* ===== MODERN-1 (two-column navy/yellow) ===== */
 .resume-page.modern-1 {
   display: flex;

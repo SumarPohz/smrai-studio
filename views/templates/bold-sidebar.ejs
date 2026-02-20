@@ -76,21 +76,16 @@
 
       <% if (experienceItems.length) { %>
         <% experienceItems.forEach(exp => { %>
-          <div class="bs-exp-item">
-            <div class="bs-exp-dates"><%= exp.dates || "" %></div>
-            <div class="bs-exp-detail">
-              <div class="bs-exp-title"><%= exp.title || "" %></div>
-              <% if (exp.company) { %>
-                <div class="bs-exp-company"><%= exp.company %></div>
-              <% } %>
-              <% if (exp.description) { %>
-                <div class="bs-exp-desc"><%= exp.description %></div>
-              <% } %>
+          <div class="exp-entry">
+            <div class="exp-heading">
+              <span class="exp-title"><strong><%= exp.title || "" %></strong><% if (exp.company) { %> <em class="exp-company"> · <%= exp.company %></em><% } %></span>
+              <% if (exp.dates) { %><span class="exp-dates"><%= exp.dates %></span><% } %>
             </div>
+            <% if (exp.description) { %><div class="exp-body"><%= exp.description %></div><% } %>
           </div>
         <% }) %>
       <% } else { %>
-        <p class="bs-fallback"><%= data.experience || "" %></p>
+        <p class="exp-text"><%= data.experience || "" %></p>
       <% } %>
     </div>
 

@@ -25,20 +25,16 @@
     <h3>Experience</h3>
     <% if (experienceItems.length) { %>
       <% experienceItems.forEach(exp => { %>
-        <div class="cb-exp-item">
+        <div class="exp-entry">
           <div class="cb-exp-header">
             <strong><%= exp.title %></strong><% if (exp.company) { %> <em class="exp-company"> · <%= exp.company %></em><% } %>
-            <% if (exp.dates) { %>
-              <span class="cb-exp-dates"><%= exp.dates %></span>
-            <% } %>
+            <% if (exp.dates) { %><span class="exp-dates"><%= exp.dates %></span><% } %>
           </div>
-          <% if (exp.description) { %>
-            <p class="cb-exp-desc"><%= exp.description %></p>
-          <% } %>
+          <% if (exp.description) { %><div class="exp-body"><%= exp.description %></div><% } %>
         </div>
       <% }) %>
     <% } else { %>
-      <p><%= data.experience || "" %></p>
+      <p class="exp-text"><%= data.experience || "" %></p>
     <% } %>
   </div>
 
