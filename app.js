@@ -41,11 +41,17 @@ try {
   };
 
   if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
-    // Production (Render): credentials stored as a JSON string in env var
-    vertexOpts.credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+    // Production (Render): credentials stored as a JSON string in env var.
+    // Delete GOOGLE_APPLICATION_CREDENTIALS first — otherwise the SDK ignores
+    // the explicit credentials and tries to read the (missing) file instead.
+    delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    vertexOpts.googleAuthOptions = {
+      credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON),
+      scopes: ["https://www.googleapis.com/auth/cloud-platform"],
+    };
     console.log("✅ Vertex AI: using GOOGLE_SERVICE_ACCOUNT_JSON credentials");
   } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-    // Development: credentials loaded automatically from file path by the SDK
+    // Development: SDK picks up the file path automatically via ADC
     console.log("✅ Vertex AI: using GOOGLE_APPLICATION_CREDENTIALS file");
   } else {
     console.warn("⚠️ Vertex AI: no credentials found — AI Suggest will be disabled");
