@@ -1,0 +1,78 @@
+<!-- MODERN-1: Two-column navy/yellow layout -->
+<div class="modern-left">
+  <div class="modern-avatar">
+    <% if (data.profileImageUrl) { %>
+      <img src="<%= data.profileImageUrl %>" alt="Profile" />
+    <% } else { %>
+      <div class="modern-avatar-placeholder">PHOTO</div>
+    <% } %>
+  </div>
+
+  <div class="modern-name-block">
+    <h2><%= data.fullName || "" %></h2>
+    <p class="role"><%= data.roleTitle || "" %></p>
+  </div>
+
+  <div class="modern-sidebar-section">
+    <h3>CONTACT</h3>
+    <p><span>📞</span> <%= data.phone || "" %></p>
+    <p><span>✉️</span> <%= data.email || "" %></p>
+    <% if (data.location) { %>
+      <p><span>📍</span> <%= data.location %></p>
+    <% } %>
+  </div>
+
+  <div class="modern-sidebar-section">
+    <h3>EDUCATION</h3>
+    <p><%= data.education || "" %></p>
+  </div>
+
+  <div class="modern-sidebar-section">
+    <h3>LANGUAGES</h3>
+    <p><%= data.languages || "" %></p>
+  </div>
+</div>
+
+<div class="modern-right">
+  <div class="modern-section-block">
+    <h3>PROFESSIONAL SUMMARY</h3>
+    <p><%= data.summary || "" %></p>
+  </div>
+
+  <div class="modern-section-block">
+    <h3>EXPERIENCE</h3>
+
+    <% if (experienceItems.length) { %>
+      <ul class="experience-list">
+        <% experienceItems.forEach(exp => { %>
+          <li>
+            <div class="exp-heading">
+              <span class="exp-title"><strong><%= exp.title %></strong><% if (exp.company) { %> <em class="exp-company"> · <%= exp.company %></em><% } %></span>
+              <% if (exp.dates) { %>
+                <span class="exp-dates"><%= exp.dates %></span>
+              <% } %>
+            </div>
+            <% if (exp.description) { %>
+              <div class="exp-body"><%= exp.description %></div>
+            <% } %>
+          </li>
+        <% }) %>
+      </ul>
+    <% } else { %>
+      <p><%= data.experience || "" %></p>
+    <% } %>
+  </div>
+
+  <div class="modern-section-block">
+    <h3>SKILLS</h3>
+    <% if (skillsLines.length) { %>
+      <ul>
+        <% skillsLines.forEach(line => { %>
+          <li><%= line %></li>
+        <% }) %>
+      </ul>
+    <% } else { %>
+      <p><%= data.skills || "" %></p>
+    <% } %>
+  </div>
+</div>

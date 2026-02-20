@@ -1,0 +1,74 @@
+<!-- CREATIVE-GRADIENT: Gradient header + colorful sections -->
+<div class="cg-header">
+  <div class="cg-header-content">
+    <% if (data.profileImageUrl) { %>
+      <img src="<%= data.profileImageUrl %>" alt="Profile" class="cg-avatar" />
+    <% } %>
+    <div class="cg-header-text">
+      <h2 class="cg-name"><%= data.fullName || "" %></h2>
+      <p class="cg-role"><%= data.roleTitle || "" %></p>
+      <div class="cg-contact">
+        <span>📞 <%= data.phone || "" %></span>
+        <span>✉️ <%= data.email || "" %></span>
+        <% if (data.location) { %>
+          <span>📍 <%= data.location %></span>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="cg-body">
+  <div class="cg-section">
+    <h3>Professional Summary</h3>
+    <p><%= data.summary || "" %></p>
+  </div>
+
+  <div class="cg-section">
+    <h3>Experience</h3>
+    <% if (experienceItems.length) { %>
+      <ul class="experience-list">
+        <% experienceItems.forEach(exp => { %>
+          <li>
+            <div class="exp-heading">
+              <span class="exp-title"><strong><%= exp.title %></strong><% if (exp.company) { %> <em class="exp-company"> · <%= exp.company %></em><% } %></span>
+              <% if (exp.dates) { %>
+                <span class="exp-dates"><%= exp.dates %></span>
+              <% } %>
+            </div>
+            <% if (exp.description) { %>
+              <div class="exp-body"><%= exp.description %></div>
+            <% } %>
+          </li>
+        <% }) %>
+      </ul>
+    <% } else { %>
+      <p><%= data.experience || "" %></p>
+    <% } %>
+  </div>
+
+  <div class="cg-two-col">
+    <div class="cg-section">
+      <h3>Education</h3>
+      <p><%= data.education || "" %></p>
+    </div>
+
+    <div class="cg-section">
+      <h3>Languages</h3>
+      <p><%= data.languages || "" %></p>
+    </div>
+  </div>
+
+  <div class="cg-section">
+    <h3>Skills</h3>
+    <div class="cg-skills">
+      <% if (skillsLines.length) { %>
+        <% skillsLines.forEach(line => { %>
+          <span class="cg-skill-pill"><%= line %></span>
+        <% }) %>
+      <% } else { %>
+        <p><%= data.skills || "" %></p>
+      <% } %>
+    </div>
+  </div>
+</div>

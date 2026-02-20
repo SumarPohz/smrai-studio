@@ -50,3 +50,5 @@ public/generated/
 *.tmp
 *.zip
 *.tar
+
+gcp-service-account.json

@@ -10,8 +10,87 @@
         <a href="/resume-templates">Change template</a>
       </p>
     </div>
-    <div class="builder-hint-pill">
-      Step <span id="rbStepCounter">1</span> of 4
+    <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+      <button type="button" id="aiInterviewBtn" class="btn-ai-interview">
+        🎤 AI Interview Mode
+      </button>
+      <div class="builder-hint-pill">
+        Step <span id="rbStepCounter">1</span> of 4
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== AI INTERVIEW MODAL ===== -->
+  <div id="aiInterviewModal" class="ai-modal-overlay" style="display:none;" aria-modal="true" role="dialog">
+    <div class="ai-modal">
+      <div class="ai-modal-header">
+        <div>
+          <h2 class="ai-modal-title">🎤 AI Interview Mode</h2>
+          <p class="ai-modal-subtitle">Answer a few questions and we'll build your resume automatically.</p>
+        </div>
+        <button type="button" id="aiModalClose" class="ai-modal-close" aria-label="Close">&times;</button>
+      </div>
+
+      <!-- Chat area -->
+      <div id="aiChatArea" class="ai-chat-area"></div>
+
+      <!-- Input row -->
+      <div id="aiInputRow" class="ai-input-row">
+        <div class="ai-input-wrapper">
+          <input type="text" id="aiAnswerInput" class="ai-answer-input" placeholder="Type your answer..." autocomplete="off" />
+          <button type="button" id="aiMicBtn" class="ai-mic-btn" title="Speak your answer" aria-label="Speak your answer">🎤</button>
+        </div>
+        <button type="button" id="aiSendBtn" class="btn-primary">Send →</button>
+      </div>
+      <div id="aiMicStatus" class="ai-mic-listening"></div>
+
+      <!-- Generate button (shown after Q&A for non-photo templates) -->
+      <div id="aiGenerateRow" class="ai-generate-row" style="display:none;">
+        <button type="button" id="aiGenerateBtn" class="btn-primary ai-generate-btn">
+          ✨ Generate My Resume
+        </button>
+      </div>
+
+      <!-- Photo step (shown after Q&A for photo-supporting templates) -->
+      <div id="aiPhotoStep" class="ai-photo-step" style="display:none;">
+        <input type="file" id="aiPhotoInput" accept="image/*" style="display:none;" />
+
+        <!-- Initial: choose or skip -->
+        <div id="aiPhotoInitial" class="ai-photo-initial">
+          <button type="button" id="aiPhotoChooseBtn" class="btn-primary ai-photo-choose-btn">
+            📷 Upload Photo
+          </button>
+          <button type="button" id="aiPhotoSkipBtn" class="ai-photo-skip-link">
+            Skip — no photo
+          </button>
+        </div>
+
+        <!-- Cropper panel (shown after file selected) -->
+        <div id="aiCropPanel" class="ai-crop-panel" style="display:none;">
+          <div class="ai-crop-frame">
+            <img id="aiCropImg" src="" alt="Crop preview" />
+          </div>
+          <div class="ai-crop-actions">
+            <button type="button" id="aiCropConfirmBtn" class="btn-primary">✓ Use This Photo</button>
+            <button type="button" id="aiCropRetryBtn" class="ai-photo-skip-link">↩ Choose Different</button>
+          </div>
+        </div>
+
+        <!-- After crop confirmed: thumbnail + generate -->
+        <div id="aiPhotoDoneArea" style="display:none;">
+          <div class="ai-photo-done-row">
+            <img id="aiPhotoThumb" src="" class="ai-photo-thumb" alt="Profile photo" />
+            <span class="ai-photo-done-label">Photo ready ✓</span>
+            <button type="button" id="aiPhotoRedo" class="ai-photo-skip-link">Change</button>
+          </div>
+          <button type="button" id="aiPhotoGenBtn" class="btn-primary ai-generate-btn">
+            ✨ Generate My Resume
+          </button>
+        </div>
+      </div>
+
+      <!-- Status -->
+      <div id="aiModalStatus" class="ai-modal-status"></div>
     </div>
   </div>
 
@@ -96,16 +175,36 @@
               />
             </div>
 
-            <div class="rb-field">
-              <label for="profileImageUrl">Profile Photo URL (optional)</label>
-              <input
-                type="text"
-                id="profileImageUrl"
-                name="profileImageUrl"
-                placeholder="https://photo-link..."
-                value="<%= (draft && draft.profileImageUrl) || (profile && profile.profile_image_url) || '' %>"
-              />
+<% const _existingPhoto = (draft && draft.profileImageUrl) || (profile && profile.profile_image_url) || ''; %>
+<% if (isPhotoTpl) { %>
+            <!-- Photo upload widget (photo-supporting templates only) -->
+            <div class="rb-field rb-photo-field">
+              <label>Profile Photo <span class="rb-photo-badge">Recommended</span></label>
+              <input type="file" id="photoFileInput" accept="image/*" style="display:none;" />
+              <input type="hidden" name="profileImageUrl" id="profileImageUrl"
+                     value="<%= _existingPhoto %>" />
+              <div class="photo-preview-wrap">
+                <img id="photoPreviewImg"
+                     src="<%= _existingPhoto %>"
+                     class="photo-preview-img<%= _existingPhoto ? '' : ' ph-hidden' %>"
+                     alt="Profile photo" />
+                <div id="photoPlaceholder"
+                     class="photo-preview-placeholder<%= _existingPhoto ? ' ph-hidden' : '' %>">
+                  <span>No photo</span>
+                </div>
+              </div>
+              <div class="photo-upload-btns">
+                <button type="button" id="photoUploadTrigger" class="btn-photo-action">
+                  📷 Upload Photo
+                </button>
+                <button type="button" id="photoRemoveBtn"
+                        class="btn-photo-action btn-photo-remove<%= _existingPhoto ? '' : ' ph-hidden' %>">
+                  Remove
+                </button>
+              </div>
+              <p class="rb-field-hint">Square photo · JPG or PNG · min 200×200px</p>
             </div>
+<% } %>
           </div>
         </div>
 
@@ -121,6 +220,8 @@
             <div class="ai-field-label">
               <label for="summary">Professional Summary</label>
               <div class="ai-btn-group">
+                <span class="fmic-status" aria-live="polite"></span>
+                <button type="button" class="ai-mic-field-btn" data-mic-target="summary" title="Voice input" aria-label="Start voice input for Professional Summary">🎤</button>
                 <button type="button" class="ai-btn" data-field="summary">✨ AI Suggest</button>
                 <button type="button" class="ai-undo-btn" data-field="summary" disabled>↩ Undo</button>
               </div>
@@ -139,21 +240,16 @@
           <h2 class="rb-step-title">Experience</h2>
 
           <p class="rb-step-subtitle">
-            List your roles and achievements. We’ll format them neatly in the resume.
-          </p>
-
-          <p class="rb-tip">
-            <strong>Tip:</strong>
-            Start each job on the first line like:
-            <em>- Account Support Coordinator [Danaher] (Feb-2021 – Present)</em><br />
-            Then, on the lines below, add responsibilities and achievements.
-            We’ll keep them together under the same bullet point.
+            Describe your roles in your own words — or use 🎤 to speak them.
+            Click ✨ AI Suggest and we’ll detect each position and structure them automatically.
           </p>
 
           <div class="rb-field rb-field-full ai-field-wrap">
             <div class="ai-field-label">
               <label for="experience">Experience</label>
               <div class="ai-btn-group">
+                <span class="fmic-status" aria-live="polite"></span>
+                <button type="button" class="ai-mic-field-btn" data-mic-target="experience" title="Voice input" aria-label="Start voice input for Experience">🎤</button>
                 <button type="button" class="ai-btn" data-field="experience">✨ AI Suggest</button>
                 <button type="button" class="ai-undo-btn" data-field="experience" disabled>↩ Undo</button>
               </div>
@@ -162,7 +258,7 @@
               id="experience"
               name="experience"
               rows="10"
-              placeholder="- Account Support Coordinator..."
+              placeholder="e.g. I worked as a Security Supervisor at ACPS from 2020 to present. I managed a team of 10 officers..."
             ><%= (draft && draft.experience) || (profile && profile.experience) || '' %></textarea>
           </div>
         </div>
@@ -180,6 +276,8 @@
               <div class="ai-field-label">
                 <label for="education">Education</label>
                 <div class="ai-btn-group">
+                  <span class="fmic-status" aria-live="polite"></span>
+                  <button type="button" class="ai-mic-field-btn" data-mic-target="education" title="Voice input" aria-label="Start voice input for Education">🎤</button>
                   <button type="button" class="ai-btn" data-field="education">✨ AI Suggest</button>
                   <button type="button" class="ai-undo-btn" data-field="education" disabled>↩ Undo</button>
                 </div>
@@ -195,6 +293,8 @@
               <div class="ai-field-label">
                 <label for="languages">Languages</label>
                 <div class="ai-btn-group">
+                  <span class="fmic-status" aria-live="polite"></span>
+                  <button type="button" class="ai-mic-field-btn" data-mic-target="languages" title="Voice input" aria-label="Start voice input for Languages">🎤</button>
                   <button type="button" class="ai-btn" data-field="languages">✨ AI Suggest</button>
                   <button type="button" class="ai-undo-btn" data-field="languages" disabled>↩ Undo</button>
                 </div>
@@ -210,6 +310,8 @@
               <div class="ai-field-label">
                 <label for="skills">Skills</label>
                 <div class="ai-btn-group">
+                  <span class="fmic-status" aria-live="polite"></span>
+                  <button type="button" class="ai-mic-field-btn" data-mic-target="skills" title="Voice input" aria-label="Start voice input for Skills">🎤</button>
                   <button type="button" class="ai-btn" data-field="skills">✨ AI Suggest</button>
                   <button type="button" class="ai-undo-btn" data-field="skills" disabled>↩ Undo</button>
                 </div>
@@ -252,64 +354,60 @@
       </form>
     </div>
 
-    <!-- RIGHT: MINI LIVE PREVIEW (scaled-down modern-1 layout) -->
+    <!-- RIGHT: MINI LIVE PREVIEW (bold-sidebar layout) -->
     <aside class="builder-right">
       <div class="modern-mini-preview">
         <div class="modern-mini-page">
-          <!-- LEFT SIDEBAR (navy + yellow, like A4) -->
-          <div class="modern-mini-left">
-            <div class="modern-mini-avatar">
-              <!-- tiny avatar frame (we don't load image yet, just placeholder) -->
-              <div class="modern-mini-avatar-inner"></div>
-            </div>
 
-            <div class="modern-mini-name-block">
-              <div class="modern-mini-name" id="pvName">Your Name</div>
-              <div class="modern-mini-role" id="pvRole">Your Job Title</div>
-            </div>
-
-            <div class="modern-mini-sidebar-section">
-              <h3>CONTACT</h3>
-              <p><span>📞</span><span id="pvPhone">+91 0000000000</span></p>
-              <p><span>✉️</span><span id="pvEmail">email@example.com</span></p>
-              <p><span>📍</span><span id="pvLocation">City, Country</span></p>
-            </div>
-
-            <div class="modern-mini-sidebar-section">
-              <h3>EDUCATION</h3>
-              <p id="pvEducation">Your education entries will appear here.</p>
-            </div>
-
-            <div class="modern-mini-sidebar-section">
-              <h3>LANGUAGES</h3>
-              <p id="pvLanguages">Languages will appear here.</p>
+          <!-- HEADER: photo + name / role / contact -->
+          <div class="bsmini-header">
+            <div class="bsmini-photo"></div>
+            <div class="bsmini-header-info">
+              <div id="pvName" class="bsmini-name">Your Name</div>
+              <div id="pvRole" class="bsmini-role">Your Job Title</div>
+              <div class="bsmini-contact">
+                <span>📞 <span id="pvPhone">+91 0000000000</span></span>
+                <span>✉️ <span id="pvEmail">email@example.com</span></span>
+                <span>📍 <span id="pvLocation">City, Country</span></span>
+              </div>
             </div>
           </div>
 
-          <!-- RIGHT CONTENT -->
-          <div class="modern-mini-right">
-            <section class="modern-mini-main-section">
-              <h3>PROFESSIONAL SUMMARY</h3>
-              <div class="modern-mini-summary-box">
-                <p id="pvSummary">
-                  Your concise professional summary will appear here.
-                </p>
-              </div>
-            </section>
+          <div class="bsmini-divider"></div>
 
-            <section class="modern-mini-main-section">
-              <h3>EXPERIENCE</h3>
-              <p id="pvExperience">
-                Your experience lines will appear here as you type.
-              </p>
-            </section>
+          <!-- BODY: two columns -->
+          <div class="bsmini-body">
 
-            <section class="modern-mini-main-section">
-              <h3>SKILLS</h3>
-              <div id="pvSkills" class="modern-mini-skills">
-                <span>Skills will appear here.</span>
+            <!-- Left: About, Education, Skills, Languages -->
+            <div class="bsmini-left">
+              <div class="bsmini-section">
+                <h3>ABOUT ME</h3>
+                <p id="pvSummary">Your concise professional summary will appear here.</p>
               </div>
-            </section>
+              <div class="bsmini-section">
+                <h3>EDUCATION</h3>
+                <p id="pvEducation">Your education entries will appear here.</p>
+              </div>
+              <div class="bsmini-section">
+                <h3>SKILLS</h3>
+                <div id="pvSkills" class="modern-mini-skills bsmini-skills">
+                  <span>Skills will appear here.</span>
+                </div>
+              </div>
+              <div class="bsmini-section">
+                <h3>LANGUAGES</h3>
+                <p id="pvLanguages">Languages will appear here.</p>
+              </div>
+            </div>
+
+            <!-- Right: Work Experience -->
+            <div class="bsmini-right">
+              <div class="bsmini-section">
+                <h3>WORK EXPERIENCE</h3>
+                <p id="pvExperience">Your experience lines will appear here as you type.</p>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
@@ -515,6 +613,46 @@
   cursor: not-allowed;
 }
 
+/* ── Field-level mic button ──────────────────────────────────── */
+.ai-mic-field-btn {
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  color: #6b7280;
+  font-size: 0.78rem;
+  padding: 0.22rem 0.42rem;
+  border-radius: 999px;
+  cursor: pointer;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
+  white-space: nowrap;
+}
+.ai-mic-field-btn:hover:not(:disabled) {
+  background: #f3f4f6;
+  color: #374151;
+}
+.ai-mic-field-btn.fmic-recording {
+  background: #fef2f2;
+  color: #dc2626;
+  border-color: #fca5a5;
+  animation: fmicPulse 1.2s ease-in-out infinite;
+}
+.ai-mic-field-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+@keyframes fmicPulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2); }
+  50%       { box-shadow: 0 0 0 5px rgba(239, 68, 68, 0.35); }
+}
+.fmic-status {
+  font-size: 0.72rem;
+  color: #dc2626;
+  font-weight: 500;
+  white-space: nowrap;
+  display: none;
+}
+.fmic-status.visible { display: inline; }
+
   .rb-tip {
     margin: 0.4rem 0 0.9rem;
     padding: 0.75rem 0.85rem;
@@ -573,6 +711,7 @@
   }
 
   /* MINI PREVIEW - exact modern-1 layout (small, auto-scaling) */
+  /* ===== MINI PREVIEW OUTER (keep class names — scaling JS depends on them) ===== */
   .modern-mini-preview {
     width: 100%;
     display: flex;
@@ -584,187 +723,153 @@
 
   .modern-mini-page {
     position: relative;
-    width: 420px;          /* base width for scaling */
+    width: 420px;
     max-width: none;
-    aspect-ratio: 210 / 297; /* A4 ratio */
+    aspect-ratio: 210 / 297;
     background: #ffffff;
     border-radius: 16px;
     box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18);
     overflow: hidden;
     display: flex;
+    flex-direction: column;       /* header stacked above body */
     font-family: "Segoe UI", Arial, sans-serif;
     transform-origin: top center;
     border: 1px solid #e5e7eb;
   }
 
-  .modern-mini-left {
-    width: 32%;
-    background: #27355a;
-    color: #ffffff;
-    padding: 0.7rem 0.6rem;
-    border-right: 3px solid #facc15;
+  /* ── Header ── */
+  .bsmini-header {
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    box-sizing: border-box;
+    align-items: flex-start;
+    gap: 0.55rem;
+    padding: 0.65rem 0.75rem 0.5rem;
+    flex-shrink: 0;
   }
 
-  .modern-mini-avatar {
-    width: 80px;
-    height: 80px;
-    border-radius: 6px;
-    border: 3px solid #facc15;
-    overflow: hidden;
-    background: #facc15;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  .bsmini-photo {
+    width: 42px;
+    height: 42px;
+    border-radius: 5px;
+    background: #e5e7eb;
+    border: 1px solid #d1d5db;
+    flex-shrink: 0;
   }
 
-  .modern-mini-avatar-inner {
-    width: 70px;
-    height: 70px;
-    border-radius: 4px;
-    background: #fbbf24;
+  .bsmini-header-info {
+    flex: 1;
+    min-width: 0;
   }
 
-  .modern-mini-name-block {
-    text-align: center;
-    margin-top: 0.4rem;
-  }
-
-  .modern-mini-name {
-    font-size: 0.8rem;
-    font-weight: 700;
-    text-transform: none;
-    color: #ffffff;
-  }
-
-  .modern-mini-role {
-    font-size: 0.7rem;
-    color: #e5e7eb;
-    margin-top: 0.1rem;
-  }
-
-  .modern-mini-sidebar-section {
-    width: 100%;
-    margin-top: 0.8rem;
-    text-align: left;
-  }
-
-  .modern-mini-sidebar-section h3 {
-    font-size: 0.62rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    border-bottom: 1px solid #facc15;
-    padding-bottom: 0.25rem;
-    margin-bottom: 0.3rem;
-  }
-
-  .modern-mini-sidebar-section p {
-    font-size: 0.63rem;
-    line-height: 1.4;
-    margin: 0.15rem 0;
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    white-space: normal;
-    word-wrap: break-word;
-  }
-
-  .modern-mini-sidebar-section span:first-child {
-    font-size: 0.7rem;
-    color: #facc15;
-  }
-
-  .modern-mini-right {
-    width: 68%;
-    padding: 0.7rem 0.8rem 0.7rem 0.9rem;
-    box-sizing: border-box;
-    background: #ffffff;
-    display: flex;
-    flex-direction: column;
-    gap: 0.45rem;
-  }
-
-  .modern-mini-main-section {
-    margin-bottom: 0.1rem;
-  }
-
-  /* section headings */
-  .modern-mini-main-section h3 {
-    font-size: 0.7rem;
+  .bsmini-name {
+    font-size: 0.85rem;
     font-weight: 700;
     color: #111827;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    border-bottom: 1px solid #facc15;
-    padding-bottom: 0.2rem;
-    margin-bottom: 0.28rem;
+    line-height: 1.2;
+    margin-bottom: 0.05rem;
   }
 
-  /* summary box */
-  .modern-mini-summary-box {
-    border-radius: 8px;
-    border: 1px solid #e5e7eb;
-    background: #f9fafb;
-    padding: 0.35rem 0.45rem;
-  }
-
-  .modern-mini-main-section p {
+  .bsmini-role {
     font-size: 0.65rem;
-    line-height: 1.4;
-    color: #111827;
-    margin: 0;
-    max-height: 4.2rem;
-    overflow: hidden;
-    white-space: normal;
-    word-wrap: break-word;
+    color: #6b7280;
+    margin-bottom: 0.2rem;
   }
 
-  /* skills container */
-  .modern-mini-skills {
+  .bsmini-contact {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.22rem;
+    gap: 0.05rem 0.5rem;
+    font-size: 0.54rem;
+    color: #374151;
+    line-height: 1.4;
+  }
+
+  .bsmini-divider {
+    height: 1.5px;
+    background: #111827;
+    margin: 0 0.75rem;
+    flex-shrink: 0;
+  }
+
+  /* ── Body: two columns ── */
+  .bsmini-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .bsmini-left {
+    width: 35%;
+    padding: 0.5rem 0.45rem 0.5rem 0.75rem;
+    border-right: 1px solid #e5e7eb;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    overflow: hidden;
+  }
+
+  .bsmini-right {
+    flex: 1;
+    padding: 0.5rem 0.75rem 0.5rem 0.45rem;
+    overflow: hidden;
+  }
+
+  /* ── Section heading ── */
+  .bsmini-section {
+    margin-bottom: 0.45rem;
+  }
+
+  .bsmini-section h3 {
+    font-size: 0.56rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: #111827;
+    border-bottom: 1px solid #111827;
+    padding-bottom: 0.1rem;
+    margin-bottom: 0.2rem;
+  }
+
+  .bsmini-section p {
+    font-size: 0.58rem;
+    line-height: 1.38;
+    color: #374151;
+    margin: 0;
+    overflow: hidden;
+    max-height: 3.5rem;
+    word-wrap: break-word;
+    white-space: normal;
+  }
+
+  /* ── Skills: plain bullet list in the mini preview ── */
+  .modern-mini-skills {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
   }
 
   .modern-mini-skills span {
-    background: #facc15;
-    color: #111827;
-    border-radius: 999px;
-    padding: 0.16rem 0.5rem;
-    font-size: 0.6rem;
-    font-weight: 500;
-    white-space: nowrap;
+    font-size: 0.56rem;
+    color: #374151;
+    line-height: 1.3;
+    padding-left: 0.6rem;
+    position: relative;
   }
 
-  /* --- extra tweaks: spacing + smaller experience/skills --- */
-  .modern-mini-main-section {
-    margin-bottom: 0.5rem;
+  .modern-mini-skills span::before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: #6b7280;
   }
 
   #pvExperience {
-    font-size: 0.61rem;
-    line-height: 1.35;
-    color: #111827;
-    margin-top: 0.18rem;
+    font-size: 0.58rem;
+    line-height: 1.38;
+    color: #374151;
+    margin: 0;
+    overflow: hidden;
     white-space: normal;
     word-wrap: break-word;
-    overflow: hidden;
-  }
-
-  .modern-mini-skills {
-    gap: 0.22rem 0.3rem;
-    margin-top: 0.25rem;
-    padding-top: 0.1rem;
-  }
-
-  .modern-mini-skills span {
-    padding: 0.1rem 0.4rem;
-    font-size: 0.55rem;
-    line-height: 1.25;
   }
 
   @media (max-width: 1024px) {
@@ -780,6 +885,338 @@
     .modern-mini-page {
       margin: 1rem auto 0;
     }
+  }
+
+  /* ===== AI Interview Button ===== */
+  .btn-ai-interview {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    border: none;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(99,102,241,0.35);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    white-space: nowrap;
+  }
+  .btn-ai-interview:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(99,102,241,0.45);
+  }
+
+  /* ===== AI Interview Modal ===== */
+  .ai-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+
+  .ai-modal {
+    background: #fff;
+    border-radius: 20px;
+    width: 100%;
+    max-width: 540px;
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.25);
+    overflow: hidden;
+  }
+
+  .ai-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 1.25rem 1.5rem 1rem;
+    border-bottom: 1px solid #e5e7eb;
+    flex-shrink: 0;
+  }
+
+  .ai-modal-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #111827;
+    margin: 0 0 0.2rem;
+  }
+
+  .ai-modal-subtitle {
+    font-size: 0.85rem;
+    color: #6b7280;
+    margin: 0;
+  }
+
+  .ai-modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #6b7280;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0 0.25rem;
+    flex-shrink: 0;
+  }
+  .ai-modal-close:hover { color: #111827; }
+
+  .ai-chat-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-height: 180px;
+  }
+
+  .ai-bubble {
+    max-width: 82%;
+    padding: 0.6rem 0.9rem;
+    border-radius: 14px;
+    font-size: 0.88rem;
+    line-height: 1.5;
+  }
+
+  .ai-bubble.bot {
+    background: #f3f4f6;
+    color: #111827;
+    align-self: flex-start;
+    border-bottom-left-radius: 4px;
+  }
+
+  .ai-bubble.user {
+    background: #6366f1;
+    color: #fff;
+    align-self: flex-end;
+    border-bottom-right-radius: 4px;
+  }
+
+  .ai-input-row {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    border-top: 1px solid #e5e7eb;
+    flex-shrink: 0;
+  }
+
+  .ai-answer-input {
+    flex: 1;
+    padding: 0.55rem 0.8rem;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    background: #f9fafb;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .ai-answer-input:focus {
+    border-color: #6366f1;
+    background: #fff;
+    box-shadow: 0 0 0 1px rgba(99,102,241,0.3);
+  }
+
+  /* Input wrapper (input + mic button) */
+  .ai-input-wrapper {
+    position: relative;
+    flex: 1;
+    display: flex;
+    align-items: center;
+  }
+  .ai-input-wrapper .ai-answer-input {
+    flex: none;
+    width: 100%;
+    padding-right: 2.4rem;
+  }
+  .ai-mic-btn {
+    position: absolute;
+    right: 0.45rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.05rem;
+    line-height: 1;
+    padding: 0.2rem 0.25rem;
+    border-radius: 6px;
+    color: #9ca3af;
+    transition: color 0.15s, background 0.15s;
+  }
+  .ai-mic-btn:hover:not(:disabled) {
+    background: #f3f4f6;
+    color: #374151;
+  }
+  .ai-mic-btn.recording {
+    color: #ef4444;
+    animation: mic-pulse 0.8s ease-in-out infinite;
+  }
+  .ai-mic-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+  @keyframes mic-pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.45; }
+  }
+  .ai-mic-listening {
+    font-size: 0.72rem;
+    color: #ef4444;
+    padding: 0 1.25rem 0.3rem;
+    display: none;
+  }
+  .ai-mic-listening.visible {
+    display: block;
+  }
+
+  .ai-generate-row {
+    padding: 0.75rem 1.25rem;
+    border-top: 1px solid #e5e7eb;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .ai-generate-btn {
+    width: 100%;
+    padding: 0.7rem 1.5rem;
+    font-size: 1rem;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    border: none;
+    border-radius: 10px;
+  }
+  .ai-generate-btn:hover { opacity: 0.92; }
+
+  .ai-modal-status {
+    padding: 0 1.25rem 0.75rem;
+    font-size: 0.82rem;
+    color: #6b7280;
+    text-align: center;
+    min-height: 1.2rem;
+    flex-shrink: 0;
+  }
+
+  /* ===== Photo Upload Widget (builder Step 1) ===== */
+  .rb-photo-field { display: flex; flex-direction: column; gap: 0.55rem; }
+  .rb-photo-badge {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #7c3aed;
+    background: #ede9fe;
+    border-radius: 999px;
+    padding: 0.1rem 0.5rem;
+    margin-left: 0.4rem;
+    vertical-align: middle;
+  }
+  .photo-preview-wrap {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 2px dashed #d1d5db;
+    overflow: hidden;
+    background: #f9fafb;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .photo-preview-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .photo-preview-img.ph-hidden { display: none; }
+  .photo-preview-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    font-size: 0.7rem;
+    color: #9ca3af;
+    text-align: center;
+  }
+  .photo-preview-placeholder.ph-hidden { display: none; }
+  .photo-upload-btns { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+  .btn-photo-action {
+    font-size: 0.8rem;
+    padding: 0.3rem 0.7rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: #f9fafb;
+    cursor: pointer;
+    font-weight: 500;
+    color: #374151;
+    transition: background 0.15s;
+  }
+  .btn-photo-action:hover { background: #f3f4f6; }
+  .btn-photo-remove { color: #ef4444; border-color: #fca5a5; }
+  .btn-photo-remove:hover { background: #fef2f2; }
+  .btn-photo-remove.ph-hidden { display: none; }
+
+  /* ===== AI Interview Photo Step (Part 3) ===== */
+  .ai-photo-step {
+    padding: 0.75rem 1.25rem 0.75rem;
+    border-top: 1px solid #e5e7eb;
+    flex-shrink: 0;
+  }
+  .ai-photo-initial {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .ai-photo-choose-btn { font-size: 0.9rem; }
+  .ai-photo-skip-link {
+    background: none;
+    border: none;
+    color: #6b7280;
+    font-size: 0.85rem;
+    cursor: pointer;
+    text-decoration: underline;
+    padding: 0;
+  }
+  .ai-photo-skip-link:hover { color: #374151; }
+  .ai-crop-panel {
+    background: #f9fafb;
+    border-radius: 8px;
+    padding: 0.75rem;
+    border: 1px solid #e5e7eb;
+  }
+  .ai-crop-frame {
+    max-height: 240px;
+    overflow: hidden;
+    border-radius: 6px;
+    background: #111827;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .ai-crop-frame img { max-width: 100%; display: block; }
+  .ai-crop-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 0.6rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .ai-photo-done-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.65rem;
+  }
+  .ai-photo-thumb {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #d1d5db;
+    flex-shrink: 0;
+  }
+  .ai-photo-done-label {
+    font-size: 0.9rem;
+    color: #16a34a;
+    font-weight: 600;
+    flex: 1;
   }
 
   @media (max-width: 768px) {
@@ -1090,18 +1527,35 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const data = await res.json();
         if (data.success && data.text) {
-          const existing = textarea.value.trim();
-          const suggestion = data.text.trim();
-
           const before = textarea.value;
-          const combined = existing
-            ? existing + "\n\n" + suggestion
-            : suggestion;
+          let combined;
+
+          if (field === "experience") {
+            // Structured result: replace the whole field (it IS the full experience)
+            combined = data.text.trim();
+
+            // Persist structured array in hidden experienceJson input
+            let hiddenExp = document.getElementById("experienceJson");
+            if (!hiddenExp) {
+              hiddenExp = document.createElement("input");
+              hiddenExp.type = "hidden";
+              hiddenExp.name = "experienceJson";
+              hiddenExp.id   = "experienceJson";
+              document.getElementById("resumeBuilderForm").appendChild(hiddenExp);
+            }
+            const prevStructured = hiddenExp.value;
+            hiddenExp.value = JSON.stringify(data.structured || []);
+            lastAIStates[field] = { before, after: combined, prevStructured };
+          } else {
+            // All other fields: append suggestion to existing content
+            const existing   = textarea.value.trim();
+            const suggestion = data.text.trim();
+            combined = existing ? existing + "\n\n" + suggestion : suggestion;
+            lastAIStates[field] = { before, after: combined };
+          }
 
           textarea.value = combined;
           textarea.dispatchEvent(new Event("input")); // auto-resize + autosave
-
-          lastAIStates[field] = { before, after: combined };
 
           if (undoBtn) {
             undoBtn.disabled = false;
@@ -1134,6 +1588,12 @@ document.addEventListener("DOMContentLoaded", () => {
         textarea.value = state.before;
         textarea.dispatchEvent(new Event("input")); // keep autosave + preview in sync
 
+        // Restore experienceJson to its pre-suggestion value
+        if (field === "experience") {
+          const hiddenExp = document.getElementById("experienceJson");
+          if (hiddenExp) hiddenExp.value = state.prevStructured || "";
+        }
+
         delete lastAIStates[field];
         undoBtn.disabled = true;
 
@@ -1143,6 +1603,664 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
+</script>
+
+<script>
+/* ============================================================
+   AI INTERVIEW MODE
+   - Asks questions one-by-one in a chat UI
+   - Sends answers to /api/ai/interview-generate (Gemini)
+   - Auto-fills the resume builder form with the result
+   ============================================================ */
+(function () {
+  const TEMPLATE_ID = "<%= template %>";
+  // Templates that support a profile photo (must match config/template-fields.js)
+  const IS_PHOTO_TEMPLATE = ["modern-1", "bold-sidebar", "creative-gradient"].includes(TEMPLATE_ID);
+
+  // DOM refs — Q&A UI
+  const openBtn    = document.getElementById("aiInterviewBtn");
+  const modal      = document.getElementById("aiInterviewModal");
+  const closeBtn   = document.getElementById("aiModalClose");
+  const chatArea   = document.getElementById("aiChatArea");
+  const inputRow   = document.getElementById("aiInputRow");
+  const answerInput= document.getElementById("aiAnswerInput");
+  const sendBtn    = document.getElementById("aiSendBtn");
+  const genRow     = document.getElementById("aiGenerateRow");
+  const genBtn     = document.getElementById("aiGenerateBtn");
+  const statusEl   = document.getElementById("aiModalStatus");
+  const micBtn     = document.getElementById("aiMicBtn");
+  const micStatus  = document.getElementById("aiMicStatus");
+  // DOM refs — Photo step
+  const photoStep       = document.getElementById("aiPhotoStep");
+  const aiPhotoInput    = document.getElementById("aiPhotoInput");
+  const aiPhotoInitial  = document.getElementById("aiPhotoInitial");
+  const aiPhotoChooseBtn= document.getElementById("aiPhotoChooseBtn");
+  const aiPhotoSkipBtn  = document.getElementById("aiPhotoSkipBtn");
+  const aiCropPanel     = document.getElementById("aiCropPanel");
+  const aiCropImg       = document.getElementById("aiCropImg");
+  const aiCropConfirmBtn= document.getElementById("aiCropConfirmBtn");
+  const aiCropRetryBtn  = document.getElementById("aiCropRetryBtn");
+  const aiPhotoDoneArea = document.getElementById("aiPhotoDoneArea");
+  const aiPhotoThumb    = document.getElementById("aiPhotoThumb");
+  const aiPhotoRedo     = document.getElementById("aiPhotoRedo");
+  const aiPhotoGenBtn   = document.getElementById("aiPhotoGenBtn");
+
+  // State
+  let questions = [];     // [{key, question}] fetched from /api/template-fields
+  let qIndex    = 0;      // current question index
+  const answers = {};     // { key: "user answer" }
+
+  // ── Helpers ──────────────────────────────────────────────
+  function addBubble(text, role) {
+    const div = document.createElement("div");
+    div.className = "ai-bubble " + role;
+    div.textContent = text;
+    chatArea.appendChild(div);
+    chatArea.scrollTop = chatArea.scrollHeight;
+  }
+
+  function setStatus(msg) {
+    if (statusEl) statusEl.textContent = msg;
+  }
+
+  function resetModal() {
+    chatArea.innerHTML = "";
+    Object.keys(answers).forEach(k => delete answers[k]);
+    qIndex = 0;
+    answerInput.value = "";
+    inputRow.style.display = "flex";
+    genRow.style.display = "none";
+    if (photoStep) photoStep.style.display = "none";
+    setStatus("");
+  }
+
+  // ── Open modal & fetch questions ──────────────────────────
+  async function openModal() {
+    resetModal();
+    modal.style.display = "flex";
+    answerInput.disabled = true;
+    sendBtn.disabled = true;
+    setStatus("Loading questions…");
+
+    try {
+      const res = await fetch("/api/template-fields/" + TEMPLATE_ID);
+      const data = await res.json();
+      // Only keep fields that have a question string
+      questions = (data.fields || []).filter(f => f.question);
+    } catch (e) {
+      addBubble("Sorry, couldn't load questions. Please try again.", "bot");
+      setStatus("");
+      return;
+    }
+
+    if (!questions.length) {
+      addBubble("No interview questions found for this template.", "bot");
+      setStatus("");
+      return;
+    }
+
+    setStatus("");
+    answerInput.disabled = false;
+    sendBtn.disabled = false;
+
+    addBubble("Hi! I'm your AI resume assistant. I'll ask you a few quick questions and build your resume. Let's start!", "bot");
+    setTimeout(() => askQuestion(0), 400);
+  }
+
+  function askQuestion(index) {
+    if (index >= questions.length) {
+      showGenerateButton();
+      return;
+    }
+    const q = questions[index];
+    addBubble(q.question, "bot");
+    answerInput.focus();
+  }
+
+  function showGenerateButton() {
+    inputRow.style.display = "none";
+    if (IS_PHOTO_TEMPLATE) {
+      photoStep.style.display = "block";
+      aiPhotoInitial.style.display = "flex";
+      aiCropPanel.style.display = "none";
+      aiPhotoDoneArea.style.display = "none";
+      addBubble("Almost done! Your template supports a profile photo. Would you like to add one?", "bot");
+    } else {
+      genRow.style.display = "block";
+      addBubble("Great! I have everything I need. Click the button below to generate your resume.", "bot");
+    }
+  }
+
+  // ── Send answer ───────────────────────────────────────────
+  function sendAnswer() {
+    const val = answerInput.value.trim();
+    if (!val) return;
+
+    const q = questions[qIndex];
+    addBubble(val, "user");
+    answers[q.key] = val;
+    answerInput.value = "";
+
+    qIndex++;
+    setTimeout(() => askQuestion(qIndex), 300);
+  }
+
+  sendBtn.addEventListener("click", sendAnswer);
+  answerInput.addEventListener("keydown", e => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAnswer(); }
+  });
+
+  // ── Generate resume (shared by genBtn and aiPhotoGenBtn) ─────────────────
+  async function doGenerate(btn) {
+    btn.disabled   = true;
+    btn.textContent = "⏳ Generating…";
+    setStatus("Gemini is crafting your resume…");
+    try {
+      const res  = await fetch("/api/ai/interview-generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answers, templateId: TEMPLATE_ID }),
+      });
+      const data = await res.json();
+      if (!data.success || !data.data) {
+        setStatus("⚠️ " + (data.error === "insufficient_quota"
+          ? "AI quota reached. Please try again later."
+          : (data.error || "Something went wrong.")));
+        btn.disabled   = false;
+        btn.textContent = "✨ Generate My Resume";
+        return;
+      }
+      // Merge photo URL captured during the photo step
+      if (answers.profileImageUrl) data.data.profileImageUrl = answers.profileImageUrl;
+      fillForm(data.data);
+      modal.style.display = "none";
+    } catch (err) {
+      console.error(err);
+      setStatus("⚠️ Network error. Please try again.");
+      btn.disabled   = false;
+      btn.textContent = "✨ Generate My Resume";
+    }
+  }
+  genBtn.addEventListener("click", () => doGenerate(genBtn));
+
+  // ── fillForm: populate all form fields with AI-generated data ──
+  function expArrayToText(arr) {
+    if (!Array.isArray(arr)) return String(arr || "");
+    return arr.map(item => {
+      const header = "- " + [item.title, item.company ? "[" + item.company + "]" : "", item.dates ? "(" + item.dates + ")" : ""].filter(Boolean).join(" ");
+      return item.description ? header + "\n" + item.description : header;
+    }).join("\n\n");
+  }
+
+  function setField(id, value) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.value = value || "";
+    el.dispatchEvent(new Event("input")); // triggers auto-resize + live preview + autosave
+  }
+
+  function fillForm(resumeData) {
+    setField("fullName",       resumeData.fullName);
+    setField("roleTitle",      resumeData.roleTitle);
+    setField("phone",          resumeData.phone);
+    setField("email",          resumeData.email);
+    setField("location",       resumeData.location);
+    setField("summary",        resumeData.summary);
+    setField("education",      resumeData.education);
+    setField("skills",         resumeData.skills);
+    setField("languages",      resumeData.languages);
+
+    // Experience: convert array to textarea text format
+    const expText = expArrayToText(resumeData.experience);
+    setField("experience", expText);
+
+    // Profile photo — set hidden input + update preview widget if present
+    if (resumeData.profileImageUrl) {
+      const hiddenPhoto = document.getElementById("profileImageUrl");
+      if (hiddenPhoto) hiddenPhoto.value = resumeData.profileImageUrl;
+      const previewImg   = document.getElementById("photoPreviewImg");
+      const placeholder  = document.getElementById("photoPlaceholder");
+      const removeBtn    = document.getElementById("photoRemoveBtn");
+      if (previewImg)  { previewImg.src = resumeData.profileImageUrl; previewImg.classList.remove("ph-hidden"); }
+      if (placeholder)   placeholder.classList.add("ph-hidden");
+      if (removeBtn)     removeBtn.classList.remove("ph-hidden");
+    }
+
+    // Also store the raw JSON for structured save/PDF
+    let hiddenExp = document.getElementById("experienceJson");
+    if (!hiddenExp) {
+      hiddenExp = document.createElement("input");
+      hiddenExp.type = "hidden";
+      hiddenExp.name = "experienceJson";
+      hiddenExp.id   = "experienceJson";
+      document.getElementById("resumeBuilderForm").appendChild(hiddenExp);
+    }
+    hiddenExp.value = JSON.stringify(resumeData.experience);
+
+    // Navigate to step 1 so user can review
+    const firstStep = document.querySelector(".rb-step[data-step='1']");
+    if (firstStep) {
+      document.querySelectorAll(".rb-step").forEach(s => s.classList.remove("active"));
+      firstStep.classList.add("active");
+      document.querySelectorAll(".rb-step-dot").forEach((d, i) => {
+        d.classList.toggle("active", i === 0);
+        d.classList.toggle("done", false);
+      });
+      const counter = document.getElementById("rbStepCounter");
+      if (counter) counter.textContent = "1";
+      const nextBtn = document.getElementById("rbNextBtn");
+      const submitBtn = document.getElementById("rbSubmitBtn");
+      if (nextBtn) nextBtn.style.display = "inline-block";
+      if (submitBtn) submitBtn.style.display = "none";
+    }
+  }
+
+  // ── AI Interview Photo Step (Part 3) ─────────────────────────────────────
+  let cropperInstance = null;
+
+  // Lazy-load Cropper.js from CDN only when the photo step is first used
+  function loadCropperJs(cb) {
+    if (window.Cropper) { cb(); return; }
+    const link   = document.createElement("link");
+    link.rel     = "stylesheet";
+    link.href    = "https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css";
+    document.head.appendChild(link);
+    const script  = document.createElement("script");
+    script.src    = "https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js";
+    script.onload = cb;
+    document.head.appendChild(script);
+  }
+
+  function openCropperWithSrc(src) {
+    aiCropImg.src = src;
+    aiPhotoInitial.style.display = "none";
+    aiPhotoDoneArea.style.display = "none";
+    aiCropPanel.style.display = "block";
+    if (cropperInstance) { cropperInstance.destroy(); cropperInstance = null; }
+    cropperInstance = new Cropper(aiCropImg, {
+      aspectRatio:        1,        // square crop
+      viewMode:           1,        // restrict crop box to canvas
+      dragMode:          "move",    // drag the image, not the crop box
+      autoCropArea:       0.85,
+      guides:             true,
+      highlight:          false,
+      cropBoxMovable:     true,
+      cropBoxResizable:   true,
+      toggleDragModeOnDblclick: false,
+    });
+  }
+
+  if (aiPhotoChooseBtn) {
+    aiPhotoChooseBtn.addEventListener("click", () => aiPhotoInput && aiPhotoInput.click());
+  }
+
+  if (aiPhotoInput) {
+    aiPhotoInput.addEventListener("change", () => {
+      const file = aiPhotoInput.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => loadCropperJs(() => openCropperWithSrc(e.target.result));
+      reader.readAsDataURL(file);
+      aiPhotoInput.value = ""; // reset so same file can be reselected
+    });
+  }
+
+  if (aiCropRetryBtn) {
+    aiCropRetryBtn.addEventListener("click", () => {
+      if (cropperInstance) { cropperInstance.destroy(); cropperInstance = null; }
+      aiCropPanel.style.display = "none";
+      aiPhotoInitial.style.display = "flex";
+    });
+  }
+
+  if (aiCropConfirmBtn) {
+    aiCropConfirmBtn.addEventListener("click", async () => {
+      if (!cropperInstance) return;
+      aiCropConfirmBtn.disabled = true;
+      aiCropConfirmBtn.textContent = "Uploading…";
+      const canvas = cropperInstance.getCroppedCanvas({ width: 400, height: 400 });
+      canvas.toBlob(async (blob) => {
+        const fd = new FormData();
+        fd.append("photo", blob, "profile-photo.jpg");
+        try {
+          const res  = await fetch("/resume-builder/upload-photo", { method: "POST", body: fd });
+          const data = await res.json();
+          if (data.success) {
+            answers.profileImageUrl = data.imagePath;
+            if (cropperInstance) { cropperInstance.destroy(); cropperInstance = null; }
+            aiCropPanel.style.display = "none";
+            aiPhotoThumb.src = data.imagePath;
+            aiPhotoDoneArea.style.display = "block";
+            addBubble("Photo uploaded ✓  Now let's generate your resume!", "bot");
+          } else {
+            setStatus("Upload failed — try again or skip.");
+            aiCropConfirmBtn.disabled = false;
+            aiCropConfirmBtn.textContent = "✓ Use This Photo";
+          }
+        } catch (err) {
+          console.error(err);
+          setStatus("Upload error — check your connection.");
+          aiCropConfirmBtn.disabled = false;
+          aiCropConfirmBtn.textContent = "✓ Use This Photo";
+        }
+      }, "image/jpeg", 0.92);
+    });
+  }
+
+  if (aiPhotoRedo) {
+    aiPhotoRedo.addEventListener("click", () => {
+      answers.profileImageUrl = null;
+      aiPhotoDoneArea.style.display = "none";
+      aiPhotoInitial.style.display = "flex";
+    });
+  }
+
+  if (aiPhotoSkipBtn) {
+    aiPhotoSkipBtn.addEventListener("click", () => {
+      addBubble("No photo — that's fine!", "bot");
+      photoStep.style.display = "none";
+      genRow.style.display = "block";
+    });
+  }
+
+  if (aiPhotoGenBtn) {
+    aiPhotoGenBtn.addEventListener("click", () => doGenerate(aiPhotoGenBtn));
+  }
+
+  // ── Voice Input (continuous mode + 6-second silence buffer) ─────────────
+  function initVoiceRecognition() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      if (micBtn) {
+        micBtn.disabled = true;
+        micBtn.title = "Voice input not supported in this browser.";
+      }
+      return;
+    }
+
+    const recognition   = new SR();
+    recognition.lang    = "en-IN";
+    recognition.continuous     = true;   // don't stop on natural pauses
+    recognition.interimResults = true;   // fire events during speech, not only at end
+
+    const SILENCE_MS = 6000;  // wait 6 s of silence before finalising
+    let isListening    = false;
+    let silenceTimer   = null;
+    let finalTranscript = "";
+
+    function armSilenceTimer() {
+      clearTimeout(silenceTimer);
+      silenceTimer = setTimeout(() => {
+        if (isListening) {
+          micStatus.textContent = "Processing…";
+          recognition.stop(); // triggers onend which inserts the transcript
+        }
+      }, SILENCE_MS);
+    }
+
+    recognition.onstart = () => {
+      isListening     = true;
+      finalTranscript = "";
+      micBtn.classList.add("recording");
+      micBtn.disabled = false;        // stay clickable so user can stop manually
+      micBtn.title    = "Click to stop";
+      micStatus.textContent = "Listening… (pauses are OK)";
+      micStatus.classList.add("visible");
+      armSilenceTimer(); // auto-stop if completely silent from the start
+    };
+
+    recognition.onresult = (e) => {
+      // Accumulate only final segments; interim resets the silence timer only
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) {
+          finalTranscript += e.results[i][0].transcript;
+        }
+      }
+      // Any speech activity → reset the silence countdown
+      armSilenceTimer();
+      micStatus.textContent = "Listening…";
+    };
+
+    recognition.onerror = (e) => {
+      // "no-speech" fires routinely in continuous mode when the line is quiet — ignore
+      if (e.error === "no-speech") return;
+      clearTimeout(silenceTimer);
+      // onend always fires next; it handles the UI reset and transcript insertion
+    };
+
+    recognition.onend = () => {
+      isListening = false;
+      clearTimeout(silenceTimer);
+      micBtn.classList.remove("recording");
+      micBtn.disabled = false;
+      micBtn.title    = "Speak your answer";
+      if (finalTranscript.trim()) {
+        const existing = answerInput.value.trim();
+        answerInput.value = existing
+          ? existing + " " + finalTranscript.trim()
+          : finalTranscript.trim();
+        answerInput.dispatchEvent(new Event("input"));
+      }
+      micStatus.textContent = "";
+      micStatus.classList.remove("visible");
+    };
+
+    micBtn.addEventListener("click", () => {
+      if (isListening) {
+        // User manually stops — finalise immediately
+        clearTimeout(silenceTimer);
+        micStatus.textContent = "Processing…";
+        recognition.stop();
+        return;
+      }
+      finalTranscript = "";
+      try { recognition.start(); } catch (_) { /* guard double-start */ }
+    });
+  }
+  initVoiceRecognition();
+
+  // ── Close modal ───────────────────────────────────────────
+  closeBtn.addEventListener("click", () => { modal.style.display = "none"; });
+  modal.addEventListener("click", e => { if (e.target === modal) modal.style.display = "none"; });
+
+  // ── Open ──────────────────────────────────────────────────
+  openBtn.addEventListener("click", openModal);
+})();
+</script>
+
+<script>
+/* ── Field-level speech-to-text (textarea mic buttons) ──────────────── */
+(function () {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  // Disable all mic buttons silently if API unavailable
+  if (!SR) {
+    document.querySelectorAll('.ai-mic-field-btn').forEach(function (btn) {
+      btn.disabled = true;
+      btn.title = 'Voice input not supported in this browser';
+    });
+    return;
+  }
+
+  const SILENCE_MS = 6000;
+
+  // Shared state — only one recording at a time
+  var recognition  = null;
+  var isListening  = false;
+  var activeBtn    = null;
+  var activeStatus = null;
+  var activeTarget = null;
+  var silenceTimer = null;
+  var finalTranscript = '';
+
+  function getStatusEl(btn) {
+    return btn.closest('.ai-btn-group').querySelector('.fmic-status');
+  }
+
+  function armSilenceTimer() {
+    clearTimeout(silenceTimer);
+    silenceTimer = setTimeout(function () {
+      if (isListening && recognition) {
+        setStatus('Processing\u2026');
+        recognition.stop();
+      }
+    }, SILENCE_MS);
+  }
+
+  function setStatus(text) {
+    if (!activeStatus) return;
+    activeStatus.textContent = text;
+    if (text) activeStatus.classList.add('visible');
+    else activeStatus.classList.remove('visible');
+  }
+
+  function startRecording(btn, textarea) {
+    // Create a fresh instance every time — avoids restart-loop bugs
+    recognition = new SR();
+    recognition.lang = 'en-IN';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    finalTranscript = '';
+    activeBtn    = btn;
+    activeTarget = textarea;
+    activeStatus = getStatusEl(btn);
+
+    recognition.onstart = function () {
+      isListening = true;
+      activeBtn.classList.add('fmic-recording');
+      activeBtn.title = 'Click to stop recording';
+      setStatus('Listening\u2026');
+      armSilenceTimer();
+    };
+
+    recognition.onresult = function (e) {
+      for (var i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) {
+          finalTranscript += e.results[i][0].transcript;
+        }
+      }
+      // Any speech resets the silence clock
+      armSilenceTimer();
+      setStatus('Listening\u2026');
+    };
+
+    recognition.onerror = function (e) {
+      // 'no-speech' fires during silence — let the timer handle it
+      if (e.error === 'no-speech') return;
+      clearTimeout(silenceTimer);
+    };
+
+    recognition.onend = function () {
+      isListening = false;
+      clearTimeout(silenceTimer);
+
+      if (activeBtn) {
+        activeBtn.classList.remove('fmic-recording');
+        activeBtn.title = 'Voice input';
+      }
+      setStatus('');
+
+      // Append transcript to the textarea (preserve existing content)
+      if (finalTranscript.trim() && activeTarget) {
+        var existing = activeTarget.value.trimEnd();
+        activeTarget.value = existing
+          ? existing + '\n' + finalTranscript.trim()
+          : finalTranscript.trim();
+        // Notify any live-preview listeners
+        activeTarget.dispatchEvent(new Event('input'));
+      }
+
+      activeBtn    = null;
+      activeStatus = null;
+      activeTarget = null;
+      recognition  = null;
+    };
+
+    try { recognition.start(); } catch (_) { /* guard against double-start */ }
+  }
+
+  function stopRecording() {
+    clearTimeout(silenceTimer);
+    setStatus('Processing\u2026');
+    recognition.stop();
+  }
+
+  // Wire up every mic button
+  document.querySelectorAll('.ai-mic-field-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var targetId = btn.dataset.micTarget;
+      var textarea = document.getElementById(targetId);
+      if (!textarea) return;
+
+      if (isListening) {
+        if (activeBtn === btn) {
+          // Same mic: manual stop
+          stopRecording();
+        } else {
+          // Different mic: stop current; user must click again to start new one
+          stopRecording();
+        }
+        return;
+      }
+
+      startRecording(btn, textarea);
+    });
+  });
+})();
+</script>
+
+<script>
+/* ── Part 1: Normal form photo upload widget ─────────────────────────── */
+(function () {
+  const photoInput  = document.getElementById("photoFileInput");
+  const photoHidden = document.getElementById("profileImageUrl");
+  const previewImg  = document.getElementById("photoPreviewImg");
+  const placeholder = document.getElementById("photoPlaceholder");
+  const uploadBtn   = document.getElementById("photoUploadTrigger");
+  const removeBtn   = document.getElementById("photoRemoveBtn");
+
+  if (!photoInput) return; // not a photo template — widget not rendered
+
+  uploadBtn.addEventListener("click", () => photoInput.click());
+
+  photoInput.addEventListener("change", async () => {
+    const file = photoInput.files[0];
+    if (!file) return;
+
+    const fd = new FormData();
+    fd.append("photo", file);
+    const originalLabel = uploadBtn.textContent;
+    uploadBtn.textContent = "Uploading…";
+    uploadBtn.disabled = true;
+
+    try {
+      const res  = await fetch("/resume-builder/upload-photo", { method: "POST", body: fd });
+      const data = await res.json();
+      if (data.success) {
+        photoHidden.value = data.imagePath;
+        previewImg.src    = data.imagePath;
+        previewImg.classList.remove("ph-hidden");
+        placeholder.classList.add("ph-hidden");
+        removeBtn.classList.remove("ph-hidden");
+      }
+    } catch (err) {
+      console.error("Photo upload failed:", err);
+    }
+
+    uploadBtn.textContent = originalLabel;
+    uploadBtn.disabled    = false;
+    photoInput.value      = "";
+  });
+
+  removeBtn.addEventListener("click", () => {
+    photoHidden.value = "";
+    previewImg.src    = "";
+    previewImg.classList.add("ph-hidden");
+    placeholder.classList.remove("ph-hidden");
+    removeBtn.classList.add("ph-hidden");
+  });
+})();
 </script>
 
 <%- include("partials/footer") %>

@@ -1,0 +1,107 @@
+export const TEMPLATES = [
+  {
+    id: "modern-1",
+    title: "Modern Professional",
+    description: "Clean two-column layout, great for experienced professionals.",
+    previewImage: "/images/templates/SmrAI-Studio-Resume-A4.jpg",
+    isPaid: true,
+    isAvailable: true,
+    badge: "Popular",
+    category: "experienced",
+  },
+  {
+    id: "bold-sidebar",
+    title: "Bold Sidebar",
+    description: "Strong left sidebar for contact & skills, content on the right.",
+    previewImage: "/images/templates/1 (1).png",
+    isPaid: true,
+    isAvailable: true,
+    badge: "New",
+    category: "experienced",
+  },
+  {
+    id: "minimal-1",
+    title: "Simple & Minimal",
+    description: "Single-column layout, perfect for fresher & minimalist profiles.",
+    previewImage: "/images/templates/1 (2).png",
+    isPaid: true,
+    isAvailable: true,
+    badge: "ATS Friendly",
+    category: "fresher",
+  },
+  {
+    id: "creative-gradient",
+    title: "Creative Gradient",
+    description: "Vibrant color bar headers and creative fonts for design roles.",
+    previewImage: "/images/templates/1 (3).png",
+    isPaid: true,
+    isAvailable: true,
+    badge: "Creative",
+    category: "experienced",
+  },
+  {
+    id: "corporate-clean",
+    title: "Corporate Clean",
+    description: "Blue-gray tones and clean structure suited for management roles.",
+    previewImage: "/images/templates/1 (4).png",
+    isPaid: true,
+    isAvailable: true,
+    badge: "Professional",
+    category: "experienced",
+  },
+  {
+    id: "elegant-serif",
+    title: "Elegant Serif",
+    description: "Classic fonts and balanced spacing, great for academia or HR.",
+    previewImage: "/images/templates/1 (5).png",
+    isPaid: true,
+    isAvailable: true,
+    category: "experienced",
+  },
+  {
+    id: "tech-focused",
+    title: "Tech Focused",
+    description: "Monospace typography and clean blocks for developers and engineers.",
+    previewImage: "/images/templates/1 (6).png",
+    isPaid: true,
+    isAvailable: true,
+    category: "experienced",
+  },
+  {
+    id: "classic-border",
+    title: "Classic Border",
+    description: "Thin border layout with professional blue tones for all industries.",
+    previewImage: "/images/templates/1 (7).png",
+    isPaid: true,
+    isAvailable: true,
+    category: "experienced",
+  },
+  {
+    id: "photo-resume",
+    title: "Photo Resume",
+    description: "Profile photo section with elegant left bar and summary space.",
+    previewImage: "/images/templates/SmrAI-Studio-Resume-A4.jpg",
+    isPaid: true,
+    isAvailable: false,
+    badge: "Coming Soon",
+    category: "experienced",
+  },
+  {
+    id: "modern-blue",
+    title: "Modern Blue",
+    description: "Sharp blue top bar and section headers, perfect for executives.",
+    previewImage: "/images/templates/SmrAI-Studio-Resume-A4.jpg",
+    isPaid: true,
+    isAvailable: false,
+    badge: "Coming Soon",
+    category: "experienced",
+  },
+];
+
+export function getTemplateById(id) {
+  return TEMPLATES.find((t) => t.id === id) || TEMPLATES[0];
+}
+
+export function getAvailableTemplates() {
+  return TEMPLATES.filter((t) => t.isAvailable);
+}

@@ -1,0 +1,73 @@
+<!-- CORPORATE-CLEAN: Blue-gray professional layout -->
+<div class="corp-header">
+  <div class="corp-header-left">
+    <h2 class="corp-name"><%= data.fullName || "" %></h2>
+    <p class="corp-role"><%= data.roleTitle || "" %></p>
+  </div>
+  <div class="corp-header-right">
+    <p>📞 <%= data.phone || "" %></p>
+    <p>✉️ <%= data.email || "" %></p>
+    <% if (data.location) { %>
+      <p>📍 <%= data.location %></p>
+    <% } %>
+  </div>
+</div>
+
+<div class="corp-body">
+  <div class="corp-section corp-full">
+    <h3>Professional Summary</h3>
+    <p><%= data.summary || "" %></p>
+  </div>
+
+  <div class="corp-grid">
+    <div class="corp-main">
+      <div class="corp-section">
+        <h3>Experience</h3>
+        <% if (experienceItems.length) { %>
+          <ul class="experience-list">
+            <% experienceItems.forEach(exp => { %>
+              <li>
+                <div class="exp-heading">
+                  <span class="exp-title"><strong><%= exp.title %></strong><% if (exp.company) { %> <em class="exp-company"> · <%= exp.company %></em><% } %></span>
+                  <% if (exp.dates) { %>
+                    <span class="exp-dates"><%= exp.dates %></span>
+                  <% } %>
+                </div>
+                <% if (exp.description) { %>
+                  <div class="exp-body"><%= exp.description %></div>
+                <% } %>
+              </li>
+            <% }) %>
+          </ul>
+        <% } else { %>
+          <p><%= data.experience || "" %></p>
+        <% } %>
+      </div>
+
+      <div class="corp-section">
+        <h3>Skills</h3>
+        <% if (skillsLines.length) { %>
+          <div class="corp-skills">
+            <% skillsLines.forEach(line => { %>
+              <span class="corp-skill-tag"><%= line %></span>
+            <% }) %>
+          </div>
+        <% } else { %>
+          <p><%= data.skills || "" %></p>
+        <% } %>
+      </div>
+    </div>
+
+    <div class="corp-side">
+      <div class="corp-section">
+        <h3>Education</h3>
+        <p><%= data.education || "" %></p>
+      </div>
+
+      <div class="corp-section">
+        <h3>Languages</h3>
+        <p><%= data.languages || "" %></p>
+      </div>
+    </div>
+  </div>
+</div>

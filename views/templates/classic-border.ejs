@@ -1,0 +1,73 @@
+<!-- CLASSIC-BORDER: Bordered sections with blue accents -->
+<div class="cb-inner">
+  <div class="cb-header">
+    <h2 class="cb-name"><%= data.fullName || "" %></h2>
+    <p class="cb-role"><%= data.roleTitle || "" %></p>
+    <div class="cb-contact">
+      <span>📞 <%= data.phone || "" %></span>
+      <span>✉️ <%= data.email || "" %></span>
+      <% if (data.location) { %>
+        <span>📍 <%= data.location %></span>
+      <% } %>
+    </div>
+  </div>
+
+  <div class="cb-divider"></div>
+
+  <div class="cb-section">
+    <h3>Professional Summary</h3>
+    <p><%= data.summary || "" %></p>
+  </div>
+
+  <div class="cb-divider"></div>
+
+  <div class="cb-section">
+    <h3>Experience</h3>
+    <% if (experienceItems.length) { %>
+      <% experienceItems.forEach(exp => { %>
+        <div class="cb-exp-item">
+          <div class="cb-exp-header">
+            <strong><%= exp.title %></strong><% if (exp.company) { %> <em class="exp-company"> · <%= exp.company %></em><% } %>
+            <% if (exp.dates) { %>
+              <span class="cb-exp-dates"><%= exp.dates %></span>
+            <% } %>
+          </div>
+          <% if (exp.description) { %>
+            <p class="cb-exp-desc"><%= exp.description %></p>
+          <% } %>
+        </div>
+      <% }) %>
+    <% } else { %>
+      <p><%= data.experience || "" %></p>
+    <% } %>
+  </div>
+
+  <div class="cb-divider"></div>
+
+  <div class="cb-two-col">
+    <div class="cb-section">
+      <h3>Education</h3>
+      <p><%= data.education || "" %></p>
+    </div>
+
+    <div class="cb-section">
+      <h3>Languages</h3>
+      <p><%= data.languages || "" %></p>
+    </div>
+  </div>
+
+  <div class="cb-divider"></div>
+
+  <div class="cb-section">
+    <h3>Skills</h3>
+    <% if (skillsLines.length) { %>
+      <div class="cb-skills">
+        <% skillsLines.forEach(line => { %>
+          <span class="cb-skill-tag"><%= line %></span>
+        <% }) %>
+      </div>
+    <% } else { %>
+      <p><%= data.skills || "" %></p>
+    <% } %>
+  </div>
+</div>

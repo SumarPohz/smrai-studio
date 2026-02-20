@@ -1,0 +1,1192 @@
+/* =============================================================
+   SmrAI-Studio — Template-Specific Styles
+   Each template is namespaced to prevent conflicts.
+   ============================================================= */
+
+/* ===== BASE: Reset + typography for all templates =====
+ * templates.css loads AFTER style.css (see partials/header.ejs).
+ * At equal specificity (0,1,0), cascade order means these rules beat
+ * style.css's legacy: .resume-page { display:flex; overflow:hidden;
+ *   background:#f3f4f6; margin:1.5rem auto; max-width:900px; border-radius:8px }
+ * Template-specific rules at (0,2,0) below override these base values as needed.
+ * ============================================================== */
+.resume-page {
+  /* --- Layout reset (neutralize style.css page-layout rules) --- */
+  display: block;            /* style.css: display:flex — block is correct base */
+  margin: 0;                 /* style.css: margin:1.5rem auto */
+  max-width: none;           /* style.css: max-width:900px */
+  width: 100%;               /* fill the .resume-a4 container */
+
+  /* --- Visual reset (these are owned by .resume-a4 wrapper) --- */
+  background: transparent;   /* style.css: background:#f3f4f6 — templates set their own bg */
+  box-shadow: none;          /* style.css: box-shadow — .resume-a4 owns the shadow */
+  border-radius: 0;          /* style.css: border-radius:8px — .resume-a4 owns the radius */
+
+  /* --- Overflow: allow content to grow for multi-page resumes --- */
+  overflow: visible;         /* style.css: overflow:hidden — must NOT clip template content */
+
+  /* --- A4 dimensions --- */
+  min-height: 1123px;        /* A4 height baseline; tall content grows beyond naturally */
+  height: auto;
+  position: relative;
+  z-index: 1;
+
+  /* --- Typography base (individual templates override as needed) --- */
+  font-family: "Segoe UI", Arial, sans-serif;
+  color: #111827;
+}
+
+/* ===== SHARED: Company name inside experience items ===== */
+.resume-page .exp-company {
+  font-style: italic;
+  font-weight: 600;
+  font-size: 0.9em;
+}
+
+/* ===== RESET: Neutralize global styles from style.css that leak in ===== */
+/* style.css has broad h1-h3, a, ul, ul li selectors that conflict with templates */
+.resume-page h1,
+.resume-page h2,
+.resume-page h3 {
+  color: inherit;               /* let each template control heading colors */
+  margin: 0;
+}
+
+.resume-page a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.resume-page ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.resume-page ul li {
+  background: none;             /* kill global white-card style */
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  margin: 0;
+  box-shadow: none;
+}
+
+/* ===== SHARED: Experience list (used by all templates) ===== */
+.experience-list {
+  list-style: none;
+  padding-left: 0;
+  margin-top: 0.3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.resume-page .experience-list li {
+  background: #f3f4f6;
+  border-left: 4px solid #eab308;
+  padding: 0.45rem 0.75rem;
+  border-radius: 6px;
+  margin-bottom: 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.exp-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.3;
+}
+
+.exp-title { font-weight: 600; }
+.exp-dates { font-weight: 600; color: #374151; }
+
+.exp-body {
+  margin-top: 0.2rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: #111827;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* ===== MODERN-1 (two-column navy/yellow) ===== */
+.resume-page.modern-1 {
+  display: flex;
+  /*
+   * MUST be explicit: style.css has @media(max-width:768px){.resume-page{flex-direction:column}}
+   * at specificity 0,1,0. Without an explicit value here at 0,2,0, that rule stacks the two
+   * columns on any mobile viewport, breaking the sidebar layout. flex-direction:row at 0,2,0
+   * beats the 0,1,0 media query unconditionally, preserving the two-column layout at all widths.
+   * The JS scale() in resume-preview.ejs then handles visual resizing on narrow screens.
+   */
+  flex-direction: row;
+  flex-wrap: nowrap;
+}
+
+.modern-left {
+  width: 32%;
+  background: #27355a;
+  color: #ffffff;
+  padding: 1.8rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-right: 3px solid #facc15;
+}
+
+.modern-avatar img {
+  width: 120px;
+  height: 120px;
+  border-radius: 8px;
+  border: 3px solid #facc15;
+  object-fit: cover;
+  box-shadow: 0 0 10px rgba(250, 204, 21, 0.4);
+}
+
+.modern-avatar-placeholder {
+  width: 120px;
+  height: 120px;
+  border-radius: 8px;
+  border: 3px dashed #facc15;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  color: #facc15;
+}
+
+.modern-name-block {
+  text-align: center;
+  margin-top: 1rem;
+  color: #ffffff;
+}
+
+.modern-name-block h2 {
+  font-size: 1.3rem;
+  margin: 0;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.modern-name-block .role {
+  font-size: 0.9rem;
+  color: #e4e6ef;
+  margin-top: 0.2rem;
+}
+
+.modern-sidebar-section {
+  margin-top: 1.8rem;
+  width: 100%;
+  color: #ffffff;
+}
+
+.modern-sidebar-section h3 {
+  font-size: 0.85rem;
+  letter-spacing: 1px;
+  border-bottom: 1px solid #facc15;
+  padding-bottom: 0.4rem;
+  margin-bottom: 0.6rem;
+  font-weight: 700;
+  color: #ffffff;
+  text-transform: uppercase;
+}
+
+.modern-sidebar-section p {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: #ffffff;
+  margin: 0.3rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+.modern-sidebar-section span {
+  color: #facc15;
+  font-size: 0.9rem;
+}
+
+.modern-right {
+  width: 68%;
+  padding: 1.8rem 2rem;
+  background: #ffffff;
+}
+
+.modern-section-block {
+  margin-bottom: 1.8rem;
+}
+
+.modern-section-block h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #111827;
+  border-bottom: 2px solid #facc15;
+  padding-bottom: 0.25rem;
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.modern-section-block p {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: #111827;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid #f4f4f4;
+  border-radius: 6px;
+  background: #fafafa;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+.modern-section-block ul:not(.experience-list) {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.modern-section-block ul:not(.experience-list) li {
+  background: #facc15;
+  color: #111827;
+  font-weight: 500;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+/* ===== MINIMAL-1 (single-column clean) ===== */
+.resume-page.minimal-1 {
+  padding: 1.5rem 2rem;
+}
+
+.min-header {
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.min-name {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.min-role {
+  font-size: 1rem;
+  color: #6b7280;
+}
+
+.min-contact {
+  font-size: 0.9rem;
+  color: #4b5563;
+  margin-top: 0.4rem;
+}
+
+.min-contact span {
+  margin-right: 0.75rem;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+.min-section {
+  margin-bottom: 1.2rem;
+}
+
+.min-section h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #111827;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.4rem;
+}
+
+.min-section p {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+.min-section ul {
+  margin-top: 0.3rem;
+  padding-left: 1.2rem;
+}
+
+.min-section ul li {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin-bottom: 0.25rem;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+.min-exp-heading {
+  font-weight: 700;
+  margin-bottom: 0.1rem;
+}
+
+/* ===== BOLD-SIDEBAR (clean professional: top header + two-column body) ===== */
+.resume-page.bold-sidebar {
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  font-family: inherit;
+}
+
+/* ── Header ── */
+.bs-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.2rem;
+  padding: 1.4rem 1.6rem 1.1rem;
+  background: #ffffff;
+}
+
+.bs-header-photo {
+  flex-shrink: 0;
+}
+
+.bs-header-photo img {
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid #d1d5db;
+}
+
+.bs-avatar-placeholder {
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  border: 1px dashed #9ca3af;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  color: #9ca3af;
+  background: #f9fafb;
+}
+
+.bs-header-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.bs-name {
+  font-size: 1.65rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 0.15rem;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.bs-role {
+  font-size: 0.9rem;
+  color: #6b7280;
+  margin: 0 0 0.55rem;
+  font-weight: 400;
+}
+
+.bs-contact-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1rem;
+  font-size: 0.78rem;
+  color: #374151;
+}
+
+.bs-contact-row span {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.bs-divider {
+  height: 2px;
+  background: #111827;
+  margin: 0 1.6rem;
+}
+
+/* ── Body: two-column ── */
+.bs-body {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  gap: 0;
+}
+
+/* ── Left column ── */
+.bs-left {
+  width: 34%;
+  padding: 1.1rem 1.2rem 1.2rem 1.6rem;
+  border-right: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+}
+
+.bs-section {
+  margin-bottom: 1rem;
+}
+
+.bs-section h3 {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #111827;
+  border-bottom: 1.5px solid #111827;
+  padding-bottom: 0.2rem;
+  margin-bottom: 0.45rem;
+}
+
+.bs-section p {
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: #374151;
+  margin: 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+.bs-skill-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.bs-skill-list li {
+  font-size: 0.8rem;
+  color: #374151;
+  padding-left: 0.8rem;
+  position: relative;
+}
+
+.bs-skill-list li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: #6b7280;
+}
+
+/* ── Right column ── */
+.bs-right {
+  flex: 1;
+  padding: 1.1rem 1.6rem 1.2rem 1.2rem;
+}
+
+.bs-content-section {
+  margin-bottom: 1rem;
+}
+
+.bs-content-section h3 {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #111827;
+  border-bottom: 1.5px solid #111827;
+  padding-bottom: 0.2rem;
+  margin-bottom: 0.6rem;
+}
+
+/* ── Experience items ── */
+.bs-exp-item {
+  display: flex;
+  gap: 0.8rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.bs-exp-item:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.bs-exp-dates {
+  width: 22%;
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #374151;
+  padding-top: 0.05rem;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.bs-exp-detail {
+  flex: 1;
+  min-width: 0;
+}
+
+.bs-exp-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.3;
+  margin-bottom: 0.1rem;
+}
+
+.bs-exp-company {
+  font-size: 0.78rem;
+  color: #6b7280;
+  margin-bottom: 0.2rem;
+}
+
+.bs-exp-desc {
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: #4b5563;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+.bs-fallback {
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: #374151;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* ===== CREATIVE-GRADIENT (gradient header + colorful) ===== */
+.resume-page.creative-gradient {
+  display: flex;
+  flex-direction: column;
+}
+
+.cg-header {
+  background: linear-gradient(135deg, #7c3aed, #ec4899, #f97316);
+  padding: 2rem 2rem 1.5rem;
+  color: #ffffff;
+}
+
+.cg-header-content {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.cg-avatar {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  border: 3px solid rgba(255,255,255,0.6);
+  object-fit: cover;
+}
+
+.cg-name {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin: 0;
+  color: #ffffff;
+}
+
+.cg-role {
+  font-size: 1rem;
+  color: rgba(255,255,255,0.85);
+  margin: 0.2rem 0 0.5rem;
+}
+
+.cg-contact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-size: 0.85rem;
+  color: rgba(255,255,255,0.9);
+}
+
+.cg-body {
+  padding: 1.5rem 2rem;
+}
+
+.cg-section {
+  margin-bottom: 1.4rem;
+}
+
+.cg-section h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #7c3aed;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 3px solid;
+  border-image: linear-gradient(90deg, #7c3aed, #ec4899, #f97316) 1;
+  padding-bottom: 0.3rem;
+}
+
+.cg-section p {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: #111827;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+.cg-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.cg-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.cg-skill-pill {
+  background: linear-gradient(135deg, #7c3aed, #ec4899);
+  color: #ffffff;
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.cg-section .experience-list li {
+  border-left-color: #7c3aed;
+}
+
+/* ===== CORPORATE-CLEAN (blue-gray professional) ===== */
+.resume-page.corporate-clean {
+  display: flex;
+  flex-direction: column;
+}
+
+.corp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  background: #1e3a5f;
+  color: #ffffff;
+}
+
+.corp-name {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+  color: #ffffff;
+}
+
+.corp-role {
+  font-size: 0.95rem;
+  color: #93c5fd;
+  margin: 0.2rem 0 0;
+}
+
+.corp-header-right {
+  text-align: right;
+}
+
+.corp-header-right p {
+  font-size: 0.85rem;
+  margin: 0.15rem 0;
+  color: #e0e7ff;
+}
+
+.corp-body {
+  padding: 1.5rem 2rem;
+}
+
+.corp-full {
+  margin-bottom: 1.2rem;
+}
+
+.corp-grid {
+  display: grid;
+  grid-template-columns: 65% 35%;
+  gap: 1.5rem;
+}
+
+.corp-section {
+  margin-bottom: 1.2rem;
+}
+
+.corp-section h3 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1e3a5f;
+  border-bottom: 2px solid #93c5fd;
+  padding-bottom: 0.3rem;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.corp-section p {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: #1e293b;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+.corp-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.corp-skill-tag {
+  background: #e0e7ff;
+  color: #1e3a5f;
+  padding: 0.25rem 0.7rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.corp-section .experience-list li {
+  border-left-color: #1e3a5f;
+}
+
+/* ===== ELEGANT-SERIF (classic academic style) ===== */
+.resume-page.elegant-serif {
+  padding: 2rem 2.5rem;
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.es-header {
+  text-align: center;
+  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 2px double #1e3a8a;
+}
+
+.es-name {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin: 0;
+  color: #1e3a8a;
+  letter-spacing: 0.05em;
+}
+
+.es-role {
+  font-size: 1.05rem;
+  color: #d97706;
+  margin: 0.3rem 0 0.6rem;
+  font-style: italic;
+}
+
+.es-contact {
+  font-size: 0.85rem;
+  color: #4b5563;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.es-divider {
+  color: #9ca3af;
+}
+
+.es-body {
+  /* no special wrapper styling needed */
+}
+
+.es-section {
+  margin-bottom: 1.4rem;
+}
+
+.es-section h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #1e3a8a;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-bottom: 1px solid #d97706;
+  padding-bottom: 0.3rem;
+}
+
+.es-section p {
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: #1f2937;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+.es-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.es-exp-item {
+  margin-bottom: 0.8rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px dotted #d1d5db;
+}
+
+.es-exp-item:last-child {
+  border-bottom: none;
+}
+
+.es-exp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-weight: 700;
+}
+
+.es-exp-dates {
+  font-size: 0.85rem;
+  color: #d97706;
+  font-style: italic;
+}
+
+.es-exp-desc {
+  margin-top: 0.3rem;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: #374151;
+}
+
+.es-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.es-skill {
+  background: #fef3c7;
+  color: #92400e;
+  padding: 0.25rem 0.7rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  border: 1px solid #fcd34d;
+}
+
+/* ===== TECH-FOCUSED (terminal/code aesthetic) ===== */
+.resume-page.tech-focused {
+  display: flex;
+  flex-direction: column;
+  font-family: "Fira Code", "Consolas", "Courier New", monospace;
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+.tf-header {
+  background: #1e293b;
+  border-bottom: 2px solid #10b981;
+}
+
+.tf-terminal-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  background: #334155;
+  border-bottom: 1px solid #475569;
+}
+
+.tf-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.tf-dot.red { background: #ef4444; }
+.tf-dot.yellow { background: #eab308; }
+.tf-dot.green { background: #22c55e; }
+
+.tf-terminal-title {
+  margin-left: 0.5rem;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.tf-header-content {
+  padding: 1.5rem 2rem;
+}
+
+.tf-name {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin: 0;
+  color: #10b981;
+}
+
+.tf-prompt {
+  color: #22c55e;
+  margin-right: 0.4rem;
+}
+
+.tf-role {
+  font-size: 0.95rem;
+  color: #94a3b8;
+  margin: 0.3rem 0 0.6rem;
+}
+
+.tf-contact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-size: 0.8rem;
+  color: #cbd5e1;
+}
+
+.tf-label {
+  color: #10b981;
+}
+
+.tf-body {
+  padding: 1.5rem 2rem;
+}
+
+.tf-section {
+  margin-bottom: 1.4rem;
+}
+
+.tf-section h3 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #10b981;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-bottom: 1px solid #334155;
+  padding-bottom: 0.3rem;
+}
+
+.tf-hash {
+  color: #22c55e;
+  margin-right: 0.3rem;
+}
+
+.tf-section p {
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: #cbd5e1;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+.tf-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.tf-exp-item {
+  margin-bottom: 0.8rem;
+  padding: 0.8rem;
+  background: #1e293b;
+  border-left: 3px solid #10b981;
+  border-radius: 4px;
+}
+
+.tf-exp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.tf-exp-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #f0fdf4;
+  background: #334155;
+  padding: 0.15rem 0.5rem;
+  border-radius: 3px;
+}
+
+.tf-exp-dates {
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+.tf-exp-desc {
+  margin-top: 0.4rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: #cbd5e1;
+}
+
+.tf-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.tf-skill-tag {
+  background: #334155;
+  color: #10b981;
+  padding: 0.25rem 0.6rem;
+  border-radius: 3px;
+  font-size: 0.8rem;
+  border: 1px solid #475569;
+}
+
+/* Override experience-list colors for tech template */
+.resume-page.tech-focused .experience-list li {
+  background: #1e293b;
+  border-left-color: #10b981;
+  color: #cbd5e1;
+}
+
+.resume-page.tech-focused .exp-heading {
+  color: #e2e8f0;
+}
+
+.resume-page.tech-focused .exp-body {
+  color: #cbd5e1;
+}
+
+/* ===== CLASSIC-BORDER (bordered sections with blue accents) ===== */
+.resume-page.classic-border {
+  padding: 0;
+}
+
+.cb-inner {
+  border: 2px solid #2563eb;
+  margin: 1.2rem;
+  padding: 1.5rem 2rem;
+}
+
+.cb-header {
+  text-align: center;
+  padding-bottom: 1rem;
+}
+
+.cb-name {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin: 0;
+  color: #1e40af;
+}
+
+.cb-role {
+  font-size: 1rem;
+  color: #3b82f6;
+  margin: 0.3rem 0 0.5rem;
+}
+
+.cb-contact {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-size: 0.85rem;
+  color: #4b5563;
+}
+
+.cb-divider {
+  height: 1px;
+  background: #2563eb;
+  margin: 0.8rem 0;
+  opacity: 0.3;
+}
+
+.cb-section {
+  margin-bottom: 0.8rem;
+}
+
+.cb-section h3 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1e40af;
+  margin-bottom: 0.4rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.cb-section p {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: #1f2937;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+.cb-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.cb-exp-item {
+  margin-bottom: 0.6rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px dashed #dbeafe;
+}
+
+.cb-exp-item:last-child {
+  border-bottom: none;
+}
+
+.cb-exp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-weight: 700;
+}
+
+.cb-exp-dates {
+  font-size: 0.85rem;
+  color: #3b82f6;
+}
+
+.cb-exp-desc {
+  margin-top: 0.3rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: #374151;
+}
+
+.cb-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.cb-skill-tag {
+  background: #dbeafe;
+  color: #1e40af;
+  padding: 0.25rem 0.7rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border: 1px solid #93c5fd;
+}
+
+.cb-inner .experience-list li {
+  border-left-color: #2563eb;
+}

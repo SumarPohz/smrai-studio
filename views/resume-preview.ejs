@@ -4,11 +4,34 @@
   // Normalize template name
   const tpl = template || "modern-1";
 
-  // Parse multi-line experience into {title, dates, description} objects
-  function parseExperience(text) {
-    if (!text || typeof text !== "string") return [];
+  // Allowed template IDs for partial loading
+  const validTemplates = [
+    "modern-1", "bold-sidebar", "minimal-1", "creative-gradient",
+    "corporate-clean", "elegant-serif", "tech-focused", "classic-border"
+  ];
+  const safeTpl = validTemplates.includes(tpl) ? tpl : "modern-1";
 
-    const lines = text
+  // Parse experience into [{title, company, dates, description}] objects.
+  // Accepts either:
+  //   • Array of objects (from AI Interview / JSONB storage)
+  //   • Plain text string (legacy textarea format)
+  function parseExperience(input) {
+    // --- Array format (from AI Interview) ---
+    if (Array.isArray(input)) {
+      return input
+        .filter(item => item && typeof item === "object")
+        .map(item => ({
+          title: item.title || "",
+          company: item.company || "",
+          dates: item.dates || "",
+          description: (item.description || "").trim().replace(/\n{2,}/g, "\n")
+        }));
+    }
+
+    // --- String format (legacy) ---
+    if (!input || typeof input !== "string") return [];
+
+    const lines = input
       .split(/\r?\n+/)
       .map(l => l.trim())
       .filter(l => l.length > 0);
@@ -18,14 +41,11 @@
     let currentDesc = [];
 
     for (const line of lines) {
-      if (/^[-•]/.test(line)) {
+      if (/^-/.test(line)) {
         if (currentHeading) {
-          jobs.push({
-            heading: currentHeading,
-            description: currentDesc.join(" ")
-          });
+          jobs.push({ heading: currentHeading, description: currentDesc.join(" ") });
         }
-        currentHeading = line.replace(/^[-•]\s*/, "");
+        currentHeading = line.replace(/^-\s*/, "");
         currentDesc = [];
       } else {
         currentDesc.push(line);
@@ -33,28 +53,20 @@
     }
 
     if (currentHeading) {
-      jobs.push({
-        heading: currentHeading,
-        description: currentDesc.join(" ")
-      });
+      jobs.push({ heading: currentHeading, description: currentDesc.join(" ") });
     }
 
-    // Split heading into title + dates (if present)
     return jobs.map(job => {
-      const m = job.heading.match(/^(.*?)(\(\s*\d{4}.*\))\s*$/);
-      let title = job.heading;
-      let dates = "";
-
-      if (m) {
-        title = m[1].trim();
-        dates = m[2].trim();
+      // "Title [Company] (dates)" OR "Title (dates)"
+      const mFull = job.heading.match(/^(.*?)\s*\[([^\]]+)\]\s*(\(.*\))\s*$/);
+      const mDates = job.heading.match(/^(.*?)(\(\s*\d{4}.*\))\s*$/);
+      if (mFull) {
+        return { title: mFull[1].trim(), company: mFull[2].trim(), dates: mFull[3].trim(), description: job.description };
       }
-
-      return {
-        title,
-        dates,
-        description: job.description
-      };
+      if (mDates) {
+        return { title: mDates[1].trim(), company: "", dates: mDates[2].trim(), description: job.description };
+      }
+      return { title: job.heading, company: "", dates: "", description: job.description };
     });
   }
 
@@ -68,7 +80,11 @@
       .filter(line => line.length > 0);
   }
 
-  const experienceItems = parseExperience(data.experience || "");
+  let _expInput = data.experience || "";
+  if (data.experienceJson) {
+    try { _expInput = JSON.parse(data.experienceJson); } catch (_) {}
+  }
+  const experienceItems = parseExperience(_expInput);
   const skillsLines = renderBullets(data.skills || "");
 %>
 
@@ -78,41 +94,100 @@
     padding: 1.5rem 1rem 2.5rem;
   }
 
-  .preview-section h1 {
+  .preview-section > h1 {
     margin-bottom: 0.25rem;
   }
 
-  .preview-section p {
+  .preview-section > p {
     margin-top: 0.2rem;
     margin-bottom: 0.75rem;
   }
 
-  .resume-wrapper {
-    margin: 1rem auto;
-    display: flex;
-    justify-content: center;
-    overflow-x: auto;
+  /* Scope UI styles to preview-section ONLY — not into the resume */
+  .preview-section > button,
+  .preview-section > .btn-primary,
+  #download-image-btn {
+    background: #111827;
+    color: #fff;
+    border: none;
+    padding: 0.6rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
   }
 
-  /* A4 container that we capture as JPG */
+  .preview-section > button:hover,
+  .preview-section > .btn-primary:hover,
+  #download-image-btn:hover {
+    background: #facc15;
+    color: #111827;
+  }
+
+  .preview-section > p > a,
+  .preview-section > p a {
+    color: #2563eb;
+  }
+
+  /* ===== OUTER WRAPPER: clips horizontal overflow, sized by JS ===== */
+  .preview-wrapper {
+    width: 100%;
+    max-width: 820px;
+    margin: 1rem auto;
+    /*
+     * overflow-x: clip  — prevents the 794px scale-container from creating a
+     *   horizontal scrollbar on narrow screens. Unlike overflow:hidden, `clip`
+     *   does NOT create a scroll container, so overflow-y can remain visible.
+     * overflow-y: visible — content taller than the JS-set height can flow
+     *   naturally; the page itself scrolls, not the wrapper.
+     */
+    overflow-x: clip;
+    overflow-y: visible;
+    position: relative;        /* stacking context for z-index */
+  }
+
+  /* ===== SCALE CONTAINER: holds the A4 and gets transform applied ===== */
+  .preview-scale-container {
+    width: 794px;              /* always A4 width */
+    transform-origin: top left; /* set in CSS so JS never races to set it.
+                                   Desktop: translateX centers it (origin irrelevant for translate).
+                                   Mobile:  scale() anchors top-left — no rightward shift. */
+  }
+
+  /* ===== A4 CARD: captured as JPG, natural height for multi-page content ===== */
   .resume-a4 {
+    width: 794px;
+    min-height: 1123px;        /* A4 page height — content grows beyond this */
+    height: auto;              /* MUST be auto so tall resumes expand naturally */
     background: #ffffff;
     box-shadow: 0 18px 40px rgba(15,23,42,0.18);
     border-radius: 8px;
     border: 1px solid #e5e7eb;
-    overflow: visible;
+    overflow: hidden;          /* clip sidebar bg colours to border-radius */
     position: relative;
     box-sizing: border-box;
   }
 
-  @media screen {
-    .resume-a4 {
-      width: 794px;
-      min-height: 1123px;
-      height: auto;
-    }
+  /*
+   * ===== .preview-wrapper .resume-page — minimal safety guard =====
+   * The real neutralisation of style.css legacy rules (display:flex,
+   * overflow:hidden, background:#f3f4f6, margin, max-width, box-shadow,
+   * border-radius) is now done in templates.css base .resume-page {} at 0,1,0
+   * via cascade order (templates.css loads after style.css).
+   *
+   * Template-specific display/background rules at 0,2,0 in templates.css
+   * are NOT overridden here, so two-column templates (modern-1, bold-sidebar)
+   * get their display:flex back and tech-focused gets its dark background back.
+   *
+   * This rule (0,2,0) only guards the three properties most critical to
+   * the preview layout being correct.
+   */
+  .preview-wrapper .resume-page {
+    margin: 0 !important;         /* style.css: margin:1.5rem auto — must never apply here */
+    max-width: none !important;   /* style.css: max-width:900px — A4 is fixed at 794px */
+    overflow: visible !important; /* must never clip multi-page vertical content */
   }
 
+  /* ===== PRINT ===== */
   @media print {
     @page {
       size: A4;
@@ -124,18 +199,22 @@
       background: #ffffff;
     }
 
-    .preview-section h1,
+    .preview-section > h1,
     .preview-section > p,
     #download-image-btn,
-    #print-btn,
-    .preview-section a[href="/resume-builder"] {
+    #print-btn {
       display: none !important;
     }
 
-    .resume-wrapper {
-      margin: 0;
-      display: flex;
-      justify-content: center;
+    .preview-wrapper {
+      overflow: visible;
+      max-width: none;
+      height: auto !important;   /* override JS-set pixel height */
+    }
+
+    .preview-scale-container {
+      transform: none !important;  /* remove translateX / scale for print */
+      margin: 0 auto;
     }
 
     .resume-a4 {
@@ -143,369 +222,71 @@
       border: none;
       box-shadow: none;
       border-radius: 0;
+      overflow: visible;         /* let content flow across print pages */
       min-height: auto;
       height: auto;
       margin: 0 auto;
-      transform: scale(0.9);
-      transform-origin: top center;
+    }
+
+    /* ── Keep A4 page structure intact ── */
+    .resume-page {
+      overflow: visible !important;
+      height: auto !important;
+      min-height: auto !important;
+    }
+
+    /* ── Prevent experience entries from splitting across print pages ── */
+    .experience-list li,
+    .es-exp-item,
+    .tf-exp-item,
+    .cb-exp-item {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+
+    /* ── Keep section headings with their first line of content ── */
+    .modern-section-block h3,
+    .bs-content-section h3,
+    .min-section h3,
+    .cg-section h3,
+    .corp-section h3,
+    .es-section h3,
+    .tf-section h3,
+    .cb-section h3 {
+      page-break-after: avoid;
+      break-after: avoid;
+    }
+
+    /* ── Avoid splitting whole short sections ── */
+    .modern-section-block,
+    .bs-content-section,
+    .min-section,
+    .cg-section,
+    .corp-section,
+    .es-section,
+    .tf-section,
+    .cb-section {
+      page-break-inside: avoid;
+      break-inside: avoid;
     }
   }
 
-  .resume-page {
-    font-family: "Segoe UI", Arial, sans-serif;
-    color: #111827;
-    overflow: visible;
-    width: 100%;
-    min-height: 100%;
-    height: auto;
-    position: relative;
-  z-index: 1;
-  }
-
-  button,
-  .btn-primary {
-    background: #111827;
-    color: #fff;
-    border: none;
-    padding: 0.6rem 1rem;
-    border-radius: 4px;
-    cursor: pointer;
-    font-weight: 500;
-  }
-
-  button:hover,
-  .btn-primary:hover {
-    background: #facc15;
-    color: #111827;
-  }
-
-  a {
-    color: #2563eb;
-  }
-
-  /* ==== MODERN-1 (two-column) ==== */
-  .resume-page.modern-1 {
-    display: flex;
-  }
-
-  .modern-left {
-    width: 32%;
-    background: #27355a;
-    color: #ffffff;
-    padding: 1.8rem 1.5rem;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    border-right: 3px solid #facc15;
-  }
-
-  .modern-avatar img {
-    width: 120px;
-    height: 120px;
-    border-radius: 8px;
-    border: 3px solid #facc15;
-    object-fit: cover;
-    box-shadow: 0 0 10px rgba(250, 204, 21, 0.4);
-  }
-
-  .modern-avatar-placeholder {
-    width: 120px;
-    height: 120px;
-    border-radius: 8px;
-    border: 3px dashed #facc15;
+  .resume-watermark {
+    position: absolute;
+    inset: 0;
+    z-index: 999;
+    pointer-events: none;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.8rem;
-    color: #facc15;
-  }
-
-  .modern-name-block {
-    text-align: center;
-    margin-top: 1rem;
-    color: #ffffff;
-  }
-
-  .modern-name-block h2 {
-    font-size: 1.3rem;
-    margin: 0;
+    font-size: 3.2rem;
     font-weight: 700;
-    color: #ffffff;
-  }
-
-  .modern-name-block .role {
-    font-size: 0.9rem;
-    color: #e4e6ef;
-    margin-top: 0.2rem;
-  }
-
-  .modern-sidebar-section {
-    margin-top: 1.8rem;
-    width: 100%;
-    color: #ffffff;
-  }
-
-  .modern-sidebar-section h3 {
-    font-size: 0.85rem;
-    letter-spacing: 1px;
-    border-bottom: 1px solid #facc15;
-    padding-bottom: 0.4rem;
-    margin-bottom: 0.6rem;
-    font-weight: 700;
-    color: #ffffff;
+    color: rgba(17, 24, 39, 0.08);
+    letter-spacing: 0.25em;
     text-transform: uppercase;
+    transform: rotate(-30deg);
+    user-select: none;
   }
-
-  .modern-sidebar-section p {
-    font-size: 0.85rem;
-    line-height: 1.5;
-    color: #ffffff;
-    margin: 0.3rem 0;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    overflow-wrap: anywhere;
-  }
-
-  .modern-sidebar-section span {
-    color: #facc15;
-    font-size: 0.9rem;
-  }
-
-  .modern-right {
-    width: 68%;
-    padding: 1.8rem 2rem;
-    background: #ffffff;
-  }
-
-  .modern-section-block {
-    margin-bottom: 1.8rem;
-  }
-
-  .modern-section-block h3 {
-    font-size: 1rem;
-    font-weight: 700;
-    color: #111827;
-    border-bottom: 2px solid #facc15;
-    padding-bottom: 0.25rem;
-    margin-bottom: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  .modern-section-block p {
-    font-size: 0.9rem;
-    line-height: 1.6;
-    color: #111827;
-    padding: 0.3rem 0.6rem;
-    border: 1px solid #f4f4f4;
-    border-radius: 6px;
-    background: #fafafa;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    overflow-wrap: anywhere;
-  }
-
-  .modern-section-block ul:not(.experience-list) {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-
-  .modern-section-block ul:not(.experience-list) li {
-    background: #facc15;
-    color: #111827;
-    font-weight: 500;
-    padding: 0.25rem 0.6rem;
-    border-radius: 4px;
-    font-size: 0.85rem;
-    line-height: 1.4;
-    white-space: nowrap;
-  }
-
-  .modern-section-block ul:not(.experience-list) li strong {
-    display: block;
-    font-weight: 600;
-    margin-bottom: 0.2rem;
-    color: #000;
-  }
-
-  /* ==== MINIMAL-1 ==== */
-  .resume-page.minimal-1 {
-    padding: 1.5rem 2rem;
-  }
-
-  .min-header {
-    border-bottom: 2px solid #e5e7eb;
-    padding-bottom: 0.75rem;
-    margin-bottom: 1.25rem;
-  }
-
-  .min-name {
-    font-size: 1.6rem;
-    font-weight: 700;
-    margin: 0;
-  }
-
-  .min-role {
-    font-size: 1rem;
-    color: #6b7280;
-  }
-
-  .min-contact {
-    font-size: 0.9rem;
-    color: #4b5563;
-    margin-top: 0.4rem;
-  }
-
-  .min-contact span {
-    margin-right: 0.75rem;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    overflow-wrap: anywhere;
-  }
-
-  .min-section {
-    margin-bottom: 1.2rem;
-  }
-
-  .min-section h3 {
-    font-size: 1rem;
-    font-weight: 700;
-    color: #111827;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 0.4rem;
-  }
-
-  .min-section p {
-    font-size: 0.9rem;
-    line-height: 1.6;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    overflow-wrap: anywhere;
-  }
-
-  .min-section ul {
-    margin-top: 0.3rem;
-    padding-left: 1.2rem;
-  }
-
-  .min-section ul li {
-    font-size: 0.9rem;
-    line-height: 1.5;
-    margin-bottom: 0.25rem;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    overflow-wrap: anywhere;
-  }
-
-  .experience-list {
-    list-style: none;
-    padding-left: 0;
-    margin-top: 0.4rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-
-  .experience-list li {
-    background: #f3f4f6;
-    border-left: 4px solid #eab308;
-    padding: 0.8rem 1rem;
-    border-radius: 6px;
-    margin-bottom: 1rem;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  }
-
-  .exp-heading {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: #111827;
-  }
-
-  .exp-title {
-    font-weight: 600;
-  }
-
-  .exp-dates {
-    font-weight: 600;
-    color: #374151;
-  }
-
-  .exp-body {
-    margin-top: 0.4rem;
-    font-size: 0.9rem;
-    line-height: 1.5;
-    color: #111827;
-  }
-
-  .modern-section-block ul li,
-  .min-section ul li {
-    font-size: 0.9rem;
-    line-height: 1.5;
-    margin-bottom: 0.25rem;
-    color: #111827;
-    white-space: normal;
-    word-wrap: break-word;
-    overflow-wrap: anywhere;
-  }
-
-  .modern-section-block p,
-  .min-section p {
-    white-space: normal;
-    word-wrap: break-word;
-    overflow-wrap: anywhere;
-  }
-
-.resume-watermark {
-  position: absolute;
-  inset: 0;
-  z-index: 999;
-  pointer-events: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 3.2rem;
-  font-weight: 700;
-  color: rgba(17, 24, 39, 0.08);
-  letter-spacing: 0.25em;
-  text-transform: uppercase;
-  transform: rotate(-30deg);
-  user-select: none;
-}
-/* ================= MOBILE PREVIEW SCALING (SAFE) ================= */
-@media (max-width: 768px) {
-
-  .resume-wrapper {
-    overflow-x: hidden;
-  }
-
-  .resume-a4 {
-    transform: scale(0.48);          /* visually shrink A4 */
-    transform-origin: top center;
-    margin-top: -220px;              /* pull up after scaling */
-    margin-bottom: -260px;
-  }
-}
-
-/* Extra small phones */
-@media (max-width: 420px) {
-  .resume-a4 {
-    transform: scale(0.42);
-    margin-top: -260px;
-    margin-bottom: -300px;
-  }
-}
-
 </style>
 
 <section class="preview-section">
@@ -514,272 +295,125 @@
     Review your resume below. You can download it as JPG (A4).
     <br />
     Template: <strong><%= tpl %></strong>
-    &nbsp;·&nbsp; <a href="/resume-templates">Change template</a>
+    &nbsp;&middot;&nbsp; <a href="/resume-templates">Change template</a>
   </p>
 
-  <div class="resume-wrapper">
-    <!-- A4 container we capture for JPG / print -->
-    <div
-      id="resumeA4"
-      class="resume-a4"
-      data-is-modern="<%= tpl === 'modern-1' ? 'true' : 'false' %>"
-    >
-    <!-- 🔒 WATERMARK (VISIBLE UNTIL PAYMENT) -->
-      <div class="resume-watermark">
-        SmrAI-Studio • Preview • Not Paid
-      </div>
+  <!-- OUTER: clips overflow, prevents horizontal scroll -->
+  <div class="preview-wrapper">
+    <!-- SCALE CONTAINER: JS applies transform: scale() here on mobile -->
+    <div class="preview-scale-container" id="scaleContainer">
+      <!-- A4 container we capture for JPG / print -->
+      <div id="resumeA4" class="resume-a4">
+        <!-- WATERMARK (VISIBLE UNTIL PAYMENT) -->
+        <div class="resume-watermark">
+          SmrAI-Studio &bull; Preview &bull; Not Paid
+        </div>
 
-      <div class="resume-page <%= tpl %>">
-
-        <% if (tpl === "modern-1") { %>
-          <!-- MODERN-1 -->
-          <div class="modern-left">
-            <div class="modern-avatar">
-              <% if (data.profileImageUrl) { %>
-                <img src="<%= data.profileImageUrl %>" alt="Profile" />
-              <% } else { %>
-                <div class="modern-avatar-placeholder">PHOTO</div>
-              <% } %>
-            </div>
-
-            <div class="modern-name-block">
-              <h2><%= data.fullName || "" %></h2>
-              <p class="role"><%= data.roleTitle || "" %></p>
-            </div>
-
-            <div class="modern-sidebar-section">
-              <h3>CONTACT</h3>
-              <p><span>📞</span> <%= data.phone || "" %></p>
-              <p><span>✉️</span> <%= data.email || "" %></p>
-              <% if (data.location) { %>
-                <p><span>📍</span> <%= data.location %></p>
-              <% } %>
-            </div>
-
-            <div class="modern-sidebar-section">
-              <h3>EDUCATION</h3>
-              <p><%= data.education || "" %></p>
-            </div>
-
-            <div class="modern-sidebar-section">
-              <h3>LANGUAGES</h3>
-              <p><%= data.languages || "" %></p>
-            </div>
-          </div>
-
-          <div class="modern-right">
-            <div class="modern-section-block">
-              <h3>PROFESSIONAL SUMMARY</h3>
-              <p><%= data.summary || "" %></p>
-            </div>
-
-            <div class="modern-section-block">
-              <h3>EXPERIENCE</h3>
-
-              <% if (experienceItems.length) { %>
-                <ul class="experience-list">
-                  <% experienceItems.forEach(exp => { %>
-                    <li>
-                      <div class="exp-heading">
-                        <span class="exp-title"><strong><%= exp.title %></strong></span>
-                        <% if (exp.dates) { %>
-                          <span class="exp-dates"><%= exp.dates %></span>
-                        <% } %>
-                      </div>
-                      <% if (exp.description) { %>
-                        <div class="exp-body">
-                          <%= exp.description %>
-                        </div>
-                      <% } %>
-                    </li>
-                  <% }) %>
-                </ul>
-              <% } else { %>
-                <p><%= data.experience || "" %></p>
-              <% } %>
-            </div>
-
-            <div class="modern-section-block">
-              <h3>SKILLS</h3>
-              <% if (skillsLines.length) { %>
-                <ul>
-                  <% skillsLines.forEach(line => { %>
-                    <li><%= line %></li>
-                  <% }) %>
-                </ul>
-              <% } else { %>
-                <p><%= data.skills || "" %></p>
-              <% } %>
-            </div>
-          </div>
-
-        <% } else if (tpl === "minimal-1") { %>
-          <!-- MINIMAL-1 -->
-          <div class="min-header">
-            <h2 class="min-name"><%= data.fullName || "" %></h2>
-            <p class="min-role"><%= data.roleTitle || "" %></p>
-            <div class="min-contact">
-              <span><strong>📞</strong> <%= data.phone || "" %></span>
-              <span><strong>✉️</strong> <%= data.email || "" %></span>
-              <% if (data.location) { %>
-                <span><strong>📍</strong> <%= data.location %></span>
-              <% } %>
-            </div>
-          </div>
-
-          <div class="min-section">
-            <h3>Professional Summary</h3>
-            <p><%= data.summary || "" %></p>
-          </div>
-
-          <div class="min-section">
-            <h3>Experience</h3>
-            <% if (experienceItems.length) { %>
-              <ul>
-                <% experienceItems.forEach(exp => { %>
-                  <li>
-                    <strong><%= exp.title %></strong>
-                    <% if (exp.dates) { %> <span><%= exp.dates %></span><% } %>
-                    <% if (exp.description) { %><br><%= exp.description %><% } %>
-                  </li>
-                <% }) %>
-              </ul>
-            <% } else { %>
-              <p><%= data.experience || "" %></p>
-            <% } %>
-          </div>
-
-          <div class="min-section">
-            <h3>Education</h3>
-            <p><%= data.education || "" %></p>
-          </div>
-
-          <div class="min-section">
-            <h3>Skills</h3>
-            <% if (skillsLines.length) { %>
-              <ul>
-                <% skillsLines.forEach(line => { %>
-                  <li><%= line %></li>
-                <% }) %>
-              </ul>
-            <% } else { %>
-              <p><%= data.skills || "" %></p>
-            <% } %>
-          </div>
-
-          <div class="min-section">
-            <h3>Languages</h3>
-            <p><%= data.languages || "" %></p>
-          </div>
-
-        <% } else { %>
-          <!-- Fallback: modern-style -->
-          <div class="modern-left">
-            <div class="modern-avatar">
-              <% if (data.profileImageUrl) { %>
-                <img src="<%= data.profileImageUrl %>" alt="Profile" />
-              <% } else { %>
-                <div class="modern-avatar-placeholder">PHOTO</div>
-              <% } %>
-            </div>
-
-            <div class="modern-name-block">
-              <h2><%= data.fullName || "" %></h2>
-              <p class="role"><%= data.roleTitle || "" %></p>
-            </div>
-
-            <div class="modern-sidebar-section">
-              <h3>CONTACT</h3>
-              <p><span>📞</span> <%= data.phone || "" %></p>
-              <p><span>✉️</span> <%= data.email || "" %></p>
-              <% if (data.location) { %>
-                <p><span>📍</span> <%= data.location %></p>
-              <% } %>
-            </div>
-
-            <div class="modern-sidebar-section">
-              <h3>EDUCATION</h3>
-              <p><%= data.education || "" %></p>
-            </div>
-
-            <div class="modern-sidebar-section">
-              <h3>LANGUAGES</h3>
-              <p><%= data.languages || "" %></p>
-            </div>
-          </div>
-
-          <div class="modern-right">
-            <div class="modern-section-block">
-              <h3>PROFESSIONAL SUMMARY</h3>
-              <p><%= data.summary || "" %></p>
-            </div>
-
-            <div class="modern-section-block">
-              <h3>EXPERIENCE</h3>
-              <% if (experienceItems.length) { %>
-                <ul class="experience-list">
-                  <% experienceItems.forEach(exp => { %>
-                    <li>
-                      <div class="exp-heading">
-                        <span class="exp-title"><strong><%= exp.title %></strong></span>
-                        <% if (exp.dates) { %>
-                          <span class="exp-dates"><%= exp.dates %></span>
-                        <% } %>
-                      </div>
-                      <% if (exp.description) { %>
-                        <div class="exp-body">
-                          <%= exp.description %>
-                        </div>
-                      <% } %>
-                    </li>
-                  <% }) %>
-                </ul>
-              <% } else { %>
-                <p><%= data.experience || "" %></p>
-              <% } %>
-            </div>
-
-            <div class="modern-section-block">
-              <h3>SKILLS</h3>
-              <% if (skillsLines.length) { %>
-                <ul>
-                  <% skillsLines.forEach(line => { %>
-                    <li><%= line %></li>
-                  <% }) %>
-                </ul>
-              <% } else { %>
-                <p><%= data.skills || "" %></p>
-              <% } %>
-            </div>
-          </div>
-        <% } %>
-
+        <div class="resume-page <%= safeTpl %>">
+          <%- include('templates/' + safeTpl, { data, experienceItems, skillsLines }) %>
+        </div>
       </div>
     </div>
   </div>
 
-  <% if (tpl === "modern-1") { %>
-    <button id="download-image-btn" style="margin-top:1rem;">
-      PAY ₹50 &amp; DOWNLOAD AS JPG (A4)
-    </button>
-
-    <!-- <button type="button" id="print-btn" style="margin-top:0.5rem;">
-      PAY ₹50 &amp; PRINT / SAVE AS PDF (A4)
-    </button> -->
-  <% } else { %>
-    <button id="download-image-btn" style="margin-top:1rem;">
-      DOWNLOAD AS JPG (A4)
-    </button>
-
-    <button type="button" id="print-btn" style="margin-top:0.5rem;">
-      PRINT / SAVE AS PDF (A4)
-    </button>
-  <% } %>
+  <button id="download-image-btn" style="margin-top:1rem;">
+    PAY ₹49 &amp; DOWNLOAD AS JPG (A4)
+  </button>
 
   <p style="margin-top:1rem;">
     <a href="/resume-builder">Edit details</a>
   </p>
 </section>
+
+<!-- ===== DYNAMIC MOBILE SCALING SCRIPT ===== -->
+<script>
+  (function () {
+    var A4_WIDTH = 794;
+
+    function scalePreview() {
+      var wrapper   = document.querySelector(".preview-wrapper");
+      var container = document.getElementById("scaleContainer");
+      var a4        = document.getElementById("resumeA4");
+      if (!wrapper || !container || !a4) return;
+
+      /*
+       * getBoundingClientRect() reads the ACTUAL rendered width of the wrapper.
+       * It is more reliable than clientWidth on mobile browsers where an
+       * overflowing child can inflate the parent's reported clientWidth.
+       * Clamp to window.innerWidth as a final safety net — the wrapper
+       * can never legitimately be wider than the viewport.
+       */
+      var availableWidth = wrapper.getBoundingClientRect().width;
+      if (availableWidth > window.innerWidth) {
+        availableWidth = window.innerWidth;
+      }
+      if (availableWidth <= 0) return; /* layout not ready yet */
+
+      /*
+       * Measure the A4's natural (un-transformed) height.
+       * If images haven't loaded yet this may be an underestimate — the
+       * "load" event re-runs scalePreview() once all resources are ready.
+       */
+      var naturalHeight = a4.offsetHeight || 1123;
+
+      if (availableWidth >= A4_WIDTH) {
+        /*
+         * DESKTOP — center the 794px container inside the wrapper via
+         * translateX instead of margin:auto.  translateX is explicit and
+         * cannot be confused by the browser's block-layout auto-margin
+         * algorithm when the child is wider than the parent.
+         * transform-origin is already "top left" (set in CSS), so the
+         * translate is always relative to the element's own top-left corner.
+         */
+        var offset = Math.round((availableWidth - A4_WIDTH) / 2);
+        container.style.transform      = "translateX(" + offset + "px)";
+        container.style.transformOrigin = "top left";
+        container.style.margin         = "0";
+        wrapper.style.height           = naturalHeight + "px";
+      } else {
+        /*
+         * MOBILE — scale the A4 down so its visual width exactly fills the
+         * available wrapper width.  transform-origin "top left" anchors the
+         * scale to the wrapper's top-left corner, so the left edge of the
+         * resume stays flush with the left edge of the wrapper — no
+         * rightward shift, no sidebar clipping.
+         *
+         * The wrapper's explicit height is set to the visually-scaled height
+         * so no empty space appears below the preview.
+         */
+        var scale = availableWidth / A4_WIDTH;
+        container.style.transform       = "scale(" + scale + ")";
+        container.style.transformOrigin = "top left";
+        container.style.margin          = "0";
+        wrapper.style.height            = Math.ceil(naturalHeight * scale) + "px";
+      }
+    }
+
+    /*
+     * Defer the first run by one animation frame so the browser has
+     * finished painting the initial layout (getBoundingClientRect will
+     * return the true rendered width, not 0 or a stale value).
+     */
+    function init() {
+      requestAnimationFrame(function () {
+        scalePreview();
+      });
+      window.addEventListener("resize", scalePreview);
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", init);
+    } else {
+      init();
+    }
+
+    /* Re-run after all resources (images, fonts) finish loading — the
+       A4 height may increase once profile photos are rendered. */
+    window.addEventListener("load", function () {
+      requestAnimationFrame(scalePreview);
+    });
+  })();
+</script>
 
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
@@ -788,27 +422,12 @@
   (function () {
     const resumeNode = document.getElementById("resumeA4");
     const downloadBtn = document.getElementById("download-image-btn");
-    const printBtn = document.getElementById("print-btn");
     if (!resumeNode || !downloadBtn) return;
 
-    // TRUE on modern-1, FALSE otherwise (from data attribute)
-    const isModern1 = resumeNode.dataset.isModern === "true";
     const resumeId = "<%= data.resumeId || '' %>";
+    const templateName = "<%= safeTpl %>";
 
-        // Log download/print events (used mainly for free templates)
-    async function logEvent(kind) {
-      try {
-        await fetch("/resume/event", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ kind, resumeId: resumeId || null }),
-        });
-      } catch (err) {
-        console.warn("Failed to log event:", err);
-      }
-    }
-
-    // ---- JPG generation (A4) ----
+    // ---- JPG generation (multi-page A4) ----
     async function generateJpg() {
       downloadBtn.disabled = true;
       const originalText = downloadBtn.textContent;
@@ -818,25 +437,67 @@
         const A4_WIDTH_PX = 2480;
         const A4_HEIGHT_PX = 3508;
 
+        // Temporarily remove CSS transform so html2canvas captures full size
+        const scaleContainer = document.getElementById("scaleContainer");
+        const prevTransform = scaleContainer ? scaleContainer.style.transform : "";
+        const wrapperEl = document.querySelector(".preview-wrapper");
+        const prevWrapperH = wrapperEl ? wrapperEl.style.height : "";
+
+        if (scaleContainer) scaleContainer.style.transform = "none";
+        if (wrapperEl) wrapperEl.style.height = "auto";
+
         const baseWidth = resumeNode.offsetWidth;
-        const baseHeight = resumeNode.offsetHeight;
+        const scale = A4_WIDTH_PX / baseWidth;
 
-        const scaleX = A4_WIDTH_PX / baseWidth;
-        const scaleY = A4_HEIGHT_PX / baseHeight;
-        const scale = Math.min(scaleX, scaleY);
-
-        const canvas = await html2canvas(resumeNode, {
+        // Capture the full content at A4-width resolution
+        const fullCanvas = await html2canvas(resumeNode, {
           scale: scale,
           backgroundColor: "#ffffff",
           scrollX: 0,
-          scrollY: -window.scrollY
+          scrollY: -window.scrollY,
+          windowWidth: resumeNode.scrollWidth,
+          windowHeight: resumeNode.scrollHeight,
         });
 
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.95);
-        const link = document.createElement("a");
-        link.download = "SmrAI-Studio-Resume-A4.jpg";
-        link.href = dataUrl;
-        link.click();
+        // Restore transforms
+        if (scaleContainer) scaleContainer.style.transform = prevTransform;
+        if (wrapperEl) wrapperEl.style.height = prevWrapperH;
+
+        const fullHeight = fullCanvas.height;
+        const totalPages = Math.ceil(fullHeight / A4_HEIGHT_PX);
+
+        for (let i = 0; i < totalPages; i++) {
+          const pageCanvas = document.createElement("canvas");
+          pageCanvas.width = A4_WIDTH_PX;
+          // Last page may be shorter
+          const sliceH = Math.min(A4_HEIGHT_PX, fullHeight - i * A4_HEIGHT_PX);
+          pageCanvas.height = sliceH;
+
+          const ctx = pageCanvas.getContext("2d");
+          // Fill white background
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, A4_WIDTH_PX, sliceH);
+          // Draw the slice from the full canvas
+          ctx.drawImage(
+            fullCanvas,
+            0, i * A4_HEIGHT_PX,          // source x, y
+            A4_WIDTH_PX, sliceH,           // source w, h
+            0, 0,                          // dest x, y
+            A4_WIDTH_PX, sliceH            // dest w, h
+          );
+
+          const dataUrl = pageCanvas.toDataURL("image/jpeg", 0.95);
+          const link = document.createElement("a");
+          const suffix = totalPages > 1 ? "-page" + (i + 1) : "";
+          link.download = "SmrAI-Studio-Resume" + suffix + ".jpg";
+          link.href = dataUrl;
+          link.click();
+
+          // Small delay between downloads so browser doesn't block them
+          if (totalPages > 1 && i < totalPages - 1) {
+            await new Promise(function (r) { setTimeout(r, 400); });
+          }
+        }
       } catch (err) {
         console.error(err);
         alert("Failed to generate JPG. Check console for details.");
@@ -866,9 +527,9 @@
           amount: orderData.amount,
           currency: orderData.currency,
           name: "SmrAI-Studio",
-          description: "Modern-1 Resume " + (action === "print" ? "Print" : "Download"),
+          description: templateName + " Resume " + (action === "print" ? "Print" : "Download"),
           order_id: orderData.orderId,
-                    handler: async function (response) {
+          handler: async function (response) {
             try {
               const verifyRes = await fetch("/api/razorpay/verify", {
                 method: "POST",
@@ -889,18 +550,15 @@
                 return;
               }
 
-              if (action === "download") {
-            // ✅ REMOVE WATERMARK AFTER PAYMENT
-            const wm = document.querySelector(".resume-watermark");
-            if (wm) wm.remove();
-
-            await generateJpg();
-            } else if (action === "print") {
+              // Remove watermark after payment
               const wm = document.querySelector(".resume-watermark");
               if (wm) wm.remove();
 
-              window.print();
-            }
+              if (action === "download") {
+                await generateJpg();
+              } else if (action === "print") {
+                window.print();
+              }
             } catch (err) {
               console.error("Verify/payment error:", err);
               alert("Something went wrong while verifying payment.");
@@ -924,32 +582,10 @@
       }
     }
 
-    // ---- Event bindings ----
-    if (isModern1) {
-      // Paid for modern-1
-      downloadBtn.addEventListener("click", function () {
-        startPayment("download");
-      });
-
-      if (printBtn) {
-        printBtn.addEventListener("click", function () {
-          startPayment("print");
-        });
-      }
-        } else {
-      // Free for other templates, but still log usage
-      downloadBtn.addEventListener("click", async function () {
-        await generateJpg();
-        logEvent("download");
-      });
-
-      if (printBtn) {
-        printBtn.addEventListener("click", function () {
-          window.print();
-          logEvent("print");
-        });
-      }
-    }
+    // ---- All templates require payment ----
+    downloadBtn.addEventListener("click", function () {
+      startPayment("download");
+    });
   })();
 </script>
 

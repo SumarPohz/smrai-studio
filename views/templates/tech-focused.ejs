@@ -1,0 +1,73 @@
+<!-- TECH-FOCUSED: Terminal/code-block aesthetic -->
+<div class="tf-header">
+  <div class="tf-terminal-bar">
+    <span class="tf-dot red"></span>
+    <span class="tf-dot yellow"></span>
+    <span class="tf-dot green"></span>
+    <span class="tf-terminal-title">resume.md</span>
+  </div>
+  <div class="tf-header-content">
+    <h2 class="tf-name"><span class="tf-prompt">$</span> <%= data.fullName || "" %></h2>
+    <p class="tf-role"><%= data.roleTitle || "" %></p>
+    <div class="tf-contact">
+      <span><span class="tf-label">phone:</span> <%= data.phone || "" %></span>
+      <span><span class="tf-label">email:</span> <%= data.email || "" %></span>
+      <% if (data.location) { %>
+        <span><span class="tf-label">location:</span> <%= data.location %></span>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<div class="tf-body">
+  <div class="tf-section">
+    <h3><span class="tf-hash">#</span> Professional Summary</h3>
+    <p><%= data.summary || "" %></p>
+  </div>
+
+  <div class="tf-section">
+    <h3><span class="tf-hash">#</span> Experience</h3>
+    <% if (experienceItems.length) { %>
+      <% experienceItems.forEach(exp => { %>
+        <div class="tf-exp-item">
+          <div class="tf-exp-header">
+            <code class="tf-exp-title"><%= exp.title %></code><% if (exp.company) { %> <em class="exp-company"> · <%= exp.company %></em><% } %>
+            <% if (exp.dates) { %>
+              <span class="tf-exp-dates"><%= exp.dates %></span>
+            <% } %>
+          </div>
+          <% if (exp.description) { %>
+            <p class="tf-exp-desc"><%= exp.description %></p>
+          <% } %>
+        </div>
+      <% }) %>
+    <% } else { %>
+      <p><%= data.experience || "" %></p>
+    <% } %>
+  </div>
+
+  <div class="tf-two-col">
+    <div class="tf-section">
+      <h3><span class="tf-hash">#</span> Education</h3>
+      <p><%= data.education || "" %></p>
+    </div>
+
+    <div class="tf-section">
+      <h3><span class="tf-hash">#</span> Languages</h3>
+      <p><%= data.languages || "" %></p>
+    </div>
+  </div>
+
+  <div class="tf-section">
+    <h3><span class="tf-hash">#</span> Skills</h3>
+    <div class="tf-skills">
+      <% if (skillsLines.length) { %>
+        <% skillsLines.forEach(line => { %>
+          <code class="tf-skill-tag"><%= line %></code>
+        <% }) %>
+      <% } else { %>
+        <p><%= data.skills || "" %></p>
+      <% } %>
+    </div>
+  </div>
+</div>
