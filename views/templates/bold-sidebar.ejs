@@ -1,0 +1,98 @@
+<!-- BOLD-SIDEBAR: Professional header + two-column body -->
+
+<!-- ── Header ── -->
+<div class="bs-header">
+  <div class="bs-header-photo">
+    <% if (data.profileImageUrl) { %>
+      <img src="<%= data.profileImageUrl %>" alt="Profile" />
+    <% } else { %>
+      <div class="bs-avatar-placeholder">PHOTO</div>
+    <% } %>
+  </div>
+
+  <div class="bs-header-info">
+    <h1 class="bs-name"><%= data.fullName || "" %></h1>
+    <p class="bs-role"><%= data.roleTitle || "" %></p>
+
+    <div class="bs-contact-row">
+      <% if (data.phone) { %>
+        <span>📞 <%= data.phone %></span>
+      <% } %>
+      <% if (data.location) { %>
+        <span>📍 <%= data.location %></span>
+      <% } %>
+      <% if (data.email) { %>
+        <span>✉️ <%= data.email %></span>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<div class="bs-divider"></div>
+
+<!-- ── Body ── -->
+<div class="bs-body">
+
+  <!-- Left column -->
+  <div class="bs-left">
+
+    <% if (data.summary) { %>
+    <div class="bs-section">
+      <h3>About Me</h3>
+      <p><%= data.summary %></p>
+    </div>
+    <% } %>
+
+    <div class="bs-section">
+      <h3>Education</h3>
+      <p><%= data.education || "" %></p>
+    </div>
+
+    <div class="bs-section">
+      <h3>Skills</h3>
+      <% if (skillsLines.length) { %>
+        <ul class="bs-skill-list">
+          <% skillsLines.forEach(line => { %>
+            <li><%= line %></li>
+          <% }) %>
+        </ul>
+      <% } else { %>
+        <p><%= data.skills || "" %></p>
+      <% } %>
+    </div>
+
+    <div class="bs-section">
+      <h3>Languages</h3>
+      <p><%= data.languages || "" %></p>
+    </div>
+
+  </div>
+
+  <!-- Right column -->
+  <div class="bs-right">
+
+    <div class="bs-content-section">
+      <h3>Work Experience</h3>
+
+      <% if (experienceItems.length) { %>
+        <% experienceItems.forEach(exp => { %>
+          <div class="bs-exp-item">
+            <div class="bs-exp-dates"><%= exp.dates || "" %></div>
+            <div class="bs-exp-detail">
+              <div class="bs-exp-title"><%= exp.title || "" %></div>
+              <% if (exp.company) { %>
+                <div class="bs-exp-company"><%= exp.company %></div>
+              <% } %>
+              <% if (exp.description) { %>
+                <div class="bs-exp-desc"><%= exp.description %></div>
+              <% } %>
+            </div>
+          </div>
+        <% }) %>
+      <% } else { %>
+        <p class="bs-fallback"><%= data.experience || "" %></p>
+      <% } %>
+    </div>
+
+  </div>
+</div>

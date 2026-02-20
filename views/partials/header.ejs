@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SmrAI-Studio</title>
   <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/templates.css" />
 </head>
 <body onload="document.body.classList.add('fade-in')">
   <header class="top-header">
@@ -162,40 +163,31 @@
       if (closeBtn) closeBtn.addEventListener("click", closeSidebar);
       if (backdrop) backdrop.addEventListener("click", closeSidebar);
     </script>
-    <script>
-      document.addEventListener("DOMContentLoaded", () => {
-        const menuToggle = document.getElementById("main-menu-toggle");
-        const mainNav = document.getElementById("main-nav");
-
-        if (menuToggle && mainNav) {
-          // Toggle open/close when clicking hamburger
-          menuToggle.addEventListener("click", (e) => {
-            e.stopPropagation(); // prevent closing immediately
-            mainNav.classList.toggle("nav-open");
-          });
-
-          // Close when clicking a nav link
-          const navLinks = mainNav.querySelectorAll("a");
-          navLinks.forEach((link) => {
-            link.addEventListener("click", () => {
-              mainNav.classList.remove("nav-open");
-            });
-          });
-
-          // Close when clicking outside menu or toggle (anywhere else)
-          document.addEventListener("click", (e) => {
-            if (!mainNav.classList.contains("nav-open")) return;
-
-            const clickedInsideNav = mainNav.contains(e.target);
-            const clickedToggle = menuToggle.contains(e.target);
-
-            if (!clickedInsideNav && !clickedToggle) {
-              mainNav.classList.remove("nav-open");
-            }
-          });
-        }
-      });
-    </script>
   <% } %>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const menuToggle = document.getElementById("main-menu-toggle");
+      const mainNav = document.getElementById("main-nav");
+
+      if (menuToggle && mainNav) {
+        menuToggle.addEventListener("click", (e) => {
+          e.stopPropagation();
+          mainNav.classList.toggle("nav-open");
+        });
+
+        mainNav.querySelectorAll("a").forEach((link) => {
+          link.addEventListener("click", () => mainNav.classList.remove("nav-open"));
+        });
+
+        document.addEventListener("click", (e) => {
+          if (!mainNav.classList.contains("nav-open")) return;
+          if (!mainNav.contains(e.target) && !menuToggle.contains(e.target)) {
+            mainNav.classList.remove("nav-open");
+          }
+        });
+      }
+    });
+  </script>
 
   <main>

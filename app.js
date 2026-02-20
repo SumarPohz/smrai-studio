@@ -13,9 +13,13 @@ import path from "path";
 import { fileURLToPath } from "url";
 import Razorpay from "razorpay";
 import crypto from "crypto";
-import OpenAI from "openai";   
-import connectPgSimple from "connect-pg-simple"; 
+import { VertexAI } from "@google-cloud/vertexai";
+import connectPgSimple from "connect-pg-simple";
 import dotenv from "dotenv";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import { TEMPLATES, getTemplateById } from "./config/templates-config.js";
+import { getFieldsForTemplate, isPhotoTemplate } from "./config/template-fields.js";
 
 const PgSession = connectPgSimple(session);
 const __filename = fileURLToPath(import.meta.url);
@@ -30,9 +34,13 @@ const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
-// ----- OpenAI setup (optional, for AI content suggestions) -----
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+// ----- Gemini (Vertex AI) setup -----
+const vertexAI = new VertexAI({
+  project: process.env.GCP_PROJECT_ID,
+  location: "us-central1",
+});
+const geminiModel = vertexAI.getGenerativeModel({
+  model: "gemini-2.0-flash",
 });
 // Optional: helpful warning in dev
 if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
@@ -40,6 +48,8 @@ if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
 }
 
 const app = express();
+app.use(helmet());
+
 // ---------- PostgreSQL ----------
 const db = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
@@ -136,11 +146,18 @@ await db.query(`
         amount INTEGER,
         currency VARCHAR(10),
         razorpay_order_id TEXT,
-        razorpay_payment_id TEXT,
+        razorpay_payment_id TEXT UNIQUE,
         razorpay_signature TEXT,
         status VARCHAR(30) DEFAULT 'captured',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+    `);
+
+    // Ensure UNIQUE constraint exists on existing DBs (safe to run repeatedly)
+    await db.query(`
+      ALTER TABLE payments
+      ADD CONSTRAINT IF NOT EXISTS payments_razorpay_payment_id_key
+      UNIQUE (razorpay_payment_id);
     `);
 
     console.log("✅ Tables ready: service_requests, resumes, resume_events, payments");
@@ -251,7 +268,10 @@ app.set("views", "views");
 // ---------- Session & Passport ----------
 const isProd = process.env.NODE_ENV === "production";
 
-app.set("trust proxy", 1);
+// app.set("trust proxy", 1);
+if (process.env.NODE_ENV === "production") {
+  app.set("trust proxy", 1);
+}
 
 app.use(
   session({
@@ -353,7 +373,9 @@ passport.serializeUser((user, done) => {
 passport.deserializeUser(async (id, done) => {
   try {
     const result = await db.query("SELECT * FROM users WHERE id = $1", [id]);
-    done(null, result.rows[0]);
+    // Pass false (not undefined) when user not found — Passport clears the stale
+    // session cookie silently instead of logging "Failed to deserialize user".
+    done(null, result.rows[0] || false);
   } catch (err) {
     done(err, null);
   }
@@ -612,8 +634,10 @@ app.post("/resume/save", ensureAuthenticated, async (req, res) => {
   try {
     const body = req.body || {};
 
-    // log once to confirm we’re actually receiving data
-    console.log("SAVE RESUME BODY:", body);
+    // log once to confirm we’re actually receiving data (dev only)
+    if (!isProd) {
+      console.log("SAVE RESUME BODY:", body);
+    }
 
     const {
       resumeId,
@@ -627,10 +651,23 @@ app.post("/resume/save", ensureAuthenticated, async (req, res) => {
       profileImageUrl,
       summary,
       experience,
+      experienceJson,
       education,
       skills,
       languages,
     } = body;
+
+    // experienceJson = JSON string of structured array (from AI Interview)
+    // experience     = plain text string (from textarea)
+    // Prefer structured array when both are present
+    let experienceData = experience;
+    if (experienceJson) {
+      try {
+        experienceData = JSON.parse(experienceJson);
+      } catch (_) {
+        experienceData = experience;
+      }
+    }
 
     const data = {
       fullName,
@@ -640,7 +677,7 @@ app.post("/resume/save", ensureAuthenticated, async (req, res) => {
       location,
       profileImageUrl,
       summary,
-      experience,
+      experience: experienceData,
       education,
       skills,
       languages,
@@ -690,17 +727,53 @@ app.post("/resume/save", ensureAuthenticated, async (req, res) => {
   }
 });
 
+app.post("/resume/delete", ensureAuthenticated, async (req, res) => {
+  const userId = req.user.id;
+  const { resumeId } = req.body;
+  if (!resumeId) return res.redirect("/resumes");
+  try {
+    await db.query(
+      "DELETE FROM resumes WHERE id = $1 AND user_id = $2",
+      [resumeId, userId]
+    );
+    // Clear session if the deleted resume was the active one
+    if (req.session.currentResumeId == resumeId) {
+      delete req.session.currentResumeId;
+      delete req.session.resumeDraft;
+    }
+  } catch (err) {
+    console.error("Error deleting resume:", err);
+  }
+  res.redirect("/resumes");
+});
 
 // Show resume builder form
-app.get("/resume-builder", ensureAuthenticated, (req, res) => {
+app.get("/resume-builder", ensureAuthenticated, async (req, res) => {
   const profile = res.locals.userProfile || {};
-  const draft = req.session?.resumeDraft || {};
-
-  // Decide which template to use
+  let draft = req.session?.resumeDraft || {};
   let template = "modern-1";
 
-  if (req.query.template) {
-    template = req.query.template;
+  // Load a saved resume into the builder when ?resumeId=xxx is passed (from My Resumes edit)
+  if (req.query.resumeId) {
+    try {
+      const r = await db.query(
+        "SELECT * FROM resumes WHERE id = $1 AND user_id = $2",
+        [req.query.resumeId, req.user.id]
+      );
+      if (r.rows.length > 0) {
+        const saved = r.rows[0];
+        draft = (saved.data && typeof saved.data === "object") ? saved.data : {};
+        req.session.currentResumeId = saved.id;
+        req.session.resumeDraft = draft;
+        template = getTemplateById(saved.template).id;
+        req.session.lastTemplate = template;
+      }
+    } catch (err) {
+      console.error("Error loading resume for edit:", err);
+    }
+  } else if (req.query.template) {
+    const tpl = getTemplateById(req.query.template);
+    template = tpl.isAvailable ? tpl.id : "modern-1";
     req.session.lastTemplate = template;
   } else if (req.session?.lastTemplate) {
     template = req.session.lastTemplate;
@@ -712,9 +785,10 @@ app.get("/resume-builder", ensureAuthenticated, (req, res) => {
     profile,
     template,
     draft,
-    currentUser: req.user,   // used by header
-    user: req.user,          // used in this EJS for email fallback
-    resumeId: req.session.currentResumeId || null, // safe even if undefined
+    isPhotoTpl: isPhotoTemplate(template),
+    currentUser: req.user,
+    user: req.user,
+    resumeId: req.session.currentResumeId || null,
   });
 });
 
@@ -794,48 +868,21 @@ app.get("/payments", ensureAuthenticated, async (req, res, next) => {
 });
 
 
-const RESUME_TEMPLATES = [
-  {
-    id: "modern-1",
-    name: "Modern Professional",
-    description: "Bold left sidebar with clean typography.",
-    badge: "Popular",
-  },
-  {
-    id: "modern-2",
-    name: "Modern Contrast",
-    description: "Alternative modern layout (you can wire this later).",
-    badge: "New",
-  },
-  {
-    id: "minimal-1",
-    name: "Minimal Clean",
-    description: "Simple, ATS-friendly layout.",
-    badge: "ATS Friendly",
-  },
-];
+// Template Fields API – used by AI Interview to know which questions to ask
+app.get("/api/template-fields/:templateId", ensureAuthenticated, (req, res) => {
+  const fields = getFieldsForTemplate(req.params.templateId);
+  res.json({ success: true, fields });
+});
 
 app.get("/resume-templates", ensureAuthenticated, (req, res) => {
-  const RESUME_TEMPLATES = [
-    {
-      id: "modern-1",
-      title: "Modern Professional",
-      description: "Clean two-column layout, great for experienced professionals.",
-      previewClass: "template-1",
-      available: true,
-      paid: true,
-    },
-    { id: "minimal-1", title: "Simple & Minimal", description: "Single-column layout, perfect for freshers and minimalist profiles.", previewClass: "template-3", available: false },
-    // Add others as needed
-  ];
-
-  res.render("resume-templates", { RESUME_TEMPLATES });
+  res.render("resume-templates", { RESUME_TEMPLATES: TEMPLATES });
 });
 
 // Show preview after form submit
 app.post("/resume-builder/preview", ensureAuthenticated, async (req, res) => {
   const data = req.body;
-  const template = data.template || req.session?.lastTemplate || "modern-1";
+  const rawTemplate = data.template || req.session?.lastTemplate || "modern-1";
+  const template = getTemplateById(rawTemplate).id;
 
   try {
     // upsert profile
@@ -897,9 +944,20 @@ app.post("/resume-builder/pdf", ensureAuthenticated, async (req, res) => {
     phone,
     summary,
     experience,
+    experienceJson,
     education,
     skills,
   } = req.body;
+
+  // Resolve experience: prefer structured JSON array when present
+  let experienceData = experience;
+  if (experienceJson) {
+    try {
+      experienceData = JSON.parse(experienceJson);
+    } catch (_) {
+      experienceData = experience;
+    }
+  }
 
   /* 🔐 PAYMENT CHECK (MANDATORY) */
   const pay = await db.query(
@@ -916,8 +974,13 @@ app.post("/resume-builder/pdf", ensureAuthenticated, async (req, res) => {
     return res.status(403).send("Payment not completed");
   }
 
-  /* ✅ PAYMENT CONFIRMED → GENERATE PDF */
-  const doc = new PDFDocument({ margin: 50 });
+  /* ✅ PAYMENT CONFIRMED → GENERATE PDF (multi-page) */
+  const margin = 50;
+  const doc = new PDFDocument({
+    size: "A4",
+    margin,
+    bufferPages: true,
+  });
 
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader(
@@ -927,27 +990,84 @@ app.post("/resume-builder/pdf", ensureAuthenticated, async (req, res) => {
 
   doc.pipe(res);
 
-  doc.fontSize(22).text(fullName || "", { align: "center" });
-  doc.moveDown(0.5);
+  // --- Helper: check remaining space, add page if needed ---
+  const pageBottom = doc.page.height - margin;
+  function ensureSpace(needed) {
+    if (doc.y + needed > pageBottom) {
+      doc.addPage();
+    }
+  }
 
-  const contactLine = `${email || ""} | ${phone || ""}`;
-  doc.fontSize(10).text(contactLine, { align: "center" });
+  // --- Helper: draw a section heading + body text ---
+  function drawSection(title, body) {
+    if (!body || !body.trim()) return;
+    // 80pt = heading (16) + separator (6) + at least 2 body lines (28) + gap — avoids orphaned heads
+    ensureSpace(80);
+    doc
+      .fontSize(13)
+      .font("Helvetica-Bold")
+      .text(title)
+      .moveDown(0.2);
+    // Thin separator line
+    doc
+      .strokeColor("#d1d5db")
+      .lineWidth(0.5)
+      .moveTo(margin, doc.y)
+      .lineTo(doc.page.width - margin, doc.y)
+      .stroke();
+    doc.moveDown(0.3);
+    doc
+      .fontSize(10.5)
+      .font("Helvetica")
+      .text(body, { align: "left", lineGap: 3 });
+    doc.moveDown(0.8);
+  }
 
+  // === Header ===
+  doc
+    .fontSize(22)
+    .font("Helvetica-Bold")
+    .text(fullName || "", { align: "center" });
+  doc.moveDown(0.3);
+
+  const contactParts = [email, phone].filter(Boolean);
+  if (contactParts.length) {
+    doc
+      .fontSize(10)
+      .font("Helvetica")
+      .text(contactParts.join("  |  "), { align: "center" });
+  }
   doc.moveDown(1);
-  doc.fontSize(14).text("Summary");
-  doc.fontSize(11).text(summary || "");
 
-  doc.moveDown(0.8);
-  doc.fontSize(14).text("Experience");
-  doc.fontSize(11).text(experience || "");
+  // === Sections (auto-paginates) ===
+  drawSection("Summary", summary);
 
-  doc.moveDown(0.8);
-  doc.fontSize(14).text("Education");
-  doc.fontSize(11).text(education || "");
+  // --- Experience: handle both array (AI Interview) and string (textarea) ---
+  if (Array.isArray(experienceData) && experienceData.length) {
+    ensureSpace(60);
+    doc.fontSize(13).font("Helvetica-Bold").text("Experience").moveDown(0.2);
+    doc.strokeColor("#d1d5db").lineWidth(0.5)
+       .moveTo(margin, doc.y).lineTo(doc.page.width - margin, doc.y).stroke();
+    doc.moveDown(0.3);
 
-  doc.moveDown(0.8);
-  doc.fontSize(14).text("Skills");
-  doc.fontSize(11).text(skills || "");
+    for (const item of experienceData) {
+      // 80pt ensures title line + at least 3 description lines before a new page starts
+      ensureSpace(80);
+      const parts = [item.title, item.company, item.dates].filter(Boolean);
+      doc.fontSize(11).font("Helvetica-Bold").text(parts.join("  ·  ")).moveDown(0.15);
+      if (item.description) {
+        doc.fontSize(10.5).font("Helvetica").text(item.description, { align: "left", lineGap: 3 }).moveDown(0.6);
+      } else {
+        doc.moveDown(0.4);
+      }
+    }
+    doc.moveDown(0.5);
+  } else if (typeof experienceData === "string") {
+    drawSection("Experience", experienceData);
+  }
+
+  drawSection("Education", education);
+  drawSection("Skills", skills);
 
   doc.end();
 });
@@ -1013,12 +1133,103 @@ app.post("/resume/event", ensureAuthenticated, async (req, res) => {
     return res.status(500).json({ success: false });
   }
 });
+// ---------- AI Rate Limiter ----------
+const aiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use("/api/ai/", aiLimiter);
+
 // ---------- AI Resume Suggestion Route ----------
 app.post("/api/ai/suggest", ensureAuthenticated, async (req, res) => {
   const { field, currentText, roleTitle } = req.body || {};
 
   if (!field) {
     return res.status(400).json({ success: false, message: "field is required" });
+  }
+
+  // ── Experience field: structured JSON response ──────────────────────────
+  if (field === "experience") {
+    const experiencePrompt = `You are a professional resume writer helping structure a candidate's work history.
+
+The candidate has described their experience in natural, informal language:
+"""${currentText || ""}"""
+
+Job title context (if known): ${roleTitle || "Not specified"}
+
+Your tasks:
+1. Identify every distinct job role or position mentioned.
+2. For each role, return exactly these four fields:
+   - "title"   : the job title (use Title Case).
+   - "company" : the organisation name as stated, or inferred from common knowledge
+                 (e.g. "CSC" context → "Common Service Centre"; keep well-known brand names as-is).
+                 Use "" only if truly unknown.
+   - "dates"   : normalize to "YYYY \u2013 YYYY" or "YYYY \u2013 Present" format.
+                 Convert natural phrasing: "from 2017 to 2019", "2017-2019",
+                 "2024 to present", "till date" etc. Capitalize "Present".
+   - "description" : 2\u20134 concise, professional bullet points as a single string.
+                 Each bullet on its own line starting with "\u2022" (bullet character, not hyphen).
+                 Use strong action verbs.
+                 Base bullets on:
+                   a) What the candidate explicitly mentioned about this role.
+                   b) Typical core responsibilities for this role and industry,
+                      when the candidate did not provide detail.
+                 Keep bullets realistic \u2014 do not invent companies or titles.
+3. If only one role is mentioned, return a single-item array.
+4. If you cannot confidently split multiple roles, return one item using the job title context.
+5. List roles in chronological order (oldest first).
+
+Return ONLY a valid JSON array \u2014 no markdown, no prose, no code fences:
+[{"title":"...","company":"...","dates":"...","description":"\u2022 ...\n\u2022 ..."}]`;
+
+    try {
+      const result = await geminiModel.generateContent({
+        contents: [{ role: "user", parts: [{ text: experiencePrompt }] }],
+        generationConfig: {
+          temperature: 0.45,
+          maxOutputTokens: 1536,
+          responseMimeType: "application/json",
+        },
+      });
+
+      let raw = result.response?.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
+      // Strip accidental markdown fences just in case
+      raw = raw.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim();
+
+      let structured = [];
+      try { structured = JSON.parse(raw); } catch (_) { structured = []; }
+
+      // Fallback: wrap the raw text into a single entry if parsing failed
+      if (!Array.isArray(structured) || structured.length === 0) {
+        structured = [{
+          title:       roleTitle || "Position",
+          company:     "",
+          dates:       "",
+          description: currentText ? "\u2022 " + currentText.trim().split(/\n+/).join("\n\u2022 ") : "",
+        }];
+      }
+
+      // Build human-readable textarea text from the structured array
+      const readableText = structured.map(item => {
+        const header = [
+          item.title   || "",
+          item.company ? "\u2014 " + item.company : "",
+          item.dates   ? "(" + item.dates + ")"   : "",
+        ].filter(Boolean).join(" ");
+        return item.description ? header + "\n" + item.description : header;
+      }).join("\n\n");
+
+      return res.json({ success: true, text: readableText, structured });
+    } catch (err) {
+      console.error("AI suggest error (experience):", err);
+      const errMsg = err.message || "";
+      if (errMsg.includes("RESOURCE_EXHAUSTED") || errMsg.includes("429") || errMsg.includes("quota")) {
+        return res.json({ success: false, error: "insufficient_quota" });
+      }
+      return res.json({ success: false, error: "AI error: " + (err.message || "Unknown error") });
+    }
   }
 
   // Build field-specific instructions
@@ -1034,18 +1245,6 @@ app.post("/api/ai/suggest", ensureAuthenticated, async (req, res) => {
         Focus on achievements, strengths, and domain expertise.
         Do not use "I". Write in a neutral tone (e.g. "Results-driven professional...").
         Return plain text only, with line breaks, no bullets or numbering.
-      `;
-      break;
-
-    case "experience":
-      fieldInstructions = `
-        You are writing the EXPERIENCE section of a resume.
-        Role: ${roleTitle || "Not specified"}.
-        Current text (if any): """${currentText || ""}"""
-        Convert this into strong, action-based statements suitable for experience.
-        Use one responsibility/achievement per line.
-        Keep it concise but impactful (4–8 lines).
-        Return plain text only, one statement per line, no bullet symbols.
       `;
       break;
 
@@ -1096,19 +1295,37 @@ app.post("/api/ai/suggest", ensureAuthenticated, async (req, res) => {
   }
 
   try {
-    const response = await openai.responses.create({
-      model: "gpt-5.1-mini",
-      instructions: "You are a helpful resume-writing assistant.",
-      input: fieldInstructions,
+    const result = await geminiModel.generateContent({
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text:
+                "You are a helpful resume-writing assistant.\n\n" +
+                fieldInstructions,
+            },
+          ],
+        },
+      ],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 1024,
+      },
     });
 
-    const suggestion = response.output_text || "";
+    const suggestion =
+      result.response?.candidates?.[0]?.content?.parts?.[0]?.text || "";
     return res.json({ success: true, text: suggestion.trim() });
   } catch (err) {
-    console.error("AI suggest error:", err?.response?.data || err);
+    console.error("AI suggest error:", err);
 
-    // Special handling for quota / 429
-    if (err.code === "insufficient_quota" || err.status === 429) {
+    const errMsg = err.message || "";
+    if (
+      errMsg.includes("RESOURCE_EXHAUSTED") ||
+      errMsg.includes("429") ||
+      errMsg.includes("quota")
+    ) {
       return res.json({
         success: false,
         error: "insufficient_quota",
@@ -1119,6 +1336,89 @@ app.post("/api/ai/suggest", ensureAuthenticated, async (req, res) => {
       success: false,
       error: "AI error: " + (err.message || "Unknown error"),
     });
+  }
+});
+
+
+// ---------- AI Interview Prompt Builder ----------
+function buildInterviewPrompt(answers, templateId) {
+  const fields = getFieldsForTemplate(templateId);
+  const fieldList = fields.map(f => f.key).join(", ");
+
+  const answerText = Object.entries(answers)
+    .map(([k, v]) => `${k}: ${String(v).trim()}`)
+    .join("\n");
+
+  return `You are an expert resume writer. Based on the candidate's interview answers below, generate a complete, professional resume as JSON.
+
+Template: ${templateId}
+Required fields: ${fieldList}
+
+Candidate answers:
+${answerText}
+
+Return ONLY valid JSON matching this exact schema (no markdown, no commentary):
+{
+  "fullName": "string",
+  "roleTitle": "string",
+  "phone": "string",
+  "email": "string",
+  "location": "string",
+  "summary": "3-5 line professional summary using action words, no first-person pronouns",
+  "experience": [
+    {
+      "title": "Job Title",
+      "company": "Company Name",
+      "dates": "Month Year – Month Year or Present",
+      "description": "Key achievements and responsibilities in 1-2 concise sentences using action verbs."
+    }
+  ],
+  "education": "Degree, Institution, Year\\nDegree, Institution, Year (one entry per line, newest first)",
+  "skills": "Skill 1\\nSkill 2\\nSkill 3 (one skill per line, 6-12 skills relevant to the role)",
+  "languages": "English – Read, Write, Speak\\nHindi – Read, Speak (one language per line)"
+}`;
+}
+
+// ---------- AI Interview Generate Route ----------
+app.post("/api/ai/interview-generate", ensureAuthenticated, async (req, res) => {
+  const { answers, templateId } = req.body || {};
+
+  if (!answers || !templateId) {
+    return res.status(400).json({ success: false, message: "answers and templateId are required" });
+  }
+
+  try {
+    const prompt = buildInterviewPrompt(answers, templateId);
+
+    const result = await geminiModel.generateContent({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 2048,
+        responseMimeType: "application/json",
+      },
+    });
+
+    const raw = result.response?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+    // Strip markdown fences if Gemini wraps in ```json ... ```
+    let resumeData;
+    try {
+      const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+      resumeData = JSON.parse(cleaned);
+    } catch (_) {
+      console.error("Failed to parse Gemini JSON:", raw);
+      return res.status(500).json({ success: false, error: "Failed to parse AI response as JSON" });
+    }
+
+    return res.json({ success: true, data: resumeData });
+  } catch (err) {
+    console.error("AI interview-generate error:", err);
+    const errMsg = err.message || "";
+    if (errMsg.includes("RESOURCE_EXHAUSTED") || errMsg.includes("429") || errMsg.includes("quota")) {
+      return res.json({ success: false, error: "insufficient_quota" });
+    }
+    return res.json({ success: false, error: "AI error: " + (err.message || "Unknown error") });
   }
 });
 
@@ -1213,6 +1513,31 @@ app.post("/profile/update", ensureAuthenticated, async (req, res) => {
     res.redirect("/dashboard");
   }
 });
+
+// Resume-builder photo upload — returns JSON so the page can update without a redirect
+app.post(
+  "/resume-builder/upload-photo",
+  ensureAuthenticated,
+  upload.single("photo"),
+  async (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: "No file received" });
+    }
+    const imagePath = "/uploads/" + req.file.filename;
+    try {
+      await db.query(
+        `INSERT INTO user_profiles (user_id, profile_image_url, updated_at)
+         VALUES ($1, $2, NOW())
+         ON CONFLICT (user_id)
+         DO UPDATE SET profile_image_url = $2, updated_at = NOW()`,
+        [req.user.id, imagePath]
+      );
+    } catch (err) {
+      console.error("Error saving builder photo:", err);
+    }
+    res.json({ success: true, imagePath });
+  }
+);
 
 app.post(
   "/profile/photo",

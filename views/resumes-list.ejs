@@ -30,6 +30,7 @@
             <th>Downloads</th>
             <th>Prints</th>
             <th>Last Updated</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -40,13 +41,21 @@
               </td>
               <td>
                 <span class="badge">
-                  <%= (r.template || 'modern-1').replace('-', ' ').toUpperCase() %>
+                  <%= (r.template || 'modern-1').replace(/-/g, ' ').toUpperCase() %>
                 </span>
               </td>
               <td><%= r.downloads_count || 0 %></td>
               <td><%= r.prints_count || 0 %></td>
               <td>
                 <%= r.updated_at ? new Date(r.updated_at).toLocaleString("en-IN") : "-" %>
+              </td>
+              <td class="actions-cell">
+                <a href="/resume-builder?resumeId=<%= r.id %>" class="action-btn edit-btn">Edit</a>
+                <form action="/resume/delete" method="POST" class="inline-form"
+                      onsubmit="return confirm('Delete this resume? This cannot be undone.');">
+                  <input type="hidden" name="resumeId" value="<%= r.id %>" />
+                  <button type="submit" class="action-btn delete-btn">Delete</button>
+                </form>
               </td>
             </tr>
           <% }) %>
@@ -131,6 +140,51 @@
   .empty-state-card p {
     color: #6b7280;
     margin-bottom: 0.75rem;
+  }
+
+  .actions-cell {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+    white-space: nowrap;
+  }
+
+  .inline-form {
+    display: inline;
+    margin: 0;
+    padding: 0;
+  }
+
+  .action-btn {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid transparent;
+    text-decoration: none;
+    line-height: 1.5;
+  }
+
+  .edit-btn {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border-color: #bfdbfe;
+  }
+
+  .edit-btn:hover {
+    background: #dbeafe;
+  }
+
+  .delete-btn {
+    background: #fff1f2;
+    color: #be123c;
+    border-color: #fecdd3;
+  }
+
+  .delete-btn:hover {
+    background: #ffe4e6;
   }
 </style>
 
