@@ -33,13 +33,29 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 // ----- Gemini (Vertex AI) setup -----
-const vertexAI = new VertexAI({
-  project: process.env.GCP_PROJECT_ID,
-  location: "us-central1",
-});
-const geminiModel = vertexAI.getGenerativeModel({
-  model: "gemini-2.0-flash",
-});
+let geminiModel = null;
+try {
+  const vertexOpts = {
+    project:  process.env.GCP_PROJECT_ID,
+    location: "us-central1",
+  };
+
+  if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+    // Production (Render): credentials stored as a JSON string in env var
+    vertexOpts.credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+    console.log("✅ Vertex AI: using GOOGLE_SERVICE_ACCOUNT_JSON credentials");
+  } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    // Development: credentials loaded automatically from file path by the SDK
+    console.log("✅ Vertex AI: using GOOGLE_APPLICATION_CREDENTIALS file");
+  } else {
+    console.warn("⚠️ Vertex AI: no credentials found — AI Suggest will be disabled");
+  }
+
+  const vertexAI = new VertexAI(vertexOpts);
+  geminiModel = vertexAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+} catch (err) {
+  console.error("❌ Vertex AI initialisation failed — AI Suggest disabled:", err.message);
+}
 // Optional: helpful warning in dev
 if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
   console.warn("⚠️ RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET missing in .env. Payment routes will fail.");
@@ -1157,6 +1173,10 @@ app.post("/api/ai/suggest", ensureAuthenticated, async (req, res) => {
 
   if (!field) {
     return res.status(400).json({ success: false, message: "field is required" });
+  }
+
+  if (!geminiModel) {
+    return res.status(503).json({ success: false, message: "AI features are currently unavailable. Please try again later." });
   }
 
   // ── Experience field: structured JSON response ──────────────────────────
