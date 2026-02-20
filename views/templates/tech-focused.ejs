@@ -29,20 +29,16 @@
     <h3><span class="tf-hash">#</span> Experience</h3>
     <% if (experienceItems.length) { %>
       <% experienceItems.forEach(exp => { %>
-        <div class="tf-exp-item">
-          <div class="tf-exp-header">
-            <code class="tf-exp-title"><%= exp.title %></code><% if (exp.company) { %> <em class="exp-company"> · <%= exp.company %></em><% } %>
-            <% if (exp.dates) { %>
-              <span class="tf-exp-dates"><%= exp.dates %></span>
-            <% } %>
+        <div class="exp-entry">
+          <div class="exp-heading">
+            <span class="exp-title"><code class="tf-exp-title"><%= exp.title %></code><% if (exp.company) { %> <em class="exp-company"> · <%= exp.company %></em><% } %></span>
+            <% if (exp.dates) { %><span class="tf-exp-dates"><%= exp.dates %></span><% } %>
           </div>
-          <% if (exp.description) { %>
-            <p class="tf-exp-desc"><%= exp.description %></p>
-          <% } %>
+          <% if (exp.description) { %><div class="exp-body"><%= exp.description %></div><% } %>
         </div>
       <% }) %>
     <% } else { %>
-      <p><%= data.experience || "" %></p>
+      <p class="exp-text"><%= data.experience || "" %></p>
     <% } %>
   </div>
 
