@@ -2136,11 +2136,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const recognition   = new SR();
-    recognition.lang    = "en-IN";
-    recognition.continuous     = true;   // don't stop on natural pauses
-    recognition.interimResults = true;   // fire events during speech, not only at end
+    recognition.lang            = "en-IN";
+    recognition.continuous      = true;   // don't stop on natural pauses
+    recognition.interimResults  = false;  // fire only on final results (cleaner, less noise)
+    recognition.maxAlternatives = 3;      // ask for up to 3 candidates; pick highest confidence
 
-    const SILENCE_MS = 6000;  // wait 6 s of silence before finalising
+    const SILENCE_MS = 7000;  // wait 7 s of silence before finalising
     let isListening    = false;
     let silenceTimer   = null;
     let finalTranscript = "";
@@ -2167,10 +2168,15 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     recognition.onresult = (e) => {
-      // Accumulate only final segments; interim resets the silence timer only
+      // Accumulate only final segments; interim resets the silence timer only.
+      // Pick the alternative with the highest confidence score (maxAlternatives=3).
       for (let i = e.resultIndex; i < e.results.length; i++) {
         if (e.results[i].isFinal) {
-          finalTranscript += e.results[i][0].transcript;
+          let best = e.results[i][0];
+          for (let a = 1; a < e.results[i].length; a++) {
+            if (e.results[i][a].confidence > best.confidence) best = e.results[i][a];
+          }
+          finalTranscript += best.transcript;
         }
       }
       // Any speech activity → reset the silence countdown
@@ -2239,7 +2245,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  const SILENCE_MS = 6000;
+  const SILENCE_MS = 7000;
 
   // Shared state — only one recording at a time
   var recognition  = null;
@@ -2274,9 +2280,10 @@ document.addEventListener("DOMContentLoaded", () => {
   function startRecording(btn, textarea) {
     // Create a fresh instance every time — avoids restart-loop bugs
     recognition = new SR();
-    recognition.lang = 'en-IN';
-    recognition.continuous = true;
-    recognition.interimResults = true;
+    recognition.lang            = 'en-IN';
+    recognition.continuous      = true;
+    recognition.interimResults  = false;  // fire only on final results
+    recognition.maxAlternatives = 3;      // pick highest-confidence candidate per segment
 
     finalTranscript = '';
     activeBtn    = btn;
@@ -2294,7 +2301,11 @@ document.addEventListener("DOMContentLoaded", () => {
     recognition.onresult = function (e) {
       for (var i = e.resultIndex; i < e.results.length; i++) {
         if (e.results[i].isFinal) {
-          finalTranscript += e.results[i][0].transcript;
+          var best = e.results[i][0];
+          for (var a = 1; a < e.results[i].length; a++) {
+            if (e.results[i][a].confidence > best.confidence) best = e.results[i][a];
+          }
+          finalTranscript += best.transcript;
         }
       }
       // Any speech resets the silence clock

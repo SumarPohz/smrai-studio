@@ -488,6 +488,7 @@
 <!-- JSZip: used to package multi-page JPG exports into a single ZIP download -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 
 <!-- Resume data embedded safely for PDF form submission (type=application/json prevents execution) -->
@@ -683,44 +684,107 @@
     }
 
     // ================================================================
-    // PDF download — POST resume data to /resume-builder/pdf
-    // Backend streams back a PDF file (payment check done server-side)
+    // PDF generation — html2canvas captures the live DOM (same as JPG),
+    // then jsPDF assembles pages into a downloadable PDF.
+    // Layout is identical to the preview — no server-side rebuild needed.
     // ================================================================
-    function downloadPdf() {
-      pdfBtn.disabled     = true;
-      pdfBtn.textContent  = "Preparing PDF…";
+    async function generatePdf() {
+      pdfBtn.disabled      = true;
+      downloadBtn.disabled = true;
+      const origText = pdfBtn.textContent;
+      pdfBtn.textContent = "Preparing PDF…";
 
       try {
-        const form = document.createElement("form");
-        form.method = "POST";
-        form.action = "/resume-builder/pdf";
+        const A4_WIDTH_PX  = 2480;
+        const A4_HEIGHT_PX = 3508;
 
-        ["resumeId", "fullName", "email", "phone", "summary",
-         "experience", "experienceJson", "education", "skills",
-         "profileImageUrl"
-        ].forEach(function (key) {
-          const inp   = document.createElement("input");
-          inp.type    = "hidden";
-          inp.name    = key;
-          inp.value   = resumePayload[key] || "";
-          form.appendChild(inp);
+        // Remove CSS transform so html2canvas sees the full unscaled element
+        const scaleContainer = document.getElementById("scaleContainer");
+        const prevTransform  = scaleContainer ? scaleContainer.style.transform : "";
+        const wrapperEl      = document.querySelector(".preview-wrapper");
+        const prevWrapperH   = wrapperEl ? wrapperEl.style.height : "";
+        if (scaleContainer) scaleContainer.style.transform = "none";
+        if (wrapperEl) wrapperEl.style.height = "auto";
+
+        // Hide page-break overlays — must not appear in the exported PDF
+        const pgBreaks = resumeNode.querySelectorAll(".pg-break");
+        pgBreaks.forEach(function (el) { el.style.display = "none"; });
+
+        // Convert all <img> src values to data URLs so html2canvas can
+        // render them without hitting browser CORS/canvas-taint restrictions
+        await preloadImagesAsDataUrls(resumeNode);
+
+        const baseWidth = resumeNode.offsetWidth;
+        const scale     = A4_WIDTH_PX / baseWidth;
+
+        const fullCanvas = await html2canvas(resumeNode, {
+          scale:           scale,
+          backgroundColor: "#ffffff",
+          useCORS:         true,
+          allowTaint:      false,
+          scrollX:         0,
+          scrollY:         -window.scrollY,
+          windowWidth:     resumeNode.scrollWidth,
+          windowHeight:    resumeNode.scrollHeight,
         });
 
-        document.body.appendChild(form);
-        form.submit();  // triggers browser PDF download via Content-Disposition header
+        // Restore transforms, overlays, and original image src attributes
+        if (scaleContainer) scaleContainer.style.transform = prevTransform;
+        if (wrapperEl) wrapperEl.style.height = prevWrapperH;
+        pgBreaks.forEach(function (el) { el.style.display = ""; });
+        restoreImageSrcs(resumeNode);
 
-        // Page unloads on submission; restore state as a safety fallback
-        setTimeout(function () {
-          if (document.body.contains(form)) document.body.removeChild(form);
-          pdfBtn.disabled    = false;
-          pdfBtn.textContent = "Download PDF (A4)";
-        }, 4000);
+        const fullHeight = fullCanvas.height;
+        const totalPages = Math.ceil(fullHeight / A4_HEIGHT_PX);
+
+        // PDF page size in px — matches A4 at screen resolution
+        const PDF_W = 794;
+        const PDF_H = 1123;
+
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({
+          orientation: "portrait",
+          unit:        "px",
+          format:      [PDF_W, PDF_H],
+          compress:    true,
+        });
+
+        pdfBtn.textContent = totalPages > 1
+          ? "Building " + totalPages + " pages…"
+          : "Building PDF…";
+
+        for (var i = 0; i < totalPages; i++) {
+          if (i > 0) pdf.addPage([PDF_W, PDF_H], "portrait");
+
+          const sliceH = Math.min(A4_HEIGHT_PX, fullHeight - i * A4_HEIGHT_PX);
+
+          // Slice this page from the full high-res canvas
+          const pc  = document.createElement("canvas");
+          pc.width  = A4_WIDTH_PX;
+          pc.height = sliceH;
+          const ctx = pc.getContext("2d");
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, A4_WIDTH_PX, sliceH);
+          ctx.drawImage(
+            fullCanvas,
+            0, i * A4_HEIGHT_PX, A4_WIDTH_PX, sliceH,
+            0, 0,                A4_WIDTH_PX, sliceH
+          );
+
+          const imgData  = pc.toDataURL("image/jpeg", 0.95);
+          const pageImgH = (sliceH / A4_HEIGHT_PX) * PDF_H;  // proportional height for last page
+          pdf.addImage(imgData, "JPEG", 0, 0, PDF_W, pageImgH);
+        }
+
+        pdf.save("SmrAI-Studio-Resume.pdf");
 
       } catch (err) {
-        console.error("PDF download error:", err);
-        alert("Failed to initiate PDF download. Please try again.");
-        pdfBtn.disabled    = false;
-        pdfBtn.textContent = "Download PDF (A4)";
+        console.error("PDF export error:", err);
+        alert("Failed to generate PDF. Check console for details.");
+      } finally {
+        pdfBtn.disabled      = false;
+        downloadBtn.disabled = false;
+        pdfBtn.textContent   = paymentVerified ? "Download PDF (A4)" : origText;
       }
     }
 
@@ -785,7 +849,7 @@
               if (action === "jpg") {
                 await generateJpg();
               } else if (action === "pdf") {
-                downloadPdf();
+                await generatePdf();
               }
 
             } catch (err) {
@@ -818,7 +882,7 @@
     });
 
     pdfBtn.addEventListener("click", function () {
-      if (paymentVerified) { downloadPdf(); } else { startPayment("pdf"); }
+      if (paymentVerified) { generatePdf(); } else { startPayment("pdf"); }
     });
 
   })();
