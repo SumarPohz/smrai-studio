@@ -1619,7 +1619,7 @@ app.post(
 app.post("/api/razorpay/create-order", ensureAuthenticated, async (req, res) => {
   try {
     const options = {
-      amount: 1 * 100,          // ₹49 in paise
+      amount: 50 * 100,          // ₹50 in paise
       currency: "INR",
       receipt: "resume_" + Date.now(),
     };
@@ -1682,7 +1682,7 @@ app.post("/api/razorpay/verify", async (req, res) => {
     }
 
     const userId = req.user.id;
-    const amount = 1 * 100; // ₹49 in paise
+    const amount = 50 * 100; // ₹50 in paise
     const currency = "INR";
     const finalPurpose = purpose || "download";
 const existing = await db.query(
