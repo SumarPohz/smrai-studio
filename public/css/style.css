@@ -736,6 +736,19 @@ main section {
   margin-right: 0.35rem;
 }
 
+/* ── Navbar logo ── */
+.brand-logo {
+  height: 40px;
+  width: auto;
+  vertical-align: middle;
+  display: inline-block;
+  margin-right: 0.4rem;
+}
+
+@media (max-width: 768px) {
+  .brand-logo { height: 32px; }
+}
+
 /* Make sure header is flex (you probably already have this) */
 .top-header {
   display: flex;
