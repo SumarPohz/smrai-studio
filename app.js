@@ -247,6 +247,14 @@ app.post(
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+// Normalize double-slash URLs (e.g. // → /) to avoid OG canonical mismatches
+app.use((req, res, next) => {
+  if (req.url.startsWith("//")) {
+    return res.redirect(301, req.url.replace(/^\/+/, "/"));
+  }
+  next();
+});
+
 const port = process.env.PORT || 3000;
 const saltRounds = 10;
 
