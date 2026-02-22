@@ -279,25 +279,28 @@ app.set("views", "views");
 // ---------- Session & Passport ----------
 const isProd = process.env.NODE_ENV === "production";
 
-// app.set("trust proxy", 1);
-if (process.env.NODE_ENV === "production") {
-  app.set("trust proxy", 1);
-}
+// Trust Render's proxy so Express sees the correct protocol (HTTPS) and
+// allows secure cookies to be set. Harmless in local dev.
+app.set("trust proxy", 1);
 
 app.use(
   session({
     store: new PgSession({
-      pool : db,                // Use your existing Postgres pool
-      tableName : 'session',    // Optional: defaults to 'session'
-      createTableIfMissing: true // Handy to auto-create the table
+      pool: db,
+      tableName: "session",
+      createTableIfMissing: true,
     }),
-    secret: process.env.SESSION_SECRET || "supersecret",
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: isProd,                     // HTTPS only in production
-      sameSite: isProd ? "none" : "lax",  // ✅ REQUIRED for OAuth on Render
+      // Dev  (NODE_ENV=development): HTTP localhost → secure must be false
+      // Prod (NODE_ENV=production):  HTTPS Render  → secure must be true
+      secure: isProd,
+      // "none" lets Android WebView & OAuth send cookies cross-context (requires secure:true)
+      // "lax"  is the safe browser default and works fine on localhost
+      sameSite: isProd ? "none" : "lax",
       maxAge: 1000 * 60 * 60 * 24 * 7,
     },
   })
@@ -1628,7 +1631,17 @@ app.post("/api/razorpay/create-order", ensureAuthenticated, async (req, res) => 
   }
 });
 
-app.post("/api/razorpay/verify", ensureAuthenticated, async (req, res) => {
+app.post("/api/razorpay/verify", async (req, res) => {
+  console.log("VERIFY USER:", req.user);
+  console.log("VERIFY BODY:", req.body);
+
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      message: "Session expired or not authenticated",
+    });
+  }
+
   try {
     const {
       razorpay_order_id,
@@ -1687,7 +1700,7 @@ if (existing.rows.length > 0) {
       `INSERT INTO payments
        (user_id, resume_id, amount, currency, purpose,
         razorpay_order_id, razorpay_payment_id, razorpay_signature, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending')`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'captured')`,
       [
         userId,
         resumeId || null,

@@ -747,16 +747,25 @@ main section {
   box-sizing: border-box;
 }
 
-/* === Mobile layout === */
+/* Desktop default: nav links visible as a horizontal row */
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+/* === Mobile layout (≤ 768px) === */
 @media (max-width: 768px) {
   .menu-toggle {
     display: inline-flex;
     align-items: center;
     justify-content: center;
   }
-.top-header {
+
+  .top-header {
     padding: 0.6rem 0.9rem;
   }
+
   .header-left {
     gap: 0.4rem;
   }
@@ -764,12 +773,12 @@ main section {
   .brand {
     font-size: 1rem;
   }
-}
 
-  /* collapse nav into dropdown */
+  /* Collapse nav into dropdown — hidden until hamburger is clicked */
   .header-nav {
+    display: none;
     position: absolute;
-    top: 60px;          /* just under the header */
+    top: 60px;
     left: 0;
     right: 0;
     background: #ffffff;
@@ -778,7 +787,6 @@ main section {
     gap: 0.5rem;
     box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12);
     border-top: 1px solid #e5e7eb;
-    display: none;      /* hidden by default */
     z-index: 900;
   }
 
@@ -787,7 +795,7 @@ main section {
     padding: 0.45rem 0;
   }
 
-  /* when JS toggles this class, nav becomes visible */
+  /* JS toggles this class to reveal the dropdown */
   .header-nav.nav-open {
     display: flex;
   }
