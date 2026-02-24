@@ -382,20 +382,33 @@
   margin-bottom: 0.1rem;
 }
 
-/* ===== BOLD-SIDEBAR (clean professional: top header + two-column body) ===== */
+/* ===== BOLD-SIDEBAR (header + full-width about + two-column + footer) ===== */
 .resume-page.bold-sidebar {
   display: flex;
   flex-direction: column;
   background: #ffffff;
   font-family: inherit;
+  min-height: 1123px;    /* A4 screen height — enables sticky footer via flex */
 }
 
-/* ── Header ── */
+/* ── Top accent strip (matches footer color) ── */
+.bs-top-strip {
+  height: 40px;
+  background: #dbe6ea;
+  flex-shrink: 0;
+}
+
+/* ── Content wrapper: fills space, pushes footer to bottom ── */
+.bs-content-wrap {
+  flex: 1;
+}
+
+/* ── Header: photo (square, large) + name/role/contact ── */
 .bs-header {
   display: flex;
   align-items: flex-start;
-  gap: 1.2rem;
-  padding: 1.4rem 1.6rem 1.1rem;
+  gap: 1.4rem;
+  padding: 1.5rem 1.8rem 1.2rem;
   background: #ffffff;
 }
 
@@ -404,17 +417,16 @@
 }
 
 .bs-header-photo img {
-  width: 80px;
-  height: 80px;
-  border-radius: 8px;
+  width: 110px;
+  height: 110px;
+  border-radius: 4px;
   object-fit: cover;
-  border: 1px solid #d1d5db;
 }
 
 .bs-avatar-placeholder {
-  width: 80px;
-  height: 80px;
-  border-radius: 8px;
+  width: 110px;
+  height: 110px;
+  border-radius: 4px;
   border: 1px dashed #9ca3af;
   display: flex;
   align-items: center;
@@ -427,56 +439,80 @@
 .bs-header-info {
   flex: 1;
   min-width: 0;
+  padding-top: 0.15rem;
 }
 
 .bs-name {
-  font-size: 1.65rem;
-  font-weight: 700;
+  font-size: 2rem;
+  font-weight: 800;
   color: #111827;
-  margin: 0 0 0.15rem;
-  line-height: 1.2;
-  letter-spacing: -0.01em;
+  margin: 0 0 0.1rem;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
 }
 
 .bs-role {
-  font-size: 0.9rem;
-  color: #6b7280;
-  margin: 0 0 0.55rem;
+  font-size: 1rem;
+  color: #374151;
+  margin: 0 0 0.7rem;
   font-weight: 400;
 }
 
-.bs-contact-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem 1rem;
+/* 2×2 contact grid */
+.bs-contact-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.2rem 0.6rem;
+}
+
+.bs-contact-item {
   font-size: 0.78rem;
   color: #374151;
-}
-
-.bs-contact-row span {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.3rem;
 }
 
+/* ── Divider: full-width, no side margins ── */
 .bs-divider {
-  height: 2px;
-  background: #111827;
-  margin: 0 1.6rem;
+  height: 1px;
+  background: #333;
+  margin: 0;
 }
 
-/* ── Body: two-column ── */
+/* ── Full-width About Me ── */
+.bs-about {
+  padding: 0.9rem 1.8rem 0.7rem;
+}
+
+.bs-about h3 {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #111827;
+  border-bottom: 1px solid #444;
+  padding-bottom: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.bs-about p {
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: #374151;
+  margin: 0;
+}
+
+/* ── Two-column body ── */
 .bs-body {
-  display: flex;
-  flex-direction: row;
-  flex: 1;
+  display: grid;
+  grid-template-columns: 32% 68%;
   gap: 0;
 }
 
-/* ── Left column ── */
+/* ── Left column: Education + Skills ── */
 .bs-left {
-  width: 34%;
-  padding: 1.1rem 1.2rem 1.2rem 1.6rem;
+  padding: 0.9rem 1.2rem 1rem 1.8rem;
   border-right: 1px solid #e5e7eb;
   display: flex;
   flex-direction: column;
@@ -487,13 +523,13 @@
 }
 
 .bs-section h3 {
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: #111827;
-  border-bottom: 1.5px solid #111827;
-  padding-bottom: 0.2rem;
+  border-bottom: 1px solid #444;
+  padding-bottom: 0.25rem;
   margin-bottom: 0.45rem;
 }
 
@@ -513,27 +549,28 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.25rem;
 }
 
 .bs-skill-list li {
   font-size: 0.8rem;
   color: #374151;
-  padding-left: 0.8rem;
+  padding-left: 1rem;
   position: relative;
+  line-height: 1.45;
 }
 
 .bs-skill-list li::before {
   content: "•";
   position: absolute;
-  left: 0;
-  color: #6b7280;
+  left: 0.1rem;
+  color: #374151;
 }
 
-/* ── Right column ── */
+/* ── Right column: Work Experience ── */
 .bs-right {
   flex: 1;
-  padding: 1.1rem 1.6rem 1.2rem 1.2rem;
+  padding: 0.9rem 1.8rem 1rem 1.2rem;
 }
 
 .bs-content-section {
@@ -541,34 +578,31 @@
 }
 
 .bs-content-section h3 {
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: #111827;
-  border-bottom: 1.5px solid #111827;
-  padding-bottom: 0.2rem;
-  margin-bottom: 0.6rem;
+  border-bottom: 1px solid #444;
+  padding-bottom: 0.25rem;
+  margin-bottom: 0.65rem;
 }
 
-/* ── Experience items ── */
+/* ── Experience entries: dates-left column layout ── */
 .bs-exp-item {
   display: flex;
-  gap: 0.8rem;
-  margin-bottom: 0.5rem;  /* reduced — total gap between items ≤16px */
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid #f3f4f6;
+  gap: 0.9rem;
+  margin-bottom: 0.65rem;
 }
 
 .bs-exp-item:last-child {
-  border-bottom: none;
   margin-bottom: 0;
 }
 
 .bs-exp-dates {
-  width: 22%;
+  width: 20%;
   flex-shrink: 0;
-  font-size: 0.75rem;
+  font-size: 0.76rem;
   font-weight: 700;
   color: #374151;
   padding-top: 0.05rem;
@@ -587,17 +621,19 @@
   color: #111827;
   line-height: 1.2;
   margin-bottom: 0.1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
 .bs-exp-company {
-  font-size: 0.78rem;
-  color: #6b7280;
-  margin-bottom: 0.15rem;
+  font-size: 0.8rem;
+  color: #374151;
+  margin-bottom: 0.2rem;
 }
 
 .bs-exp-desc {
   font-size: 0.78rem;
-  line-height: 1.35;  /* reduced from 1.5 */
+  line-height: 1.45;
   color: #4b5563;
   white-space: pre-wrap;
   word-wrap: break-word;
@@ -1228,4 +1264,103 @@
 
 .cb-inner .experience-list li {
   border-left-color: #2563eb;
+}
+
+/* ===== BOLD-SIDEBAR: footer bar (Languages + References) ===== */
+.resume-page.bold-sidebar .bs-footer {
+  background: #dbe6ea;
+  display: flex;
+  flex-direction: row;
+}
+
+.bs-footer-col {
+  flex: 1;
+  padding: 0.75rem 1.2rem 0.75rem 1.2rem;
+}
+
+/* Languages column matches body left-column width */
+.bs-footer-col:first-child {
+  flex: 0 0 35%;
+  border-right: 1px solid #d1d5db;
+  padding-left: 1.8rem;
+}
+
+/* References column takes remaining width */
+.bs-footer-col:last-child {
+  padding-left: 1.2rem;
+  padding-right: 1.8rem;
+}
+
+.bs-footer-col h3 {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #111827;
+  border-bottom: 1px solid #444;
+  padding-bottom: 0.25rem;
+  margin-bottom: 0.45rem;
+}
+
+.bs-lang-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.bs-lang-list li {
+  font-size: 0.8rem;
+  color: #374151;
+  line-height: 1.7;
+  padding-left: 1rem;
+  position: relative;
+}
+
+.bs-lang-list li::before {
+  content: "•";
+  position: absolute;
+  left: 0.1rem;
+  color: #374151;
+}
+
+.bs-footer-text {
+  font-size: 0.8rem;
+  color: #374151;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  margin: 0;
+}
+
+/* Reference cards: 3 side by side */
+.bs-ref-grid {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: nowrap;
+}
+
+.bs-ref-entry {
+  flex: 1;
+  min-width: 0;
+}
+
+.bs-ref-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 0.1rem;
+  line-height: 1.25;
+}
+
+.bs-ref-institution {
+  font-size: 0.74rem;
+  color: #6b7280;
+  margin-bottom: 0.2rem;
+}
+
+.bs-ref-contact {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  font-size: 0.72rem;
+  color: #374151;
 }

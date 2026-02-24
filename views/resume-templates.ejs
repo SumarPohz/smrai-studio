@@ -24,7 +24,7 @@
 <section class="templates-grid-section">
   <div class="templates-grid">
     <% RESUME_TEMPLATES.forEach((tmpl, index) => { %>
-      <article class="template-card">
+      <article class="template-card" data-category="<%= tmpl.category || 'experienced' %>">
         <div class="template-preview template-<%= index + 1 %>">
           <img
             src="<%= tmpl.previewImage %>"
@@ -100,5 +100,33 @@
     </div>
   </div>
 </section>
+
+<script>
+  (function () {
+    const radios = document.querySelectorAll('input[name="experience"]');
+    const cards  = document.querySelectorAll(".template-card");
+
+    function filterCards(value) {
+      cards.forEach(function (card) {
+        card.style.display = card.dataset.category === value ? "" : "none";
+      });
+      localStorage.setItem("experienceLevel", value);
+    }
+
+    // Restore saved selection on load
+    const saved = localStorage.getItem("experienceLevel") || "experienced";
+    radios.forEach(function (r) {
+      if (r.value === saved) r.checked = true;
+    });
+    filterCards(saved);
+
+    // React to change
+    radios.forEach(function (r) {
+      r.addEventListener("change", function () {
+        filterCards(r.value);
+      });
+    });
+  })();
+</script>
 
 <%- include("partials/footer") %>

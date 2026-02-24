@@ -143,6 +143,12 @@ await db.query(`
       );
     `);
 
+    /* experience_level column (safe to run on every startup) */
+    await db.query(`
+      ALTER TABLE resumes
+      ADD COLUMN IF NOT EXISTS experience_level TEXT DEFAULT 'experienced';
+    `);
+
     /* download/print events (for stats) */
     await db.query(`
       CREATE TABLE IF NOT EXISTS resume_events (
@@ -675,6 +681,7 @@ app.post("/resume/save", ensureAuthenticated, async (req, res) => {
       education,
       skills,
       languages,
+      experienceLevel,
     } = body;
 
     // experienceJson = JSON string of structured array (from AI Interview)
@@ -711,10 +718,11 @@ app.post("/resume/save", ensureAuthenticated, async (req, res) => {
          SET title = $1,
              template = $2,
              data = $3,
+             experience_level = $4,
              updated_at = NOW()
-         WHERE id = $4 AND user_id = $5
+         WHERE id = $5 AND user_id = $6
          RETURNING id`,
-        [title || "Untitled Resume", template || "modern-1", data, resumeId, userId]
+        [title || "Untitled Resume", template || "modern-1", data, experienceLevel || "experienced", resumeId, userId]
       );
 
       if (result.rows.length === 0) {
@@ -726,10 +734,10 @@ app.post("/resume/save", ensureAuthenticated, async (req, res) => {
       savedId = result.rows[0].id;
     } else {
       const result = await db.query(
-        `INSERT INTO resumes (user_id, title, template, data)
-         VALUES ($1, $2, $3, $4)
+        `INSERT INTO resumes (user_id, title, template, data, experience_level)
+         VALUES ($1, $2, $3, $4, $5)
          RETURNING id`,
-        [userId, title || "Untitled Resume", template || "modern-1", data]
+        [userId, title || "Untitled Resume", template || "modern-1", data, experienceLevel || "experienced"]
       );
 
       savedId = result.rows[0].id;
@@ -1186,7 +1194,7 @@ app.post("/resume/event", ensureAuthenticated, async (req, res) => {
 });
 // ---------- AI Resume Suggestion Route ----------
 app.post("/api/ai/suggest", ensureAuthenticated, async (req, res) => {
-  const { field, currentText, roleTitle } = req.body || {};
+  const { field, currentText, roleTitle, experienceLevel } = req.body || {};
 
   if (!field) {
     return res.status(400).json({ success: false, message: "field is required" });
@@ -1198,6 +1206,41 @@ app.post("/api/ai/suggest", ensureAuthenticated, async (req, res) => {
 
   // ── Experience field: structured JSON response ──────────────────────────
   if (field === "experience") {
+    // ── Empty experience: generate a sample entry from scratch ──────────────
+    if (!currentText || !currentText.trim()) {
+      const sampleExpPrompt = `You are a professional resume writer creating a sample work history entry.
+The candidate has not entered any experience yet.
+Job title context: ${roleTitle || "Professional"}
+Generate ONE realistic sample work experience entry for this role.
+Return ONLY a valid JSON array — no markdown, no prose, no code fences:
+[{"title":"<fitting job title>","company":"<plausible company>","dates":"2022 – Present","description":"• <action-verb responsibility 1>\n• <action-verb responsibility 2>\n• <action-verb responsibility 3>"}]`;
+      try {
+        const sampleResult = await geminiModel.generateContent({
+          contents: [{ role: "user", parts: [{ text: sampleExpPrompt }] }],
+          generationConfig: { temperature: 0.65, maxOutputTokens: 512, responseMimeType: "application/json" },
+        });
+        let raw = sampleResult.response?.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
+        raw = raw.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim();
+        let structured = [];
+        try { structured = JSON.parse(raw); } catch (_) { structured = []; }
+        if (!Array.isArray(structured) || structured.length === 0) {
+          structured = [{ title: roleTitle || "Professional", company: "", dates: "2022 – Present", description: "" }];
+        }
+        const readableText = structured.map(item => {
+          const header = [item.title || "", item.company ? "— " + item.company : "", item.dates ? "(" + item.dates + ")" : ""].filter(Boolean).join(" ");
+          return item.description ? header + "\n" + item.description : header;
+        }).join("\n\n");
+        return res.json({ success: true, text: readableText, structured });
+      } catch (err) {
+        console.error("AI suggest error (experience/empty):", err);
+        const errMsg = err.message || "";
+        if (errMsg.includes("RESOURCE_EXHAUSTED") || errMsg.includes("429") || errMsg.includes("quota")) {
+          return res.json({ success: false, error: "insufficient_quota" });
+        }
+        return res.json({ success: false, error: "AI error: " + (err.message || "Unknown error") });
+      }
+    }
+    // ── Non-empty experience: structure the candidate's text ─────────────────
     const experiencePrompt = `You are a professional resume writer helping structure a candidate's work history.
 
 The candidate has described their experience in natural, informal language:
@@ -1286,8 +1329,11 @@ Return ONLY a valid JSON array \u2014 no markdown, no prose, no code fences:
       fieldInstructions = `
         You are writing a professional resume SUMMARY.
         Role: ${roleTitle || "Not specified"}.
-        Current text (if any): """${currentText || ""}"""
-        Improve or extend this into a crisp 3–5 line professional summary.
+        ${currentText && currentText.trim()
+          ? `The candidate wrote: """${currentText}"""
+        Improve or extend this into a crisp 3–5 line professional summary.`
+          : `The candidate has not written a summary yet.
+        Generate a crisp 3–5 line professional summary for a ${roleTitle || "professional"}.`}
         Focus on achievements, strengths, and domain expertise.
         Do not use "I". Write in a neutral tone (e.g. "Results-driven professional...").
         Return plain text only, with line breaks, no bullets or numbering.
@@ -1297,11 +1343,18 @@ Return ONLY a valid JSON array \u2014 no markdown, no prose, no code fences:
     case "education":
       fieldInstructions = `
         You are writing the EDUCATION section of a resume.
-        Current text (if any): """${currentText || ""}"""
-        Format it as clean lines like:
+        ${currentText && currentText.trim()
+          ? `The candidate wrote: """${currentText}"""
+        Format and improve it as clean lines like:
         "2018 – B.Com, XYZ College, Bangalore"
         "2016 – Higher Secondary, ABC School"
-        One entry per line, most recent first.
+        One entry per line, most recent first.`
+          : `The candidate has not entered any education details yet.
+        Role context: ${roleTitle || "Not specified"}.
+        Generate 2–3 realistic sample education entries in this format:
+        "2020 – B.Tech Computer Science, XYZ University"
+        "2018 – Higher Secondary (Science), ABC School"
+        Most recent first.`}
         Return plain text only, one entry per line.
       `;
       break;
@@ -1310,8 +1363,11 @@ Return ONLY a valid JSON array \u2014 no markdown, no prose, no code fences:
       fieldInstructions = `
         You are writing the SKILLS section of a resume.
         Role: ${roleTitle || "Not specified"}.
-        Current text (if any): """${currentText || ""}"""
-        Create a list of 6–12 key skills relevant for this role.
+        ${currentText && currentText.trim()
+          ? `The candidate listed: """${currentText}"""
+        Improve and expand this into a polished skills list relevant for this role.`
+          : `The candidate has not entered any skills yet.
+        Generate a list of 8–12 key skills relevant for a ${roleTitle || "professional"}.`}
         One skill per line, short phrases, no bullet symbols.
         Mix soft skills and hard skills if appropriate.
         Return plain text only, one skill per line.
@@ -1321,20 +1377,64 @@ Return ONLY a valid JSON array \u2014 no markdown, no prose, no code fences:
     case "languages":
       fieldInstructions = `
         You are writing the LANGUAGES section of a resume.
-        Current text (if any): """${currentText || ""}"""
-        List languages in the format:
+        ${currentText && currentText.trim()
+          ? `The candidate wrote: """${currentText}"""
+        Format and improve it. List languages in the format:
         "English – Read, Write, Speak"
         "Hindi – Read, Speak"
-        One language per line.
+        One language per line.`
+          : `The candidate has not entered any languages yet.
+        Suggest a realistic set of 2–3 languages for a professional, in this format:
+        "English – Read, Write, Speak"
+        "Hindi – Read, Write, Speak"
+        One language per line.`}
         Return plain text only.
+      `;
+      break;
+
+    case "references":
+      fieldInstructions = `
+        You are writing the REFERENCES section of a resume.
+        ${currentText && currentText.trim()
+          ? `The candidate wrote: """${currentText}"""
+        Format and improve it. Each referee must follow this exact structure (one field per line):
+        Name
+        Institution / Company
+        Phone number
+        Website or email
+        Separate multiple referees with --- on its own line.`
+          : `The candidate has not entered any references yet.
+        Generate 2 realistic sample referee entries.
+        Each referee must follow this exact structure (one field per line):
+        Name
+        Institution / Company
+        Phone number
+        Website or email
+        Separate the two referees with --- on its own line.
+        Example:
+        Rufus Stewart
+        Borcelle University
+        +123-456-7890
+        www.borcelle.com
+        ---
+        Lorna Alvarado
+        Greenfield Institute
+        +098-765-4321
+        www.greenfield.edu`}
+        Return plain text only, no bullet symbols, no labels, no extra explanation.
       `;
       break;
 
     default:
       fieldInstructions = `
         You are helping complete a resume field: ${field}.
-        Current text (if any): """${currentText || ""}"""
-        Improve or extend this text to look professional and concise.
+        ${currentText && currentText.trim()
+          ? `The candidate wrote: """${currentText}"""
+        Improve or extend this text to look professional and concise.`
+          : `The candidate has not entered anything yet for this field.
+        Role context: ${roleTitle || "Not specified"}.
+        Generate professional, realistic sample content for a "${field}" field on a resume.
+        Keep it concise and suitable for a resume.`}
         Return plain text only, suitable for a resume.
       `;
       break;
