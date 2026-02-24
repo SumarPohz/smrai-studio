@@ -110,6 +110,7 @@
             id="resumeId"
             value="<%= typeof resumeId !== 'undefined' && resumeId ? resumeId : '' %>"
           >
+          <input type="hidden" name="experienceLevel" id="experienceLevelInput" value="experienced">
 
         <!-- STEP 1: YOUR DETAILS -->
         <div class="rb-step active" data-step="1">
@@ -306,6 +307,30 @@
               ><%= (draft && draft.languages) || '' %></textarea>
             </div>
 
+            <% if (template === 'bold-sidebar') { %>
+            <div class="rb-field ai-field-wrap">
+              <div class="ai-field-label">
+                <label for="references">References <span style="font-weight:400;color:#6b7280;font-size:0.85em;">(optional)</span></label>
+                <div class="ai-btn-group">
+                  <span class="fmic-status" aria-live="polite"></span>
+                  <button type="button" class="ai-mic-field-btn" data-mic-target="references" title="Voice input" aria-label="Start voice input for References">🎤</button>
+                  <button type="button" class="ai-btn" data-field="references">✨ AI Suggest</button>
+                  <button type="button" class="ai-undo-btn" data-field="references" disabled>↩ Undo</button>
+                </div>
+              </div>
+              <p class="rb-field-hint" style="margin:0.2rem 0 0.4rem;font-size:0.82rem;color:#6b7280;">
+                Up to 3 referees. Separate each with <code>---</code> on its own line.<br>
+                Format per referee: Name → Institution → Phone → Website (one per line).
+              </p>
+              <textarea
+                id="references"
+                name="references"
+                rows="7"
+                placeholder="Rufus Stewart&#10;Borcelle University&#10;+123-456-7890&#10;www.example.com&#10;---&#10;Lorna Alvarado&#10;Borcelle University"
+              ><%= (draft && draft.references) || '' %></textarea>
+            </div>
+            <% } %>
+
             <div class="rb-field ai-field-wrap">
               <div class="ai-field-label">
                 <label for="skills">Skills</label>
@@ -404,6 +429,11 @@
                 <p id="pvExperience">Your experience lines will appear here as you type.</p>
               </div>
             </div>
+          </div>
+
+          <!-- Footer strip — mirrors the gray Languages+Reference bar in the full template -->
+          <div class="bsmini-footer">
+            <span>LANGUAGES</span><span>REFERENCE</span>
           </div>
 
         </div>
@@ -952,6 +982,20 @@
     display: flex;
     flex: 1;
     overflow: hidden;
+  }
+
+  /* ── Footer strip (Languages + Reference indicator) ── */
+  .bsmini-footer {
+    display: flex;
+    justify-content: space-around;
+    background: #f3f4f6;
+    border-top: 1px solid #d1d5db;
+    padding: 0.2rem 0.4rem;
+    font-size: 0.38rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: #6b7280;
+    flex-shrink: 0;
   }
 
   .bsmini-left {
@@ -1649,6 +1693,12 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
+  // Sync experience level from localStorage into hidden form field
+  const expLevelInput = document.getElementById("experienceLevelInput");
+  if (expLevelInput) {
+    expLevelInput.value = localStorage.getItem("experienceLevel") || "experienced";
+  }
+
   const aiButtons = document.querySelectorAll(".ai-btn");
   const roleInput = document.getElementById("roleTitle");
 

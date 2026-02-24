@@ -1,93 +1,150 @@
-<!-- BOLD-SIDEBAR: Professional header + two-column body -->
+<!-- BOLD-SIDEBAR: top-strip | content-wrap (flex:1) | footer-strip -->
 
-<!-- ── Header ── -->
-<div class="bs-header">
-  <div class="bs-header-photo">
-    <% if (data.profileImageUrl) { %>
-      <img src="<%= data.profileImageUrl %>" alt="Profile" />
-    <% } else { %>
-      <div class="bs-avatar-placeholder">PHOTO</div>
-    <% } %>
-  </div>
+<!-- ── Top accent strip (same color as footer) ── -->
+<div class="bs-top-strip"></div>
 
-  <div class="bs-header-info">
-    <h1 class="bs-name"><%= data.fullName || "" %></h1>
-    <p class="bs-role"><%= data.roleTitle || "" %></p>
+<!-- ── Content wrapper: grows to fill space, pushes footer to bottom ── -->
+<div class="bs-content-wrap">
 
-    <div class="bs-contact-row">
-      <% if (data.phone) { %>
-        <span>📞 <%= data.phone %></span>
-      <% } %>
-      <% if (data.location) { %>
-        <span>📍 <%= data.location %></span>
-      <% } %>
-      <% if (data.email) { %>
-        <span>✉️ <%= data.email %></span>
-      <% } %>
-    </div>
-  </div>
-</div>
-
-<div class="bs-divider"></div>
-
-<!-- ── Body ── -->
-<div class="bs-body">
-
-  <!-- Left column -->
-  <div class="bs-left">
-
-    <% if (data.summary) { %>
-    <div class="bs-section">
-      <h3>About Me</h3>
-      <p><%= data.summary %></p>
-    </div>
-    <% } %>
-
-    <div class="bs-section">
-      <h3>Education</h3>
-      <p><%= data.education || "" %></p>
-    </div>
-
-    <div class="bs-section">
-      <h3>Skills</h3>
-      <% if (skillsLines.length) { %>
-        <ul class="bs-skill-list">
-          <% skillsLines.forEach(line => { %>
-            <li><%= line %></li>
-          <% }) %>
-        </ul>
+  <!-- ── Header: photo | name + role + 2×2 contact grid ── -->
+  <div class="bs-header">
+    <div class="bs-header-photo">
+      <% if (data.profileImageUrl) { %>
+        <img src="<%= data.profileImageUrl %>" alt="Profile" />
       <% } else { %>
-        <p><%= data.skills || "" %></p>
+        <div class="bs-avatar-placeholder">PHOTO</div>
       <% } %>
     </div>
 
-    <div class="bs-section">
-      <h3>Languages</h3>
-      <p><%= data.languages || "" %></p>
+    <div class="bs-header-info">
+      <h1 class="bs-name"><%= data.fullName || "" %></h1>
+      <p class="bs-role"><%= data.roleTitle || "" %></p>
+
+      <div class="bs-contact-grid">
+        <% if (data.phone)    { %><span class="bs-contact-item">📞 <%= data.phone %></span><% } %>
+        <% if (data.email)    { %><span class="bs-contact-item">✉️ <%= data.email %></span><% } %>
+        <% if (data.location) { %><span class="bs-contact-item">📍 <%= data.location %></span><% } %>
+      </div>
+    </div>
+  </div>
+
+  <div class="bs-divider"></div>
+
+  <!-- ── Full-width About Me ── -->
+  <% if (data.summary) { %>
+  <div class="bs-about">
+    <h3>About Me</h3>
+    <p><%= data.summary %></p>
+  </div>
+  <% } %>
+
+  <!-- ── Two-column body: Education+Skills | Work Experience ── -->
+  <div class="bs-body">
+
+    <!-- Left: Education, Skills -->
+    <div class="bs-left">
+
+      <div class="bs-section">
+        <h3>Education</h3>
+        <p><%= data.education || "" %></p>
+      </div>
+
+      <div class="bs-section">
+        <h3>Skills</h3>
+        <% if (skillsLines.length) { %>
+          <ul class="bs-skill-list">
+            <% skillsLines.forEach(line => { %>
+              <li><%= line %></li>
+            <% }) %>
+          </ul>
+        <% } else { %>
+          <p><%= data.skills || "" %></p>
+        <% } %>
+      </div>
+
+    </div>
+
+    <!-- Right: Work Experience — dates-left column per entry -->
+    <div class="bs-right">
+      <div class="bs-content-section">
+        <h3>Work Experience</h3>
+
+        <% if (experienceItems.length) { %>
+          <% experienceItems.forEach(exp => { %>
+            <div class="bs-exp-item">
+              <div class="bs-exp-dates"><%= exp.dates || "" %></div>
+              <div class="bs-exp-detail">
+                <div class="bs-exp-title"><%= exp.title || "" %></div>
+                <% if (exp.company) { %>
+                  <div class="bs-exp-company"><%= exp.company %></div>
+                <% } %>
+                <% if (exp.description) { %>
+                  <div class="bs-exp-desc"><%= exp.description %></div>
+                <% } %>
+              </div>
+            </div>
+          <% }) %>
+        <% } else { %>
+          <p class="bs-fallback"><%= data.experience || "" %></p>
+        <% } %>
+      </div>
     </div>
 
   </div>
 
-  <!-- Right column -->
-  <div class="bs-right">
+</div><!-- /.bs-content-wrap -->
 
-    <div class="bs-content-section">
-      <h3>Work Experience</h3>
+<!-- ── Footer strip: Languages | References (always at bottom) ── -->
+<div class="bs-footer">
 
-      <% if (experienceItems.length) { %>
-        <% experienceItems.forEach(exp => { %>
-          <div class="exp-entry">
-            <div class="exp-heading">
-              <span class="exp-title"><strong><%= exp.title || "" %></strong><% if (exp.company) { %> <em class="exp-company"> · <%= exp.company %></em><% } %></span>
-              <% if (exp.dates) { %><span class="exp-dates"><%= exp.dates %></span><% } %>
+  <!-- Languages (left) -->
+  <div class="bs-footer-col">
+    <h3>Languages</h3>
+    <%
+      const langLines = (data.languages || "")
+        .split(/\r?\n/)
+        .map(l => l.trim())
+        .filter(l => l.length > 0);
+    %>
+    <% if (langLines.length) { %>
+      <ul class="bs-lang-list">
+        <% langLines.forEach(l => { %><li><%= l %></li><% }) %>
+      </ul>
+    <% } else { %>
+      <p class="bs-footer-text"><%= data.languages || "" %></p>
+    <% } %>
+  </div>
+
+  <!-- References (right) — hidden gracefully when empty -->
+  <div class="bs-footer-col">
+    <%
+      const rawRefs = (data.references || "").trim();
+      const refEntries = rawRefs
+        ? rawRefs.split(/\n?---\n?|\n{2,}/).map(s => s.trim()).filter(Boolean).slice(0, 3)
+        : [];
+    %>
+    <% if (refEntries.length) { %>
+      <h3>Reference</h3>
+      <div class="bs-ref-grid">
+        <% refEntries.forEach(entry => { %>
+          <%
+            const refLines = entry.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+            const refName  = refLines[0] || "";
+            const refInst  = refLines[1] || "";
+            const refPhone = refLines[2] || "";
+            const refWeb   = refLines[3] || "";
+          %>
+          <div class="bs-ref-entry">
+            <div class="bs-ref-name"><%= refName %></div>
+            <% if (refInst)  { %><div class="bs-ref-institution"><%= refInst %></div><% } %>
+            <div class="bs-ref-contact">
+              <% if (refPhone) { %><span>📞 <%= refPhone %></span><% } %>
+              <% if (refWeb)   { %><span>🌐 <%= refWeb %></span><% } %>
             </div>
-            <% if (exp.description) { %><div class="exp-body"><%= exp.description %></div><% } %>
           </div>
         <% }) %>
-      <% } else { %>
-        <p class="exp-text"><%= data.experience || "" %></p>
-      <% } %>
-    </div>
-
+      </div>
+    <% } %>
   </div>
+
 </div>
