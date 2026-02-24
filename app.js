@@ -1194,7 +1194,7 @@ app.post("/resume/event", ensureAuthenticated, async (req, res) => {
 });
 // ---------- AI Resume Suggestion Route ----------
 app.post("/api/ai/suggest", ensureAuthenticated, async (req, res) => {
-  const { field, currentText, roleTitle, experienceLevel } = req.body || {};
+  const { field, currentText, roleTitle, experienceLevel, experience } = req.body || {};
 
   if (!field) {
     return res.status(400).json({ success: false, message: "field is required" });
@@ -1362,15 +1362,18 @@ Return ONLY a valid JSON array \u2014 no markdown, no prose, no code fences:
     case "skills":
       fieldInstructions = `
         You are writing the SKILLS section of a resume.
-        Role: ${roleTitle || "Not specified"}.
         ${currentText && currentText.trim()
           ? `The candidate listed: """${currentText}"""
-        Improve and expand this into a polished skills list relevant for this role.`
-          : `The candidate has not entered any skills yet.
-        Generate a list of 8–12 key skills relevant for a ${roleTitle || "professional"}.`}
-        One skill per line, short phrases, no bullet symbols.
-        Mix soft skills and hard skills if appropriate.
-        Return plain text only, one skill per line.
+        Improve and expand this into a polished, ATS-friendly skills list.
+        Return as a clean comma-separated list. No bullets, no numbering, no explanation.`
+          : experience && experience.trim()
+            ? `Based on the following work experience:
+        """${experience}"""
+        Generate 8–12 realistic, ATS-friendly professional skills directly derived from this experience.
+        Do not invent unrelated skills.
+        Return as a clean comma-separated list. No bullets, no numbering, no explanation.`
+            : `Generate 8–12 key professional skills relevant to the role: "${roleTitle || "professional"}".
+        Return as a clean comma-separated list. No bullets, no numbering, no explanation.`}
       `;
       break;
 

@@ -1,68 +1,131 @@
-<!-- CREATIVE-GRADIENT: Gradient header + colorful sections -->
-<div class="cg-header">
-  <div class="cg-header-content">
-    <% if (data.profileImageUrl) { %>
-      <img src="<%= data.profileImageUrl %>" alt="Profile" class="cg-avatar" />
+<%
+  // Parse references (same pattern as bold-sidebar)
+  const rawRefs = (data.references || "").trim();
+  const refEntries = rawRefs
+    ? rawRefs.split(/\n?---\n?|\n{2,}/).map(s => s.trim()).filter(Boolean).slice(0, 3)
+    : [];
+%>
+
+<div class="cg-header-bar">
+  <% if (data.profileImageUrl) { %>
+    <img class="cg-profile-photo" src="<%= data.profileImageUrl %>" alt="Profile">
+  <% } else { %>
+    <div class="cg-profile-photo cg-no-photo"></div>
+  <% } %>
+  <div class="cg-header-text">
+    <h1 class="cg-name"><%= data.fullName || "Your Name" %></h1>
+    <p class="cg-role"><%= data.roleTitle || "" %></p>
+  </div>
+</div>
+
+<div class="cg-main">
+
+  <!-- LEFT SIDEBAR -->
+  <div class="cg-sidebar">
+
+    <div class="cg-sb-section">
+      <h3>CONTACT</h3>
+      <div class="cg-sb-divider"></div>
+      <% if (data.phone)    { %><p class="cg-sb-item">📞 <%= data.phone %></p><% } %>
+      <% if (data.email)    { %><p class="cg-sb-item">✉ <%= data.email %></p><% } %>
+      <% if (data.location) { %><p class="cg-sb-item">📍 <%= data.location %></p><% } %>
+    </div>
+
+    <% if (data.education) { %>
+    <div class="cg-sb-section">
+      <h3>EDUCATION</h3>
+      <div class="cg-sb-divider"></div>
+      <p class="cg-sb-text"><%= data.education %></p>
+    </div>
     <% } %>
-    <div class="cg-header-text">
-      <h2 class="cg-name"><%= data.fullName || "" %></h2>
-      <p class="cg-role"><%= data.roleTitle || "" %></p>
-      <div class="cg-contact">
-        <span>📞 <%= data.phone || "" %></span>
-        <span>✉️ <%= data.email || "" %></span>
-        <% if (data.location) { %>
-          <span>📍 <%= data.location %></span>
-        <% } %>
+
+    <div class="cg-sb-section">
+      <h3>SKILLS</h3>
+      <div class="cg-sb-divider"></div>
+      <ul class="cg-sb-list">
+        <% if (skillsLines && skillsLines.length) {
+             skillsLines.forEach(function(s) { %>
+          <li><%= s %></li>
+        <% }); } else if (data.skills) {
+             data.skills.split(/[,\n]+/).filter(function(s) { return s.trim(); }).forEach(function(s) { %>
+          <li><%= s.trim() %></li>
+        <% }); } %>
+      </ul>
+    </div>
+
+    <% if (data.languages) { %>
+    <div class="cg-sb-section">
+      <h3>LANGUAGE</h3>
+      <div class="cg-sb-divider"></div>
+      <ul class="cg-sb-list">
+        <% data.languages.split(/\n+/).filter(function(l) { return l.trim(); }).forEach(function(l) { %>
+          <li><%= l %></li>
+        <% }); %>
+      </ul>
+    </div>
+    <% } %>
+
+  </div><!-- /.cg-sidebar -->
+
+  <!-- RIGHT CONTENT -->
+  <div class="cg-content">
+
+    <% if (data.summary) { %>
+    <div class="cg-section">
+      <h2>Summary</h2>
+      <div class="cg-section-divider"></div>
+      <p><%= data.summary %></p>
+    </div>
+    <% } %>
+
+    <% if (experienceItems && experienceItems.length) { %>
+    <div class="cg-section">
+      <h2>Experience</h2>
+      <div class="cg-section-divider"></div>
+      <% experienceItems.forEach(function(exp) { %>
+        <div class="cg-exp-item">
+          <div class="cg-exp-header">
+            <span class="cg-exp-title"><%= exp.title %></span>
+            <span class="cg-exp-year"><%= exp.dates %></span>
+          </div>
+          <% if (exp.company) { %><p class="cg-exp-company"><%= exp.company %></p><% } %>
+          <% if (exp.description) { %>
+            <ul class="cg-exp-bullets">
+              <% exp.description.split('\n').filter(function(l) { return l.trim(); }).forEach(function(bullet) { %>
+                <li><%= bullet.replace(/^[•\-]\s*/, '') %></li>
+              <% }); %>
+            </ul>
+          <% } %>
+        </div>
+      <% }); %>
+    </div>
+    <% } else if (data.experience) { %>
+    <div class="cg-section">
+      <h2>Experience</h2>
+      <div class="cg-section-divider"></div>
+      <p><%= data.experience %></p>
+    </div>
+    <% } %>
+
+    <% if (refEntries.length) { %>
+    <div class="cg-section">
+      <h2>Reference</h2>
+      <div class="cg-section-divider"></div>
+      <div class="cg-refs-grid">
+        <% refEntries.forEach(function(ref) {
+             var rLines = ref.split('\n').filter(function(l) { return l.trim(); });
+        %>
+          <div class="cg-ref-card">
+            <p class="cg-ref-name"><strong><%= rLines[0] || "" %></strong></p>
+            <% if (rLines[1]) { %><p class="cg-ref-org"><%= rLines[1] %></p><% } %>
+            <% if (rLines[2]) { %><p class="cg-ref-detail"><strong>Phone:</strong> <%= rLines[2] %></p><% } %>
+            <% if (rLines[3]) { %><p class="cg-ref-detail"><strong>Email :</strong> <%= rLines[3] %></p><% } %>
+          </div>
+        <% }); %>
       </div>
     </div>
-  </div>
-</div>
-
-<div class="cg-body">
-  <div class="cg-section">
-    <h3>Professional Summary</h3>
-    <p><%= data.summary || "" %></p>
-  </div>
-
-  <div class="cg-section">
-    <h3>Experience</h3>
-    <% if (experienceItems.length) { %>
-      <% experienceItems.forEach(exp => { %>
-        <div class="exp-entry">
-          <div class="exp-heading">
-            <span class="exp-title"><strong><%= exp.title %></strong><% if (exp.company) { %> <em class="exp-company"> · <%= exp.company %></em><% } %></span>
-            <% if (exp.dates) { %><span class="exp-dates"><%= exp.dates %></span><% } %>
-          </div>
-          <% if (exp.description) { %><div class="exp-body"><%= exp.description %></div><% } %>
-        </div>
-      <% }) %>
-    <% } else { %>
-      <p class="exp-text"><%= data.experience || "" %></p>
     <% } %>
-  </div>
 
-  <div class="cg-two-col">
-    <div class="cg-section">
-      <h3>Education</h3>
-      <p><%= data.education || "" %></p>
-    </div>
+  </div><!-- /.cg-content -->
 
-    <div class="cg-section">
-      <h3>Languages</h3>
-      <p><%= data.languages || "" %></p>
-    </div>
-  </div>
-
-  <div class="cg-section">
-    <h3>Skills</h3>
-    <div class="cg-skills">
-      <% if (skillsLines.length) { %>
-        <% skillsLines.forEach(line => { %>
-          <span class="cg-skill-pill"><%= line %></span>
-        <% }) %>
-      <% } else { %>
-        <p><%= data.skills || "" %></p>
-      <% } %>
-    </div>
-  </div>
-</div>
+</div><!-- /.cg-main -->

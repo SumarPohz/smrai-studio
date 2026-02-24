@@ -307,7 +307,7 @@
               ><%= (draft && draft.languages) || '' %></textarea>
             </div>
 
-            <% if (template === 'bold-sidebar') { %>
+            <% if (template === 'bold-sidebar' || template === 'creative-gradient') { %>
             <div class="rb-field ai-field-wrap">
               <div class="ai-field-label">
                 <label for="references">References <span style="font-weight:400;color:#6b7280;font-size:0.85em;">(optional)</span></label>
@@ -434,6 +434,51 @@
           <!-- Footer strip — mirrors the gray Languages+Reference bar in the full template -->
           <div class="bsmini-footer">
             <span>LANGUAGES</span><span>REFERENCE</span>
+          </div>
+
+        </div>
+        <% } else if (template === 'creative-gradient') { %>
+        <!-- Creative-Gradient: blue header + dark sidebar + white content -->
+        <div class="modern-mini-page cg-mode">
+
+          <div class="cgmini-header">
+            <div class="cgmini-photo"></div>
+            <div class="cgmini-header-info">
+              <div id="pvName" class="cgmini-name">Your Name</div>
+              <div id="pvRole" class="cgmini-role">Your Job Title</div>
+            </div>
+          </div>
+
+          <div class="cgmini-body">
+            <div class="cgmini-left">
+              <div class="cgmini-section">
+                <h3>CONTACT</h3>
+                <p>📞 <span id="pvPhone">+91 0000000000</span></p>
+                <p>✉️ <span id="pvEmail">email@example.com</span></p>
+                <p>📍 <span id="pvLocation">City, Country</span></p>
+              </div>
+              <div class="cgmini-section">
+                <h3>EDUCATION</h3>
+                <p id="pvEducation">Education entries will appear here.</p>
+              </div>
+              <div class="cgmini-section">
+                <h3>SKILLS</h3>
+                <div id="pvSkills" class="modern-mini-skills cgmini-skills">
+                  <span>Skills will appear here.</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="cgmini-right">
+              <div class="cgmini-section">
+                <h3>SUMMARY</h3>
+                <p id="pvSummary">Your professional summary will appear here.</p>
+              </div>
+              <div class="cgmini-section">
+                <h3>EXPERIENCE</h3>
+                <p id="pvExperience">Your experience will appear here as you type.</p>
+              </div>
+            </div>
           </div>
 
         </div>
@@ -811,6 +856,107 @@
   /* Bold-sidebar: header stacked above two-column body */
   .modern-mini-page.bs-mode {
     flex-direction: column;
+  }
+
+  /* ── Creative-Gradient mini layout ── */
+  .modern-mini-page.cg-mode {
+    flex-direction: column;
+    background: linear-gradient(to right, #111111 32%, #ffffff 32%);
+    overflow: visible;
+  }
+  .cgmini-header {
+    height: 90px;
+    margin-top: 40px;
+    background: linear-gradient(90deg, #0f2d75 0%, #1f4fb5 100%);
+    display: flex;
+    align-items: center;
+    padding-left: 140px;
+    padding-right: 0.6rem;
+    position: relative;
+    flex-shrink: 0;
+    overflow: visible;
+    z-index: 10;
+  }
+  .cgmini-photo {
+    position: absolute;
+    left: 7px;
+    top: -15px;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    border: 5px solid #0f2d75;
+    background: rgba(255,255,255,0.15);
+    z-index: 5;
+  }
+  .cgmini-header-info { color: #fff; }
+  .cgmini-name {
+    font-size: 0.62rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #fff;
+    margin: 0 0 0.1rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .cgmini-role {
+    font-size: 0.42rem;
+    color: #e0e6ff;
+    margin: 0;
+  }
+  .cgmini-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+  .cgmini-left {
+    width: 32%;
+    background: #111111;
+    padding: 0.5rem 0.35rem 0.5rem;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+  .cgmini-right {
+    width: 68%;
+    background: #ffffff;
+    padding: 0.5rem 0.5rem 0.5rem;
+    overflow: hidden;
+  }
+  .cgmini-section {
+    margin-bottom: 0.45rem;
+  }
+  .cgmini-section h3 {
+    font-size: 0.38rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #ffffff;
+    border-bottom: 1px solid rgba(255,255,255,0.25);
+    padding-bottom: 2px;
+    margin: 0 0 0.2rem;
+  }
+  .cgmini-right .cgmini-section h3 {
+    color: #111111;
+    border-bottom: 1px solid #cfcfcf;
+  }
+  .cgmini-section p,
+  .cgmini-section span {
+    font-size: 0.36rem;
+    color: #ffffff;
+    margin: 0 0 0.1rem;
+    line-height: 1.4;
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .cgmini-right .cgmini-section p,
+  .cgmini-right .cgmini-section span {
+    color: #374151;
+  }
+  .cgmini-skills span {
+    color: #ffffff !important;
   }
 
   /* ── Modern-1 / generic mini layout ── */
@@ -1729,7 +1875,12 @@ document.addEventListener("DOMContentLoaded", () => {
         const res = await fetch("/api/ai/suggest", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ field, currentText, roleTitle }),
+          body: JSON.stringify({
+            field,
+            currentText,
+            roleTitle,
+            experience: (document.getElementById("experience") || {}).value || "",
+          }),
         });
 
         const data = await res.json();
