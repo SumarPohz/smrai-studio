@@ -376,6 +376,50 @@
     var A4_WIDTH  = 794;
     var A4_HEIGHT = 1123;   /* px at screen resolution */
 
+    /* Push sections that straddle a page boundary to the next page */
+    function avoidPageBreaks() {
+      var a4 = document.getElementById("resumeA4");
+      if (!a4) return;
+
+      /* Reset any margins we injected in a previous run */
+      var prev = a4.querySelectorAll("[data-pb-push]");
+      for (var i = 0; i < prev.length; i++) {
+        prev[i].style.marginTop = prev[i].getAttribute("data-pb-push") || "";
+        prev[i].removeAttribute("data-pb-push");
+      }
+
+      /* Sections that must not be split across pages — all templates */
+      var els = a4.querySelectorAll(
+        ".modern-section-block, .exp-entry, " +
+        ".bs-section, .bs-content-section, .bs-exp-item, .bs-ref-grid, .bs-ref-entry, " +
+        ".min-section, " +
+        ".cg-section, .cg-exp-item, .cg-refs-grid, .cg-ref-card, " +
+        ".corp-section, " +
+        ".es-section, " +
+        ".tf-section, " +
+        ".cb-section"
+      );
+      var a4Top = a4.getBoundingClientRect().top;
+
+      for (var s = 0; s < els.length; s++) {
+        var el   = els[s];
+        var rect = el.getBoundingClientRect();
+        var elTop    = rect.top    - a4Top;
+        var elBottom = rect.bottom - a4Top;
+
+        var pageNum  = Math.floor(elTop / A4_HEIGHT);
+        var boundary = (pageNum + 1) * A4_HEIGHT;
+
+        if (elTop < boundary && elBottom > boundary) {
+          /* Element straddles boundary — push it below */
+          var push    = boundary - elTop + 40; /* 40px breathing room */
+          var origMt  = el.style.marginTop || "";
+          el.setAttribute("data-pb-push", origMt);
+          el.style.marginTop = (parseFloat(origMt) || 0) + push + "px";
+        }
+      }
+    }
+
     /* Inject/refresh visual page-break dividers */
     function refreshPageBreaks() {
       var a4 = document.getElementById("resumeA4");
@@ -455,7 +499,8 @@
         wrapper.style.height            = Math.ceil(naturalHeight * scale) + "px";
       }
 
-      /* Show page-break dividers whenever content exceeds one A4 height */
+      /* Push sections away from page boundaries, then draw dividers */
+      avoidPageBreaks();
       refreshPageBreaks();
     }
 

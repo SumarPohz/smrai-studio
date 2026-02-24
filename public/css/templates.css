@@ -649,105 +649,217 @@
   overflow-wrap: anywhere;
 }
 
-/* ===== CREATIVE-GRADIENT (gradient header + colorful) ===== */
+/* ===== CREATIVE-GRADIENT (blue header + dark sidebar) ===== */
 .resume-page.creative-gradient {
   display: flex;
   flex-direction: column;
+  min-height: 1123px;
+  height: auto;
+  background: linear-gradient(to right, #111111 32%, #ffffff 32%);
 }
 
-.cg-header {
-  background: linear-gradient(135deg, #7c3aed, #ec4899, #f97316);
-  padding: 2rem 2rem 1.5rem;
-  color: #ffffff;
-}
-
-.cg-header-content {
+/* ── Header gradient bar ── */
+.cg-header-bar {
+  height: 170px;
+  margin-top: 60px;
+  background: linear-gradient(90deg, #0f2d75 0%, #1f4fb5 100%);
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  padding-left: 300px;
+  padding-right: 2rem;
+  position: relative;
+  flex-shrink: 0;
+  overflow: visible;
+  z-index: 10;
 }
-
-.cg-avatar {
-  width: 100px;
-  height: 100px;
+.cg-profile-photo {
+  position: absolute;
+  left: 30px;
+  top: -40px;
+  width: 250px;
+  height: 250px;
   border-radius: 50%;
-  border: 3px solid rgba(255,255,255,0.6);
+  border: 14px solid #0f2d75;
   object-fit: cover;
+  z-index: 5;
 }
-
+.cg-no-photo {
+  background: #2d4a8a;
+}
+.cg-header-text { color: #fff; text-align: left; }
 .cg-name {
-  font-size: 1.6rem;
-  font-weight: 700;
-  margin: 0;
-  color: #ffffff;
+  font-size: 2rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 0 0 0.3rem;
+  color: #fff;
 }
-
 .cg-role {
   font-size: 1rem;
-  color: rgba(255,255,255,0.85);
-  margin: 0.2rem 0 0.5rem;
+  font-weight: 400;
+  color: #e0e6ff;
+  margin: 0;
 }
 
-.cg-contact {
+/* ── Two-column body ── */
+.cg-main {
   display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  font-size: 0.85rem;
-  color: rgba(255,255,255,0.9);
+  flex: 1;
 }
 
-.cg-body {
-  padding: 1.5rem 2rem;
+/* ── Dark left sidebar ── */
+.cg-sidebar {
+  width: 32%;
+  background: #111111;
+  color: #ffffff;
+  padding: 50px 50px 60px;  /* top pushes content below the overlapping photo */
+  flex-shrink: 0;
+}
+/* Force white on ALL sidebar text — prevents global style bleed */
+.cg-sidebar h3,
+.cg-sidebar p,
+.cg-sidebar li,
+.cg-sidebar span {
+  color: #ffffff !important;
+}
+.cg-sb-section {
+  margin-bottom: 1.5rem;
+}
+.cg-sb-section h3 {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #ffffff;
+  margin: 0 0 0.35rem;
+}
+.cg-sb-divider {
+  height: 1px;
+  background: rgba(255,255,255,0.2);
+  margin: 0 0 0.75rem;
+}
+.cg-sb-item {
+  font-size: 0.76rem;
+  color: rgba(255,255,255,0.82);
+  margin: 0 0 0.32rem;
+  word-break: break-word;
+  line-height: 1.4;
+}
+.cg-sb-text {
+  font-size: 0.76rem;
+  color: rgba(255,255,255,0.82);
+  white-space: pre-wrap;
+  margin: 0;
+  line-height: 1.5;
+}
+.cg-sb-list {
+  list-style: disc;
+  padding-left: 1rem;
+  margin: 0;
+}
+.cg-sb-list li {
+  font-size: 0.76rem;
+  color: rgba(255,255,255,0.82);
+  margin-bottom: 0.28rem;
+  line-height: 1.4;
 }
 
+/* ── White right content ── */
+.cg-content {
+  width: 68%;
+  padding: 2rem 5rem 3.75rem;
+  background: #fff;
+}
 .cg-section {
   margin-bottom: 1.4rem;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
-
-.cg-section h3 {
+.cg-section h2 {
   font-size: 1rem;
-  font-weight: 700;
-  color: #7c3aed;
-  margin-bottom: 0.5rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  border-bottom: 3px solid;
-  border-image: linear-gradient(90deg, #7c3aed, #ec4899, #f97316) 1;
-  padding-bottom: 0.3rem;
+  font-weight: 600;
+  color: #111;
+  border-bottom: 1px solid #cfcfcf;
+  padding-bottom: 6px;
+  margin: 0 0 1.25rem;
 }
-
+.cg-section-divider {
+  display: none;
+}
 .cg-section p {
-  font-size: 0.9rem;
+  font-size: 0.82rem;
   line-height: 1.6;
-  color: #111827;
+  color: #374151;
   white-space: pre-wrap;
   word-wrap: break-word;
-  overflow-wrap: anywhere;
 }
 
-.cg-two-col {
+/* ── Experience items ── */
+.cg-exp-item {
+  margin-bottom: 0.9rem;
+}
+.cg-exp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.cg-exp-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #111;
+}
+.cg-exp-year {
+  font-size: 0.78rem;
+  color: #555;
+  white-space: nowrap;
+  margin-left: 0.5rem;
+}
+.cg-exp-company {
+  font-size: 0.78rem;
+  color: #555;
+  margin: 0 0 8px;
+}
+.cg-exp-bullets {
+  margin: 6px 0 16px 18px;
+  padding: 0;
+  list-style: disc;
+}
+.cg-exp-bullets li {
+  font-size: 0.78rem;
+  color: #374151;
+  margin-bottom: 0;
+  line-height: 1.5;
+}
+
+/* ── References grid ── */
+.cg-refs-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
+  gap: 1rem;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
-
-.cg-skills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
+.cg-ref-card {
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
-
-.cg-skill-pill {
-  background: linear-gradient(135deg, #7c3aed, #ec4899);
-  color: #ffffff;
-  padding: 0.3rem 0.8rem;
-  border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 500;
+.cg-ref-name {
+  font-size: 0.83rem;
+  color: #111;
+  margin: 0 0 0.18rem;
 }
-
-.cg-section .experience-list li {
-  border-left-color: #7c3aed;
+.cg-ref-org {
+  font-size: 0.76rem;
+  color: #374151;
+  margin: 0 0 0.12rem;
+}
+.cg-ref-detail {
+  font-size: 0.73rem;
+  color: #6b7280;
+  margin: 0;
 }
 
 /* ===== CORPORATE-CLEAN (blue-gray professional) ===== */
