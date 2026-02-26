@@ -476,7 +476,6 @@ app.post("/register", async (req, res) => {
     const user = result.rows[0];
     req.login(user, (err) => {
       if (err) {
-        console.log(err);
         return res.redirect("/login");
       }
       res.redirect("/dashboard");
@@ -489,6 +488,9 @@ app.post("/register", async (req, res) => {
 
 // Login
 app.get("/login", (req, res) => {
+  if (req.query.returnTo) {
+    req.session.returnTo = req.query.returnTo;
+  }
   res.render("login", { error: null });
 });
 
@@ -504,12 +506,16 @@ app.post("/login", (req, res, next) => {
       return res.render("login", { error: info?.message || "Login failed" });
     }
 
+    // Read returnTo BEFORE req.logIn — Passport regenerates the session
+    // on login (session fixation protection), wiping req.session data.
+    const redirectTo = req.session.returnTo || "/dashboard";
+
     req.logIn(user, (err) => {
       if (err) {
         console.error("Error in req.logIn:", err);
         return next(err);
       }
-      return res.redirect("/dashboard");
+      return res.redirect(redirectTo);
     });
   })(req, res, next);
 });
@@ -661,9 +667,6 @@ app.post("/resume/save", ensureAuthenticated, async (req, res) => {
 
   try {
     const body = req.body || {};
-
-    // log once to confirm we’re actually receiving data
-    console.log("SAVE RESUME BODY:", body);
 
     const {
       resumeId,
@@ -1160,16 +1163,19 @@ app.get(
 
 app.get(
   "/auth/google/callback",
-  passport.authenticate("google", {
-    successRedirect: "/dashboard",
-    failureRedirect: "/login",
-  })
+  passport.authenticate("google", { failureRedirect: "/login" }),
+  (req, res) => {
+    const redirectTo = req.session.returnTo || "/dashboard";
+    delete req.session.returnTo;
+    res.redirect(redirectTo);
+  }
 );
 
 // Dashboard (protected)
 function ensureAuthenticated(req, res, next) {
   if (req.isAuthenticated()) return next();
-  res.redirect("/login");
+  req.session.returnTo = req.originalUrl;
+  req.session.save(() => res.redirect("/login"));
 }
 
 app.get("/dashboard", ensureAuthenticated, (req, res) => {
@@ -1831,9 +1837,6 @@ app.post("/api/razorpay/create-order", ensureAuthenticated, async (req, res) => 
 });
 
 app.post("/api/razorpay/verify", async (req, res) => {
-  console.log("VERIFY USER:", req.user);
-  console.log("VERIFY BODY:", req.body);
-
   if (!req.user) {
     return res.status(401).json({
       success: false,

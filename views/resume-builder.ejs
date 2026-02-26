@@ -1789,8 +1789,6 @@
           }
           if (!isAuto) {
             alert("Resume saved!");
-          } else {
-            console.log("Auto-saved resume", data.resumeId);
           }
         } else {
           if (!isAuto) {
@@ -1910,6 +1908,15 @@ document.addEventListener("DOMContentLoaded", () => {
             const suggestion = data.text.trim();
             combined = existing ? existing + "\n\n" + suggestion : suggestion;
             lastAIStates[field] = { before, after: combined };
+          }
+
+          // Skills: normalise comma-separated list → one skill per line
+          if (field === "skills") {
+            combined = combined
+              .split(/,\s*/)
+              .map(s => s.trim())
+              .filter(Boolean)
+              .join("\n");
           }
 
           textarea.value = combined;

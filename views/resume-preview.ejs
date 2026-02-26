@@ -286,21 +286,79 @@
     }
   }
 
+  /* ── Watermark shell ── */
   .resume-watermark {
     position: absolute;
     inset: 0;
     z-index: 999;
     pointer-events: none;
+    user-select: none;
+    overflow: hidden;
+  }
+
+  /* ── Tiled corner/edge stamps ── */
+  .wm-tile {
+    position: absolute;
     display: flex;
     align-items: center;
-    justify-content: center;
-    font-size: 3.2rem;
-    font-weight: 700;
-    color: rgba(17, 24, 39, 0.08);
-    letter-spacing: 0.25em;
-    text-transform: uppercase;
+    gap: 6px;
     transform: rotate(-30deg);
-    user-select: none;
+    opacity: 0.12;
+    white-space: nowrap;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #111827;
+    letter-spacing: 0.08em;
+    font-family: sans-serif;
+  }
+
+  .wm-tile-logo {
+    width: 26px;
+    height: 26px;
+    object-fit: contain;
+    opacity: 1;
+  }
+
+  .wm-tile-1 { top: 14%;  left: 6%; }
+  .wm-tile-2 { top: 44%;  right: 10%; }
+  .wm-tile-3 { bottom: 16%; left: 14%; }
+
+  /* ── Central prominent stamp ── */
+  .wm-center-stamp {
+    position: absolute;
+    top: 50%;
+    left: 60%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    opacity: 0.13;
+  }
+
+  .wm-center-logo {
+    width: 220px;
+    height: 220px;
+    object-fit: contain;
+  }
+
+  .wm-center-brand {
+    font-size: 4rem;
+    font-weight: 800;
+    color: #111827;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-family: sans-serif;
+    line-height: 1;
+  }
+
+  .wm-center-label {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #111827;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    font-family: sans-serif;
   }
 
   /* ===== MULTI-PAGE: visual page-break dividers ===== */
@@ -349,7 +407,25 @@
       <div id="resumeA4" class="resume-a4">
         <!-- WATERMARK (VISIBLE UNTIL PAYMENT) -->
         <div class="resume-watermark">
-          SmrAI-Studio &bull; Preview &bull; Not Paid
+          <!-- Tiled diagonal stamps -->
+          <div class="wm-tile wm-tile-1">
+            <img src="/images/logo.png" class="wm-tile-logo" alt="">
+            <span>Not-Paid</span>
+          </div>
+          <div class="wm-tile wm-tile-2">
+            <img src="/images/logo.png" class="wm-tile-logo" alt="">
+            <span>Not-Paid</span>
+          </div>
+          <div class="wm-tile wm-tile-3">
+            <img src="/images/logo.png" class="wm-tile-logo" alt="">
+            <span>Not-Paid</span>
+          </div>
+          <!-- Central prominent stamp -->
+          <div class="wm-center-stamp">
+            <img src="/images/logo.png" class="wm-center-logo" alt="">
+            <span class="wm-center-brand">SmrAI-Studio</span>
+            <span class="wm-center-label">PREVIEW ONLY · NOT FOR USE</span>
+          </div>
         </div>
 
         <div class="resume-page <%= safeTpl %>">
