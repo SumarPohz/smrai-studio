@@ -426,7 +426,6 @@ app.post("/register", async (req, res) => {
     const user = result.rows[0];
     req.login(user, (err) => {
       if (err) {
-        console.log(err);
         return res.redirect("/login");
       }
       res.redirect("/dashboard");
@@ -611,9 +610,6 @@ app.post("/resume/save", ensureAuthenticated, async (req, res) => {
 
   try {
     const body = req.body || {};
-
-    // log once to confirm we’re actually receiving data
-    console.log("SAVE RESUME BODY:", body);
 
     const {
       resumeId,

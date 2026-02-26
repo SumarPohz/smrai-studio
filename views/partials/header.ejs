@@ -60,8 +60,11 @@
       id="main-menu-toggle"
       type="button"
       aria-label="Toggle navigation"
+      aria-expanded="false"
     >
-      ☰
+      <span class="hbr-bar"></span>
+      <span class="hbr-bar"></span>
+      <span class="hbr-bar"></span>
     </button>
 
     <a href="/" class="brand">
@@ -86,11 +89,24 @@
 
   <div class="header-right">
     <% if (currentUser) { %>
-      <button id="user-menu-toggle" class="user-avatar-btn" type="button">
+      <button id="user-menu-toggle" class="user-avatar-btn" type="button" title="<%= userProfile && userProfile.profile_image_url ? 'View profile' : 'Upload your photo' %>">
         <% if (userProfile && userProfile.profile_image_url) { %>
           <img src="<%= userProfile.profile_image_url %>" alt="User" />
         <% } else { %>
-          <span><%= (currentUser.name || currentUser.email).charAt(0).toUpperCase() %></span>
+          <span class="avatar-no-photo">
+            <!-- Person silhouette -->
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="8" r="4"/>
+              <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+            </svg>
+          </span>
+          <!-- Camera badge — hints at photo upload -->
+          <span class="avatar-camera-badge" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+          </span>
         <% } %>
       </button>
     <% } %>
@@ -199,10 +215,12 @@
       function openSidebar() {
         sidebar.classList.add("open");
         backdrop.classList.add("open");
+        if (toggleBtn) toggleBtn.classList.add("is-open");
       }
       function closeSidebar() {
         sidebar.classList.remove("open");
         backdrop.classList.remove("open");
+        if (toggleBtn) toggleBtn.classList.remove("is-open");
       }
 
       if (toggleBtn) toggleBtn.addEventListener("click", openSidebar);
@@ -217,19 +235,27 @@
       const mainNav = document.getElementById("main-nav");
 
       if (menuToggle && mainNav) {
+        function closeNav() {
+          mainNav.classList.remove("nav-open");
+          menuToggle.classList.remove("is-open");
+          menuToggle.setAttribute("aria-expanded", "false");
+        }
+
         menuToggle.addEventListener("click", (e) => {
           e.stopPropagation();
-          mainNav.classList.toggle("nav-open");
+          const isOpen = mainNav.classList.toggle("nav-open");
+          menuToggle.classList.toggle("is-open", isOpen);
+          menuToggle.setAttribute("aria-expanded", String(isOpen));
         });
 
         mainNav.querySelectorAll("a").forEach((link) => {
-          link.addEventListener("click", () => mainNav.classList.remove("nav-open"));
+          link.addEventListener("click", closeNav);
         });
 
         document.addEventListener("click", (e) => {
           if (!mainNav.classList.contains("nav-open")) return;
           if (!mainNav.contains(e.target) && !menuToggle.contains(e.target)) {
-            mainNav.classList.remove("nav-open");
+            closeNav();
           }
         });
       }

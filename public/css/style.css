@@ -834,13 +834,56 @@ main section {
 /* === Hamburger base (desktop: hidden) === */
 .menu-toggle {
   display: none;
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  line-height: 1;
-  cursor: pointer;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  width: 38px;
+  height: 38px;
   padding: 0;
   margin-right: 0.35rem;
+  background: rgba(15, 23, 42, 0.06);
+  border: 1.5px solid rgba(15, 23, 42, 0.1);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.menu-toggle:hover {
+  background: rgba(15, 23, 42, 0.12);
+  border-color: rgba(15, 23, 42, 0.18);
+}
+
+.menu-toggle.is-open {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+/* The three bars */
+.hbr-bar {
+  display: block;
+  width: 20px;
+  height: 2px;
+  border-radius: 2px;
+  background: #111827;
+  transform-origin: center;
+  transition:
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity   0.25s ease,
+    width     0.25s ease;
+}
+
+/* Animate to X when open */
+.menu-toggle.is-open .hbr-bar:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+.menu-toggle.is-open .hbr-bar:nth-child(2) {
+  opacity: 0;
+  width: 0;
+}
+.menu-toggle.is-open .hbr-bar:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
 }
 
 /* ── Navbar logo ── */
@@ -865,6 +908,8 @@ main section {
   max-width: 1100px;
   margin: 0 auto;
   box-sizing: border-box;
+  position: relative;
+  z-index: 1000;
 }
 
 /* Desktop default: nav links visible as a horizontal row */
@@ -882,6 +927,16 @@ main section {
     justify-content: center;
   }
 
+  @keyframes navSlideDown {
+    from { opacity: 0; transform: translateY(-10px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0)    scale(1);    }
+  }
+
+  @keyframes navItemIn {
+    from { opacity: 0; transform: translateX(-12px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
   .top-header {
     padding: 0.6rem 0.9rem;
   }
@@ -894,38 +949,61 @@ main section {
     font-size: 1rem;
   }
 
-  /* Collapse nav into dropdown — hidden until hamburger is clicked */
+  /* Floating card panel */
   .header-nav {
     display: none;
-    position: absolute;
-    top: 60px;
-    left: 0;
-    right: 0;
+    position: fixed;
+    top: 68px;
+    left: 12px;
+    right: 12px;
     background: #ffffff;
     flex-direction: column;
-    padding: 0.75rem 1.25rem;
-    gap: 0.5rem;
-    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12);
-    border-top: 1px solid #e5e7eb;
-    z-index: 900;
+    padding: 0.6rem 0.5rem 0.75rem;
+    gap: 0;
+    box-shadow:
+      0 20px 48px rgba(15, 23, 42, 0.18),
+      0 0 0 1px rgba(15, 23, 42, 0.07);
+    border-radius: 18px;
+    z-index: 9999;
   }
 
   .header-nav a {
-    display: block;
-    padding: 0.45rem 0;
+    font-size: 1rem;
+    font-weight: 500;
+    color: #111827;
+    padding: 0.7rem 1rem;
+    border-radius: 12px;
+    text-decoration: none;
+    transition: background 0.15s, color 0.15s;
+    opacity: 0;
   }
 
-  /* JS toggles this class to reveal the dropdown */
+  .header-nav a:hover {
+    background: #f3f4f6;
+    color: #6366f1;
+  }
+
+  /* Panel slides in + each link staggers */
   .header-nav.nav-open {
     display: flex;
+    animation: navSlideDown 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
   }
+
+  .header-nav.nav-open a {
+    animation: navItemIn 0.3s ease forwards;
+  }
+  .header-nav.nav-open a:nth-child(1) { animation-delay: 0.06s; }
+  .header-nav.nav-open a:nth-child(2) { animation-delay: 0.10s; }
+  .header-nav.nav-open a:nth-child(3) { animation-delay: 0.14s; }
+  .header-nav.nav-open a:nth-child(4) { animation-delay: 0.18s; }
+  .header-nav.nav-open a:nth-child(5) { animation-delay: 0.22s; }
 }
 
 
 /* Avatar button in top-right corner */
 .user-avatar-btn {
-  width: 62px;                /* 🔹 bigger clickable area */
-  height: 62px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   border: none;
   background: transparent;
@@ -933,13 +1011,41 @@ main section {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  overflow: hidden;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  padding: 0;
+  position: relative;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Idle pulse ring */
+.user-avatar-btn::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid rgba(99, 102, 241, 0.35);
+  animation: avatarPulse 2.4s ease-in-out infinite;
+}
+
+@keyframes avatarPulse {
+  0%, 100% { opacity: 0.5; transform: scale(1);    }
+  50%       { opacity: 1;   transform: scale(1.06); }
+}
+
+/* Open state — bright ring, scale down slightly */
+.user-avatar-btn.is-open {
+  transform: scale(0.93);
+}
+
+.user-avatar-btn.is-open::before {
+  border-color: #6366f1;
+  animation: none;
+  opacity: 1;
+  inset: -5px;
+  border-width: 2.5px;
 }
 
 .user-avatar-btn:hover {
-  transform: scale(1.05);     /* 🔹 subtle hover effect */
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  transform: scale(1.07);
 }
 
 .user-avatar-btn img {
@@ -947,13 +1053,46 @@ main section {
   height: 48px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid #060606;
+  border: 2.5px solid #ffffff;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.25);
+  display: block;
 }
 
-.user-avatar-btn span {
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: #1f2937;
+/* No-photo placeholder circle */
+.avatar-no-photo {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
+  flex-shrink: 0;
+}
+
+/* Camera badge — bottom-right corner of the button */
+.avatar-camera-badge {
+  position: absolute;
+  bottom: 1px;
+  right: 1px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1.5px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6366f1;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.15);
+  animation: cameraBadgePop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;
+}
+
+@keyframes cameraBadgePop {
+  from { opacity: 0; transform: scale(0.3); }
+  to   { opacity: 1; transform: scale(1);   }
 }
 
 /* Sidebar */
@@ -963,8 +1102,8 @@ main section {
   background: rgba(15, 23, 42, 0.35);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.2s ease;
-  z-index: 40;
+  transition: opacity 0.25s ease;
+  z-index: 9998;
 }
 
 .user-sidebar-backdrop.open {
@@ -978,21 +1117,22 @@ main section {
   top: 0;
   right: 0;
   width: 340px;
-  max-width: 90vw;
+  max-width: 92vw;
   height: 100vh;
   background: #f9fafb;
-  box-shadow: -8px 0 30px rgba(15, 23, 42, 0.18);
+  box-shadow: -12px 0 40px rgba(15, 23, 42, 0.22);
   padding: 1.1rem 1.35rem 1.3rem;
   display: flex;
   flex-direction: column;
-  z-index: 50;
-  transform: translateX(100%);
-  transition: transform 0.25s ease-out;
+  z-index: 10000;
+  transform: translateX(105%);
+  transition: transform 0.35s cubic-bezier(0.34, 1.2, 0.64, 1);
 }
 
 .user-sidebar.open {
   transform: translateX(0);
 }
+
 
 .user-sidebar-header {
   display: flex;
@@ -2034,6 +2174,6 @@ main section {
 .payment-note {
   margin-bottom: 12px;
   font-size: 0.95rem;
-  color: #1f4fb5;
+  color: #0b0b0b;
   font-weight: 500;
 }
