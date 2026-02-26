@@ -411,6 +411,10 @@
   padding: 1rem;
 }
 
+.adm-modal-backdrop[hidden] {
+  display: none !important;
+}
+
 .adm-modal {
   background: #fff;
   border-radius: 18px;

@@ -1208,7 +1208,8 @@ function ensureAuthenticated(req, res, next) {
 }
 
 function ensureAdmin(req, res, next) {
-  if (req.isAuthenticated() && req.user.role === "admin") return next();
+  if (!req.isAuthenticated()) return res.redirect("/login");
+  if (req.user.role === "admin") return next();
   res.status(403).render("403");
 }
 
