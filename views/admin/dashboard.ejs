@@ -1,0 +1,524 @@
+<%- include("../partials/header") %>
+<link rel="stylesheet" href="/css/admin.css">
+
+<div class="adm-shell">
+
+  <!-- ── Sidebar ─────────────────────────────────────────────────────────── -->
+  <aside class="adm-sidebar">
+    <div class="adm-sidebar-logo">
+      <img src="/images/logo.png" alt="SmrAI-Studio" style="height:32px; width:auto;">
+      <span>Admin</span>
+    </div>
+    <nav class="adm-sidebar-nav">
+      <a href="#overview"  class="adm-nav-link adm-nav-active" data-section="overview">
+        <i class="fas fa-chart-line"></i> Overview
+      </a>
+      <a href="#users"     class="adm-nav-link" data-section="users">
+        <i class="fas fa-users"></i> Users
+      </a>
+      <a href="#activity"  class="adm-nav-link" data-section="activity">
+        <i class="fas fa-stream"></i> Activity
+      </a>
+      <a href="/dashboard" class="adm-nav-link adm-nav-back">
+        <i class="fas fa-arrow-left"></i> Back to App
+      </a>
+    </nav>
+  </aside>
+
+  <!-- ── Main content ────────────────────────────────────────────────────── -->
+  <div class="adm-main">
+
+    <!-- Topbar -->
+    <header class="adm-topbar">
+      <div class="adm-topbar-left">
+        <button class="adm-mobile-menu-btn" id="admMobileMenu" type="button">
+          <i class="fas fa-bars"></i>
+        </button>
+        <h1 class="adm-topbar-title">Admin Dashboard</h1>
+      </div>
+      <div class="adm-topbar-right">
+        <span class="adm-topbar-user">
+          <i class="fas fa-shield-alt"></i>
+          <%= currentUser.name %>
+        </span>
+      </div>
+    </header>
+
+    <!-- ── Section: Overview ──────────────────────────────────────────────── -->
+    <div id="overview" class="adm-section-page">
+
+      <!-- Stat cards -->
+      <div class="adm-stat-grid">
+        <div class="adm-stat-card" style="--adm-card-delay:0.05s">
+          <div class="adm-stat-icon adm-icon-blue"><i class="fas fa-users"></i></div>
+          <div class="adm-stat-num" data-target="<%= stats.totalUsers %>">0</div>
+          <div class="adm-stat-label">Total Users</div>
+        </div>
+        <div class="adm-stat-card" style="--adm-card-delay:0.10s">
+          <div class="adm-stat-icon adm-icon-green"><i class="fas fa-bolt"></i></div>
+          <div class="adm-stat-num" data-target="<%= stats.activeToday %>">0</div>
+          <div class="adm-stat-label">Active Today</div>
+        </div>
+        <div class="adm-stat-card" style="--adm-card-delay:0.15s">
+          <div class="adm-stat-icon adm-icon-purple"><i class="fas fa-file-alt"></i></div>
+          <div class="adm-stat-num" data-target="<%= stats.totalResumes %>">0</div>
+          <div class="adm-stat-label">Resumes Created</div>
+        </div>
+        <div class="adm-stat-card" style="--adm-card-delay:0.20s">
+          <div class="adm-stat-icon adm-icon-orange"><i class="fas fa-download"></i></div>
+          <div class="adm-stat-num" data-target="<%= stats.totalDownloads %>">0</div>
+          <div class="adm-stat-label">Downloads</div>
+        </div>
+        <div class="adm-stat-card" style="--adm-card-delay:0.25s">
+          <div class="adm-stat-icon adm-icon-emerald"><i class="fas fa-rupee-sign"></i></div>
+          <div class="adm-stat-num" data-target="<%= stats.totalRevenue %>" data-prefix="₹">₹0</div>
+          <div class="adm-stat-label">Revenue</div>
+        </div>
+        <div class="adm-stat-card" style="--adm-card-delay:0.30s">
+          <div class="adm-stat-icon adm-icon-pink"><i class="fas fa-robot"></i></div>
+          <div class="adm-stat-num" data-target="<%= stats.aiRequests %>">0</div>
+          <div class="adm-stat-label">AI Requests</div>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="adm-charts-row">
+        <div class="adm-chart-box">
+          <h3 class="adm-chart-title">Page Visit Heatmap</h3>
+          <canvas id="chartRoutes" height="220"></canvas>
+        </div>
+        <div class="adm-chart-box">
+          <h3 class="adm-chart-title">Downloads by Template</h3>
+          <canvas id="chartTemplates" height="220"></canvas>
+        </div>
+      </div>
+
+    </div><!-- /overview -->
+
+    <!-- ── Section: Users ─────────────────────────────────────────────────── -->
+    <div id="users" class="adm-section-page" hidden>
+
+      <div class="adm-section">
+        <div class="adm-section-header">
+          <h2>User Management</h2>
+          <input class="adm-search" id="userSearch" type="search" placeholder="Search name or email…">
+        </div>
+        <div class="adm-table-wrap">
+          <table class="adm-table">
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Resumes</th>
+                <th>Downloads</th>
+                <th>Revenue</th>
+                <th>Last Active</th>
+              </tr>
+            </thead>
+            <tbody id="usersBody">
+              <tr><td colspan="7" class="adm-loading">Loading users…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="adm-pagination" id="userPagination"></div>
+      </div>
+
+    </div><!-- /users -->
+
+    <!-- ── Section: Activity ──────────────────────────────────────────────── -->
+    <div id="activity" class="adm-section-page" hidden>
+
+      <div class="adm-section">
+        <div class="adm-section-header">
+          <h2>Live Activity Feed</h2>
+          <span class="adm-badge adm-badge-green">
+            <span class="adm-pulse"></span> Live
+          </span>
+        </div>
+        <div id="activityFeed">
+          <div class="adm-loading">Loading activity…</div>
+        </div>
+      </div>
+
+    </div><!-- /activity -->
+
+  </div><!-- /adm-main -->
+</div><!-- /adm-shell -->
+
+<!-- ── User detail modal ─────────────────────────────────────────────────── -->
+<div id="userModal" class="adm-modal-backdrop" hidden>
+  <div class="adm-modal" role="dialog" aria-modal="true">
+    <button class="adm-modal-close" id="modalClose" type="button" aria-label="Close">&times;</button>
+    <div id="userModalBody"></div>
+  </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+/* ════════════════════════════════════════════════════════════════════════════
+   SmrAI-Studio Admin Dashboard JS
+════════════════════════════════════════════════════════════════════════════ */
+
+// ── Section navigation ─────────────────────────────────────────────────────
+const sections = document.querySelectorAll(".adm-section-page");
+const navLinks  = document.querySelectorAll(".adm-nav-link[data-section]");
+
+function showSection(id) {
+  sections.forEach(s => s.hidden = s.id !== id);
+  navLinks.forEach(l => l.classList.toggle("adm-nav-active", l.dataset.section === id));
+  if (id === "users"    && !usersLoaded)   { loadUsers(1); }
+  if (id === "activity" && !activityLoaded){ loadActivity(); }
+}
+
+navLinks.forEach(l => l.addEventListener("click", e => {
+  e.preventDefault();
+  showSection(l.dataset.section);
+}));
+
+// Mobile sidebar toggle
+document.getElementById("admMobileMenu").addEventListener("click", () => {
+  document.querySelector(".adm-sidebar").classList.toggle("adm-sidebar-open");
+});
+
+// ── Animated counters ──────────────────────────────────────────────────────
+function animateCounter(el) {
+  const target = parseInt(el.dataset.target) || 0;
+  const prefix = el.dataset.prefix || "";
+  const duration = 900;
+  const start = performance.now();
+  function step(now) {
+    const progress = Math.min((now - start) / duration, 1);
+    const ease = 1 - Math.pow(1 - progress, 3);
+    el.textContent = prefix + Math.round(ease * target).toLocaleString("en-IN");
+    if (progress < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+document.querySelectorAll(".adm-stat-num[data-target]").forEach(el => {
+  const obs = new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting) { animateCounter(el); obs.disconnect(); }
+  }, { threshold: 0.5 });
+  obs.observe(el);
+});
+
+// ── Chart.js ───────────────────────────────────────────────────────────────
+const CHART_COLORS = [
+  "#6366f1","#22c55e","#f59e0b","#ef4444",
+  "#14b8a6","#ec4899","#8b5cf6","#3b82f6"
+];
+
+async function loadCharts() {
+  try {
+    const res  = await fetch("/admin/api/charts");
+    const data = await res.json();
+    if (!data.success) return;
+
+    // Route hits
+    const rCtx = document.getElementById("chartRoutes").getContext("2d");
+    new Chart(rCtx, {
+      type: "bar",
+      data: {
+        labels:   data.routeHits.map(r => r.route),
+        datasets: [{
+          label: "Visits",
+          data:  data.routeHits.map(r => r.hits),
+          backgroundColor: CHART_COLORS,
+          borderRadius: 6,
+        }],
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales:  { y: { beginAtZero: true, ticks: { precision: 0 } } },
+      },
+    });
+
+    // Template downloads
+    const tCtx = document.getElementById("chartTemplates").getContext("2d");
+    new Chart(tCtx, {
+      type: "doughnut",
+      data: {
+        labels:   data.templateDownloads.map(t => t.template),
+        datasets: [{
+          data:            data.templateDownloads.map(t => t.downloads),
+          backgroundColor: CHART_COLORS,
+          borderWidth:     2,
+        }],
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { position: "bottom", labels: { boxWidth: 12 } } },
+      },
+    });
+  } catch (_) {}
+}
+
+loadCharts();
+
+// ── Users table ────────────────────────────────────────────────────────────
+let usersLoaded   = false;
+let currentPage   = 1;
+let currentQuery  = "";
+let debounceTimer = null;
+
+function fmtDate(iso) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function avatarHtml(u) {
+  if (u.profile_image_url) {
+    return `<img src="${u.profile_image_url}" class="adm-avatar-sm" alt="">`;
+  }
+  const letter = (u.full_name || u.name || u.email || "?")[0].toUpperCase();
+  return `<span class="adm-avatar-init">${letter}</span>`;
+}
+
+async function loadUsers(page, q) {
+  usersLoaded  = true;
+  currentPage  = page  ?? currentPage;
+  currentQuery = q     ?? currentQuery;
+
+  const params = new URLSearchParams({ page: currentPage, limit: 20 });
+  if (currentQuery) params.set("q", currentQuery);
+
+  try {
+    const res  = await fetch("/admin/api/users?" + params);
+    const data = await res.json();
+    if (!data.success) return;
+
+    const tbody = document.getElementById("usersBody");
+    tbody.innerHTML = data.users.length ? "" : `<tr><td colspan="7" class="adm-loading">No users found.</td></tr>`;
+
+    data.users.forEach(u => {
+      const tr = document.createElement("tr");
+      tr.dataset.uid = u.id;
+      tr.innerHTML = `
+        <td>
+          <div class="adm-user-cell">
+            ${avatarHtml(u)}
+            <span>${u.full_name || u.name || "—"}</span>
+          </div>
+        </td>
+        <td class="adm-muted">${u.email}</td>
+        <td><span class="adm-badge ${u.role === "admin" ? "adm-badge-admin" : "adm-badge-user"}">${u.role}</span></td>
+        <td>${u.resume_count}</td>
+        <td>${u.download_count}</td>
+        <td>₹${Math.round(u.total_paid / 100)}</td>
+        <td class="adm-muted">${fmtDate(u.last_active)}</td>
+      `;
+      tr.addEventListener("click", () => openUserModal(u.id));
+      tbody.appendChild(tr);
+    });
+
+    renderPagination(data.total, data.limit);
+  } catch (_) {}
+}
+
+function renderPagination(total, limit) {
+  const pages = Math.ceil(total / limit);
+  const el    = document.getElementById("userPagination");
+  el.innerHTML = "";
+  if (pages <= 1) return;
+
+  for (let p = 1; p <= pages; p++) {
+    const btn = document.createElement("button");
+    btn.textContent = p;
+    btn.className   = "adm-page-btn" + (p === currentPage ? " adm-page-active" : "");
+    btn.addEventListener("click", () => loadUsers(p));
+    el.appendChild(btn);
+  }
+}
+
+document.getElementById("userSearch").addEventListener("input", e => {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => loadUsers(1, e.target.value.trim()), 350);
+});
+
+// ── User modal ─────────────────────────────────────────────────────────────
+async function openUserModal(uid) {
+  const modal = document.getElementById("userModal");
+  const body  = document.getElementById("userModalBody");
+  body.innerHTML = `<div class="adm-loading" style="padding:2rem 0">Loading…</div>`;
+  modal.hidden = false;
+  document.body.style.overflow = "hidden";
+
+  try {
+    const res  = await fetch(`/admin/api/user/${uid}`);
+    const data = await res.json();
+    if (!data.success) { body.innerHTML = "<p>Failed to load user.</p>"; return; }
+
+    const u = data.user;
+    body.innerHTML = `
+      <div class="adm-modal-avatar-row">
+        ${u.profile_image_url
+          ? `<img src="${u.profile_image_url}" class="adm-modal-avatar" alt="">`
+          : `<span class="adm-avatar-init adm-avatar-init-lg">${(u.full_name||u.name||u.email||"?")[0].toUpperCase()}</span>`
+        }
+        <div>
+          <h3 class="adm-modal-name">${u.full_name || u.name || "—"}</h3>
+          <p class="adm-modal-email">${u.email}</p>
+          <span class="adm-badge ${u.role === "admin" ? "adm-badge-admin" : "adm-badge-user"}" id="modalRoleBadge">${u.role}</span>
+        </div>
+      </div>
+
+      <div class="adm-modal-grid">
+        <div class="adm-modal-field"><span class="adm-modal-label">Phone</span><span>${u.phone || "—"}</span></div>
+        <div class="adm-modal-field"><span class="adm-modal-label">Location</span><span>${u.location || "—"}</span></div>
+        <div class="adm-modal-field"><span class="adm-modal-label">Member since</span><span>${fmtDate(u.created_at)}</span></div>
+        <div class="adm-modal-field"><span class="adm-modal-label">Last active</span><span>${fmtDate(u.last_active)}</span></div>
+      </div>
+
+      <div class="adm-modal-stats">
+        <div class="adm-modal-stat"><span class="adm-modal-stat-num">${u.resumes}</span><span class="adm-modal-stat-label">Resumes</span></div>
+        <div class="adm-modal-stat"><span class="adm-modal-stat-num">${u.downloads}</span><span class="adm-modal-stat-label">Downloads</span></div>
+        <div class="adm-modal-stat"><span class="adm-modal-stat-num">${u.ai_uses}</span><span class="adm-modal-stat-label">AI Uses</span></div>
+        <div class="adm-modal-stat"><span class="adm-modal-stat-num">₹${u.total_paid}</span><span class="adm-modal-stat-label">Revenue</span></div>
+      </div>
+
+      <div class="adm-modal-actions">
+        <button class="adm-role-btn ${u.role === "admin" ? "adm-role-btn-demote" : "adm-role-btn-promote"}"
+                id="roleToggleBtn"
+                data-uid="${u.id}"
+                data-current="${u.role}">
+          ${u.role === "admin" ? "⬇ Demote to User" : "⬆ Promote to Admin"}
+        </button>
+      </div>
+    `;
+
+    document.getElementById("roleToggleBtn").addEventListener("click", async function () {
+      const newRole = this.dataset.current === "admin" ? "user" : "admin";
+      this.disabled = true;
+      try {
+        const r = await fetch(`/admin/api/user/${this.dataset.uid}/role`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role: newRole }),
+        });
+        const d = await r.json();
+        if (d.success) {
+          this.dataset.current = newRole;
+          this.textContent = newRole === "admin" ? "⬇ Demote to User" : "⬆ Promote to Admin";
+          this.className = "adm-role-btn " + (newRole === "admin" ? "adm-role-btn-demote" : "adm-role-btn-promote");
+          document.getElementById("modalRoleBadge").textContent = newRole;
+          document.getElementById("modalRoleBadge").className =
+            "adm-badge " + (newRole === "admin" ? "adm-badge-admin" : "adm-badge-user");
+          // Refresh the table row badge
+          const row = document.querySelector(`tr[data-uid="${this.dataset.uid}"]`);
+          if (row) {
+            const badge = row.querySelector(".adm-badge");
+            if (badge) { badge.textContent = newRole; badge.className = "adm-badge " + (newRole === "admin" ? "adm-badge-admin" : "adm-badge-user"); }
+          }
+        } else {
+          alert(d.message || "Failed to update role.");
+        }
+      } catch (_) {
+        alert("Network error.");
+      } finally {
+        this.disabled = false;
+      }
+    });
+
+  } catch (_) {
+    body.innerHTML = "<p>Error loading user.</p>";
+  }
+}
+
+function closeModal() {
+  document.getElementById("userModal").hidden = true;
+  document.body.style.overflow = "";
+}
+
+document.getElementById("modalClose").addEventListener("click", closeModal);
+document.getElementById("userModal").addEventListener("click", e => {
+  if (e.target === e.currentTarget) closeModal();
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
+
+// ── Activity feed ──────────────────────────────────────────────────────────
+let activityLoaded = false;
+
+const ACTION_ICONS = {
+  visit:          { icon: "fas fa-eye",          color: "#6366f1" },
+  login:          { icon: "fas fa-sign-in-alt",  color: "#22c55e" },
+  resume_create:  { icon: "fas fa-file-plus",    color: "#3b82f6" },
+  resume_edit:    { icon: "fas fa-pencil-alt",   color: "#f59e0b" },
+  download_download: { icon: "fas fa-download",  color: "#8b5cf6" },
+  download_print: { icon: "fas fa-print",        color: "#14b8a6" },
+  payment:        { icon: "fas fa-rupee-sign",   color: "#16a34a" },
+  ai_use:         { icon: "fas fa-robot",        color: "#ec4899" },
+};
+
+function actionLabel(type) {
+  const map = {
+    visit:             "visited a page",
+    login:             "logged in",
+    resume_create:     "created a resume",
+    resume_edit:       "edited a resume",
+    download_download: "downloaded a resume (JPG)",
+    download_print:    "downloaded a resume (PDF)",
+    payment:           "completed a payment",
+    ai_use:            "used AI suggest",
+  };
+  return map[type] || type;
+}
+
+function timeAgo(iso) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1)  return "just now";
+  if (m < 60) return m + "m ago";
+  const h = Math.floor(m / 60);
+  if (h < 24) return h + "h ago";
+  return Math.floor(h / 24) + "d ago";
+}
+
+async function loadActivity() {
+  activityLoaded = true;
+  try {
+    const res  = await fetch("/admin/api/activity?limit=60");
+    const data = await res.json();
+    if (!data.success) return;
+
+    const feed = document.getElementById("activityFeed");
+    if (!data.activities.length) {
+      feed.innerHTML = `<div class="adm-loading">No activity recorded yet.</div>`;
+      return;
+    }
+
+    feed.innerHTML = data.activities.map(a => {
+      const cfg    = ACTION_ICONS[a.action_type] || { icon: "fas fa-circle", color: "#6b7280" };
+      const name   = a.user_name || a.user_email || "Guest";
+      const letter = name[0].toUpperCase();
+      const avatar = a.profile_image_url
+        ? `<img src="${a.profile_image_url}" class="adm-avatar-sm" alt="">`
+        : `<span class="adm-avatar-init" style="font-size:0.7rem">${letter}</span>`;
+
+      return `
+        <div class="adm-activity-item">
+          <div class="adm-activity-icon" style="background:${cfg.color}20; color:${cfg.color}">
+            <i class="${cfg.icon}"></i>
+          </div>
+          ${avatar}
+          <div class="adm-activity-text">
+            <strong>${name}</strong> ${actionLabel(a.action_type)}
+            ${a.route ? `<span class="adm-muted"> · ${a.route}</span>` : ""}
+          </div>
+          <div class="adm-activity-time">${timeAgo(a.created_at)}</div>
+        </div>
+      `;
+    }).join("");
+  } catch (_) {}
+}
+
+// Poll activity every 30 s when on that section
+setInterval(() => {
+  if (!document.getElementById("activity").hidden) loadActivity();
+}, 30000);
+</script>
+
+<%- include("../partials/footer") %>

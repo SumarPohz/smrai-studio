@@ -18,6 +18,7 @@ import connectPgSimple from "connect-pg-simple";
 import dotenv from "dotenv";
 import { TEMPLATES, getTemplateById } from "./config/templates-config.js";
 import { getFieldsForTemplate, isPhotoTemplate } from "./config/template-fields.js";
+import adminRouter from "./routes/admin.js";
 
 const PgSession = connectPgSimple(session);
 const __filename = fileURLToPath(import.meta.url);
@@ -177,7 +178,28 @@ await db.query(`
       );
     `);
 
-    console.log("✅ Tables ready: service_requests, resumes, resume_events, payments");
+    /* ── Admin: role column on users ── */
+    await db.query(`
+      ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'user';
+    `);
+
+    /* ── Activity logs table ── */
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS activity_logs (
+        id           SERIAL PRIMARY KEY,
+        user_id      INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        action_type  VARCHAR(50) NOT NULL,
+        route        VARCHAR(255),
+        metadata     JSONB,
+        ip_address   VARCHAR(45),
+        created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_activity_logs_created ON activity_logs(created_at DESC);`);
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_activity_logs_user ON activity_logs(user_id);`);
+
+    console.log("✅ Tables ready: service_requests, resumes, resume_events, payments, activity_logs");
   } catch (err) {
     console.error("❌ Error initializing DB:", err);
   }
@@ -515,6 +537,7 @@ app.post("/login", (req, res, next) => {
         console.error("Error in req.logIn:", err);
         return next(err);
       }
+      logActivity({ userId: user.id, actionType: "login", ip: req.ip });
       return res.redirect(redirectTo);
     });
   })(req, res, next);
@@ -748,6 +771,12 @@ app.post("/resume/save", ensureAuthenticated, async (req, res) => {
 
     req.session.currentResumeId = savedId;
     req.session.resumeDraft = data;
+
+    logActivity({
+      userId,
+      actionType: resumeId ? "resume_edit" : "resume_create",
+      metadata: { template: template || "modern-1" },
+    });
 
     return res.json({ success: true, resumeId: savedId });
   } catch (err) {
@@ -1171,12 +1200,45 @@ app.get(
   }
 );
 
-// Dashboard (protected)
+// ── Auth guards ─────────────────────────────────────────────────────────────
 function ensureAuthenticated(req, res, next) {
   if (req.isAuthenticated()) return next();
   req.session.returnTo = req.originalUrl;
   req.session.save(() => res.redirect("/login"));
 }
+
+function ensureAdmin(req, res, next) {
+  if (req.isAuthenticated() && req.user.role === "admin") return next();
+  res.status(403).render("403");
+}
+
+// ── Activity logger (non-critical — never crashes a request) ─────────────────
+async function logActivity({ userId = null, actionType, route = null, metadata = null, ip = null } = {}) {
+  try {
+    await db.query(
+      `INSERT INTO activity_logs (user_id, action_type, route, metadata, ip_address)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [userId, actionType, route, metadata ? JSON.stringify(metadata) : null, ip]
+    );
+  } catch (_) {}
+}
+
+// ── Page-visit tracking (key pages only, not static assets) ─────────────────
+const TRACKED_ROUTES = new Set([
+  "/", "/dashboard", "/resume-builder", "/resume-templates",
+  "/resumes", "/payments", "/application-builder",
+]);
+app.use((req, res, next) => {
+  if (req.method === "GET" && TRACKED_ROUTES.has(req.path)) {
+    logActivity({
+      userId: req.user?.id ?? null,
+      actionType: "visit",
+      route: req.path,
+      ip: req.ip,
+    });
+  }
+  next();
+});
 
 app.get("/dashboard", ensureAuthenticated, (req, res) => {
   res.render("dashboard");
@@ -1205,11 +1267,12 @@ app.post("/resume/event", ensureAuthenticated, async (req, res) => {
 
   try {
     await db.query(
-  `INSERT INTO resume_events (user_id, resume_id, kind)
-   VALUES ($1, $2, $3)`,
-  [userId, resumeId || null, kind]
-);
+      `INSERT INTO resume_events (user_id, resume_id, kind)
+       VALUES ($1, $2, $3)`,
+      [userId, resumeId || null, kind]
+    );
 
+    logActivity({ userId, actionType: "download_" + kind, metadata: { resumeId: resumeId || null } });
 
     return res.json({ success: true });
   } catch (err) {
@@ -1490,6 +1553,7 @@ Return ONLY a valid JSON array \u2014 no markdown, no prose, no code fences:
 
     const suggestion =
       result.response?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    logActivity({ userId: req.user.id, actionType: "ai_use", route: req.path });
     return res.json({ success: true, text: suggestion.trim() });
   } catch (err) {
     console.error("AI suggest error:", err);
@@ -1611,6 +1675,7 @@ RULES:
       return res.json({ success: false, error: "AI returned an empty response. Please try again." });
     }
 
+    logActivity({ userId: req.user.id, actionType: "ai_use", route: req.path });
     return res.json({ success: true, text: text.trim() });
   } catch (err) {
     console.error("AI suggest-application error:", err);
@@ -1665,6 +1730,9 @@ app.post("/api/ai/interview-generate", ensureAuthenticated, async (req, res) => 
   }
 });
 
+
+// ── Admin panel ──────────────────────────────────────────────────────────────
+app.use("/admin", ensureAdmin, adminRouter(db));
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
@@ -1921,6 +1989,8 @@ if (existing.rows.length > 0) {
        VALUES ($1, $2, $3)`,
       [userId, resumeId || null, finalPurpose]
     );
+
+    logActivity({ userId, actionType: "payment", metadata: { amount, resumeId: resumeId || null }, ip: req.ip });
 
     return res.json({ success: true });
   } catch (err) {
