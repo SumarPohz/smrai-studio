@@ -906,6 +906,25 @@ app.get("/resume-templates", ensureAuthenticated, (req, res) => {
   res.render("resume-templates", { RESUME_TEMPLATES: TEMPLATES });
 });
 
+// ---------- Application Builder ----------
+app.get("/application-builder", ensureAuthenticated, (req, res) => {
+  const profile = res.locals.userProfile || {};
+  res.render("application-builder", {
+    currentUser: req.user,
+    user: req.user,
+    profile,
+  });
+});
+
+app.post("/application-builder/preview", ensureAuthenticated, (req, res) => {
+  const data = req.body || {};
+  res.render("application-preview", {
+    currentUser: req.user,
+    user: req.user,
+    data,
+  });
+});
+
 // Show preview after form submit
 app.post("/resume-builder/preview", ensureAuthenticated, async (req, res) => {
   const data = req.body;
@@ -1527,6 +1546,75 @@ Return ONLY valid JSON matching this exact schema (no markdown, no commentary):
   "languages": "English – Read, Write, Speak\\nHindi – Read, Speak (one language per line)"
 }`;
 }
+
+// ---------- AI Application Suggestion Route ----------
+app.post("/api/ai/suggest-application", ensureAuthenticated, async (req, res) => {
+  const {
+    appType, fromName, fromDesignation, fromDept,
+    toName, toDesignation, orgName, subject, currentBody
+  } = req.body || {};
+
+  if (!geminiModel) {
+    return res.status(503).json({ success: false, error: "AI features are currently unavailable. Please try again later." });
+  }
+
+  const TYPE_LABELS = {
+    "sick-leave":        "sick leave application",
+    "casual-leave":      "casual / personal leave application",
+    "week-off":          "week off request letter",
+    "month-off":         "extended leave application",
+    "resignation":       "resignation letter",
+    "appreciation":      "letter of appreciation",
+    "transfer-request":  "transfer request letter",
+    "promotion-request": "promotion request letter",
+    "school-leave":      "school / college leave application",
+    "noc-request":       "NOC (No Objection Certificate) request letter",
+    "custom":            "formal application letter",
+  };
+
+  const typeLabel = TYPE_LABELS[appType] || "formal application letter";
+  const resolvedSubject = subject || typeLabel;
+
+  const prompt = `You are an expert writer of formal professional/academic application letters.
+
+Write a complete, polished ${typeLabel} body for the following person.
+
+From: ${fromName || "the applicant"}${fromDesignation ? ", " + fromDesignation : ""}${fromDept ? ", " + fromDept : ""}
+To: ${toName || "the authority"}${toDesignation ? ", " + toDesignation : ""}${orgName ? " at " + orgName : ""}
+Subject: ${resolvedSubject}
+
+${currentBody && currentBody.trim()
+  ? `The applicant has already written the following draft. Improve and expand it into a professional, complete letter body:\n"""${currentBody}"""`
+  : `Generate a professional, complete letter body. Include an opening sentence, the main reason/request with relevant details, and a polite closing request.`}
+
+RULES:
+- Write ONLY the letter body — do NOT include date, To/From address, subject line, salutation (Respected Sir/Madam), or closing (Yours sincerely / signature). Just the paragraphs.
+- Use formal, polite, professional English.
+- Be concise but complete. 2–4 paragraphs maximum.
+- Do not use placeholder text like "[reason]" — write naturally without filler.
+- Return plain text only — no markdown, no bullets, no numbering.`;
+
+  try {
+    const result = await geminiModel.generateContent({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.55, maxOutputTokens: 800 },
+    });
+
+    const text = result.response?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    if (!text.trim()) {
+      return res.json({ success: false, error: "AI returned an empty response. Please try again." });
+    }
+
+    return res.json({ success: true, text: text.trim() });
+  } catch (err) {
+    console.error("AI suggest-application error:", err);
+    const errMsg = err.message || "";
+    if (errMsg.includes("RESOURCE_EXHAUSTED") || errMsg.includes("429") || errMsg.includes("quota")) {
+      return res.json({ success: false, error: "AI quota limit reached. Please try again in a moment." });
+    }
+    return res.json({ success: false, error: "AI error: " + (err.message || "Unknown error") });
+  }
+});
 
 // ---------- AI Interview Generate Route ----------
 app.post("/api/ai/interview-generate", ensureAuthenticated, async (req, res) => {

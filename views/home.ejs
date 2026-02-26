@@ -1,4 +1,14 @@
 <%- include("partials/header") %>
+
+<!-- 3D animated background — home page only -->
+<div class="home-bg-scene" aria-hidden="true">
+  <div class="hblob hblob-1"></div>
+  <div class="hblob hblob-2"></div>
+  <div class="hblob hblob-3"></div>
+  <div class="hblob hblob-4"></div>
+  <div class="hblob-grid"></div>
+</div>
+
 <div class="page-container">
   <section class="hero">
     <div class="hero-content">
@@ -53,7 +63,7 @@
     </p>
 
     <div class="service-cards">
-      <article class="service-card">
+      <a href="<%= currentUser ? '/resume-templates' : '/login' %>" class="service-card service-card-link">
         <div class="service-image resume-bg"></div>
         <div class="service-card-body">
           <h3>Resume Making</h3>
@@ -61,7 +71,7 @@
             Generate a clean, ATS-friendly resume with professional wording and layout in minutes.
           </p>
         </div>
-      </article>
+      </a>
 
       <article class="service-card">
         <div class="service-image cover-bg"></div>
@@ -82,6 +92,16 @@
           </p>
         </div>
       </article>
+
+      <a href="<%= currentUser ? '/application-builder' : '/login' %>" class="service-card service-card-link">
+        <div class="service-image app-bg"></div>
+        <div class="service-card-body">
+          <h3>Applications (A4)</h3>
+          <p>
+            Write formal applications — sick leave, resignation, appreciation and more — with AI guidance and voice input.
+          </p>
+        </div>
+      </a>
     </div>
   </section>
 
@@ -139,7 +159,7 @@
     <div class="testimonials-grid">
       <article class="testimonial-card">
         <div class="quote-flag">❝</div>
-        <div class="testimonial-avatar"></div>
+        <img class="testimonial-avatar" src="https://i.pravatar.cc/56?img=11" alt="Ajay Mehra">
         <p class="testimonial-text">
           SmrAI-Studio made my resume look 10x more professional. I updated everything in under an hour
           and started getting callbacks within a week.
@@ -150,7 +170,7 @@
 
       <article class="testimonial-card">
         <div class="quote-flag">❝</div>
-        <div class="testimonial-avatar"></div>
+        <img class="testimonial-avatar" src="https://i.pravatar.cc/56?img=47" alt="Suchi Gupta">
         <p class="testimonial-text">
           Clean design and very easy to use. I update my resume for different roles and download new
           versions instantly. Huge time saver.
@@ -161,7 +181,7 @@
 
       <article class="testimonial-card">
         <div class="quote-flag">❝</div>
-        <div class="testimonial-avatar"></div>
+        <img class="testimonial-avatar" src="https://i.pravatar.cc/56?img=68" alt="Puneet Srivastava">
         <p class="testimonial-text">
           The AI suggestions for bullet points helped me describe my experience clearly and confidently.
           Highly recommended.
@@ -172,5 +192,94 @@
     </div>
   </section>
 </div>
+
+<style>
+  /* ── Home page 3D background ── */
+  .home-bg-scene {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  /* Dot-grid overlay for depth */
+  .hblob-grid {
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(circle, rgba(99,102,241,0.07) 1px, transparent 1px);
+    background-size: 30px 30px;
+  }
+
+  .hblob {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(110px);
+    animation: hblobDrift ease-in-out infinite alternate;
+  }
+
+  /* Blue orb — top left */
+  .hblob-1 {
+    width: 580px;
+    height: 580px;
+    background: radial-gradient(circle at 40% 40%, #3b82f6, #1d4ed8);
+    opacity: 0.18;
+    top: -180px;
+    left: -160px;
+    animation-duration: 18s;
+    animation-delay: 0s;
+  }
+
+  /* Teal orb — top right */
+  .hblob-2 {
+    width: 480px;
+    height: 480px;
+    background: radial-gradient(circle at 60% 40%, #06b6d4, #0ea5e9);
+    opacity: 0.14;
+    top: -80px;
+    right: -120px;
+    animation-duration: 22s;
+    animation-delay: -7s;
+  }
+
+  /* Indigo orb — bottom center */
+  .hblob-3 {
+    width: 420px;
+    height: 420px;
+    background: radial-gradient(circle at 50% 60%, #6366f1, #8b5cf6);
+    opacity: 0.12;
+    bottom: -100px;
+    left: 30%;
+    animation-duration: 26s;
+    animation-delay: -13s;
+  }
+
+  /* Soft green orb — mid right */
+  .hblob-4 {
+    width: 320px;
+    height: 320px;
+    background: radial-gradient(circle at 50% 50%, #10b981, #059669);
+    opacity: 0.10;
+    top: 40%;
+    right: 5%;
+    animation-duration: 20s;
+    animation-delay: -5s;
+  }
+
+  @keyframes hblobDrift {
+    0%   { transform: translate(0px,   0px)  scale(1);    }
+    33%  { transform: translate(30px, -35px) scale(1.04); }
+    66%  { transform: translate(-25px, 20px) scale(0.97); }
+    100% { transform: translate(15px,  40px) scale(1.02); }
+  }
+
+  /* Ensure all page content renders above the background */
+  .page-container,
+  nav, header, footer,
+  .navbar, .site-footer {
+    position: relative;
+    z-index: 1;
+  }
+</style>
 
 <%- include("partials/footer") %>

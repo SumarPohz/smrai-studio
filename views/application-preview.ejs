@@ -1,0 +1,298 @@
+<%- include("partials/header") %>
+
+<%
+  const d = data || {};
+
+  // Subject fallback map
+  const TYPE_SUBJECTS = {
+    "sick-leave":         "Application for Sick Leave",
+    "casual-leave":       "Application for Casual / Personal Leave",
+    "week-off":           "Application for Week Off",
+    "month-off":          "Application for Extended Leave",
+    "resignation":        "Letter of Resignation",
+    "appreciation":       "Letter of Appreciation",
+    "transfer-request":   "Application for Transfer",
+    "promotion-request":  "Application for Promotion",
+    "school-leave":       "Application for Leave of Absence",
+    "noc-request":        "Request for No Objection Certificate (NOC)",
+    "custom":             "Application",
+  };
+
+  const finalSubject = (d.subject && d.subject.trim())
+    ? d.subject.trim()
+    : (TYPE_SUBJECTS[d.appType] || "Application");
+
+  // Format date
+  function formatDate(dateStr) {
+    if (!dateStr) return new Date().toLocaleDateString("en-IN", {day:"2-digit",month:"long",year:"numeric"});
+    const parts = dateStr.split("-");
+    if (parts.length !== 3) return dateStr;
+    const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    return parts[2] + " " + (months[parseInt(parts[1],10)-1] || parts[1]) + " " + parts[0];
+  }
+
+  const displayDate = formatDate(d.appDate);
+%>
+
+<div class="apppreview-shell">
+
+  <!-- Top bar -->
+  <div class="apppreview-topbar">
+    <a href="/application-builder" class="btn-ghost apppreview-back">← Edit Application</a>
+    <div class="apppreview-topbar-right">
+      <button type="button" class="btn-ghost" onclick="window.print()">🖨 Print / Save PDF</button>
+      <button type="button" class="btn-primary" id="downloadJpgBtn">⬇ Download JPG</button>
+    </div>
+  </div>
+
+  <!-- A4 Page -->
+  <div class="apppreview-a4-wrap">
+    <div class="apppreview-a4" id="appA4">
+
+      <!-- Date -->
+      <div class="apltr-date"><%= displayDate %></div>
+
+      <!-- To -->
+      <div class="apltr-to">
+        <div>To,</div>
+        <% if (d.toName && d.toName.trim()) { %>
+          <div class="apltr-to-name"><%= d.toName %></div>
+        <% } %>
+        <% if (d.toDesignation && d.toDesignation.trim()) { %>
+          <div class="apltr-to-des"><%= d.toDesignation %></div>
+        <% } %>
+        <% if (d.orgName && d.orgName.trim()) { %>
+          <div class="apltr-to-org"><%= d.orgName %></div>
+        <% } %>
+      </div>
+
+      <!-- Subject -->
+      <div class="apltr-subject">
+        <strong>Subject: <%= finalSubject %></strong>
+      </div>
+
+      <!-- Salutation -->
+      <div class="apltr-salutation">Respected Sir / Madam,</div>
+
+      <!-- Body -->
+      <div class="apltr-body"><%= d.appBody || '' %></div>
+
+      <!-- Closing -->
+      <div class="apltr-closing">
+        <div>Yours sincerely,</div>
+        <div class="apltr-sign-gap"></div>
+        <% if (d.fromName && d.fromName.trim()) { %>
+          <div class="apltr-sign-name"><%= d.fromName %></div>
+        <% } %>
+        <% if (d.fromDesignation && d.fromDesignation.trim()) { %>
+          <div class="apltr-sign-des"><%= d.fromDesignation %></div>
+        <% } %>
+        <% if (d.fromDept && d.fromDept.trim()) { %>
+          <div class="apltr-sign-des"><%= d.fromDept %></div>
+        <% } %>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Edit form (hidden — for re-submitting back to builder) -->
+  <div class="apppreview-editbar">
+    <p class="apppreview-hint">Review your letter above. Use Print / Save PDF to download as PDF, or Download JPG for an image copy.</p>
+  </div>
+
+</div>
+
+<style>
+  /* ===== Shell / chrome ===== */
+  .apppreview-shell {
+    min-height: 100vh;
+    background: #f3f4f6;
+    padding-bottom: 3rem;
+  }
+
+  .apppreview-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem 2rem;
+    background: #fff;
+    border-bottom: 1px solid #e5e7eb;
+    flex-wrap: wrap;
+  }
+
+  .apppreview-topbar-right {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .apppreview-back {
+    font-size: 0.9rem;
+    text-decoration: none;
+    color: #374151;
+  }
+
+  /* ===== A4 wrapper ===== */
+  .apppreview-a4-wrap {
+    display: flex;
+    justify-content: center;
+    padding: 2rem 1rem 0;
+  }
+
+  .apppreview-a4 {
+    width: 794px;        /* A4 at 96dpi */
+    min-height: 1123px;  /* A4 height */
+    background: #ffffff;
+    box-shadow: 0 4px 24px rgba(15,23,42,0.14);
+    border-radius: 2px;
+    padding: 72px 80px;  /* ~1 inch margins */
+    box-sizing: border-box;
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 14px;
+    line-height: 1.65;
+    color: #111827;
+  }
+
+  /* ===== Letter body ===== */
+  .apltr-date {
+    text-align: right;
+    margin-bottom: 2rem;
+    color: #374151;
+  }
+
+  .apltr-to {
+    margin-bottom: 1.5rem;
+    line-height: 1.7;
+  }
+
+  .apltr-to-name {
+    font-weight: 700;
+    font-size: 14.5px;
+  }
+
+  .apltr-to-des,
+  .apltr-to-org {
+    color: #4b5563;
+  }
+
+  .apltr-subject {
+    margin-bottom: 1.5rem;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    font-size: 14.5px;
+  }
+
+  .apltr-salutation {
+    margin-bottom: 1rem;
+  }
+
+  .apltr-body {
+    white-space: pre-wrap;
+    word-break: break-word;
+    text-align: justify;
+    margin-bottom: 2.5rem;
+    line-height: 1.75;
+  }
+
+  .apltr-closing {
+    line-height: 1.7;
+  }
+
+  .apltr-sign-gap {
+    height: 2.5rem;  /* space for physical signature */
+  }
+
+  .apltr-sign-name {
+    font-weight: 700;
+    font-size: 14.5px;
+  }
+
+  .apltr-sign-des {
+    color: #6b7280;
+    font-size: 13px;
+  }
+
+  /* ===== Edit hint bar ===== */
+  .apppreview-editbar {
+    display: flex;
+    justify-content: center;
+    padding: 1.25rem 2rem 0;
+  }
+
+  .apppreview-hint {
+    font-size: 0.85rem;
+    color: #9ca3af;
+    text-align: center;
+    max-width: 600px;
+  }
+
+  /* ===== PRINT STYLES ===== */
+  @media print {
+    .apppreview-shell { background: none; padding: 0; }
+    .apppreview-topbar,
+    .apppreview-editbar { display: none !important; }
+    .apppreview-a4-wrap { padding: 0; }
+    .apppreview-a4 {
+      width: 100%;
+      min-height: auto;
+      box-shadow: none;
+      border-radius: 0;
+      padding: 1.5cm 2cm;
+      font-size: 11pt;
+    }
+  }
+
+  @media (max-width: 860px) {
+    .apppreview-a4 {
+      width: 100%;
+      padding: 2rem 1.5rem;
+      min-height: unset;
+    }
+  }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script>
+/* ── Download as JPG (html2canvas) ── */
+document.addEventListener("DOMContentLoaded", function () {
+  var dlBtn = document.getElementById("downloadJpgBtn");
+  if (!dlBtn) return;
+
+  dlBtn.addEventListener("click", async function () {
+    var a4 = document.getElementById("appA4");
+    if (!a4) return;
+
+    // Ensure html2canvas is available
+    if (typeof html2canvas === "undefined") {
+      alert("html2canvas not loaded. Please refresh and try again.");
+      return;
+    }
+
+    dlBtn.disabled = true;
+    dlBtn.textContent = "⏳ Generating...";
+
+    try {
+      var canvas = await html2canvas(a4, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false
+      });
+
+      var link = document.createElement("a");
+      link.download = "application-letter.jpg";
+      link.href = canvas.toDataURL("image/jpeg", 0.92);
+      link.click();
+    } catch (e) {
+      console.error("JPG export error:", e);
+      alert("JPG download failed. Please use Print / Save PDF instead.");
+    } finally {
+      dlBtn.disabled = false;
+      dlBtn.textContent = "⬇ Download JPG";
+    }
+  });
+});
+</script>
+
+<%- include("partials/footer") %>

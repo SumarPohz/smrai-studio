@@ -1,0 +1,939 @@
+<%- include("partials/header") %>
+
+<section class="appbldr-section">
+  <div class="appbldr-header-row">
+    <div>
+      <h1>Application Builder</h1>
+      <p class="section-subtitle">
+        Write formal applications with AI assistance &nbsp;·&nbsp; Step <span id="abStepCounter">1</span> of 2
+      </p>
+    </div>
+  </div>
+
+  <div class="appbldr-main">
+    <!-- ===== LEFT: FORM ===== -->
+    <div class="appbldr-left">
+      <form id="appBuilderForm" action="/application-builder/preview" method="POST" novalidate>
+
+        <!-- STEP 1: Application Details -->
+        <div class="ab-step active" data-step="1">
+          <h2 class="ab-step-title">Application Details</h2>
+          <p class="ab-step-subtitle">Choose the type and fill in who is sending and who is receiving.</p>
+
+          <div class="ab-field ab-field-full">
+            <label for="appType">Application Type <span class="req">*</span></label>
+            <select id="appType" name="appType" required>
+              <option value="">-- Select Application Type --</option>
+              <option value="sick-leave">Sick Leave</option>
+              <option value="casual-leave">Casual / Personal Leave</option>
+              <option value="week-off">Week Off Request</option>
+              <option value="month-off">Extended Leave / Month Off</option>
+              <option value="resignation">Resignation Letter</option>
+              <option value="appreciation">Letter of Appreciation</option>
+              <option value="transfer-request">Transfer Request</option>
+              <option value="promotion-request">Promotion Request</option>
+              <option value="school-leave">School / College Leave</option>
+              <option value="noc-request">NOC (No Objection Certificate)</option>
+              <option value="custom">Custom Application</option>
+            </select>
+          </div>
+
+          <div class="ab-grid-2">
+            <div class="ab-field">
+              <label for="fromName">Your Full Name <span class="req">*</span></label>
+              <input
+                type="text"
+                id="fromName"
+                name="fromName"
+                required
+                value="<%= (profile && profile.full_name) || (currentUser && currentUser.name) || '' %>"
+              />
+            </div>
+
+            <div class="ab-field">
+              <label for="fromDesignation">Your Designation / Class</label>
+              <input
+                type="text"
+                id="fromDesignation"
+                name="fromDesignation"
+                placeholder="e.g. Software Engineer, Class 10-A"
+                value="<%= (profile && profile.role_title) || '' %>"
+              />
+            </div>
+
+            <div class="ab-field">
+              <label for="fromDept">Department / Section</label>
+              <input
+                type="text"
+                id="fromDept"
+                name="fromDept"
+                placeholder="e.g. Engineering, HR, Class 10"
+              />
+            </div>
+
+            <div class="ab-field">
+              <label for="appDate">Date</label>
+              <input
+                type="date"
+                id="appDate"
+                name="appDate"
+                value="<%= new Date().toISOString().split('T')[0] %>"
+              />
+            </div>
+
+            <div class="ab-field">
+              <label for="toName">To (Recipient Name) <span class="req">*</span></label>
+              <input
+                type="text"
+                id="toName"
+                name="toName"
+                required
+                placeholder="e.g. The Manager, The Principal"
+              />
+            </div>
+
+            <div class="ab-field">
+              <label for="toDesignation">Recipient Designation</label>
+              <input
+                type="text"
+                id="toDesignation"
+                name="toDesignation"
+                placeholder="e.g. HR Manager, School Principal"
+              />
+            </div>
+
+            <div class="ab-field ab-field-span2">
+              <label for="orgName">Organization / Company / Institution</label>
+              <input
+                type="text"
+                id="orgName"
+                name="orgName"
+                placeholder="e.g. Acme Corp, XYZ Public School"
+                value="<%= (profile && profile.location) ? '' : '' %>"
+              />
+            </div>
+          </div>
+
+          <div class="ab-field ab-field-full">
+            <label for="subject">Subject Line</label>
+            <input
+              type="text"
+              id="subject"
+              name="subject"
+              id="subject"
+              placeholder="Auto-generated from type, or type your own"
+            />
+            <p class="ab-field-hint">Leave blank to auto-generate from the application type you selected.</p>
+          </div>
+        </div>
+
+        <!-- STEP 2: Application Body -->
+        <div class="ab-step" data-step="2">
+          <h2 class="ab-step-title">Application Content</h2>
+          <p class="ab-step-subtitle">
+            Describe your reason or message in your own words — or use 🎤 voice input.
+            Click ✨ AI Suggest and we'll write a professional letter body for you.
+          </p>
+
+          <div class="ab-field ab-field-full ai-field-wrap">
+            <div class="ai-field-label">
+              <label for="appBody">Application Body <span class="req">*</span></label>
+              <div class="ai-btn-group">
+                <span class="fmic-status" aria-live="polite"></span>
+                <button type="button" class="ai-mic-field-btn" data-mic-target="appBody" title="Voice input — speak in any language" aria-label="Start voice input">🎤</button>
+                <button type="button" class="ab-ai-btn" id="abAiSuggestBtn">✨ AI Suggest</button>
+                <button type="button" class="ai-undo-btn" id="abAiUndoBtn" disabled>↩ Undo</button>
+              </div>
+            </div>
+            <textarea
+              id="appBody"
+              name="appBody"
+              rows="10"
+              placeholder="e.g. I am writing to request 3 days sick leave from Monday due to fever. I will resume on Thursday..."
+            ></textarea>
+          </div>
+
+          <div class="ab-ai-status" id="abAiStatus"></div>
+        </div>
+
+        <!-- NAVIGATION -->
+        <div class="ab-nav">
+          <button type="button" class="btn-ghost" id="abBackBtn" disabled>Back</button>
+          <div>
+            <button type="button" class="btn-primary" id="abNextBtn">Next</button>
+            <button type="submit" class="btn-primary" id="abSubmitBtn" style="display:none;">
+              Preview Application
+            </button>
+          </div>
+        </div>
+
+        <!-- STEP DOTS -->
+        <div class="ab-step-indicator">
+          <span class="ab-step-dot active"></span>
+          <span class="ab-step-dot"></span>
+        </div>
+      </form>
+    </div>
+
+    <!-- ===== RIGHT: LIVE LETTER PREVIEW ===== -->
+    <aside class="appbldr-right">
+      <p class="ab-preview-label">Live Preview</p>
+      <div class="ab-preview-wrap">
+        <div class="ab-preview-page" id="abPreviewPage">
+
+          <div class="abpv-date">Date: <span id="pvDate"></span></div>
+
+          <div class="abpv-to">
+            <div>To,</div>
+            <div id="pvToName" class="abpv-to-name"></div>
+            <div id="pvToDesignation" class="abpv-to-des"></div>
+            <div id="pvOrgName" class="abpv-org"></div>
+          </div>
+
+          <div class="abpv-subject">Subject: <strong id="pvSubject"></strong></div>
+
+          <div class="abpv-salutation">Respected Sir / Madam,</div>
+
+          <div id="pvBody" class="abpv-body">Your application content will appear here as you type or use AI Suggest...</div>
+
+          <div class="abpv-closing">
+            <div>Yours sincerely,</div>
+            <div id="pvFromName" class="abpv-sign-name"></div>
+            <div id="pvFromDes" class="abpv-sign-des"></div>
+            <div id="pvFromDept" class="abpv-sign-des"></div>
+          </div>
+
+        </div>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<style>
+  .appbldr-section {
+    max-width: 1160px;
+    margin: 1.5rem auto 3rem;
+    padding: 0 1rem 1rem;
+  }
+
+  .appbldr-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .appbldr-header-row h1 {
+    margin-bottom: 0.3rem;
+  }
+
+  .appbldr-main {
+    display: flex;
+    gap: 1.5rem;
+    align-items: flex-start;
+  }
+
+  .appbldr-left {
+    flex: 1.2;
+    min-width: 0;
+  }
+
+  .appbldr-right {
+    flex: 1;
+    min-width: 280px;
+    position: sticky;
+    top: 5.5rem;
+  }
+
+  /* Steps */
+  .ab-step {
+    display: none;
+    background: #ffffff;
+    padding: 1.8rem 2.2rem;
+    border-radius: 18px;
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
+  }
+
+  .ab-step.active {
+    display: block;
+    animation: abFadeIn 0.18s ease-out;
+  }
+
+  @keyframes abFadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .ab-step-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 0.4rem;
+  }
+
+  .ab-step-subtitle {
+    font-size: 0.93rem;
+    color: #6b7280;
+    margin-bottom: 1.4rem;
+    line-height: 1.5;
+  }
+
+  /* Grid */
+  .ab-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem 1.25rem;
+    margin-bottom: 1rem;
+  }
+
+  .ab-field-span2 {
+    grid-column: 1 / -1;
+  }
+
+  /* Fields */
+  .ab-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  .ab-field-full {
+    margin-bottom: 1rem;
+  }
+
+  .ab-field label {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #374151;
+  }
+
+  .ab-field input,
+  .ab-field select,
+  .ab-field textarea {
+    width: 100%;
+    padding: 0.55rem 0.75rem;
+    border: 1.5px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 0.93rem;
+    color: #111827;
+    background: #f9fafb;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    box-sizing: border-box;
+    font-family: inherit;
+  }
+
+  .ab-field input:focus,
+  .ab-field select:focus,
+  .ab-field textarea:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+    background: #fff;
+  }
+
+  .ab-field textarea {
+    resize: vertical;
+    min-height: 160px;
+    line-height: 1.55;
+  }
+
+  .ab-field-hint {
+    font-size: 0.78rem;
+    color: #9ca3af;
+    margin: 0;
+  }
+
+  .req { color: #ef4444; margin-left: 2px; }
+
+  /* Navigation */
+  .ab-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1.5rem;
+    gap: 0.75rem;
+  }
+
+  .ab-nav > div {
+    display: flex;
+    gap: 0.75rem;
+  }
+
+  /* Step dots */
+  .ab-step-indicator {
+    display: flex;
+    justify-content: center;
+    gap: 0.55rem;
+    margin-top: 1.2rem;
+  }
+
+  .ab-step-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #d1d5db;
+    transition: background 0.2s, transform 0.2s;
+  }
+
+  .ab-step-dot.active {
+    background: #6366f1;
+    transform: scale(1.3);
+  }
+
+  .ab-step-dot.done {
+    background: #a5b4fc;
+  }
+
+  /* AI status */
+  .ab-ai-status {
+    font-size: 0.85rem;
+    color: #6366f1;
+    min-height: 1.4rem;
+    margin-top: 0.4rem;
+  }
+
+  /* AI buttons */
+  .ab-ai-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.28rem 0.65rem;
+    border: 1.5px solid #6366f1;
+    border-radius: 6px;
+    background: #eff0ff;
+    color: #4338ca;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+
+  .ab-ai-btn:hover:not(:disabled) { background: #e0e2ff; }
+  .ab-ai-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+  /* ===== LIVE PREVIEW ===== */
+  .ab-preview-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    text-align: center;
+    margin-bottom: 0.5rem;
+  }
+
+  .ab-preview-wrap {
+    background: #f3f4f6;
+    border-radius: 12px;
+    padding: 1rem;
+    overflow: hidden;
+  }
+
+  .ab-preview-page {
+    background: #ffffff;
+    border-radius: 4px;
+    box-shadow: 0 2px 12px rgba(15,23,42,0.12);
+    padding: 1.5rem 1.75rem 2rem;
+    font-size: 0.72rem;
+    line-height: 1.55;
+    color: #111827;
+    min-height: 360px;
+    font-family: 'Times New Roman', Times, serif;
+  }
+
+  .abpv-date {
+    text-align: right;
+    margin-bottom: 1.2rem;
+    color: #374151;
+  }
+
+  .abpv-to {
+    margin-bottom: 1rem;
+    line-height: 1.6;
+    color: #374151;
+  }
+
+  .abpv-to-name { font-weight: 700; }
+  .abpv-to-des  { color: #4b5563; }
+  .abpv-org     { color: #4b5563; }
+
+  .abpv-subject {
+    margin-bottom: 1rem;
+    color: #111827;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .abpv-salutation {
+    margin-bottom: 0.75rem;
+    color: #374151;
+  }
+
+  .abpv-body {
+    color: #374151;
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin-bottom: 1.5rem;
+    min-height: 60px;
+    font-style: italic;
+    opacity: 0.75;
+  }
+
+  .abpv-body.has-content {
+    font-style: normal;
+    opacity: 1;
+  }
+
+  .abpv-closing {
+    line-height: 1.7;
+    color: #374151;
+  }
+
+  .abpv-sign-name { font-weight: 700; color: #111827; }
+  .abpv-sign-des  { color: #6b7280; font-size: 0.68rem; }
+
+  /* ===== AI Field buttons (reused from resume builder) ===== */
+  .ai-field-wrap { position: relative; }
+
+  .ai-field-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.3rem;
+  }
+
+  .ai-field-label label {
+    margin-bottom: 0 !important;
+  }
+
+  .ai-btn-group {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+  }
+
+  .ai-undo-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.28rem 0.55rem;
+    border: 1.5px solid #d1d5db;
+    border-radius: 6px;
+    background: #f9fafb;
+    color: #6b7280;
+    font-size: 0.78rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+
+  .ai-undo-btn:hover:not(:disabled) { background: #f3f4f6; color: #374151; }
+  .ai-undo-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  .ai-mic-field-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.28rem 0.45rem;
+    border: 1.5px solid #d1d5db;
+    border-radius: 6px;
+    background: #f9fafb;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    white-space: nowrap;
+  }
+
+  .ai-mic-field-btn:hover:not(:disabled) {
+    background: #fee2e2;
+    border-color: #fca5a5;
+  }
+
+  .ai-mic-field-btn.fmic-recording {
+    background: #fee2e2;
+    border-color: #ef4444;
+    animation: fmicPulse 1.2s ease-in-out infinite;
+  }
+
+  .ai-mic-field-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  @keyframes fmicPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.35); }
+    50%       { box-shadow: 0 0 0 5px rgba(239, 68, 68, 0); }
+  }
+
+  .fmic-status {
+    display: none;
+    font-size: 0.75rem;
+    color: #ef4444;
+    font-style: italic;
+  }
+
+  .fmic-status.visible { display: inline; }
+
+  @media (max-width: 1024px) {
+    .appbldr-main { flex-direction: column; }
+    .appbldr-right { position: static; width: 100%; }
+  }
+
+  @media (max-width: 768px) {
+    .ab-grid-2 { grid-template-columns: 1fr; }
+    .ab-field-span2 { grid-column: 1; }
+    .ab-step { padding: 1.3rem 1.5rem; }
+  }
+</style>
+
+<script>
+(function () {
+  // ===== SUBJECT AUTO-GENERATION =====
+  const TYPE_SUBJECTS = {
+    "sick-leave":         "Application for Sick Leave",
+    "casual-leave":       "Application for Casual / Personal Leave",
+    "week-off":           "Application for Week Off",
+    "month-off":          "Application for Extended Leave",
+    "resignation":        "Letter of Resignation",
+    "appreciation":       "Letter of Appreciation",
+    "transfer-request":   "Application for Transfer",
+    "promotion-request":  "Application for Promotion",
+    "school-leave":       "Application for Leave of Absence",
+    "noc-request":        "Request for No Objection Certificate (NOC)",
+    "custom":             "",
+  };
+
+  const typeSelect  = document.getElementById("appType");
+  const subjectInput = document.getElementById("subject");
+
+  if (typeSelect && subjectInput) {
+    typeSelect.addEventListener("change", function () {
+      const auto = TYPE_SUBJECTS[this.value] || "";
+      // Only auto-fill if blank or previously auto-filled
+      subjectInput.value = auto;
+      updatePreview();
+    });
+  }
+
+  // ===== STEP NAVIGATION =====
+  const steps       = Array.from(document.querySelectorAll(".ab-step"));
+  const dots        = Array.from(document.querySelectorAll(".ab-step-dot"));
+  const backBtn     = document.getElementById("abBackBtn");
+  const nextBtn     = document.getElementById("abNextBtn");
+  const submitBtn   = document.getElementById("abSubmitBtn");
+  const stepCounter = document.getElementById("abStepCounter");
+  let current = 0;
+
+  function updateStepUI() {
+    steps.forEach(function (step, i) {
+      step.classList.toggle("active", i === current);
+    });
+    dots.forEach(function (dot, i) {
+      dot.classList.toggle("active", i === current);
+      dot.classList.toggle("done", i < current);
+    });
+
+    backBtn.disabled = current === 0;
+    backBtn.classList.toggle("btn-ghost-disabled", current === 0);
+
+    if (current === steps.length - 1) {
+      nextBtn.style.display = "none";
+      submitBtn.style.display = "inline-block";
+    } else {
+      nextBtn.style.display = "inline-block";
+      submitBtn.style.display = "none";
+    }
+
+    if (stepCounter) stepCounter.textContent = current + 1;
+  }
+
+  backBtn.addEventListener("click", function () {
+    if (current > 0) { current--; updateStepUI(); }
+  });
+
+  nextBtn.addEventListener("click", function () {
+    if (current < steps.length - 1) { current++; updateStepUI(); }
+  });
+
+  updateStepUI();
+
+  // ===== LIVE PREVIEW =====
+  function getText(id) {
+    var el = document.getElementById(id);
+    return el ? el.value.trim() : "";
+  }
+
+  function updatePreview() {
+    var date      = getText("appDate");
+    var toName    = getText("toName");
+    var toDes     = getText("toDesignation");
+    var org       = getText("orgName");
+    var subject   = getText("subject") || (TYPE_SUBJECTS[getText("appType")] || "");
+    var body      = getText("appBody");
+    var fromName  = getText("fromName");
+    var fromDes   = getText("fromDesignation");
+    var fromDept  = getText("fromDept");
+
+    // Format date nicely
+    var displayDate = "";
+    if (date) {
+      var parts = date.split("-");
+      if (parts.length === 3) {
+        var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+        displayDate = parts[2] + " " + (months[parseInt(parts[1], 10) - 1] || parts[1]) + " " + parts[0];
+      }
+    }
+
+    var pvDate    = document.getElementById("pvDate");
+    var pvToName  = document.getElementById("pvToName");
+    var pvToDes   = document.getElementById("pvToDesignation");
+    var pvOrg     = document.getElementById("pvOrgName");
+    var pvSubject = document.getElementById("pvSubject");
+    var pvBody    = document.getElementById("pvBody");
+    var pvFName   = document.getElementById("pvFromName");
+    var pvFDes    = document.getElementById("pvFromDes");
+    var pvFDept   = document.getElementById("pvFromDept");
+
+    if (pvDate)    pvDate.textContent    = displayDate || new Date().toLocaleDateString("en-IN", {day:"2-digit",month:"short",year:"numeric"});
+    if (pvToName)  pvToName.textContent  = toName  || "Recipient Name";
+    if (pvToDes)   pvToDes.textContent   = toDes   || "";
+    if (pvOrg)     pvOrg.textContent     = org     || "";
+    if (pvSubject) pvSubject.textContent = subject  || "Application Subject";
+
+    if (pvBody) {
+      if (body) {
+        pvBody.textContent = body;
+        pvBody.classList.add("has-content");
+      } else {
+        pvBody.textContent = "Your application content will appear here...";
+        pvBody.classList.remove("has-content");
+      }
+    }
+
+    if (pvFName)  pvFName.textContent  = fromName  || "Your Name";
+    if (pvFDes)   pvFDes.textContent   = fromDes   || "";
+    if (pvFDept)  pvFDept.textContent  = fromDept  || "";
+  }
+
+  // Bind all inputs to preview
+  var watchIds = ["appDate","toName","toDesignation","orgName","subject","appBody","fromName","fromDesignation","fromDept","appType"];
+  watchIds.forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener("input", updatePreview);
+    if (el && el.tagName === "SELECT") el.addEventListener("change", updatePreview);
+  });
+
+  updatePreview(); // initial render
+
+  // ===== AI SUGGEST FOR APPLICATION BODY =====
+  var aiBtn     = document.getElementById("abAiSuggestBtn");
+  var aiUndo    = document.getElementById("abAiUndoBtn");
+  var bodyArea  = document.getElementById("appBody");
+  var aiStatus  = document.getElementById("abAiStatus");
+  var lastBodyBefore = null;
+
+  if (aiBtn && bodyArea) {
+    aiBtn.addEventListener("click", async function () {
+      var appType      = getText("appType");
+      var fromName     = getText("fromName");
+      var fromDes      = getText("fromDesignation");
+      var fromDept     = getText("fromDept");
+      var toName       = getText("toName");
+      var toDes        = getText("toDesignation");
+      var orgName      = getText("orgName");
+      var subj         = getText("subject") || (TYPE_SUBJECTS[appType] || "");
+      var currentBody  = bodyArea.value.trim();
+
+      aiBtn.disabled   = true;
+      aiBtn.textContent = "⏳ Thinking...";
+      if (aiStatus) aiStatus.textContent = "Generating professional letter...";
+      if (aiUndo)   aiUndo.disabled = true;
+
+      try {
+        var res = await fetch("/api/ai/suggest-application", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            appType, fromName, fromDesignation: fromDes, fromDept,
+            toName, toDesignation: toDes, orgName, subject: subj, currentBody
+          })
+        });
+
+        var data = await res.json();
+
+        if (data.success && data.text) {
+          lastBodyBefore = bodyArea.value;
+          bodyArea.value = data.text;
+          bodyArea.style.background = "#f0fdf4";
+          setTimeout(function () { bodyArea.style.background = ""; }, 1000);
+          bodyArea.dispatchEvent(new Event("input"));
+          if (aiUndo)   aiUndo.disabled = false;
+          if (aiStatus) aiStatus.textContent = "Content generated. Review and edit as needed.";
+          setTimeout(function () { if (aiStatus) aiStatus.textContent = ""; }, 4000);
+        } else {
+          var errMsg = data.error || "AI suggestion failed. Please try again.";
+          if (aiStatus) aiStatus.textContent = errMsg;
+          setTimeout(function () { if (aiStatus) aiStatus.textContent = ""; }, 5000);
+        }
+      } catch (e) {
+        if (aiStatus) aiStatus.textContent = "Network error. Please try again.";
+        setTimeout(function () { if (aiStatus) aiStatus.textContent = ""; }, 5000);
+      } finally {
+        aiBtn.disabled = false;
+        aiBtn.textContent = "✨ AI Suggest";
+      }
+    });
+  }
+
+  if (aiUndo && bodyArea) {
+    aiUndo.addEventListener("click", function () {
+      if (lastBodyBefore !== null) {
+        bodyArea.value = lastBodyBefore;
+        bodyArea.style.background = "#fee2e2";
+        setTimeout(function () { bodyArea.style.background = ""; }, 800);
+        bodyArea.dispatchEvent(new Event("input"));
+        lastBodyBefore = null;
+        aiUndo.disabled = true;
+      }
+    });
+  }
+
+  // Auto-resize textarea
+  if (bodyArea) {
+    bodyArea.addEventListener("input", function () {
+      this.style.height = "auto";
+      this.style.height = this.scrollHeight + "px";
+    });
+  }
+})();
+</script>
+
+<script>
+/* ── Field-level speech-to-text (same pattern as resume builder) ── */
+(function () {
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (!SR) {
+    document.querySelectorAll('.ai-mic-field-btn').forEach(function (btn) {
+      btn.disabled = true;
+      btn.title = 'Voice input not supported in this browser';
+    });
+    return;
+  }
+
+  var SILENCE_MS = 7000;
+  var recognition = null;
+  var isListening = false;
+  var activeBtn = null;
+  var activeStatus = null;
+  var activeTarget = null;
+  var silenceTimer = null;
+  var finalTranscript = '';
+
+  function getStatusEl(btn) {
+    return btn.closest('.ai-btn-group').querySelector('.fmic-status');
+  }
+
+  function armSilenceTimer() {
+    clearTimeout(silenceTimer);
+    silenceTimer = setTimeout(function () {
+      if (isListening && recognition) {
+        setStatus('Processing\u2026');
+        recognition.stop();
+      }
+    }, SILENCE_MS);
+  }
+
+  function setStatus(text) {
+    if (!activeStatus) return;
+    activeStatus.textContent = text;
+    if (text) activeStatus.classList.add('visible');
+    else activeStatus.classList.remove('visible');
+  }
+
+  function startRecording(btn, textarea) {
+    recognition = new SR();
+    recognition.lang            = 'en-IN';
+    recognition.continuous      = true;
+    recognition.interimResults  = false;
+    recognition.maxAlternatives = 3;
+
+    finalTranscript = '';
+    activeBtn    = btn;
+    activeTarget = textarea;
+    activeStatus = getStatusEl(btn);
+
+    recognition.onstart = function () {
+      isListening = true;
+      activeBtn.classList.add('fmic-recording');
+      activeBtn.title = 'Click to stop recording';
+      setStatus('Listening\u2026');
+      armSilenceTimer();
+    };
+
+    recognition.onresult = function (e) {
+      for (var i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) {
+          var best = e.results[i][0];
+          for (var a = 1; a < e.results[i].length; a++) {
+            if (e.results[i][a].confidence > best.confidence) best = e.results[i][a];
+          }
+          finalTranscript += best.transcript;
+        }
+      }
+      armSilenceTimer();
+      setStatus('Listening\u2026');
+    };
+
+    recognition.onerror = function (e) {
+      if (e.error === 'no-speech') return;
+      clearTimeout(silenceTimer);
+    };
+
+    recognition.onend = function () {
+      isListening = false;
+      clearTimeout(silenceTimer);
+
+      if (activeBtn) {
+        activeBtn.classList.remove('fmic-recording');
+        activeBtn.title = 'Voice input';
+      }
+      setStatus('');
+
+      if (finalTranscript.trim() && activeTarget) {
+        var existing = activeTarget.value.trimEnd();
+        activeTarget.value = existing
+          ? existing + '\n' + finalTranscript.trim()
+          : finalTranscript.trim();
+        activeTarget.dispatchEvent(new Event('input'));
+      }
+
+      activeBtn    = null;
+      activeStatus = null;
+      activeTarget = null;
+      recognition  = null;
+    };
+
+    try { recognition.start(); } catch (_) {}
+  }
+
+  document.querySelectorAll('.ai-mic-field-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      if (isListening) {
+        clearTimeout(silenceTimer);
+        setStatus('Processing\u2026');
+        recognition.stop();
+        return;
+      }
+      var targetId = btn.dataset.micTarget;
+      var textarea = document.getElementById(targetId);
+      if (!textarea) return;
+      startRecording(btn, textarea);
+    });
+  });
+})();
+</script>
+
+<%- include("partials/footer") %>

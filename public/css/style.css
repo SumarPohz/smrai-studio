@@ -286,13 +286,75 @@ main {
   gap: 1.25rem;
 }
 
+a.service-card-link {
+  text-decoration: none;
+  color: inherit;
+}
+
 .service-card {
   background: #ffffff;
   border-radius: 18px;
   overflow: hidden;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
   display: flex;
   flex-direction: column;
+  position: relative;
+  border: 1.5px solid transparent;
+  background-clip: padding-box;
+  box-shadow:
+    0 8px 24px rgba(15, 23, 42, 0.06),
+    0 0 0 1.5px rgba(99, 102, 241, 0.15),
+    0 0 18px rgba(59, 130, 246, 0.08);
+  transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.32s ease,
+              border-color 0.32s ease;
+  cursor: default;
+}
+
+.service-card:hover {
+  transform: translateY(-10px) scale(1.025);
+  box-shadow:
+    0 24px 48px rgba(15, 23, 42, 0.13),
+    0 0 0 2px rgba(99, 102, 241, 0.45),
+    0 0 32px rgba(59, 130, 246, 0.22),
+    0 0 60px rgba(99, 102, 241, 0.10);
+}
+
+/* Per-card glow colour on hover */
+.service-card:nth-child(1):hover {
+  box-shadow:
+    0 24px 48px rgba(15, 23, 42, 0.13),
+    0 0 0 2px rgba(59, 130, 246, 0.5),
+    0 0 36px rgba(59, 130, 246, 0.25),
+    0 0 70px rgba(29, 78, 216, 0.12);
+}
+.service-card:nth-child(2):hover {
+  box-shadow:
+    0 24px 48px rgba(15, 23, 42, 0.13),
+    0 0 0 2px rgba(251, 113, 133, 0.5),
+    0 0 36px rgba(190, 18, 60, 0.22),
+    0 0 70px rgba(251, 113, 133, 0.12);
+}
+.service-card:nth-child(3):hover {
+  box-shadow:
+    0 24px 48px rgba(15, 23, 42, 0.13),
+    0 0 0 2px rgba(34, 197, 94, 0.5),
+    0 0 36px rgba(3, 105, 161, 0.22),
+    0 0 70px rgba(34, 197, 94, 0.12);
+}
+.service-card:nth-child(4):hover {
+  box-shadow:
+    0 24px 48px rgba(15, 23, 42, 0.13),
+    0 0 0 2px rgba(124, 58, 237, 0.5),
+    0 0 36px rgba(37, 99, 235, 0.25),
+    0 0 70px rgba(124, 58, 237, 0.12);
+}
+
+/* Image zooms in on hover */
+.service-card:hover .service-image {
+  transform: scale(1.04);
+}
+.service-image {
+  transition: transform 0.4s ease;
 }
 
 .service-image {
@@ -302,15 +364,21 @@ main {
 }
 
 .resume-bg {
-  background-image: linear-gradient(135deg, #1d4ed8, #0ea5e9);
+  background-image: url('/images/social-preview.png');
 }
 
 .cover-bg {
-  background-image: linear-gradient(135deg, #be123c, #fb7185);
+  background-image: url('https://upload.wikimedia.org/wikipedia/en/thumb/4/41/Flag_of_India.svg/1200px-Flag_of_India.svg.png');
 }
 
 .portfolio-bg {
-  background-image: linear-gradient(135deg, #0369a1, #22c55e);
+  background-image: url('/images/sumarportfolio.png');
+}
+
+.app-bg {
+  background-image: url('/images/application.png');
+  background-size: cover;
+  background-position: center;
 }
 
 .service-card-body {
@@ -353,7 +421,21 @@ main {
   background: #ffffff;
   border-radius: 18px;
   padding: 1.2rem 1.4rem;
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
+  box-shadow:
+    0 6px 18px rgba(15, 23, 42, 0.05),
+    0 0 0 1.5px rgba(99, 102, 241, 0.15),
+    0 0 18px rgba(59, 130, 246, 0.07);
+  transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.32s ease;
+}
+
+.feature-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow:
+    0 20px 40px rgba(15, 23, 42, 0.11),
+    0 0 0 2px rgba(99, 102, 241, 0.45),
+    0 0 32px rgba(59, 130, 246, 0.20),
+    0 0 60px rgba(99, 102, 241, 0.09);
 }
 
 .feature-icon {
@@ -386,8 +468,22 @@ main {
   background: #ffffff;
   border-radius: 18px;
   padding: 1.4rem 1.5rem 1.6rem;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
   position: relative;
+  box-shadow:
+    0 10px 30px rgba(15, 23, 42, 0.06),
+    0 0 0 1.5px rgba(239, 68, 68, 0.15),
+    0 0 18px rgba(239, 68, 68, 0.07);
+  transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.32s ease;
+}
+
+.testimonial-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow:
+    0 20px 40px rgba(15, 23, 42, 0.11),
+    0 0 0 2px rgba(239, 68, 68, 0.45),
+    0 0 32px rgba(239, 68, 68, 0.20),
+    0 0 60px rgba(239, 68, 68, 0.09);
 }
 
 .quote-flag {
@@ -407,6 +503,9 @@ main {
   border-radius: 999px;
   background: #e5e7eb;
   margin: 0.5rem 0 0.7rem;
+  object-fit: cover;
+  display: block;
+  border: 2px solid #e5e7eb;
 }
 
 .testimonial-text {
