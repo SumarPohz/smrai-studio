@@ -1224,13 +1224,18 @@ async function logActivity({ userId = null, actionType, route = null, metadata =
   } catch (_) {}
 }
 
-// ── Page-visit tracking (key pages only, not static assets) ─────────────────
-const TRACKED_ROUTES = new Set([
-  "/", "/dashboard", "/resume-builder", "/resume-templates",
-  "/resumes", "/payments", "/application-builder",
-]);
+// ── Page-visit tracking (all pages except static assets & API calls) ─────────
 app.use((req, res, next) => {
-  if (req.method === "GET" && TRACKED_ROUTES.has(req.path)) {
+  if (
+    req.method === "GET" &&
+    !req.path.startsWith("/api/") &&
+    !req.path.startsWith("/admin/api/") &&
+    !req.path.startsWith("/css/") &&
+    !req.path.startsWith("/js/") &&
+    !req.path.startsWith("/images/") &&
+    !req.path.startsWith("/fonts/") &&
+    !req.path.includes(".")           // skip files like .ico, .png, .woff etc.
+  ) {
     logActivity({
       userId: req.user?.id ?? null,
       actionType: "visit",
