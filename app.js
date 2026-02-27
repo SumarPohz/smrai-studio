@@ -180,6 +180,10 @@ await db.query(`
       ALTER TABLE users
         ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'user';
     `);
+    await db.query(`
+      ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true;
+    `);
 
     /* ── Activity logs table ── */
     await db.query(`
