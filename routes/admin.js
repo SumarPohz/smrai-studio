@@ -43,7 +43,7 @@ export default function adminRouter(db) {
 
       const sql = `
         SELECT
-          u.id, u.name, u.email, u.role,
+          u.id, u.name, u.email, u.role, u.is_active,
           up.full_name, up.phone, up.location, up.profile_image_url, up.created_at,
           (SELECT COUNT(*)::int FROM resumes        WHERE user_id = u.id)                           AS resume_count,
           (SELECT COUNT(*)::int FROM resume_events  WHERE user_id = u.id AND kind = 'download')     AS download_count,
@@ -84,7 +84,7 @@ export default function adminRouter(db) {
 
       const [userRes, profileRes, countsRes] = await Promise.all([
         db.query(
-          "SELECT id, name, email, role FROM users WHERE id = $1",
+          "SELECT id, name, email, role, is_active FROM users WHERE id = $1",
           [id]
         ),
         db.query("SELECT * FROM user_profiles WHERE user_id = $1", [id]),
@@ -107,7 +107,11 @@ export default function adminRouter(db) {
       res.json({
         success: true,
         user: {
-          ...userRes.rows[0],
+          id:                userRes.rows[0].id,
+          name:              userRes.rows[0].name,
+          email:             userRes.rows[0].email,
+          role:              userRes.rows[0].role,
+          is_active:         userRes.rows[0].is_active,
           full_name:         profile.full_name         || null,
           phone:             profile.phone             || null,
           location:          profile.location          || null,
@@ -142,6 +146,71 @@ export default function adminRouter(db) {
       res.json({ success: true });
     } catch (err) {
       console.error("Admin role update error:", err);
+      res.status(500).json({ success: false });
+    }
+  });
+
+  // ── PATCH /admin/api/user/:id/toggle-active — activate / deactivate ──────
+  router.patch("/api/user/:id/toggle-active", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (!id) return res.status(400).json({ success: false });
+      if (id === req.user.id) {
+        return res.status(403).json({ success: false, message: "Cannot deactivate yourself" });
+      }
+      const result = await db.query(
+        "UPDATE users SET is_active = NOT is_active WHERE id = $1 RETURNING is_active",
+        [id]
+      );
+      if (!result.rows.length) return res.status(404).json({ success: false });
+      res.json({ success: true, is_active: result.rows[0].is_active });
+    } catch (err) {
+      console.error("Toggle active error:", err);
+      res.status(500).json({ success: false });
+    }
+  });
+
+  // ── DELETE /admin/api/user/:id — permanently delete a user ───────────────
+  router.delete("/api/user/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (!id) return res.status(400).json({ success: false });
+      if (id === req.user.id) {
+        return res.status(403).json({ success: false, message: "Cannot delete yourself" });
+      }
+      await db.query("DELETE FROM users WHERE id = $1", [id]);
+      res.json({ success: true });
+    } catch (err) {
+      console.error("Delete user error:", err);
+      res.status(500).json({ success: false });
+    }
+  });
+
+  // ── DELETE /admin/api/activity — clear logs by period ────────────────────
+  router.delete("/api/activity", async (req, res) => {
+    const { period } = req.query;
+    try {
+      let result;
+      if (period === "recent") {
+        result = await db.query(
+          `DELETE FROM activity_logs WHERE created_at >= NOW() - INTERVAL '1 hour'`
+        );
+      } else if (period === "today") {
+        result = await db.query(
+          `DELETE FROM activity_logs WHERE created_at::date = CURRENT_DATE`
+        );
+      } else if (period === "yesterday") {
+        result = await db.query(
+          `DELETE FROM activity_logs WHERE created_at::date = CURRENT_DATE - INTERVAL '1 day'`
+        );
+      } else if (period === "all") {
+        result = await db.query(`DELETE FROM activity_logs`);
+      } else {
+        return res.status(400).json({ success: false, error: "Invalid period" });
+      }
+      res.json({ success: true, deleted: result.rowCount });
+    } catch (err) {
+      console.error("Activity delete error:", err);
       res.status(500).json({ success: false });
     }
   });

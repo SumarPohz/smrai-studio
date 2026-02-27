@@ -152,9 +152,20 @@
       <div class="adm-section">
         <div class="adm-section-header">
           <h2>Live Activity Feed</h2>
-          <span class="adm-badge adm-badge-green">
-            <span class="adm-pulse"></span> Live
-          </span>
+          <div style="display:flex;align-items:center;gap:0.6rem;margin-left:auto">
+            <span class="adm-badge adm-badge-green">
+              <span class="adm-pulse"></span> Live
+            </span>
+            <div class="adm-delete-wrap">
+              <select id="actDeletePeriod" class="adm-delete-select">
+                <option value="">🗑 Delete…</option>
+                <option value="recent">Last 1 hour</option>
+                <option value="today">Today</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="all">All activity</option>
+              </select>
+            </div>
+          </div>
         </div>
         <div id="activityFeed">
           <div class="adm-loading">Loading activity…</div>
@@ -165,6 +176,36 @@
 
   </div><!-- /adm-main -->
 </div><!-- /adm-shell -->
+
+<!-- ── Delete activity confirmation modal ────────────────────────────────── -->
+<div id="actDeleteModal" class="adm-modal-backdrop" hidden>
+  <div class="adm-modal adm-confirm-modal">
+    <div class="adm-confirm-icon"><i class="fas fa-trash-alt"></i></div>
+    <h3 class="adm-confirm-title">Delete Activity</h3>
+    <p class="adm-confirm-msg" id="actDeleteMsg"></p>
+    <div class="adm-confirm-actions">
+      <button class="adm-confirm-cancel" id="actDeleteCancel" type="button">Cancel</button>
+      <button class="adm-confirm-delete" id="actDeleteConfirm" type="button">
+        <i class="fas fa-trash-alt"></i> Yes, Delete
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── User delete confirmation modal ───────────────────────────────────── -->
+<div id="userDeleteModal" class="adm-modal-backdrop" hidden>
+  <div class="adm-modal adm-confirm-modal">
+    <div class="adm-confirm-icon adm-confirm-icon-danger"><i class="fas fa-user-times"></i></div>
+    <h3 class="adm-confirm-title">Delete User</h3>
+    <p class="adm-confirm-msg" id="userDeleteMsg"></p>
+    <div class="adm-confirm-actions">
+      <button class="adm-confirm-cancel" id="userDeleteCancel" type="button">Cancel</button>
+      <button class="adm-confirm-delete" id="userDeleteConfirm" type="button">
+        <i class="fas fa-user-times"></i> Yes, Delete
+      </button>
+    </div>
+  </div>
+</div>
 
 <!-- ── User activity detail modal ───────────────────────────────────────── -->
 <div id="userActModal" class="adm-modal-backdrop" hidden>
@@ -442,7 +483,12 @@ async function openUserModal(uid) {
         <div>
           <h3 class="adm-modal-name">${u.full_name || u.name || "—"}</h3>
           <p class="adm-modal-email">${u.email}</p>
-          <span class="adm-badge ${u.role === "admin" ? "adm-badge-admin" : "adm-badge-user"}" id="modalRoleBadge">${u.role}</span>
+          <div style="display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap;margin-top:0.3rem">
+            <span class="adm-badge ${u.role === "admin" ? "adm-badge-admin" : "adm-badge-user"}" id="modalRoleBadge">${u.role}</span>
+            <span class="adm-badge ${u.is_active ? "adm-badge-active" : "adm-badge-inactive"}" id="modalActiveBadge">
+              ${u.is_active ? "Active" : "Inactive"}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -466,6 +512,16 @@ async function openUserModal(uid) {
                 data-uid="${u.id}"
                 data-current="${u.role}">
           ${u.role === "admin" ? "⬇ Demote to User" : "⬆ Promote to Admin"}
+        </button>
+        <button class="adm-toggle-active-btn ${u.is_active ? "adm-toggle-active-btn-deactivate" : "adm-toggle-active-btn-activate"}"
+                id="toggleActiveBtn"
+                data-uid="${u.id}"
+                data-active="${u.is_active}">
+          <i class="fas ${u.is_active ? "fa-ban" : "fa-check-circle"}"></i>
+          ${u.is_active ? "Deactivate" : "Activate"}
+        </button>
+        <button class="adm-delete-user-btn" id="deleteUserBtn" data-uid="${u.id}" data-name="${(u.full_name||u.name||u.email||"User").replace(/"/g,"&quot;")}">
+          <i class="fas fa-trash-alt"></i> Delete
         </button>
       </div>
     `;
@@ -503,6 +559,42 @@ async function openUserModal(uid) {
       }
     });
 
+    // ── Toggle active handler ────────────────────────────────────────────
+    document.getElementById("toggleActiveBtn").addEventListener("click", async function () {
+      const uid  = this.dataset.uid;
+      const prev = this.dataset.active === "true";
+      this.disabled = true;
+      try {
+        const r = await fetch(`/admin/api/user/${uid}/toggle-active`, { method: "PATCH" });
+        const d = await r.json();
+        if (d.success) {
+          const nowActive = d.is_active;
+          this.dataset.active = nowActive;
+          this.innerHTML = `<i class="fas ${nowActive ? "fa-ban" : "fa-check-circle"}"></i> ${nowActive ? "Deactivate" : "Activate"}`;
+          this.className = `adm-toggle-active-btn ${nowActive ? "adm-toggle-active-btn-deactivate" : "adm-toggle-active-btn-activate"}`;
+          const badge = document.getElementById("modalActiveBadge");
+          badge.textContent = nowActive ? "Active" : "Inactive";
+          badge.className   = `adm-badge ${nowActive ? "adm-badge-active" : "adm-badge-inactive"}`;
+        } else {
+          alert(d.message || "Failed to update status.");
+        }
+      } catch (_) {
+        alert("Network error.");
+      } finally {
+        this.disabled = false;
+      }
+    });
+
+    // ── Delete user handler ─────────────────────────────────────────────
+    document.getElementById("deleteUserBtn").addEventListener("click", function () {
+      const uid  = this.dataset.uid;
+      const name = this.dataset.name;
+      document.getElementById("userDeleteMsg").innerHTML =
+        `This will permanently delete <strong>${name}</strong> and all their data. This cannot be undone.`;
+      document.getElementById("userDeleteModal").hidden = false;
+      document.getElementById("userDeleteConfirm").dataset.uid = uid;
+    });
+
   } catch (_) {
     body.innerHTML = "<p>Error loading user.</p>";
   }
@@ -517,7 +609,46 @@ document.getElementById("modalClose").addEventListener("click", closeModal);
 document.getElementById("userModal").addEventListener("click", e => {
   if (e.target === e.currentTarget) closeModal();
 });
-document.addEventListener("keydown", e => { if (e.key === "Escape") { closeModal(); closeStatModal(); } });
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") {
+    closeModal();
+    closeStatModal();
+    document.getElementById("userDeleteModal").hidden = true;
+  }
+});
+
+// ── User delete confirm / cancel ────────────────────────────────────────────
+document.getElementById("userDeleteCancel").addEventListener("click", () => {
+  document.getElementById("userDeleteModal").hidden = true;
+});
+document.getElementById("userDeleteModal").addEventListener("click", e => {
+  if (e.target === e.currentTarget) e.currentTarget.hidden = true;
+});
+
+document.getElementById("userDeleteConfirm").addEventListener("click", async function () {
+  const uid = this.dataset.uid;
+  this.disabled = true;
+  this.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Deleting…`;
+  try {
+    const res  = await fetch(`/admin/api/user/${uid}`, { method: "DELETE" });
+    const data = await res.json();
+    document.getElementById("userDeleteModal").hidden = true;
+    if (data.success) {
+      closeModal();
+      // Remove the user row from the table if visible
+      const row = document.querySelector(`tr[data-uid="${uid}"]`);
+      if (row) row.remove();
+    } else {
+      alert(data.message || "Failed to delete user.");
+    }
+  } catch (_) {
+    document.getElementById("userDeleteModal").hidden = true;
+    alert("Network error.");
+  } finally {
+    this.disabled = false;
+    this.innerHTML = `<i class="fas fa-user-times"></i> Yes, Delete`;
+  }
+});
 
 // ── Stat card detail modals ─────────────────────────────────────────────────
 const STAT_TITLES = {
@@ -717,6 +848,54 @@ document.getElementById("userActModalClose").addEventListener("click", () => {
 });
 document.getElementById("userActModal").addEventListener("click", e => {
   if (e.target === e.currentTarget) document.getElementById("userActModal").hidden = true;
+});
+
+// ── Delete activity log ─────────────────────────────────────────────────────
+const PERIOD_LABELS = {
+  recent:    "last 1 hour",
+  today:     "today",
+  yesterday: "yesterday",
+  all:       "ALL activity (this cannot be undone)",
+};
+
+let pendingDeletePeriod = null;
+
+document.getElementById("actDeletePeriod").addEventListener("change", function () {
+  const period = this.value;
+  if (!period) return;
+  pendingDeletePeriod = period;
+  document.getElementById("actDeleteMsg").innerHTML =
+    `Are you sure you want to delete activity from <strong>${PERIOD_LABELS[period]}</strong>?`;
+  document.getElementById("actDeleteModal").hidden = false;
+  this.value = ""; // reset dropdown
+});
+
+document.getElementById("actDeleteCancel").addEventListener("click", () => {
+  document.getElementById("actDeleteModal").hidden = true;
+  pendingDeletePeriod = null;
+});
+
+document.getElementById("actDeleteConfirm").addEventListener("click", async () => {
+  if (!pendingDeletePeriod) return;
+  const btn = document.getElementById("actDeleteConfirm");
+  btn.disabled = true;
+  btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Deleting…`;
+
+  try {
+    const res  = await fetch(`/admin/api/activity?period=${pendingDeletePeriod}`, { method: "DELETE" });
+    const data = await res.json();
+    document.getElementById("actDeleteModal").hidden = true;
+    pendingDeletePeriod = null;
+    if (data.success) {
+      activityLoaded = false;
+      loadActivity(); // refresh feed
+    }
+  } catch (_) {
+    document.getElementById("actDeleteModal").hidden = true;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<i class="fas fa-trash-alt"></i> Yes, Delete`;
+  }
 });
 
 // Poll activity every 30 s when on that section

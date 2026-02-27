@@ -529,8 +529,6 @@
 .adm-modal-stat-num   { display: block; font-size: 1.3rem; font-weight: 800; color: #0f172a; }
 .adm-modal-stat-label { display: block; font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
 
-.adm-modal-actions { display: flex; justify-content: flex-end; }
-
 /* ── Stat cards — clickable ────────────────────────────────────────────────── */
 .adm-stat-card[data-detail] {
   cursor: pointer;
@@ -562,6 +560,84 @@
   border-bottom: 1px solid #f1f5f9;
 }
 .adm-detail-row:last-child { border-bottom: none; }
+
+/* ── Delete period dropdown ────────────────────────────────────────────────── */
+.adm-delete-select {
+  padding: 0.3rem 0.65rem;
+  border: 1px solid #fca5a5;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  color: #dc2626;
+  background: #fff5f5;
+  cursor: pointer;
+  outline: none;
+  transition: background 0.15s, border-color 0.15s;
+}
+.adm-delete-select:hover { background: #fee2e2; border-color: #f87171; }
+
+/* ── Confirmation modal ────────────────────────────────────────────────────── */
+.adm-confirm-modal {
+  max-width: 380px;
+  text-align: center;
+  padding: 2rem 1.5rem;
+}
+.adm-confirm-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #fee2e2;
+  color: #dc2626;
+  font-size: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem;
+}
+.adm-confirm-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 0.5rem;
+}
+.adm-confirm-msg {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin: 0 0 1.5rem;
+  line-height: 1.5;
+}
+.adm-confirm-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+}
+.adm-confirm-cancel {
+  padding: 0.5rem 1.25rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  color: #64748b;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.adm-confirm-cancel:hover { background: #f8fafc; }
+.adm-confirm-delete {
+  padding: 0.5rem 1.25rem;
+  border: none;
+  border-radius: 8px;
+  background: #dc2626;
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: background 0.15s;
+}
+.adm-confirm-delete:hover  { background: #b91c1c; }
+.adm-confirm-delete:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .adm-detail-main {
   font-size: 0.875rem;
@@ -608,6 +684,86 @@
 .adm-role-btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+/* ── Modal actions — flex wrap for multiple buttons ─────────────────────── */
+.adm-modal-actions {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: flex-end;
+  margin-top: 1.25rem;
+}
+
+/* ── Toggle active button ─────────────────────────────────────────────────── */
+.adm-toggle-active-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 1.1rem;
+  border-radius: 999px;
+  border: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.adm-toggle-active-btn-deactivate {
+  background: #fef3c7;
+  color: #92400e;
+}
+.adm-toggle-active-btn-deactivate:hover {
+  background: #f59e0b;
+  color: #fff;
+}
+.adm-toggle-active-btn-activate {
+  background: #dcfce7;
+  color: #166534;
+}
+.adm-toggle-active-btn-activate:hover {
+  background: #16a34a;
+  color: #fff;
+}
+.adm-toggle-active-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ── Delete user button ───────────────────────────────────────────────────── */
+.adm-delete-user-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 1.1rem;
+  border-radius: 999px;
+  border: 1.5px solid #fca5a5;
+  background: #fff5f5;
+  color: #dc2626;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.adm-delete-user-btn:hover {
+  background: #ef4444;
+  border-color: #ef4444;
+  color: #fff;
+}
+
+/* ── Active / Inactive status badges ─────────────────────────────────────── */
+.adm-badge-active {
+  background: #dcfce7;
+  color: #16a34a;
+}
+.adm-badge-inactive {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+/* ── Confirm icon variant (danger/red) ───────────────────────────────────── */
+.adm-confirm-icon-danger {
+  background: #fee2e2;
+  color: #dc2626;
 }
 
 /* ── Activity feed ────────────────────────────────────────────────────────── */
