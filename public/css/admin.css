@@ -3,10 +3,22 @@
    Zero conflict with existing style.css / templates.css
 ════════════════════════════════════════════════════════════════════════════ */
 
+/* ── Hide site nav + footer on admin pages ──────────────────────────────────── */
+.adm-page .header-nav,
+.adm-page .menu-toggle {
+  display: none !important;
+}
+
+/* Footer has no place in the admin panel — hiding it also prevents the
+   extra height that causes window-level scroll (breaking sticky sidebar) */
+.adm-page .site-footer {
+  display: none !important;
+}
+
 /* ── Layout shell ─────────────────────────────────────────────────────────── */
 .adm-shell {
   display: flex;
-  min-height: calc(100vh - 56px); /* subtract header height */
+  height: calc(100vh - 64px); /* fixed height so sidebar sticks */
   background: #f8fafc;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
@@ -19,8 +31,10 @@
   color: #fff;
   display: flex;
   flex-direction: column;
-  min-height: 100%;
-  transition: transform 0.25s ease;
+  height: 100%;
+  overflow-y: auto;
+  position: sticky;
+  top: 0;
 }
 
 .adm-sidebar-logo {
@@ -132,31 +146,38 @@
   flex-direction: column;
   gap: 1rem;
   flex: 1;
+  opacity: 1;
+  transition: opacity 0.12s ease;
+}
+
+.adm-section-page[hidden] {
+  display: none !important;
 }
 
 /* ── Stat cards ───────────────────────────────────────────────────────────── */
 .adm-stat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
 }
 
 .adm-stat-card {
   background: #fff;
-  border-radius: 14px;
-  padding: 1.25rem 1.25rem 1rem;
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
   box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
   border: 1px solid #f1f5f9;
   display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75rem;
   animation: adm-fade-in 0.4s ease both;
   animation-delay: var(--adm-card-delay, 0s);
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .adm-stat-card:hover {
-  transform: translateY(-3px);
+  transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(15, 23, 42, 0.1);
 }
 
@@ -168,7 +189,7 @@
   align-items: center;
   justify-content: center;
   font-size: 1rem;
-  margin-bottom: 0.25rem;
+  flex-shrink: 0;
 }
 
 .adm-icon-blue    { background: #dbeafe; color: #2563eb; }
@@ -178,8 +199,15 @@
 .adm-icon-emerald { background: #d1fae5; color: #059669; }
 .adm-icon-pink    { background: #fce7f3; color: #be185d; }
 
+.adm-stat-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
 .adm-stat-num {
-  font-size: 2rem;
+  font-size: 1.6rem;
   font-weight: 800;
   color: #0f172a;
   line-height: 1;
@@ -187,11 +215,14 @@
 }
 
 .adm-stat-label {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: #94a3b8;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ── Charts ───────────────────────────────────────────────────────────────── */
@@ -204,9 +235,11 @@
 .adm-chart-box {
   background: #fff;
   border-radius: 14px;
-  padding: 1.25rem;
+  padding: 1rem;
   box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
   border: 1px solid #f1f5f9;
+  max-height: 220px;
+  overflow: hidden;
 }
 
 .adm-chart-title {
@@ -498,6 +531,50 @@
 
 .adm-modal-actions { display: flex; justify-content: flex-end; }
 
+/* ── Stat cards — clickable ────────────────────────────────────────────────── */
+.adm-stat-card[data-detail] {
+  cursor: pointer;
+  transition: transform 0.18s, box-shadow 0.18s;
+}
+.adm-stat-card[data-detail]:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.09);
+}
+
+/* ── Stat detail modal ─────────────────────────────────────────────────────── */
+.adm-stat-modal { max-width: 420px; padding: 1.5rem; }
+
+.adm-stat-modal-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 0.85rem;
+  padding-right: 1.5rem;
+}
+
+.adm-stat-modal-body {
+  overflow-y: auto;
+  max-height: calc(65vh - 80px);
+}
+
+.adm-detail-row {
+  padding: 0.55rem 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+.adm-detail-row:last-child { border-bottom: none; }
+
+.adm-detail-main {
+  font-size: 0.875rem;
+  color: #0f172a;
+}
+.adm-detail-meta {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin-top: 0.1rem;
+  display: flex;
+  gap: 0.4rem;
+}
+
 .adm-role-btn {
   padding: 0.5rem 1.25rem;
   border-radius: 999px;
@@ -543,6 +620,17 @@
 }
 
 .adm-activity-item:last-child { border-bottom: none; }
+
+.adm-activity-clickable {
+  cursor: pointer;
+  transition: background 0.15s;
+  border-radius: 6px;
+  padding-left: 0.4rem;
+  padding-right: 0.4rem;
+  margin-left: -0.4rem;
+  margin-right: -0.4rem;
+}
+.adm-activity-clickable:hover { background: #f1f5f9; }
 
 .adm-activity-icon {
   width: 36px;
@@ -590,53 +678,135 @@
 
 /* ── Responsive ───────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
+  /* Admin page: pin site header so nav strip can stack directly below it */
+  .adm-page .top-header {
+    position: sticky;
+    top: 0;
+    z-index: 300;
+    background: #fff;
+    padding: 0.4rem 0.75rem;
+    box-shadow: 0 1px 0 #e2e8f0;
+  }
+  .adm-page .header-nav,
+  .adm-page .menu-toggle { display: none !important; }
+
   .adm-shell {
     flex-direction: column;
+    height: auto;
+    min-height: 100dvh;
   }
 
+  /* Sidebar becomes a compact sticky nav strip — sits below the pinned header */
   .adm-sidebar {
     width: 100%;
-    min-height: auto;
-    transform: translateY(-100%);
-    position: fixed;
-    top: 56px; /* below site header */
-    left: 0;
-    right: 0;
-    z-index: 500;
-    max-height: 70vh;
-    overflow-y: auto;
+    height: auto;
+    overflow-y: visible;
+    position: sticky;
+    top: var(--adm-header-h, 44px);
+    z-index: 200;
+    flex-direction: row;
+    align-items: center;
+    padding: 0 0.5rem;
   }
 
-  .adm-sidebar.adm-sidebar-open {
-    transform: translateY(0);
-  }
+  /* Hide the redundant logo — site header already shows it */
+  .adm-sidebar-logo { display: none; }
 
   .adm-sidebar-nav {
     flex-direction: row;
-    flex-wrap: wrap;
-    padding: 0.5rem;
+    flex-wrap: nowrap;
+    padding: 0.35rem 0;
+    gap: 0.2rem;
+    flex: 1;
+    overflow-x: auto;
+    scrollbar-width: none;
+    align-items: center;
   }
+
+  .adm-sidebar-nav::-webkit-scrollbar { display: none; }
 
   .adm-sidebar-nav a.adm-nav-link {
-    flex: 1 1 auto;
+    flex: 0 0 auto;
+    padding: 0.45rem 0.75rem;
+    font-size: 0.8rem;
+    white-space: nowrap;
     justify-content: center;
+    border-radius: 6px;
   }
 
-  .adm-nav-back { margin-top: 0 !important; border-top: none; }
+  .adm-nav-back {
+    margin-top: 0 !important;
+    border-top: none;
+    margin-left: auto;
+    padding-top: 0 !important;
+  }
 
-  .adm-mobile-menu-btn { display: block; }
+  /* Main area scrolls freely on mobile */
+  .adm-main { overflow-y: visible; }
 
-  .adm-stat-grid   { grid-template-columns: 1fr 1fr; }
-  .adm-charts-row  { grid-template-columns: 1fr; }
+  /* Hide desktop topbar — nav strip replaces it */
+  .adm-topbar          { display: none; }
+  .adm-mobile-menu-btn { display: none; }
 
-  .adm-modal-grid  { grid-template-columns: 1fr; }
-  .adm-modal-stats { grid-template-columns: 1fr 1fr; }
+  .adm-stat-grid   { grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+  .adm-charts-row  { grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+
+  /* ── Modal compact on mobile ── */
+  .adm-modal {
+    padding: 0.85rem 0.9rem;
+    border-radius: 12px;
+    max-height: 80vh;
+  }
+  .adm-modal-close { top: 0.6rem; right: 0.7rem; font-size: 1.15rem; }
+  .adm-modal-avatar { width: 38px; height: 38px; }
+  .adm-avatar-init-lg { width: 38px !important; height: 38px !important; font-size: 0.9rem !important; }
+  .adm-modal-avatar-row { gap: 0.55rem; margin-bottom: 0.6rem; }
+  .adm-modal-name  { font-size: 0.9rem; }
+  .adm-modal-email { font-size: 0.75rem; }
+  .adm-modal-grid  { grid-template-columns: 1fr 1fr; gap: 0.3rem; margin-bottom: 0.5rem; }
+  .adm-modal-field { font-size: 0.78rem; gap: 0; }
+  .adm-modal-label { font-size: 0.64rem; }
+  .adm-modal-stats { grid-template-columns: 1fr 1fr; padding: 0.5rem; margin-bottom: 0.5rem; gap: 0.3rem; }
+  .adm-modal-stat-num   { font-size: 0.95rem; }
+  .adm-modal-stat-label { font-size: 0.58rem; }
+
+  /* ── Users table: hide less-important columns, keep User/Email/Role ── */
+  .adm-table th:nth-child(n+4),
+  .adm-table td:nth-child(n+4) { display: none; }
+  .adm-table th, .adm-table td { padding: 0.45rem 0.5rem; font-size: 0.8rem; }
+  .adm-section-header h2 { font-size: 1rem; }
+
+  /* ── Activity items compact ── */
+  .adm-activity-item { gap: 0.5rem; padding: 0.5rem 0; }
+  .adm-activity-icon { width: 30px; height: 30px; font-size: 0.8rem; border-radius: 8px; }
+  .adm-activity-text { font-size: 0.8rem; }
+  .adm-activity-time { font-size: 0.68rem; }
 
   .adm-section-page { padding: 0.75rem; }
-  .adm-section      { padding: 1rem; }
+  .adm-section      { padding: 0.85rem; }
 }
 
 @media (max-width: 480px) {
-  .adm-stat-grid { grid-template-columns: 1fr; }
-  .adm-search    { width: 100%; }
+  .adm-stat-grid  { grid-template-columns: repeat(3, 1fr); gap: 0.4rem; }
+  .adm-stat-card  { padding: 0.65rem 0.6rem; gap: 0.5rem; border-radius: 10px; }
+  .adm-stat-icon  { width: 32px; height: 32px; font-size: 0.85rem; border-radius: 8px; }
+  .adm-stat-num   { font-size: 1.25rem; }
+  .adm-stat-label { font-size: 0.62rem; letter-spacing: 0.03em; }
+  .adm-search     { width: 100%; font-size: 0.82rem; }
+  .adm-charts-row  { grid-template-columns: 1fr; gap: 0.4rem; }
+  .adm-chart-box   { padding: 0.5rem; max-height: 160px; }
+  .adm-chart-title { font-size: 0.7rem; margin: 0 0 0.35rem; }
+  .adm-avatar-sm  { width: 26px; height: 26px; }
+  .adm-avatar-init { width: 26px !important; height: 26px !important; font-size: 0.7rem !important; }
+  .adm-modal { padding: 0.9rem 0.85rem; }
 }
+
+/* ── Desktop: neutralise main's 8px margin-top so calc(100vh - 64px) is exact ─
+   Without this, the shell overflows 8px → window gets a scrollbar → sidebar
+   scrolls away instead of staying pinned.                                       */
+@media (min-width: 769px) {
+  .adm-page main {
+    margin-top: 0;
+  }
+}
+

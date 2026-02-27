@@ -43,8 +43,8 @@ export default function adminRouter(db) {
 
       const sql = `
         SELECT
-          u.id, u.name, u.email, u.role, u.created_at,
-          up.full_name, up.phone, up.location, up.profile_image_url,
+          u.id, u.name, u.email, u.role,
+          up.full_name, up.phone, up.location, up.profile_image_url, up.created_at,
           (SELECT COUNT(*)::int FROM resumes        WHERE user_id = u.id)                           AS resume_count,
           (SELECT COUNT(*)::int FROM resume_events  WHERE user_id = u.id AND kind = 'download')     AS download_count,
           (SELECT COALESCE(SUM(p.amount),0) FROM payments p WHERE p.user_id = u.id AND p.status = 'captured') AS total_paid,
@@ -52,7 +52,7 @@ export default function adminRouter(db) {
         FROM users u
         LEFT JOIN user_profiles up ON up.user_id = u.id
         ${q ? "WHERE u.name ILIKE $3 OR u.email ILIKE $3" : ""}
-        ORDER BY u.created_at DESC
+        ORDER BY u.id DESC
         LIMIT $1 OFFSET $2
       `;
 
@@ -84,7 +84,7 @@ export default function adminRouter(db) {
 
       const [userRes, profileRes, countsRes] = await Promise.all([
         db.query(
-          "SELECT id, name, email, role, created_at FROM users WHERE id = $1",
+          "SELECT id, name, email, role FROM users WHERE id = $1",
           [id]
         ),
         db.query("SELECT * FROM user_profiles WHERE user_id = $1", [id]),
@@ -152,7 +152,7 @@ export default function adminRouter(db) {
       const limit = Math.min(100, parseInt(req.query.limit) || 50);
       const rows = await db.query(
         `SELECT
-          al.id, al.action_type, al.route, al.metadata, al.ip_address, al.created_at,
+          al.id, al.user_id, al.action_type, al.route, al.metadata, al.ip_address, al.created_at,
           u.name AS user_name, u.email AS user_email,
           up.profile_image_url
         FROM activity_logs al
@@ -165,6 +165,59 @@ export default function adminRouter(db) {
       res.json({ success: true, activities: rows.rows });
     } catch (err) {
       console.error("Admin activity error:", err);
+      res.status(500).json({ success: false });
+    }
+  });
+
+  // ── GET /admin/api/stat-detail — drill-down data for stat cards ──────────
+  router.get("/api/stat-detail", async (req, res) => {
+    const { type } = req.query;
+    try {
+      let result;
+      if (type === "resumes") {
+        result = await db.query(
+          `SELECT r.id, r.name, r.template, r.updated_at,
+             u.name AS user_name, u.email
+           FROM resumes r
+           LEFT JOIN users u ON u.id = r.user_id
+           ORDER BY r.updated_at DESC LIMIT 30`
+        );
+      } else if (type === "downloads") {
+        result = await db.query(
+          `SELECT re.created_at, r.name AS resume_name, r.template,
+             u.name AS user_name, u.email
+           FROM resume_events re
+           LEFT JOIN resumes r ON r.id = re.resume_id
+           LEFT JOIN users u   ON u.id = re.user_id
+           WHERE re.kind = 'download'
+           ORDER BY re.created_at DESC LIMIT 30`
+        );
+      } else if (type === "revenue") {
+        result = await db.query(
+          `SELECT p.amount, p.created_at,
+             u.name AS user_name, u.email,
+             r.name AS resume_name
+           FROM payments p
+           LEFT JOIN users u   ON u.id = p.user_id
+           LEFT JOIN resumes r ON r.id = p.resume_id
+           WHERE p.status = 'captured'
+           ORDER BY p.created_at DESC LIMIT 30`
+        );
+      } else if (type === "ai") {
+        result = await db.query(
+          `SELECT al.action_type, al.route, al.created_at,
+             u.name AS user_name, u.email
+           FROM activity_logs al
+           LEFT JOIN users u ON u.id = al.user_id
+           WHERE al.action_type LIKE 'ai_%'
+           ORDER BY al.created_at DESC LIMIT 30`
+        );
+      } else {
+        return res.status(400).json({ success: false });
+      }
+      res.json({ success: true, rows: result.rows });
+    } catch (err) {
+      console.error("Stat detail error:", err);
       res.status(500).json({ success: false });
     }
   });

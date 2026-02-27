@@ -1,5 +1,13 @@
 <%- include("../partials/header") %>
 <link rel="stylesheet" href="/css/admin.css">
+<script>
+  document.body.classList.add("adm-page");
+  // Mobile: measure real header height so nav strip sticks right below it
+  if (window.innerWidth <= 768) {
+    const h = document.querySelector('.top-header');
+    if (h) document.documentElement.style.setProperty('--adm-header-h', h.offsetHeight + 'px');
+  }
+</script>
 
 <div class="adm-shell">
 
@@ -49,35 +57,47 @@
 
       <!-- Stat cards -->
       <div class="adm-stat-grid">
-        <div class="adm-stat-card" style="--adm-card-delay:0.05s">
+        <div class="adm-stat-card" style="--adm-card-delay:0.05s" data-detail="users">
           <div class="adm-stat-icon adm-icon-blue"><i class="fas fa-users"></i></div>
-          <div class="adm-stat-num" data-target="<%= stats.totalUsers %>">0</div>
-          <div class="adm-stat-label">Total Users</div>
+          <div class="adm-stat-text">
+            <div class="adm-stat-num" data-target="<%= stats.totalUsers %>">0</div>
+            <div class="adm-stat-label">Total Users</div>
+          </div>
         </div>
-        <div class="adm-stat-card" style="--adm-card-delay:0.10s">
+        <div class="adm-stat-card" style="--adm-card-delay:0.10s" data-detail="activity">
           <div class="adm-stat-icon adm-icon-green"><i class="fas fa-bolt"></i></div>
-          <div class="adm-stat-num" data-target="<%= stats.activeToday %>">0</div>
-          <div class="adm-stat-label">Active Today</div>
+          <div class="adm-stat-text">
+            <div class="adm-stat-num" data-target="<%= stats.activeToday %>">0</div>
+            <div class="adm-stat-label">Active Today</div>
+          </div>
         </div>
-        <div class="adm-stat-card" style="--adm-card-delay:0.15s">
+        <div class="adm-stat-card" style="--adm-card-delay:0.15s" data-detail="resumes">
           <div class="adm-stat-icon adm-icon-purple"><i class="fas fa-file-alt"></i></div>
-          <div class="adm-stat-num" data-target="<%= stats.totalResumes %>">0</div>
-          <div class="adm-stat-label">Resumes Created</div>
+          <div class="adm-stat-text">
+            <div class="adm-stat-num" data-target="<%= stats.totalResumes %>">0</div>
+            <div class="adm-stat-label">Resumes</div>
+          </div>
         </div>
-        <div class="adm-stat-card" style="--adm-card-delay:0.20s">
+        <div class="adm-stat-card" style="--adm-card-delay:0.20s" data-detail="downloads">
           <div class="adm-stat-icon adm-icon-orange"><i class="fas fa-download"></i></div>
-          <div class="adm-stat-num" data-target="<%= stats.totalDownloads %>">0</div>
-          <div class="adm-stat-label">Downloads</div>
+          <div class="adm-stat-text">
+            <div class="adm-stat-num" data-target="<%= stats.totalDownloads %>">0</div>
+            <div class="adm-stat-label">Downloads</div>
+          </div>
         </div>
-        <div class="adm-stat-card" style="--adm-card-delay:0.25s">
+        <div class="adm-stat-card" style="--adm-card-delay:0.25s" data-detail="revenue">
           <div class="adm-stat-icon adm-icon-emerald"><i class="fas fa-rupee-sign"></i></div>
-          <div class="adm-stat-num" data-target="<%= stats.totalRevenue %>" data-prefix="₹">₹0</div>
-          <div class="adm-stat-label">Revenue</div>
+          <div class="adm-stat-text">
+            <div class="adm-stat-num" data-target="<%= stats.totalRevenue %>" data-prefix="₹">₹0</div>
+            <div class="adm-stat-label">Revenue</div>
+          </div>
         </div>
-        <div class="adm-stat-card" style="--adm-card-delay:0.30s">
+        <div class="adm-stat-card" style="--adm-card-delay:0.30s" data-detail="ai">
           <div class="adm-stat-icon adm-icon-pink"><i class="fas fa-robot"></i></div>
-          <div class="adm-stat-num" data-target="<%= stats.aiRequests %>">0</div>
-          <div class="adm-stat-label">AI Requests</div>
+          <div class="adm-stat-text">
+            <div class="adm-stat-num" data-target="<%= stats.aiRequests %>">0</div>
+            <div class="adm-stat-label">AI Requests</div>
+          </div>
         </div>
       </div>
 
@@ -85,11 +105,11 @@
       <div class="adm-charts-row">
         <div class="adm-chart-box">
           <h3 class="adm-chart-title">Page Visit Heatmap</h3>
-          <canvas id="chartRoutes" height="220"></canvas>
+          <canvas id="chartRoutes" height="140"></canvas>
         </div>
         <div class="adm-chart-box">
           <h3 class="adm-chart-title">Downloads by Template</h3>
-          <canvas id="chartTemplates" height="220"></canvas>
+          <canvas id="chartTemplates" height="140"></canvas>
         </div>
       </div>
 
@@ -146,6 +166,15 @@
   </div><!-- /adm-main -->
 </div><!-- /adm-shell -->
 
+<!-- ── Stat detail modal ─────────────────────────────────────────────────── -->
+<div id="statModal" class="adm-modal-backdrop" hidden>
+  <div class="adm-modal adm-stat-modal">
+    <button class="adm-modal-close" id="statModalClose" type="button" aria-label="Close">&times;</button>
+    <h3 id="statModalTitle" class="adm-stat-modal-title"></h3>
+    <div id="statModalBody" class="adm-stat-modal-body"></div>
+  </div>
+</div>
+
 <!-- ── User detail modal ─────────────────────────────────────────────────── -->
 <div id="userModal" class="adm-modal-backdrop" hidden>
   <div class="adm-modal" role="dialog" aria-modal="true">
@@ -165,12 +194,31 @@
 // ── Section navigation ─────────────────────────────────────────────────────
 const sections = document.querySelectorAll(".adm-section-page");
 const navLinks  = document.querySelectorAll(".adm-nav-link[data-section]");
+const admMain   = document.querySelector(".adm-main");
 
 function showSection(id) {
-  sections.forEach(s => s.hidden = s.id !== id);
-  navLinks.forEach(l => l.classList.toggle("adm-nav-active", l.dataset.section === id));
-  if (id === "users"    && !usersLoaded)   { loadUsers(1); }
-  if (id === "activity" && !activityLoaded){ loadActivity(); }
+  // Fade out current section
+  sections.forEach(s => {
+    if (!s.hidden) s.style.opacity = "0";
+  });
+
+  setTimeout(() => {
+    sections.forEach(s => {
+      s.hidden = s.id !== id;
+      s.style.opacity = "";
+    });
+    navLinks.forEach(l => l.classList.toggle("adm-nav-active", l.dataset.section === id));
+
+    // Scroll back to top of content area (desktop: adm-main, mobile: window)
+    if (admMain && window.innerWidth > 768) {
+      admMain.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    if (id === "users"    && !usersLoaded)   { loadUsers(1); }
+    if (id === "activity" && !activityLoaded){ loadActivity(); }
+  }, 120);
 }
 
 navLinks.forEach(l => l.addEventListener("click", e => {
@@ -178,10 +226,6 @@ navLinks.forEach(l => l.addEventListener("click", e => {
   showSection(l.dataset.section);
 }));
 
-// Mobile sidebar toggle
-document.getElementById("admMobileMenu").addEventListener("click", () => {
-  document.querySelector(".adm-sidebar").classList.toggle("adm-sidebar-open");
-});
 
 // ── Animated counters ──────────────────────────────────────────────────────
 function animateCounter(el) {
@@ -258,6 +302,33 @@ async function loadCharts() {
 }
 
 loadCharts();
+
+// ── Mobile nav pin — stick admin nav to top once site header scrolls away ──
+(function() {
+  if (window.innerWidth > 768) return;
+  const header  = document.querySelector('.top-header');
+  const sidebar = document.querySelector('.adm-sidebar');
+  if (!header || !sidebar) return;
+
+  function updateNav() {
+    if (header.getBoundingClientRect().bottom <= 0) {
+      sidebar.style.position = 'fixed';
+      sidebar.style.top      = '0';
+      sidebar.style.left     = '0';
+      sidebar.style.right    = '0';
+      sidebar.style.zIndex   = '1000';
+    } else {
+      sidebar.style.position = 'sticky';
+      sidebar.style.top      = '0';
+      sidebar.style.left     = '';
+      sidebar.style.right    = '';
+      sidebar.style.zIndex   = '200';
+    }
+  }
+
+  window.addEventListener('scroll', updateNav, { passive: true });
+  updateNav();
+})();
 
 // ── Users table ────────────────────────────────────────────────────────────
 let usersLoaded   = false;
@@ -437,7 +508,83 @@ document.getElementById("modalClose").addEventListener("click", closeModal);
 document.getElementById("userModal").addEventListener("click", e => {
   if (e.target === e.currentTarget) closeModal();
 });
-document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") { closeModal(); closeStatModal(); } });
+
+// ── Stat card detail modals ─────────────────────────────────────────────────
+const STAT_TITLES = {
+  resumes:   "All Resumes",
+  downloads: "Recent Downloads",
+  revenue:   "Payment History",
+  ai:        "AI Usage Log",
+};
+
+function closeStatModal() {
+  document.getElementById("statModal").hidden = true;
+}
+
+document.getElementById("statModalClose").addEventListener("click", closeStatModal);
+document.getElementById("statModal").addEventListener("click", e => {
+  if (e.target === e.currentTarget) closeStatModal();
+});
+
+document.querySelectorAll(".adm-stat-card[data-detail]").forEach(card => {
+  card.addEventListener("click", () => {
+    const type = card.dataset.detail;
+    if (type === "users")    { showSection("users");    return; }
+    if (type === "activity") { showSection("activity"); return; }
+    openStatModal(type);
+  });
+});
+
+async function openStatModal(type) {
+  const modal = document.getElementById("statModal");
+  const title = document.getElementById("statModalTitle");
+  const body  = document.getElementById("statModalBody");
+
+  title.textContent = STAT_TITLES[type] || type;
+  body.innerHTML = `<div class="adm-loading">Loading…</div>`;
+  modal.hidden = false;
+
+  try {
+    const res  = await fetch(`/admin/api/stat-detail?type=${type}`);
+    const data = await res.json();
+    if (!data.success || !data.rows.length) {
+      body.innerHTML = `<div class="adm-loading">No data yet.</div>`;
+      return;
+    }
+    body.innerHTML = data.rows.map(row => {
+      const time = row.created_at ? `<span class="adm-muted">${timeAgo(row.created_at)}</span>` : "";
+      const user = row.user_name || row.user_email || "Guest";
+      if (type === "resumes") {
+        return `<div class="adm-detail-row">
+          <div class="adm-detail-main"><strong>${row.name || "Untitled"}</strong><span class="adm-muted"> · ${row.template || "—"}</span></div>
+          <div class="adm-detail-meta">${user} ${time}</div>
+        </div>`;
+      }
+      if (type === "downloads") {
+        return `<div class="adm-detail-row">
+          <div class="adm-detail-main"><strong>${row.resume_name || "Untitled"}</strong><span class="adm-muted"> · ${row.template || "—"}</span></div>
+          <div class="adm-detail-meta">${user} ${time}</div>
+        </div>`;
+      }
+      if (type === "revenue") {
+        return `<div class="adm-detail-row">
+          <div class="adm-detail-main"><strong>₹${row.amount}</strong><span class="adm-muted"> · ${row.resume_name || "—"}</span></div>
+          <div class="adm-detail-meta">${user} ${time}</div>
+        </div>`;
+      }
+      if (type === "ai") {
+        return `<div class="adm-detail-row">
+          <div class="adm-detail-main"><strong>${row.action_type}</strong><span class="adm-muted"> · ${row.route || "—"}</span></div>
+          <div class="adm-detail-meta">${user} ${time}</div>
+        </div>`;
+      }
+      return "";
+    }).join("");
+  } catch (_) {
+    body.innerHTML = `<div class="adm-loading">Failed to load.</div>`;
+  }
+}
 
 // ── Activity feed ──────────────────────────────────────────────────────────
 let activityLoaded = false;
@@ -498,8 +645,12 @@ async function loadActivity() {
         ? `<img src="${a.profile_image_url}" class="adm-avatar-sm" alt="">`
         : `<span class="adm-avatar-init" style="font-size:0.7rem">${letter}</span>`;
 
+      const clickAttr = a.user_id
+        ? `class="adm-activity-item adm-activity-clickable" onclick="openUserModal(${a.user_id})"`
+        : `class="adm-activity-item"`;
+
       return `
-        <div class="adm-activity-item">
+        <div ${clickAttr}>
           <div class="adm-activity-icon" style="background:${cfg.color}20; color:${cfg.color}">
             <i class="${cfg.icon}"></i>
           </div>
