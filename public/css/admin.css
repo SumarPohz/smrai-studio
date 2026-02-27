@@ -632,6 +632,19 @@
 }
 .adm-activity-clickable:hover { background: #f1f5f9; }
 
+.adm-act-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #e0e7ff;
+  color: #4f46e5;
+  font-size: 0.7rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  min-width: 1.4rem;
+}
+
 .adm-activity-icon {
   width: 36px;
   height: 36px;

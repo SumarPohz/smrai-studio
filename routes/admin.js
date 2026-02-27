@@ -169,6 +169,55 @@ export default function adminRouter(db) {
     }
   });
 
+  // ── GET /admin/api/activity-grouped — one row per user, sorted by last active
+  router.get("/api/activity-grouped", async (req, res) => {
+    try {
+      const rows = await db.query(
+        `SELECT
+           al.user_id,
+           u.name  AS user_name,
+           u.email AS user_email,
+           up.profile_image_url,
+           COUNT(*)::int                         AS activity_count,
+           MAX(al.created_at)                    AS last_active,
+           (SELECT action_type FROM activity_logs
+            WHERE user_id = al.user_id
+            ORDER BY created_at DESC LIMIT 1)    AS last_action,
+           (SELECT route FROM activity_logs
+            WHERE user_id = al.user_id
+            ORDER BY created_at DESC LIMIT 1)    AS last_route
+         FROM activity_logs al
+         LEFT JOIN users u          ON u.id = al.user_id
+         LEFT JOIN user_profiles up ON up.user_id = al.user_id
+         GROUP BY al.user_id, u.name, u.email, up.profile_image_url
+         ORDER BY last_active DESC
+         LIMIT 30`
+      );
+      res.json({ success: true, users: rows.rows });
+    } catch (err) {
+      console.error("Activity grouped error:", err);
+      res.status(500).json({ success: false });
+    }
+  });
+
+  // ── GET /admin/api/user-activity/:id — full activity list for one user ────
+  router.get("/api/user-activity/:id", async (req, res) => {
+    try {
+      const rows = await db.query(
+        `SELECT action_type, route, created_at, metadata
+         FROM activity_logs
+         WHERE user_id = $1
+         ORDER BY created_at DESC
+         LIMIT 60`,
+        [req.params.id]
+      );
+      res.json({ success: true, activities: rows.rows });
+    } catch (err) {
+      console.error("User activity error:", err);
+      res.status(500).json({ success: false });
+    }
+  });
+
   // ── GET /admin/api/stat-detail — drill-down data for stat cards ──────────
   router.get("/api/stat-detail", async (req, res) => {
     const { type } = req.query;

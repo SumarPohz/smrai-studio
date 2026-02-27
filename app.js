@@ -50,10 +50,7 @@ try {
       credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON),
       scopes: ["https://www.googleapis.com/auth/cloud-platform"],
     };
-    console.log("✅ Vertex AI: using GOOGLE_SERVICE_ACCOUNT_JSON credentials");
   } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-    // Development: SDK picks up the file path automatically via ADC
-    console.log("✅ Vertex AI: using GOOGLE_APPLICATION_CREDENTIALS file");
   } else {
     console.warn("⚠️ Vertex AI: no credentials found — AI Suggest will be disabled");
   }
@@ -241,7 +238,6 @@ app.post(
           [payment.id, payment.amount, payment.currency]
         );
 
-        console.log("✅ Payment captured via webhook:", payment.id);
       }
 
       if (event.event === "payment.failed") {
@@ -1224,7 +1220,8 @@ async function logActivity({ userId = null, actionType, route = null, metadata =
   } catch (_) {}
 }
 
-// ── Page-visit tracking (all pages except static assets & API calls) ─────────
+// ── Page-visit tracking (deduped: same user+route only logged once per 5 min) ─
+const visitCache = new Map(); // key: "userId:route" → last logged timestamp
 app.use((req, res, next) => {
   if (
     req.method === "GET" &&
@@ -1234,14 +1231,16 @@ app.use((req, res, next) => {
     !req.path.startsWith("/js/") &&
     !req.path.startsWith("/images/") &&
     !req.path.startsWith("/fonts/") &&
-    !req.path.includes(".")           // skip files like .ico, .png, .woff etc.
+    !req.path.includes(".")
   ) {
-    logActivity({
-      userId: req.user?.id ?? null,
-      actionType: "visit",
-      route: req.path,
-      ip: req.ip,
-    });
+    const uid = req.user?.id ?? "guest";
+    const key = `${uid}:${req.path}`;
+    const last = visitCache.get(key) ?? 0;
+    const now  = Date.now();
+    if (now - last > 5 * 60 * 1000) {   // 5-minute cooldown
+      visitCache.set(key, now);
+      logActivity({ userId: req.user?.id ?? null, actionType: "visit", route: req.path, ip: req.ip });
+    }
   }
   next();
 });

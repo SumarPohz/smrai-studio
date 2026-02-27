@@ -166,6 +166,15 @@
   </div><!-- /adm-main -->
 </div><!-- /adm-shell -->
 
+<!-- ── User activity detail modal ───────────────────────────────────────── -->
+<div id="userActModal" class="adm-modal-backdrop" hidden>
+  <div class="adm-modal adm-stat-modal">
+    <button class="adm-modal-close" id="userActModalClose" type="button" aria-label="Close">&times;</button>
+    <h3 id="userActModalTitle" class="adm-stat-modal-title"></h3>
+    <div id="userActModalBody" class="adm-stat-modal-body"></div>
+  </div>
+</div>
+
 <!-- ── Stat detail modal ─────────────────────────────────────────────────── -->
 <div id="statModal" class="adm-modal-backdrop" hidden>
   <div class="adm-modal adm-stat-modal">
@@ -624,47 +633,91 @@ function timeAgo(iso) {
   return Math.floor(h / 24) + "d ago";
 }
 
+// ── Grouped activity feed (one row per user) ───────────────────────────────
 async function loadActivity() {
   activityLoaded = true;
   try {
-    const res  = await fetch("/admin/api/activity?limit=60");
+    const res  = await fetch("/admin/api/activity-grouped");
     const data = await res.json();
     if (!data.success) return;
 
     const feed = document.getElementById("activityFeed");
-    if (!data.activities.length) {
+    if (!data.users.length) {
       feed.innerHTML = `<div class="adm-loading">No activity recorded yet.</div>`;
       return;
     }
 
-    feed.innerHTML = data.activities.map(a => {
-      const cfg    = ACTION_ICONS[a.action_type] || { icon: "fas fa-circle", color: "#6b7280" };
-      const name   = a.user_name || a.user_email || "Guest";
+    feed.innerHTML = data.users.map(u => {
+      const name   = u.user_name || u.user_email || "Guest";
       const letter = name[0].toUpperCase();
-      const avatar = a.profile_image_url
-        ? `<img src="${a.profile_image_url}" class="adm-avatar-sm" alt="">`
+      const avatar = u.profile_image_url
+        ? `<img src="${u.profile_image_url}" class="adm-avatar-sm" alt="">`
         : `<span class="adm-avatar-init" style="font-size:0.7rem">${letter}</span>`;
+      const cfg = ACTION_ICONS[u.last_action] || { icon: "fas fa-circle", color: "#6b7280" };
 
-      const clickAttr = a.user_id
-        ? `class="adm-activity-item adm-activity-clickable" onclick="openUserModal(${a.user_id})"`
+      const clickAttr = u.user_id
+        ? `class="adm-activity-item adm-activity-clickable" onclick="openUserActivityModal(${u.user_id}, '${name.replace(/'/g,"\\'")}')"`
         : `class="adm-activity-item"`;
 
       return `
         <div ${clickAttr}>
-          <div class="adm-activity-icon" style="background:${cfg.color}20; color:${cfg.color}">
-            <i class="${cfg.icon}"></i>
-          </div>
           ${avatar}
           <div class="adm-activity-text">
-            <strong>${name}</strong> ${actionLabel(a.action_type)}
-            ${a.route ? `<span class="adm-muted"> · ${a.route}</span>` : ""}
+            <strong>${name}</strong>
+            <span class="adm-muted"> · ${actionLabel(u.last_action)}</span>
           </div>
-          <div class="adm-activity-time">${timeAgo(a.created_at)}</div>
-        </div>
-      `;
+          <div style="display:flex;align-items:center;gap:0.5rem;margin-left:auto;flex-shrink:0">
+            <span class="adm-act-count">${u.activity_count}</span>
+            <span class="adm-activity-time">${timeAgo(u.last_active)}</span>
+            ${u.user_id ? `<i class="fas fa-chevron-right" style="color:#cbd5e1;font-size:0.7rem"></i>` : ""}
+          </div>
+        </div>`;
     }).join("");
   } catch (_) {}
 }
+
+// ── User activity detail modal ──────────────────────────────────────────────
+async function openUserActivityModal(uid, userName) {
+  const modal = document.getElementById("userActModal");
+  const title = document.getElementById("userActModalTitle");
+  const body  = document.getElementById("userActModalBody");
+
+  title.textContent = userName + "'s Activity";
+  body.innerHTML = `<div class="adm-loading">Loading…</div>`;
+  modal.hidden = false;
+
+  try {
+    const res  = await fetch(`/admin/api/user-activity/${uid}`);
+    const data = await res.json();
+    if (!data.success || !data.activities.length) {
+      body.innerHTML = `<div class="adm-loading">No activity found.</div>`;
+      return;
+    }
+    body.innerHTML = data.activities.map(a => {
+      const cfg = ACTION_ICONS[a.action_type] || { icon: "fas fa-circle", color: "#6b7280" };
+      return `
+        <div class="adm-activity-item" style="cursor:default">
+          <div class="adm-activity-icon" style="background:${cfg.color}20;color:${cfg.color}">
+            <i class="${cfg.icon}"></i>
+          </div>
+          <div class="adm-activity-text">
+            ${actionLabel(a.action_type)}
+            ${a.route ? `<span class="adm-muted"> · ${a.route}</span>` : ""}
+          </div>
+          <div class="adm-activity-time">${timeAgo(a.created_at)}</div>
+        </div>`;
+    }).join("");
+  } catch (_) {
+    body.innerHTML = `<div class="adm-loading">Failed to load.</div>`;
+  }
+}
+
+document.getElementById("userActModalClose").addEventListener("click", () => {
+  document.getElementById("userActModal").hidden = true;
+});
+document.getElementById("userActModal").addEventListener("click", e => {
+  if (e.target === e.currentTarget) document.getElementById("userActModal").hidden = true;
+});
 
 // Poll activity every 30 s when on that section
 setInterval(() => {
