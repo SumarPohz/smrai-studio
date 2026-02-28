@@ -1,4 +1,6 @@
 import express from "express";
+import { createServer } from "http";
+import { Server as SocketServer } from "socket.io";
 import pg from "pg";
 import bcrypt from "bcrypt";
 import passport from "passport";
@@ -199,8 +201,23 @@ await db.query(`
     `);
     await db.query(`CREATE INDEX IF NOT EXISTS idx_activity_logs_created ON activity_logs(created_at DESC);`);
     await db.query(`CREATE INDEX IF NOT EXISTS idx_activity_logs_user ON activity_logs(user_id);`);
+    await db.query(`ALTER TABLE service_requests ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE SET NULL;`);
 
-    console.log("✅ Tables ready: service_requests, resumes, resume_events, payments, activity_logs");
+    /* ── Request chat messages ── */
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS request_messages (
+        id          SERIAL PRIMARY KEY,
+        request_id  INTEGER NOT NULL REFERENCES service_requests(id) ON DELETE CASCADE,
+        sender_id   INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        sender_role VARCHAR(20) NOT NULL DEFAULT 'user',
+        message     TEXT NOT NULL,
+        is_read     BOOLEAN NOT NULL DEFAULT false,
+        created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_req_msg_request ON request_messages(request_id);`);
+
+    console.log("✅ Tables ready: service_requests, resumes, resume_events, payments, activity_logs, request_messages");
   } catch (err) {
     console.error("❌ Error initializing DB:", err);
   }
@@ -319,28 +336,27 @@ const isProd = process.env.NODE_ENV === "production";
 // allows secure cookies to be set. Harmless in local dev.
 app.set("trust proxy", 1);
 
-app.use(
-  session({
-    store: new PgSession({
-      pool: db,
-      tableName: "session",
-      createTableIfMissing: true,
-    }),
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      // Dev  (NODE_ENV=development): HTTP localhost → secure must be false
-      // Prod (NODE_ENV=production):  HTTPS Render  → secure must be true
-      secure: isProd,
-      // "none" lets Android WebView & OAuth send cookies cross-context (requires secure:true)
-      // "lax"  is the safe browser default and works fine on localhost
-      sameSite: isProd ? "none" : "lax",
-      maxAge: 1000 * 60 * 60 * 24 * 7,
-    },
-  })
-);
+const sessionMiddleware = session({
+  store: new PgSession({
+    pool: db,
+    tableName: "session",
+    createTableIfMissing: true,
+  }),
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    // Dev  (NODE_ENV=development): HTTP localhost → secure must be false
+    // Prod (NODE_ENV=production):  HTTPS Render  → secure must be true
+    secure: isProd,
+    // "none" lets Android WebView & OAuth send cookies cross-context (requires secure:true)
+    // "lax"  is the safe browser default and works fine on localhost
+    sameSite: isProd ? "none" : "lax",
+    maxAge: 1000 * 60 * 60 * 24 * 7,
+  },
+});
+app.use(sessionMiddleware);
 
 app.use(passport.initialize());
 app.use(passport.session());
@@ -468,6 +484,55 @@ app.use(async (req, res, next) => {
 });
 
 // ---------- Routes ----------
+
+// ── My service requests — list and delete ────────────────────────────────────
+app.get("/api/my-requests", ensureAuthenticated, async (req, res) => {
+  try {
+    const rows = await db.query(
+      `SELECT id, service_type, details, status, created_at
+       FROM service_requests
+       WHERE user_id = $1
+       ORDER BY created_at DESC`,
+      [req.user.id]
+    );
+    res.json({ success: true, requests: rows.rows });
+  } catch (_) {
+    res.json({ success: false, requests: [] });
+  }
+});
+
+app.delete("/api/my-request/:id", ensureAuthenticated, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (!id) return res.status(400).json({ success: false });
+    // WHERE user_id = req.user.id ensures users can only delete their own requests
+    const result = await db.query(
+      "DELETE FROM service_requests WHERE id = $1 AND user_id = $2",
+      [id, req.user.id]
+    );
+    res.json({ success: result.rowCount > 0 });
+  } catch (_) {
+    res.status(500).json({ success: false });
+  }
+});
+
+// ── Public stats — safe counts shown on home page & dashboard ────────────────
+app.get("/api/public/stats", async (req, res) => {
+  try {
+    const [users, resumes, downloads] = await Promise.all([
+      db.query("SELECT COUNT(*)::int AS count FROM users"),
+      db.query("SELECT COUNT(*)::int AS count FROM resumes"),
+      db.query("SELECT COUNT(*)::int AS count FROM resume_events WHERE kind = 'download'"),
+    ]);
+    res.json({
+      users:     users.rows[0].count,
+      resumes:   resumes.rows[0].count,
+      downloads: downloads.rows[0].count,
+    });
+  } catch (_) {
+    res.json({ users: 0, resumes: 0, downloads: 0 });
+  }
+});
 
 // Home: your AI services landing page
 app.get("/", (req, res) => {
@@ -1237,13 +1302,16 @@ app.use((req, res, next) => {
     !req.path.startsWith("/fonts/") &&
     !req.path.includes(".")
   ) {
-    const uid = req.user?.id ?? "guest";
+    // Use session ID (or IP fallback) so each anonymous visitor is tracked separately
+    const uid = req.user?.id ?? req.sessionID ?? req.ip ?? "anon";
     const key = `${uid}:${req.path}`;
     const last = visitCache.get(key) ?? 0;
     const now  = Date.now();
-    if (now - last > 5 * 60 * 1000) {   // 5-minute cooldown
+    if (now - last > 5 * 60 * 1000) {   // 5-minute cooldown per visitor+route
       visitCache.set(key, now);
-      logActivity({ userId: req.user?.id ?? null, actionType: "visit", route: req.path, ip: req.ip });
+      // For guests: store anonymised session fragment in metadata so admin can count unique visitors
+      const meta = req.user ? null : { sid: (req.sessionID || req.ip || "").slice(-10) };
+      logActivity({ userId: req.user?.id ?? null, actionType: "visit", route: req.path, ip: req.ip, metadata: meta });
     }
   }
   next();
@@ -1743,7 +1811,101 @@ app.post("/api/ai/interview-generate", ensureAuthenticated, async (req, res) => 
 // ── Admin panel ──────────────────────────────────────────────────────────────
 app.use("/admin", ensureAdmin, adminRouter(db));
 
-app.listen(port, () => {
+// ── REST: message history for a request ──────────────────────────────────────
+app.get("/api/request/:id/messages", ensureAuthenticated, async (req, res) => {
+  const requestId = parseInt(req.params.id, 10);
+  const userId = req.user.id;
+  const isAdmin = req.user.role === "admin";
+  try {
+    // Verify the user owns this request OR is admin
+    if (!isAdmin) {
+      const own = await db.query(
+        "SELECT id FROM service_requests WHERE id=$1 AND user_id=$2",
+        [requestId, userId]
+      );
+      if (!own.rows.length) return res.status(403).json({ success: false });
+    }
+    const msgs = await db.query(
+      `SELECT m.id, m.sender_id, m.sender_role, m.message, m.is_read, m.created_at,
+              u.name AS sender_name
+       FROM request_messages m
+       LEFT JOIN users u ON u.id = m.sender_id
+       WHERE m.request_id = $1
+       ORDER BY m.created_at ASC`,
+      [requestId]
+    );
+    // Mark messages as read for this viewer
+    const markRole = isAdmin ? "user" : "admin";
+    await db.query(
+      "UPDATE request_messages SET is_read=true WHERE request_id=$1 AND sender_role=$2 AND is_read=false",
+      [requestId, markRole]
+    );
+    return res.json({ success: true, messages: msgs.rows });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false });
+  }
+});
+
+// ── HTTP server + Socket.io ───────────────────────────────────────────────────
+const server = createServer(app);
+const io = new SocketServer(server, { cors: { origin: false } });
+
+// Share Express session with Socket.io
+io.use((socket, next) => sessionMiddleware(socket.request, {}, next));
+io.use((socket, next) => passport.initialize()(socket.request, {}, next));
+io.use((socket, next) => passport.session()(socket.request, {}, next));
+
+io.on("connection", (socket) => {
+  const user = socket.request.user;
+  if (!user) { socket.disconnect(true); return; }
+
+  socket.on("join-request", async (requestId) => {
+    const rid = parseInt(requestId, 10);
+    if (!rid) return;
+    const isAdmin = user.role === "admin";
+    if (!isAdmin) {
+      // Verify ownership
+      try {
+        const own = await db.query(
+          "SELECT id FROM service_requests WHERE id=$1 AND user_id=$2",
+          [rid, user.id]
+        );
+        if (!own.rows.length) return;
+      } catch (_) { return; }
+    }
+    socket.join(`request-${rid}`);
+  });
+
+  socket.on("send-message", async ({ requestId, message }) => {
+    const rid = parseInt(requestId, 10);
+    const msg = (message || "").toString().trim().slice(0, 2000);
+    if (!rid || !msg) return;
+    const isAdmin = user.role === "admin";
+    try {
+      // Verify access
+      if (!isAdmin) {
+        const own = await db.query(
+          "SELECT id FROM service_requests WHERE id=$1 AND user_id=$2",
+          [rid, user.id]
+        );
+        if (!own.rows.length) return;
+      }
+      const result = await db.query(
+        `INSERT INTO request_messages (request_id, sender_id, sender_role, message)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id, sender_id, sender_role, message, is_read, created_at`,
+        [rid, user.id, isAdmin ? "admin" : "user", msg]
+      );
+      const row = { ...result.rows[0], request_id: rid, sender_name: user.name };
+      io.to(`request-${rid}`).emit("message", row);
+    } catch (err) {
+      console.error("socket send-message error:", err);
+    }
+  });
+});
+
+server.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
 
@@ -1787,11 +1949,12 @@ app.get("/request", (req, res) => {
 // Handle form submission
 app.post("/request", async (req, res) => {
   const { name, email, service_type, details } = req.body;
+  const userId = req.user?.id ?? null;
 
   try {
     await db.query(
-      "INSERT INTO service_requests (name, email, service_type, details) VALUES ($1, $2, $3, $4)",
-      [name, email, service_type, details]
+      "INSERT INTO service_requests (name, email, service_type, details, user_id) VALUES ($1, $2, $3, $4, $5)",
+      [name, email, service_type, details, userId]
     );
 
     res.render("request-success");

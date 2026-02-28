@@ -1,20 +1,399 @@
 <%- include("partials/header") %>
+<script src="/socket.io/socket.io.js"></script>
 
-<section>
-  <h1>Welcome to SmrAI-Studio, <%= currentUser ? currentUser.name : "" %>!</h1>
-  <p>This is your space to create AI-powered resumes and manage your requests.</p>
+<section class="dash-section">
+  <h1 class="dash-welcome">Welcome back, <%= currentUser ? currentUser.name.split(" ")[0] : "" %>! 👋</h1>
+  <p class="dash-subtitle">Here’s what’s happening on SmrAI-Studio today.</p>
 
+  <!-- Platform stats -->
+  <div class="dash-stat-grid">
+    <div class="dash-stat-card">
+      <div class="dash-stat-icon" style="background:#ede9fe;color:#7c3aed"><i class="fas fa-users"></i></div>
+      <div>
+        <div class="dash-stat-num" id="dStatUsers">–</div>
+        <div class="dash-stat-label">Total Users</div>
+      </div>
+    </div>
+    <div class="dash-stat-card">
+      <div class="dash-stat-icon" style="background:#dbeafe;color:#2563eb"><i class="fas fa-file-alt"></i></div>
+      <div>
+        <div class="dash-stat-num" id="dStatResumes">–</div>
+        <div class="dash-stat-label">Resumes Created</div>
+      </div>
+    </div>
+    <div class="dash-stat-card">
+      <div class="dash-stat-icon" style="background:#dcfce7;color:#16a34a"><i class="fas fa-download"></i></div>
+      <div>
+        <div class="dash-stat-num" id="dStatDownloads">–</div>
+        <div class="dash-stat-label">Total Downloads</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action cards -->
   <div class="card-grid">
     <div class="card">
       <h2>Create Your Resume</h2>
       <p>Use the SmrAI-Studio resume builder to generate a professional resume and download it as PDF or JPG.</p>
       <a href="/resume-templates" class="btn-primary">Start Building Resume</a>
+    </div>
     <div class="card">
-      <h2>Service Requests</h2>
-      <p>In the future, you’ll see your submitted service requests and their status here.</p>
-      <p style="font-size:0.9rem; color:#6b7280;">(Coming soon)</p>
+      <h2>Service Request</h2>
+      <p style="font-size:0.9rem;color:#6b7280;margin-bottom:1rem">Need something custom? Tell us what you need.</p>
+
+      <div id="srSuccess" hidden style="text-align:center;padding:1.5rem 0">
+        <div style="font-size:2rem;margin-bottom:0.5rem">✅</div>
+        <p style="font-weight:600;color:#111827">Request submitted!</p>
+        <p style="font-size:0.85rem;color:#6b7280">We’ll get back to you soon.</p>
+        <button class="btn-ghost" style="margin-top:0.75rem;font-size:0.85rem" onclick="resetSrForm()">Submit another</button>
+      </div>
+
+      <form id="srForm">
+        <div class="sr-field">
+          <label class="sr-label">Service Type</label>
+          <select name="service_type" class="sr-input" required>
+            <option value="">Select a service…</option>
+            <option value="resume">AI Resume &amp; Cover Letter</option>
+            <option value="logo">Logo + Brand Kit</option>
+            <option value="landing_page">Landing Page Copy + Design</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="sr-field">
+          <label class="sr-label">Details</label>
+          <textarea name="details" class="sr-input sr-textarea" rows="3" placeholder="Tell us about your project…" required></textarea>
+        </div>
+        <button type="submit" class="btn-primary sr-submit" id="srSubmitBtn">Submit Request</button>
+      </form>
+
+      <!-- Past requests list -->
+      <div id="myRequestsList" style="margin-top:1.25rem"></div>
     </div>
   </div>
 </section>
+
+<style>
+  .dash-section    { max-width: 900px; margin: 0 auto; padding: 2rem 1.25rem; }
+  .dash-welcome    { font-size: 1.6rem; font-weight: 800; color: #111827; margin-bottom: 0.25rem; }
+  .dash-subtitle   { color: #6b7280; margin-bottom: 1.5rem; font-size: 0.95rem; }
+
+  .dash-stat-grid  {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.75rem;
+  }
+  .dash-stat-card  {
+    background: #fff;
+    border-radius: 14px;
+    padding: 1.1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+    border: 1px solid #f1f5f9;
+  }
+  .dash-stat-icon  {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+  .dash-stat-num   { font-size: 1.55rem; font-weight: 800; color: #111827; line-height: 1; }
+  .dash-stat-label { font-size: 0.72rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 0.2rem; }
+
+  @media (max-width: 640px) {
+    .dash-stat-grid { grid-template-columns: 1fr 1fr; }
+    .dash-stat-card { padding: 0.85rem; gap: 0.6rem; }
+    .dash-stat-icon { width: 36px; height: 36px; font-size: 0.85rem; border-radius: 9px; }
+    .dash-stat-num  { font-size: 1.25rem; }
+    .dash-welcome   { font-size: 1.3rem; }
+  }
+  @media (max-width: 420px) {
+    .dash-stat-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ── Service request form ── */
+  .sr-field  { margin-bottom: 0.75rem; }
+  .sr-label  { display: block; font-size: 0.78rem; font-weight: 600; color: #374151; margin-bottom: 0.3rem; }
+  .sr-input  {
+    width: 100%; padding: 0.55rem 0.75rem;
+    border: 1px solid #e2e8f0; border-radius: 8px;
+    font-size: 0.875rem; color: #111827;
+    background: #f8fafc;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    box-sizing: border-box;
+  }
+  .sr-input:focus  { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.12); background: #fff; }
+  .sr-textarea     { resize: vertical; min-height: 80px; font-family: inherit; }
+  .sr-submit       { width: 100%; margin-top: 0.25rem; }
+  .sr-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  /* ── Past requests list ── */
+  .my-req-title   { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #9ca3af; margin-bottom: 0.5rem; }
+  .my-req-item    { display: flex; align-items: center; gap: 0.6rem; padding: 0.55rem 0; border-bottom: 1px solid #f1f5f9; font-size: 0.82rem; }
+  .my-req-item:last-child { border-bottom: none; }
+  .my-req-type    { font-weight: 600; color: #374151; flex: 1; }
+  .my-req-status  { padding: 0.15rem 0.55rem; border-radius: 999px; font-size: 0.7rem; font-weight: 700; white-space: nowrap; }
+  .my-req-s-new        { background: #dbeafe; color: #1d4ed8; }
+  .my-req-s-in_progress{ background: #fef3c7; color: #92400e; }
+  .my-req-s-done       { background: #dcfce7; color: #166534; }
+  .my-req-s-closed     { background: #f1f5f9; color: #64748b; }
+  .my-req-date    { color: #9ca3af; font-size: 0.75rem; white-space: nowrap; }
+  .my-req-chat    { background: none; border: none; color: #a5b4fc; cursor: pointer; padding: 0.2rem 0.3rem; border-radius: 4px; font-size: 0.8rem; transition: color 0.15s; flex-shrink: 0; }
+  .my-req-chat:hover { color: #6366f1; }
+  .my-req-del     { background: none; border: none; color: #fca5a5; cursor: pointer; padding: 0.2rem 0.3rem; border-radius: 4px; font-size: 0.8rem; transition: color 0.15s; flex-shrink: 0; }
+  .my-req-del:hover { color: #dc2626; }
+
+  /* ── Chat modal ── */
+  .chat-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 3000; display: flex; align-items: flex-end; justify-content: center; padding: 0; }
+  .chat-backdrop[hidden] { display: none !important; }
+  @media (min-width: 640px) { .chat-backdrop { align-items: center; padding: 1rem; } }
+  .chat-box      { background: #fff; border-radius: 20px 20px 0 0; width: 100%; max-width: 480px; display: flex; flex-direction: column; height: 85svh; max-height: 640px; box-shadow: 0 20px 60px rgba(0,0,0,0.25); animation: chatSlideUp 0.25s ease; overflow: hidden; }
+  @media (min-width: 640px) { .chat-box { border-radius: 20px; } }
+  @keyframes chatSlideUp { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: none; } }
+  .chat-header   { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.1rem; border-bottom: 1px solid #f1f5f9; flex-shrink: 0; }
+  .chat-header-info { display: flex; align-items: center; gap: 0.75rem; }
+  .chat-avatar   { width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg,#6366f1,#8b5cf6); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1rem; flex-shrink: 0; }
+  .chat-header-title { font-weight: 700; font-size: 0.95rem; color: #111827; }
+  .chat-header-sub   { font-size: 0.72rem; color: #6b7280; margin-top: 0.1rem; }
+  .chat-close    { background: none; border: none; font-size: 1.5rem; color: #9ca3af; cursor: pointer; line-height: 1; padding: 0.25rem; }
+  .chat-close:hover { color: #111827; }
+  .chat-messages { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 0.6rem; scroll-behavior: smooth; }
+  .chat-empty    { text-align: center; color: #9ca3af; font-size: 0.85rem; margin: auto; }
+  .chat-bubble-row       { display: flex; flex-direction: column; }
+  .chat-bubble-row.mine  { align-items: flex-end; }
+  .chat-bubble-row.theirs{ align-items: flex-start; }
+  .chat-bubble   { max-width: 80%; padding: 0.6rem 0.9rem; border-radius: 18px; font-size: 0.875rem; line-height: 1.5; word-break: break-word; }
+  .chat-bubble.mine   { background: #6366f1; color: #fff; border-bottom-right-radius: 4px; }
+  .chat-bubble.theirs { background: #f3f4f6; color: #111827; border-bottom-left-radius: 4px; }
+  .chat-bubble-meta { font-size: 0.68rem; color: #9ca3af; margin-top: 0.2rem; padding: 0 0.2rem; }
+  .chat-input-bar { display: flex; align-items: flex-end; gap: 0.5rem; padding: 0.75rem 1rem; border-top: 1px solid #f1f5f9; flex-shrink: 0; }
+  .chat-input    { flex: 1; resize: none; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0.6rem 0.85rem; font-size: 0.875rem; font-family: inherit; outline: none; max-height: 120px; overflow-y: auto; background: #f8fafc; }
+  .chat-input:focus { border-color: #6366f1; background: #fff; }
+  .chat-send     { width: 38px; height: 38px; border-radius: 50%; background: #6366f1; color: #fff; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; flex-shrink: 0; transition: background 0.15s; }
+  .chat-send:hover { background: #4f46e5; }
+  .chat-send:disabled { background: #c7d2fe; cursor: not-allowed; }
+  .chat-sender-name { font-size: 0.7rem; color: #6b7280; font-weight: 600; margin-bottom: 0.15rem; }
+</style>
+
+<script>
+// ── Service request form (AJAX) ─────────────────────────────────────────────
+document.getElementById("srForm").addEventListener("submit", async function (e) {
+  e.preventDefault();
+  const btn = document.getElementById("srSubmitBtn");
+  btn.disabled = true;
+  btn.textContent = "Submitting…";
+
+  const body = new URLSearchParams({
+    name:         "<%= currentUser ? currentUser.name.replace(/'/g, '') : '' %>",
+    email:        "<%= currentUser ? currentUser.email.replace(/'/g, '') : '' %>",
+    service_type: this.service_type.value,
+    details:      this.details.value,
+  });
+
+  try {
+    await fetch("/request", { method: "POST", body, headers: { "Content-Type": "application/x-www-form-urlencoded" } });
+    this.hidden = true;
+    document.getElementById("srSuccess").hidden = false;
+    loadMyRequests();
+  } catch (_) {
+    alert("Something went wrong. Please try again.");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Submit Request";
+  }
+});
+
+function resetSrForm() {
+  document.getElementById("srForm").reset();
+  document.getElementById("srForm").hidden = false;
+  document.getElementById("srSuccess").hidden = true;
+}
+
+// ── My past requests ────────────────────────────────────────────────────────
+const SR_LABELS = { resume: "AI Resume & Cover Letter", logo: "Logo + Brand Kit", landing_page: "Landing Page", other: "Other" };
+
+async function loadMyRequests() {
+  const container = document.getElementById("myRequestsList");
+  try {
+    const res  = await fetch("/api/my-requests");
+    const data = await res.json();
+    if (!data.success || !data.requests.length) { container.innerHTML = ""; return; }
+
+    container.innerHTML = `
+      <div class="my-req-title">Your Requests (${data.requests.length})</div>
+      ${data.requests.map(r => `
+        <div class="my-req-item" id="myreq-${r.id}">
+          <span class="my-req-type">${SR_LABELS[r.service_type] || r.service_type}</span>
+          <span class="my-req-status my-req-s-${r.status}">${r.status.replace("_"," ")}</span>
+          <span class="my-req-date">${new Date(r.created_at).toLocaleDateString("en-IN",{day:"2-digit",month:"short"})}</span>
+          <button class="my-req-chat" title="Open chat" onclick="openChat(${r.id},'${(SR_LABELS[r.service_type]||r.service_type).replace(/'/g,"\\'")}')"><i class="fas fa-comment-dots"></i></button>
+          <button class="my-req-del" title="Delete" onclick="deleteMyRequest(${r.id})"><i class="fas fa-trash-alt"></i></button>
+        </div>`).join("")}`;
+  } catch (_) {}
+}
+
+async function deleteMyRequest(id) {
+  if (!confirm("Delete this request?")) return;
+  try {
+    const res  = await fetch(`/api/my-request/${id}`, { method: "DELETE" });
+    const data = await res.json();
+    if (data.success) document.getElementById(`myreq-${id}`)?.remove();
+  } catch (_) { alert("Failed to delete."); }
+}
+
+loadMyRequests();
+
+// ── Platform stats ──────────────────────────────────────────────────────────
+(async () => {
+  try {
+    const res  = await fetch("/api/public/stats");
+    const data = await res.json();
+    function animNum(el, target) {
+      if (!el || !target) return;
+      const dur = 900, start = performance.now();
+      function step(now) {
+        const p = Math.min((now - start) / dur, 1);
+        const e = 1 - Math.pow(1 - p, 3);
+        el.textContent = Math.round(e * target).toLocaleString("en-IN") + "+";
+        if (p < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }
+    animNum(document.getElementById("dStatUsers"),     data.users);
+    animNum(document.getElementById("dStatResumes"),   data.resumes);
+    animNum(document.getElementById("dStatDownloads"), data.downloads);
+  } catch (_) {}
+})();
+</script>
+
+<!-- ── Chat modal (must be in DOM before the script below runs) ───────────── -->
+<div id="chatModal" class="chat-backdrop" hidden role="dialog" aria-modal="true" aria-label="Support Chat">
+  <div class="chat-box">
+    <div class="chat-header">
+      <div class="chat-header-info">
+        <div class="chat-avatar"><i class="fas fa-headset"></i></div>
+        <div>
+          <div class="chat-header-title" id="chatTitle">SmrAI Support</div>
+          <div class="chat-header-sub" id="chatSub">We usually reply within a few hours</div>
+        </div>
+      </div>
+      <button class="chat-close" id="chatClose" type="button" aria-label="Close chat">&times;</button>
+    </div>
+    <div class="chat-messages" id="chatMessages">
+      <div class="chat-empty">Loading messages…</div>
+    </div>
+    <form class="chat-input-bar" id="chatForm" autocomplete="off">
+      <textarea class="chat-input" id="chatInput" rows="1" placeholder="Type a message…" maxlength="2000"></textarea>
+      <button class="chat-send" type="submit" aria-label="Send"><i class="fas fa-paper-plane"></i></button>
+    </form>
+  </div>
+</div>
+
+<script>
+// ── Socket.io chat (user side) ───────────────────────────────────────────────
+const socket = io({ autoConnect: true });
+let activeChatId = null;
+
+function openChat(requestId, label) {
+  activeChatId = requestId;
+  document.getElementById("chatTitle").textContent = label || "Support Chat";
+  document.getElementById("chatSub").textContent = "Chat with SmrAI support";
+  document.getElementById("chatMessages").innerHTML = '<div class="chat-empty">Loading messages…</div>';
+  document.getElementById("chatModal").hidden = false;
+  document.getElementById("chatInput").focus();
+
+  socket.emit("join-request", requestId);
+
+  // Load history
+  fetch(`/api/request/${requestId}/messages`)
+    .then(r => r.json())
+    .then(data => {
+      if (!data.success) return;
+      const el = document.getElementById("chatMessages");
+      if (!data.messages.length) {
+        el.innerHTML = '<div class="chat-empty">No messages yet — say hello! 👋</div>';
+        return;
+      }
+      el.innerHTML = "";
+      data.messages.forEach(m => appendMessage(m, false));
+      el.scrollTop = el.scrollHeight;
+    })
+    .catch(() => {});
+}
+
+function appendMessage(m, scroll = true) {
+  const isMe = m.sender_role === "user";
+  const el   = document.getElementById("chatMessages");
+
+  // Remove empty state
+  const empty = el.querySelector(".chat-empty");
+  if (empty) empty.remove();
+
+  const row  = document.createElement("div");
+  row.className = `chat-bubble-row ${isMe ? "mine" : "theirs"}`;
+
+  const time = new Date(m.created_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+  const name = isMe ? "You" : (m.sender_name || "Support");
+
+  row.innerHTML = `
+    ${!isMe ? `<div class="chat-sender-name">${name}</div>` : ""}
+    <div class="chat-bubble ${isMe ? "mine" : "theirs"}">${escapeHtml(m.message)}</div>
+    <div class="chat-bubble-meta">${time}</div>`;
+  el.appendChild(row);
+  if (scroll) el.scrollTop = el.scrollHeight;
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+socket.on("message", (m) => {
+  if (!activeChatId || m.request_id !== activeChatId) return;
+  appendMessage(m, true);
+});
+
+// ── Chat form submit ─────────────────────────────────────────────────────────
+document.getElementById("chatForm").addEventListener("submit", function (e) {
+  e.preventDefault();
+  const input = document.getElementById("chatInput");
+  const msg   = input.value.trim();
+  if (!msg || !activeChatId) return;
+  socket.emit("send-message", { requestId: activeChatId, message: msg });
+  input.value = "";
+  input.style.height = "";
+  input.focus();
+});
+
+// Auto-grow textarea
+document.getElementById("chatInput").addEventListener("input", function () {
+  this.style.height = "auto";
+  this.style.height = Math.min(this.scrollHeight, 120) + "px";
+});
+
+// Send on Enter (Shift+Enter for newline)
+document.getElementById("chatInput").addEventListener("keydown", function (e) {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    document.getElementById("chatForm").requestSubmit();
+  }
+});
+
+// ── Close chat modal ─────────────────────────────────────────────────────────
+document.getElementById("chatClose").addEventListener("click", closeChat);
+document.getElementById("chatModal").addEventListener("click", function (e) {
+  if (e.target === this) closeChat();
+});
+
+function closeChat() {
+  document.getElementById("chatModal").hidden = true;
+  activeChatId = null;
+}
+</script>
 
 <%- include("partials/footer") %>

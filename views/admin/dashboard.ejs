@@ -27,6 +27,10 @@
       <a href="#activity"  class="adm-nav-link" data-section="activity">
         <i class="fas fa-stream"></i> Activity
       </a>
+      <a href="#requests"  class="adm-nav-link" data-section="requests">
+        <i class="fas fa-inbox"></i> Requests
+        <span class="adm-nav-badge" id="navRequestsBadge" hidden></span>
+      </a>
       <a href="/dashboard" class="adm-nav-link adm-nav-back">
         <i class="fas fa-arrow-left"></i> Back to App
       </a>
@@ -174,8 +178,72 @@
 
     </div><!-- /activity -->
 
+    <!-- ── Section: Requests ──────────────────────────────────────────────── -->
+    <div id="requests" class="adm-section-page" hidden>
+
+      <div class="adm-section">
+        <div class="adm-section-header">
+          <h2>Service Requests</h2>
+          <div style="display:flex;align-items:center;gap:0.6rem">
+            <select id="srFilterStatus" class="adm-sr-filter">
+              <option value="">All statuses</option>
+              <option value="new">New</option>
+              <option value="in_progress">In Progress</option>
+              <option value="done">Done</option>
+              <option value="closed">Closed</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="adm-table-wrap">
+          <table class="adm-table">
+            <thead>
+              <tr>
+                <th>From</th>
+                <th>Service</th>
+                <th>Details</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th></th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="srBody">
+              <tr><td colspan="7" class="adm-loading">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="adm-pagination" id="srPagination"></div>
+      </div>
+
+    </div><!-- /requests -->
+
   </div><!-- /adm-main -->
 </div><!-- /adm-shell -->
+
+<!-- ── Service request detail modal ─────────────────────────────────────── -->
+<div id="srDetailModal" class="adm-modal-backdrop" hidden>
+  <div class="adm-modal adm-stat-modal">
+    <button class="adm-modal-close" id="srDetailClose" type="button">&times;</button>
+    <h3 class="adm-stat-modal-title" id="srDetailTitle"></h3>
+    <div id="srDetailBody" class="adm-stat-modal-body"></div>
+  </div>
+</div>
+
+<!-- ── Delete service request confirmation modal ──────────────────────────── -->
+<div id="srDeleteModal" class="adm-modal-backdrop" hidden>
+  <div class="adm-modal adm-confirm-modal">
+    <div class="adm-confirm-icon adm-confirm-icon-danger"><i class="fas fa-inbox"></i></div>
+    <h3 class="adm-confirm-title">Delete Request</h3>
+    <p class="adm-confirm-msg" id="srDeleteMsg"></p>
+    <div class="adm-confirm-actions">
+      <button class="adm-confirm-cancel" id="srDeleteCancel" type="button">Cancel</button>
+      <button class="adm-confirm-delete" id="srDeleteConfirm" type="button">
+        <i class="fas fa-trash-alt"></i> Yes, Delete
+      </button>
+    </div>
+  </div>
+</div>
 
 <!-- ── Delete activity confirmation modal ────────────────────────────────── -->
 <div id="actDeleteModal" class="adm-modal-backdrop" hidden>
@@ -207,12 +275,47 @@
   </div>
 </div>
 
+<!-- ── Guest visitors drill-down modal ──────────────────────────────────── -->
+<div id="guestActModal" class="adm-modal-backdrop" hidden>
+  <div class="adm-modal adm-stat-modal">
+    <button class="adm-modal-close" id="guestActModalClose" type="button" aria-label="Close">&times;</button>
+    <h3 class="adm-stat-modal-title">
+      <i class="fas fa-globe" style="color:#6366f1;margin-right:0.4rem"></i>
+      Anonymous Visitors
+    </h3>
+    <div id="guestActModalBody" class="adm-stat-modal-body"></div>
+  </div>
+</div>
+
 <!-- ── User activity detail modal ───────────────────────────────────────── -->
 <div id="userActModal" class="adm-modal-backdrop" hidden>
   <div class="adm-modal adm-stat-modal">
     <button class="adm-modal-close" id="userActModalClose" type="button" aria-label="Close">&times;</button>
     <h3 id="userActModalTitle" class="adm-stat-modal-title"></h3>
     <div id="userActModalBody" class="adm-stat-modal-body"></div>
+  </div>
+</div>
+
+<!-- ── Admin Chat modal ───────────────────────────────────────────────────── -->
+<div id="admChatModal" class="adm-chat-backdrop" hidden role="dialog" aria-modal="true">
+  <div class="adm-chat-box">
+    <div class="adm-chat-header">
+      <div class="adm-chat-header-info">
+        <div class="adm-chat-avatar"><i class="fas fa-user"></i></div>
+        <div>
+          <div class="adm-chat-title" id="admChatTitle">User Chat</div>
+          <div class="adm-chat-sub" id="admChatSub"></div>
+        </div>
+      </div>
+      <button class="adm-chat-close" id="admChatClose" type="button">&times;</button>
+    </div>
+    <div class="adm-chat-messages" id="admChatMessages">
+      <div class="adm-chat-empty">Loading messages…</div>
+    </div>
+    <form class="adm-chat-input-bar" id="admChatForm" autocomplete="off">
+      <textarea class="adm-chat-input" id="admChatInput" rows="1" placeholder="Reply to user…" maxlength="2000"></textarea>
+      <button class="adm-chat-send" type="submit" aria-label="Send"><i class="fas fa-paper-plane"></i></button>
+    </form>
   </div>
 </div>
 
@@ -233,7 +336,8 @@
   </div>
 </div>
 
-<!-- Chart.js -->
+<!-- Socket.io + Chart.js -->
+<script src="/socket.io/socket.io.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
 <script>
@@ -268,6 +372,7 @@ function showSection(id) {
 
     if (id === "users"    && !usersLoaded)   { loadUsers(1); }
     if (id === "activity" && !activityLoaded){ loadActivity(); }
+    if (id === "requests" && !srLoaded)      { loadServiceRequests(1); }
   }, 120);
 }
 
@@ -614,6 +719,9 @@ document.addEventListener("keydown", e => {
     closeModal();
     closeStatModal();
     document.getElementById("userDeleteModal").hidden = true;
+    document.getElementById("guestActModal").hidden   = true;
+    document.getElementById("srDetailModal").hidden   = true;
+    document.getElementById("srDeleteModal").hidden   = true;
   }
 });
 
@@ -764,7 +872,7 @@ function timeAgo(iso) {
   return Math.floor(h / 24) + "d ago";
 }
 
-// ── Grouped activity feed (one row per user) ───────────────────────────────
+// ── Grouped activity feed (one row per user + guest row) ──────────────────
 async function loadActivity() {
   activityLoaded = true;
   try {
@@ -779,19 +887,35 @@ async function loadActivity() {
     }
 
     feed.innerHTML = data.users.map(u => {
-      const name   = u.user_name || u.user_email || "Guest";
+      // ── Guest / anonymous row ──────────────────────────────────────────
+      if (u.is_guest) {
+        const sessions = u.unique_sessions > 0
+          ? `<span class="adm-muted" style="font-size:0.78rem"> · ${u.unique_sessions} unique session${u.unique_sessions !== 1 ? "s" : ""}</span>`
+          : "";
+        return `
+          <div class="adm-activity-item adm-activity-clickable adm-guest-row" onclick="openGuestActivityModal()">
+            <div class="adm-guest-avatar"><i class="fas fa-globe"></i></div>
+            <div class="adm-activity-text">
+              <strong>Anonymous Visitors</strong>${sessions}
+              <span class="adm-muted"> · browsing public pages</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:0.5rem;margin-left:auto;flex-shrink:0">
+              <span class="adm-act-count adm-act-count-guest">${u.activity_count}</span>
+              <span class="adm-activity-time">${timeAgo(u.last_active)}</span>
+              <i class="fas fa-chevron-right" style="color:#cbd5e1;font-size:0.7rem"></i>
+            </div>
+          </div>`;
+      }
+
+      // ── Authenticated user row ─────────────────────────────────────────
+      const name   = u.user_name || u.user_email || "User";
       const letter = name[0].toUpperCase();
       const avatar = u.profile_image_url
         ? `<img src="${u.profile_image_url}" class="adm-avatar-sm" alt="">`
         : `<span class="adm-avatar-init" style="font-size:0.7rem">${letter}</span>`;
-      const cfg = ACTION_ICONS[u.last_action] || { icon: "fas fa-circle", color: "#6b7280" };
-
-      const clickAttr = u.user_id
-        ? `class="adm-activity-item adm-activity-clickable" onclick="openUserActivityModal(${u.user_id}, '${name.replace(/'/g,"\\'")}')"`
-        : `class="adm-activity-item"`;
 
       return `
-        <div ${clickAttr}>
+        <div class="adm-activity-item adm-activity-clickable" onclick="openUserActivityModal(${u.user_id}, '${name.replace(/'/g,"\\'")}')">
           ${avatar}
           <div class="adm-activity-text">
             <strong>${name}</strong>
@@ -800,12 +924,63 @@ async function loadActivity() {
           <div style="display:flex;align-items:center;gap:0.5rem;margin-left:auto;flex-shrink:0">
             <span class="adm-act-count">${u.activity_count}</span>
             <span class="adm-activity-time">${timeAgo(u.last_active)}</span>
-            ${u.user_id ? `<i class="fas fa-chevron-right" style="color:#cbd5e1;font-size:0.7rem"></i>` : ""}
+            <i class="fas fa-chevron-right" style="color:#cbd5e1;font-size:0.7rem"></i>
           </div>
         </div>`;
     }).join("");
   } catch (_) {}
 }
+
+// ── Guest activity drill-down modal ────────────────────────────────────────
+async function openGuestActivityModal() {
+  const modal = document.getElementById("guestActModal");
+  const body  = document.getElementById("guestActModalBody");
+  body.innerHTML = `<div class="adm-loading">Loading…</div>`;
+  modal.hidden = false;
+
+  try {
+    const res  = await fetch("/admin/api/guest-activity");
+    const data = await res.json();
+    if (!data.success) { body.innerHTML = `<div class="adm-loading">Failed to load.</div>`; return; }
+
+    let html = "";
+
+    if (data.routes.length) {
+      html += `<div class="adm-guest-section-title">Pages visited (all time)</div>`;
+      html += data.routes.map(r => `
+        <div class="adm-detail-row">
+          <div class="adm-detail-main">
+            <i class="fas fa-link" style="color:#6366f1;font-size:0.75rem;margin-right:0.35rem"></i>
+            <strong>${r.route}</strong>
+          </div>
+          <div class="adm-detail-meta">
+            <span class="adm-act-count adm-act-count-guest" style="margin-right:0.35rem">${r.visits}</span>
+            ${timeAgo(r.last_visit)}
+          </div>
+        </div>`).join("");
+    }
+
+    if (data.recent.length) {
+      html += `<div class="adm-guest-section-title" style="margin-top:1rem">Recent visits</div>`;
+      html += data.recent.map(r => `
+        <div class="adm-detail-row">
+          <div class="adm-detail-main" style="color:#374151">${r.route || "/"}</div>
+          <div class="adm-detail-meta">${r.ip_address || "—"} · ${timeAgo(r.created_at)}</div>
+        </div>`).join("");
+    }
+
+    body.innerHTML = html || `<div class="adm-loading">No guest visits yet.</div>`;
+  } catch (_) {
+    body.innerHTML = `<div class="adm-loading">Failed to load.</div>`;
+  }
+}
+
+document.getElementById("guestActModalClose").addEventListener("click", () => {
+  document.getElementById("guestActModal").hidden = true;
+});
+document.getElementById("guestActModal").addEventListener("click", e => {
+  if (e.target === e.currentTarget) e.currentTarget.hidden = true;
+});
 
 // ── User activity detail modal ──────────────────────────────────────────────
 async function openUserActivityModal(uid, userName) {
@@ -902,6 +1077,291 @@ document.getElementById("actDeleteConfirm").addEventListener("click", async () =
 setInterval(() => {
   if (!document.getElementById("activity").hidden) loadActivity();
 }, 30000);
+
+// ── Service Requests ────────────────────────────────────────────────────────
+let srLoaded       = false;
+let srCurrentPage  = 1;
+let srFilterStatus = "";
+
+const SR_SERVICE_LABELS = {
+  resume:       "AI Resume",
+  logo:         "Logo + Brand",
+  landing_page: "Landing Page",
+  other:        "Other",
+};
+
+const SR_STATUS_CFG = {
+  new:         { label: "New",         cls: "adm-sr-badge-new"         },
+  in_progress: { label: "In Progress", cls: "adm-sr-badge-inprogress"  },
+  done:        { label: "Done",        cls: "adm-sr-badge-done"        },
+  closed:      { label: "Closed",      cls: "adm-sr-badge-closed"      },
+};
+
+async function loadServiceRequests(page, status) {
+  srLoaded       = true;
+  srCurrentPage  = page  ?? srCurrentPage;
+  srFilterStatus = status !== undefined ? status : srFilterStatus;
+
+  const params = new URLSearchParams({ page: srCurrentPage, limit: 20 });
+  if (srFilterStatus) params.set("status", srFilterStatus);
+
+  try {
+    const res  = await fetch("/admin/api/service-requests?" + params);
+    const data = await res.json();
+    if (!data.success) return;
+
+    // Update nav badge with "new" count
+    const newCount = data.requests.filter(r => r.status === "new").length;
+    const navBadge = document.getElementById("navRequestsBadge");
+    if (newCount > 0) { navBadge.textContent = newCount; navBadge.hidden = false; }
+    else              { navBadge.hidden = true; }
+
+    const tbody = document.getElementById("srBody");
+    if (!data.requests.length) {
+      tbody.innerHTML = `<tr><td colspan="7" class="adm-loading">No requests found.</td></tr>`;
+      document.getElementById("srPagination").innerHTML = "";
+      return;
+    }
+
+    tbody.innerHTML = data.requests.map(r => {
+      const cfg     = SR_STATUS_CFG[r.status] || SR_STATUS_CFG.new;
+      const service = SR_SERVICE_LABELS[r.service_type] || r.service_type;
+      const snippet = r.details ? (r.details.length > 60 ? r.details.slice(0, 60) + "…" : r.details) : "—";
+      return `
+        <tr data-srid="${r.id}">
+          <td>
+            <div style="font-weight:600;font-size:0.85rem">${r.name}</div>
+            <div class="adm-muted" style="font-size:0.75rem">${r.email}</div>
+          </td>
+          <td><span class="adm-sr-type">${service}</span></td>
+          <td class="adm-sr-details-cell" onclick="openSrDetail(${r.id})" title="Click to read full details">${snippet}</td>
+          <td>
+            <select class="adm-sr-status-select ${cfg.cls}" onchange="updateSrStatus(${r.id}, this)">
+              ${["new","in_progress","done","closed"].map(s =>
+                `<option value="${s}" ${r.status === s ? "selected" : ""}>${SR_STATUS_CFG[s].label}</option>`
+              ).join("")}
+            </select>
+          </td>
+          <td class="adm-muted" style="font-size:0.78rem;white-space:nowrap">${fmtDate(r.created_at)}</td>
+          <td>
+            <button class="adm-sr-chat-btn" title="Open chat" onclick="admOpenChat(${r.id},'${r.name.replace(/'/g,"\\'")}','${r.email.replace(/'/g,"\\'")}')">
+              <i class="fas fa-comment-dots"></i>
+            </button>
+          </td>
+          <td>
+            <button class="adm-sr-del-btn" onclick="confirmDeleteSr(${r.id}, '${r.name.replace(/'/g,"\\'")}')">
+              <i class="fas fa-trash-alt"></i>
+            </button>
+          </td>
+        </tr>`;
+    }).join("");
+
+    // Pagination
+    const pages = Math.ceil(data.total / data.limit);
+    const pgEl  = document.getElementById("srPagination");
+    pgEl.innerHTML = "";
+    for (let p = 1; p <= pages; p++) {
+      const btn = document.createElement("button");
+      btn.textContent = p;
+      btn.className   = "adm-page-btn" + (p === srCurrentPage ? " adm-page-active" : "");
+      btn.addEventListener("click", () => loadServiceRequests(p));
+      pgEl.appendChild(btn);
+    }
+  } catch (_) {}
+}
+
+// ── Status dropdown per row ─────────────────────────────────────────────────
+async function updateSrStatus(id, selectEl) {
+  const newStatus = selectEl.value;
+  const cfg = SR_STATUS_CFG[newStatus];
+  try {
+    const res  = await fetch(`/admin/api/service-request/${id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      // Update select colour class
+      selectEl.className = `adm-sr-status-select ${cfg.cls}`;
+    } else {
+      alert("Failed to update status.");
+      loadServiceRequests(srCurrentPage); // revert
+    }
+  } catch (_) { alert("Network error."); }
+}
+
+// ── Detail modal ────────────────────────────────────────────────────────────
+let srCache = {};
+
+async function openSrDetail(id) {
+  const modal = document.getElementById("srDetailModal");
+  const title = document.getElementById("srDetailTitle");
+  const body  = document.getElementById("srDetailBody");
+
+  // Use cached row data from the table if available
+  const row = document.querySelector(`tr[data-srid="${id}"]`);
+  if (row) {
+    const name    = row.cells[0].querySelector("div").textContent;
+    const email   = row.cells[0].querySelector(".adm-muted").textContent;
+    const service = row.cells[1].textContent.trim();
+    title.textContent = `${name} — ${service}`;
+    body.innerHTML = `
+      <div class="adm-modal-field"><span class="adm-modal-label">Email</span><span>${email}</span></div>
+      <div class="adm-modal-field"><span class="adm-modal-label">Date</span><span>${row.cells[4].textContent.trim()}</span></div>
+      <div style="margin-top:0.75rem">
+        <div class="adm-modal-label" style="margin-bottom:0.4rem">Details</div>
+        <div id="srFullDetails" style="font-size:0.875rem;color:#374151;line-height:1.6;background:#f8fafc;border-radius:8px;padding:0.75rem">Loading…</div>
+      </div>`;
+    modal.hidden = false;
+  }
+
+  // Fetch full details from server (the table row only has a snippet)
+  try {
+    const res  = await fetch(`/admin/api/service-requests?page=1&limit=50`);
+    const data = await res.json();
+    const req  = data.requests.find(r => r.id === id);
+    if (req) {
+      const el = document.getElementById("srFullDetails");
+      if (el) el.textContent = req.details || "No details provided.";
+    }
+  } catch (_) {}
+}
+
+document.getElementById("srDetailClose").addEventListener("click", () => {
+  document.getElementById("srDetailModal").hidden = true;
+});
+document.getElementById("srDetailModal").addEventListener("click", e => {
+  if (e.target === e.currentTarget) e.currentTarget.hidden = true;
+});
+
+// ── Delete request ──────────────────────────────────────────────────────────
+let pendingSrDeleteId = null;
+
+function confirmDeleteSr(id, name) {
+  pendingSrDeleteId = id;
+  document.getElementById("srDeleteMsg").innerHTML =
+    `Are you sure you want to delete the request from <strong>${name}</strong>?`;
+  document.getElementById("srDeleteModal").hidden = false;
+}
+
+document.getElementById("srDeleteCancel").addEventListener("click", () => {
+  document.getElementById("srDeleteModal").hidden = true;
+  pendingSrDeleteId = null;
+});
+document.getElementById("srDeleteModal").addEventListener("click", e => {
+  if (e.target === e.currentTarget) { e.currentTarget.hidden = true; pendingSrDeleteId = null; }
+});
+
+document.getElementById("srDeleteConfirm").addEventListener("click", async function () {
+  if (!pendingSrDeleteId) return;
+  this.disabled = true;
+  this.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Deleting…`;
+  try {
+    const res  = await fetch(`/admin/api/service-request/${pendingSrDeleteId}`, { method: "DELETE" });
+    const data = await res.json();
+    document.getElementById("srDeleteModal").hidden = true;
+    if (data.success) {
+      document.querySelector(`tr[data-srid="${pendingSrDeleteId}"]`)?.remove();
+    }
+  } catch (_) {}
+  finally {
+    this.disabled = false;
+    this.innerHTML = `<i class="fas fa-trash-alt"></i> Yes, Delete`;
+    pendingSrDeleteId = null;
+  }
+});
+
+// Load on section switch + filter change
+document.getElementById("srFilterStatus").addEventListener("change", function () {
+  loadServiceRequests(1, this.value);
+});
+
+// ── Admin Socket.io chat ─────────────────────────────────────────────────────
+const admSocket = io({ autoConnect: true });
+let admActiveChatId = null;
+
+function admOpenChat(requestId, name, email) {
+  admActiveChatId = requestId;
+  document.getElementById("admChatTitle").textContent = name || "User";
+  document.getElementById("admChatSub").textContent   = email || "";
+  document.getElementById("admChatMessages").innerHTML = '<div class="adm-chat-empty">Loading messages…</div>';
+  document.getElementById("admChatModal").hidden = false;
+  document.getElementById("admChatInput").focus();
+
+  admSocket.emit("join-request", requestId);
+
+  fetch(`/api/request/${requestId}/messages`)
+    .then(r => r.json())
+    .then(data => {
+      if (!data.success) return;
+      const el = document.getElementById("admChatMessages");
+      if (!data.messages.length) {
+        el.innerHTML = '<div class="adm-chat-empty">No messages yet.</div>';
+        return;
+      }
+      el.innerHTML = "";
+      data.messages.forEach(m => admAppendMessage(m, false));
+      el.scrollTop = el.scrollHeight;
+    })
+    .catch(() => {});
+}
+
+function admAppendMessage(m, scroll = true) {
+  const isAdmin = m.sender_role === "admin";
+  const el = document.getElementById("admChatMessages");
+  const empty = el.querySelector(".adm-chat-empty");
+  if (empty) empty.remove();
+
+  const row = document.createElement("div");
+  row.className = `adm-chat-bubble-row ${isAdmin ? "mine" : "theirs"}`;
+  const time = new Date(m.created_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+  const name = isAdmin ? "You (Admin)" : (m.sender_name || "User");
+
+  row.innerHTML = `
+    ${!isAdmin ? `<div class="adm-chat-sender-name">${name}</div>` : ""}
+    <div class="adm-chat-bubble ${isAdmin ? "mine" : "theirs"}">${admEscHtml(m.message)}</div>
+    <div class="adm-chat-bubble-meta">${time}</div>`;
+  el.appendChild(row);
+  if (scroll) el.scrollTop = el.scrollHeight;
+}
+
+function admEscHtml(str) {
+  return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+admSocket.on("message", (m) => {
+  if (m.request_id !== admActiveChatId) return;
+  admAppendMessage(m, true);
+});
+
+document.getElementById("admChatForm").addEventListener("submit", function (e) {
+  e.preventDefault();
+  const input = document.getElementById("admChatInput");
+  const msg   = input.value.trim();
+  if (!msg || !admActiveChatId) return;
+  admSocket.emit("send-message", { requestId: admActiveChatId, message: msg });
+  input.value = "";
+  input.style.height = "";
+  input.focus();
+});
+
+document.getElementById("admChatInput").addEventListener("input", function () {
+  this.style.height = "auto";
+  this.style.height = Math.min(this.scrollHeight, 120) + "px";
+});
+
+document.getElementById("admChatInput").addEventListener("keydown", function (e) {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); document.getElementById("admChatForm").requestSubmit(); }
+});
+
+document.getElementById("admChatClose").addEventListener("click", () => {
+  document.getElementById("admChatModal").hidden = true;
+  admActiveChatId = null;
+});
+document.getElementById("admChatModal").addEventListener("click", function (e) {
+  if (e.target === this) { this.hidden = true; admActiveChatId = null; }
+});
 </script>
 
 <%- include("../partials/footer") %>
