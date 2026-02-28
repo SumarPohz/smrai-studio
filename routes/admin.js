@@ -238,33 +238,95 @@ export default function adminRouter(db) {
     }
   });
 
-  // ── GET /admin/api/activity-grouped — one row per user, sorted by last active
+  // ── GET /admin/api/activity-grouped — one row per user + guest summary ────
   router.get("/api/activity-grouped", async (req, res) => {
     try {
-      const rows = await db.query(
-        `SELECT
-           al.user_id,
-           u.name  AS user_name,
-           u.email AS user_email,
-           up.profile_image_url,
-           COUNT(*)::int                         AS activity_count,
-           MAX(al.created_at)                    AS last_active,
-           (SELECT action_type FROM activity_logs
-            WHERE user_id = al.user_id
-            ORDER BY created_at DESC LIMIT 1)    AS last_action,
-           (SELECT route FROM activity_logs
-            WHERE user_id = al.user_id
-            ORDER BY created_at DESC LIMIT 1)    AS last_route
-         FROM activity_logs al
-         LEFT JOIN users u          ON u.id = al.user_id
-         LEFT JOIN user_profiles up ON up.user_id = al.user_id
-         GROUP BY al.user_id, u.name, u.email, up.profile_image_url
-         ORDER BY last_active DESC
-         LIMIT 30`
-      );
-      res.json({ success: true, users: rows.rows });
+      const [userRows, guestRow] = await Promise.all([
+        db.query(
+          `SELECT
+             al.user_id,
+             u.name  AS user_name,
+             u.email AS user_email,
+             up.profile_image_url,
+             COUNT(*)::int                         AS activity_count,
+             MAX(al.created_at)                    AS last_active,
+             (SELECT action_type FROM activity_logs
+              WHERE user_id = al.user_id
+              ORDER BY created_at DESC LIMIT 1)    AS last_action,
+             (SELECT route FROM activity_logs
+              WHERE user_id = al.user_id
+              ORDER BY created_at DESC LIMIT 1)    AS last_route
+           FROM activity_logs al
+           LEFT JOIN users u          ON u.id = al.user_id
+           LEFT JOIN user_profiles up ON up.user_id = al.user_id
+           WHERE al.user_id IS NOT NULL
+           GROUP BY al.user_id, u.name, u.email, up.profile_image_url
+           ORDER BY last_active DESC
+           LIMIT 30`
+        ),
+        // Count anonymous visitor sessions
+        db.query(
+          `SELECT
+             COUNT(*)::int                              AS total_visits,
+             COUNT(DISTINCT metadata->>'sid')::int      AS unique_sessions,
+             MAX(created_at)                            AS last_visit,
+             (SELECT route FROM activity_logs
+              WHERE user_id IS NULL AND action_type = 'visit'
+              ORDER BY created_at DESC LIMIT 1)         AS last_route
+           FROM activity_logs
+           WHERE user_id IS NULL AND action_type = 'visit'`
+        ),
+      ]);
+
+      const users = userRows.rows;
+
+      // Prepend a synthetic guest row if any anonymous visits exist
+      const g = guestRow.rows[0];
+      if (g && g.total_visits > 0) {
+        users.unshift({
+          user_id:          null,
+          is_guest:         true,
+          user_name:        "Anonymous Visitors",
+          user_email:       null,
+          profile_image_url: null,
+          activity_count:   g.total_visits,
+          unique_sessions:  g.unique_sessions,
+          last_active:      g.last_visit,
+          last_action:      "visit",
+          last_route:       g.last_route,
+        });
+      }
+
+      res.json({ success: true, users });
     } catch (err) {
       console.error("Activity grouped error:", err);
+      res.status(500).json({ success: false });
+    }
+  });
+
+  // ── GET /admin/api/guest-activity — route breakdown for anonymous visitors ─
+  router.get("/api/guest-activity", async (req, res) => {
+    try {
+      const [routeRows, recentRows] = await Promise.all([
+        db.query(
+          `SELECT route, COUNT(*)::int AS visits, MAX(created_at) AS last_visit
+           FROM activity_logs
+           WHERE user_id IS NULL AND action_type = 'visit' AND route IS NOT NULL
+           GROUP BY route
+           ORDER BY visits DESC
+           LIMIT 20`
+        ),
+        db.query(
+          `SELECT route, ip_address, created_at
+           FROM activity_logs
+           WHERE user_id IS NULL AND action_type = 'visit'
+           ORDER BY created_at DESC
+           LIMIT 15`
+        ),
+      ]);
+      res.json({ success: true, routes: routeRows.rows, recent: recentRows.rows });
+    } catch (err) {
+      console.error("Guest activity error:", err);
       res.status(500).json({ success: false });
     }
   });
@@ -377,6 +439,68 @@ export default function adminRouter(db) {
       });
     } catch (err) {
       console.error("Admin charts error:", err);
+      res.status(500).json({ success: false });
+    }
+  });
+
+  // ── GET /admin/api/service-requests — paginated list ─────────────────────
+  router.get("/api/service-requests", async (req, res) => {
+    try {
+      const page   = Math.max(1, parseInt(req.query.page)  || 1);
+      const limit  = Math.min(50, parseInt(req.query.limit) || 20);
+      const offset = (page - 1) * limit;
+      const status = req.query.status || null;
+
+      const where  = status ? "WHERE status = $3" : "";
+      const params = status ? [limit, offset, status] : [limit, offset];
+
+      const [rows, countRes] = await Promise.all([
+        db.query(
+          `SELECT id, name, email, service_type, details, status, created_at
+           FROM service_requests
+           ${where}
+           ORDER BY created_at DESC
+           LIMIT $1 OFFSET $2`,
+          params
+        ),
+        db.query(
+          `SELECT COUNT(*)::int AS count FROM service_requests ${status ? "WHERE status = $1" : ""}`,
+          status ? [status] : []
+        ),
+      ]);
+
+      res.json({ success: true, requests: rows.rows, total: countRes.rows[0].count, page, limit });
+    } catch (err) {
+      console.error("Service requests error:", err);
+      res.status(500).json({ success: false });
+    }
+  });
+
+  // ── PATCH /admin/api/service-request/:id/status — update status ───────────
+  router.patch("/api/service-request/:id/status", async (req, res) => {
+    try {
+      const id     = parseInt(req.params.id);
+      const status = req.body.status;
+      if (!id || !["new", "in_progress", "done", "closed"].includes(status)) {
+        return res.status(400).json({ success: false });
+      }
+      await db.query("UPDATE service_requests SET status = $1 WHERE id = $2", [status, id]);
+      res.json({ success: true });
+    } catch (err) {
+      console.error("Service request status error:", err);
+      res.status(500).json({ success: false });
+    }
+  });
+
+  // ── DELETE /admin/api/service-request/:id — delete a request ─────────────
+  router.delete("/api/service-request/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (!id) return res.status(400).json({ success: false });
+      await db.query("DELETE FROM service_requests WHERE id = $1", [id]);
+      res.json({ success: true });
+    } catch (err) {
+      console.error("Service request delete error:", err);
       res.status(500).json({ success: false });
     }
   });
