@@ -618,7 +618,11 @@ async function loadUsers(page, q) {
     });
 
     renderPagination(data.total, data.limit);
-  } catch (_) {}
+  } catch (err) {
+    console.error("loadUsers error:", err);
+    document.getElementById("usersBody").innerHTML =
+      `<tr><td colspan="7" class="adm-loading" style="color:#ef4444">Failed to load users. Check console.</td></tr>`;
+  }
 }
 
 function renderPagination(total, limit) {

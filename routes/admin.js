@@ -44,7 +44,7 @@ export default function adminRouter(db) {
       const sql = `
         SELECT
           u.id, u.name, u.email, u.role, u.is_active,
-          up.full_name, up.phone, up.location, up.profile_image_url, up.created_at,
+          up.full_name, up.phone, up.location, up.profile_image_url, up.updated_at AS created_at,
           (SELECT COUNT(*)::int FROM resumes        WHERE user_id = u.id)                           AS resume_count,
           (SELECT COUNT(*)::int FROM resume_events  WHERE user_id = u.id AND kind = 'download')     AS download_count,
           (SELECT COALESCE(SUM(p.amount),0) FROM payments p WHERE p.user_id = u.id AND p.status = 'captured') AS total_paid,
