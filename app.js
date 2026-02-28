@@ -19,6 +19,7 @@ import { VertexAI } from "@google-cloud/vertexai";
 import connectPgSimple from "connect-pg-simple"; 
 import dotenv from "dotenv";
 import { TEMPLATES, getTemplateById } from "./config/templates-config.js";
+import QRCode from "qrcode";
 import { getFieldsForTemplate, isPhotoTemplate } from "./config/template-fields.js";
 import adminRouter from "./routes/admin.js";
 
@@ -216,8 +217,25 @@ await db.query(`
       );
     `);
     await db.query(`CREATE INDEX IF NOT EXISTS idx_req_msg_request ON request_messages(request_id);`);
+    await db.query(`ALTER TABLE service_requests ADD COLUMN IF NOT EXISTS guest_token VARCHAR(64);`);
 
-    console.log("✅ Tables ready: service_requests, resumes, resume_events, payments, activity_logs, request_messages");
+    /* ── Admin settings (key-value store for prices, etc.) ── */
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS admin_settings (
+        key        TEXT PRIMARY KEY,
+        value      TEXT NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    await db.query(`
+      INSERT INTO admin_settings (key, value) VALUES
+        ('price_fresher',     '100'),
+        ('price_experienced', '100'),
+        ('price_developer',   '500')
+      ON CONFLICT (key) DO NOTHING;
+    `);
+
+    console.log("✅ Tables ready: service_requests, resumes, resume_events, payments, activity_logs, request_messages, admin_settings");
   } catch (err) {
     console.error("❌ Error initializing DB:", err);
   }
@@ -1072,7 +1090,29 @@ app.post("/resume-builder/preview", ensureAuthenticated, async (req, res) => {
     req.session.resumeDraft = data;
     req.session.lastTemplate = template;
 
-    res.render("resume-preview", { data, template });
+    // Generate QR code from portfolio or GitHub URL
+    let qrCodeDataUrl = null;
+    const qrTarget = (data.portfolioUrl || data.githubUrl || "").trim();
+    if (qrTarget) {
+      try {
+        qrCodeDataUrl = await QRCode.toDataURL(qrTarget, {
+          width: 110,
+          margin: 1,
+          color: { dark: "#0f172a", light: "#ffffff" },
+        });
+      } catch (_) { /* ignore QR errors */ }
+    }
+
+    // Read dynamic price from admin_settings
+    const tplCategory = getTemplateById(template).category || "experienced";
+    const priceKey = `price_${tplCategory}`;
+    let displayPrice = 100;
+    try {
+      const priceRes = await db.query("SELECT value FROM admin_settings WHERE key = $1", [priceKey]);
+      if (priceRes.rows.length) displayPrice = parseInt(priceRes.rows[0].value, 10);
+    } catch (_) { /* ignore, use default */ }
+
+    res.render("resume-preview", { data, template, qrCodeDataUrl, displayPrice });
   } catch (err) {
     console.error("Error saving profile:", err);
     res.send("Error while saving profile.");
@@ -1593,6 +1633,70 @@ Return ONLY a valid JSON array \u2014 no markdown, no prose, no code fences:
       `;
       break;
 
+    case "technologies":
+      fieldInstructions = `
+        You are writing the TECHNOLOGIES / STACK section of a software developer resume.
+        Format: One category per line with comma-separated technologies on the right of a colon.
+        Example:
+        Frontend: React, TypeScript, Tailwind CSS
+        Backend: Node.js, Express.js, Python
+        Database: PostgreSQL, MongoDB
+        DevOps: Docker, AWS, GitHub Actions
+        Tools: Git, Postman, VS Code
+
+        ${currentText && currentText.trim()
+          ? `The candidate listed: """${currentText}"""
+        Improve, expand, and format this into clean category lines.`
+          : `Role context: ${roleTitle || "Software Engineer"}.
+        ${experience && experience.trim()
+          ? `Their experience: """${experience}"""
+        Infer the tech stack from their experience and generate realistic categories.`
+          : `Generate 5–6 realistic technology categories for a ${roleTitle || "Software Engineer"}.`}`}
+        Return plain text only — one "Category: skill1, skill2" line per row, no extra explanation.
+      `;
+      break;
+
+    case "projects":
+      fieldInstructions = `
+        You are writing the PROJECTS section of a software developer resume.
+        Each project must follow this exact format:
+        Project Name | Tech: tech1, tech2, tech3 | https://github.com/user/repo
+        One or two sentence description of what was built.
+        • Bullet point achievement or feature
+        • Another bullet point
+        (blank line between projects)
+
+        ${currentText && currentText.trim()
+          ? `The candidate wrote: """${currentText}"""
+        Improve and reformat this into the above structure.`
+          : `Role context: ${roleTitle || "Software Engineer"}.
+        ${experience && experience.trim()
+          ? `Their experience mentions: """${experience}"""
+        Generate 2–3 realistic projects that a ${roleTitle || "Software Engineer"} with this background might have built.`
+          : `Generate 2–3 realistic projects for a ${roleTitle || "Software Engineer"}.`}`}
+        Return plain text only — follow the format exactly. No markdown headers or extra labels.
+      `;
+      break;
+
+    case "certifications":
+      fieldInstructions = `
+        You are writing the CERTIFICATIONS & ACHIEVEMENTS section of a developer resume.
+        Each certification on its own line, formatted as:
+        "Certification Name — YEAR"
+        Example:
+        AWS Certified Solutions Architect – Associate — 2024
+        Google Professional Cloud Developer — 2023
+        Meta React Developer Certificate — 2022
+
+        ${currentText && currentText.trim()
+          ? `The candidate listed: """${currentText}"""
+        Improve and format this list.`
+          : `Role context: ${roleTitle || "Software Engineer"}.
+        Suggest 3–4 relevant, realistic certifications for a ${roleTitle || "Software Engineer"}.`}
+        Return plain text only — one certification per line, no bullets, no explanation.
+      `;
+      break;
+
     default:
       fieldInstructions = `
         You are helping complete a resume field: ${field}.
@@ -1847,6 +1951,74 @@ app.get("/api/request/:id/messages", ensureAuthenticated, async (req, res) => {
   }
 });
 
+// ── Guest chat endpoints (no auth required) ──────────────────────────────────
+app.post("/api/guest/start-chat", express.json(), async (req, res) => {
+  const name  = (req.body.name  || "").trim().slice(0, 100);
+  const email = (req.body.email || "").trim().slice(0, 200);
+  if (!name || !email.includes("@")) return res.status(400).json({ success: false, message: "Name and valid email required." });
+  try {
+    const token = crypto.randomBytes(20).toString("hex");
+    const result = await db.query(
+      `INSERT INTO service_requests (name, email, service_type, details, guest_token)
+       VALUES ($1, $2, 'chat', 'Guest chat session', $3)
+       RETURNING id`,
+      [name, email, token]
+    );
+    return res.json({ success: true, requestId: result.rows[0].id, token });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false });
+  }
+});
+
+app.post("/api/guest/chat/message", express.json(), async (req, res) => {
+  const { requestId, token, message } = req.body;
+  const msg = (message || "").toString().trim().slice(0, 2000);
+  if (!requestId || !token || !msg) return res.status(400).json({ success: false });
+  try {
+    const check = await db.query(
+      "SELECT id FROM service_requests WHERE id=$1 AND guest_token=$2",
+      [requestId, token]
+    );
+    if (!check.rows.length) return res.status(403).json({ success: false });
+    await db.query(
+      `INSERT INTO request_messages (request_id, sender_id, sender_role, message)
+       VALUES ($1, NULL, 'user', $2)`,
+      [requestId, msg]
+    );
+    return res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false });
+  }
+});
+
+app.get("/api/guest/chat/:requestId/messages", async (req, res) => {
+  const requestId = parseInt(req.params.requestId, 10);
+  const token     = (req.query.token || "").trim();
+  if (!requestId || !token) return res.status(400).json({ success: false });
+  try {
+    const check = await db.query(
+      "SELECT id FROM service_requests WHERE id=$1 AND guest_token=$2",
+      [requestId, token]
+    );
+    if (!check.rows.length) return res.status(403).json({ success: false });
+    const msgs = await db.query(
+      `SELECT m.id, m.sender_role, m.message, m.created_at,
+              u.name AS sender_name
+       FROM request_messages m
+       LEFT JOIN users u ON u.id = m.sender_id
+       WHERE m.request_id = $1
+       ORDER BY m.created_at ASC`,
+      [requestId]
+    );
+    return res.json({ success: true, messages: msgs.rows });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false });
+  }
+});
+
 // ── HTTP server + Socket.io ───────────────────────────────────────────────────
 const server = createServer(app);
 const io = new SocketServer(server, { cors: { origin: false } });
@@ -2052,11 +2224,23 @@ app.post(
   }
 );
 
-// Create Razorpay order for ₹29 (modern-1 download/print)
+// Create Razorpay order — price read dynamically from admin_settings
 app.post("/api/razorpay/create-order", ensureAuthenticated, async (req, res) => {
   try {
+    const { template } = req.body || {};
+    const category = getTemplateById(template || "modern-1").category || "experienced";
+    const priceKey = `price_${category}`;
+
+    // Read price from DB (fallback: 100)
+    const priceRes = await db.query(
+      "SELECT value FROM admin_settings WHERE key = $1",
+      [priceKey]
+    );
+    const priceRupees = priceRes.rows.length ? parseInt(priceRes.rows[0].value, 10) : 100;
+    const priceInPaise = priceRupees * 100;
+
     const options = {
-      amount: 100 * 100,          // ₹50 in paise
+      amount: priceInPaise,
       currency: "INR",
       receipt: "resume_" + Date.now(),
     };
@@ -2068,7 +2252,7 @@ app.post("/api/razorpay/create-order", ensureAuthenticated, async (req, res) => 
       orderId: order.id,
       amount: order.amount,
       currency: order.currency,
-      key: process.env.RAZORPAY_KEY_ID, // used by frontend
+      key: process.env.RAZORPAY_KEY_ID,
     });
   } catch (err) {
     console.error("Razorpay order error:", err);

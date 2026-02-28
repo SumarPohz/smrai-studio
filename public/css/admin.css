@@ -1110,29 +1110,28 @@
   background: rgba(0,0,0,0.45);
   z-index: 3000;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
-  padding: 0;
+  padding: 1rem;
 }
 .adm-chat-backdrop[hidden] { display: none !important; }
-@media (min-width: 640px) {
-  .adm-chat-backdrop { align-items: center; padding: 1rem; }
-}
 .adm-chat-box {
   background: #fff;
-  border-radius: 20px 20px 0 0;
+  border-radius: 20px;
   width: 100%;
   max-width: 520px;
   display: flex;
   flex-direction: column;
-  height: 85svh;
-  max-height: 640px;
+  height: 75svh;
+  max-height: 620px;
   box-shadow: 0 20px 60px rgba(0,0,0,0.25);
-  animation: admChatSlideUp 0.25s ease;
+  animation: admChatSlideUp 0.22s ease;
   overflow: hidden;
 }
-@media (min-width: 640px) { .adm-chat-box { border-radius: 20px; } }
-@keyframes admChatSlideUp { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: none; } }
+@media (max-width: 480px) {
+  .adm-chat-box { height: 70svh; max-height: 500px; border-radius: 16px; }
+}
+@keyframes admChatSlideUp { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: none; } }
 
 .adm-chat-header {
   display: flex;
@@ -1196,35 +1195,45 @@
 
 /* ── Requests table — responsive ─────────────────────────────────────────── */
 @media (max-width: 768px) {
-  /* Hide Details and Date columns */
-  .adm-sr-details-cell { display: none; }
+  /*
+   * The general rule above hides .adm-table th/td:nth-child(n+4) on mobile.
+   * For the requests table the columns are:
+   *   1=From  2=Service  3=Details  4=Status  5=Date  6=Chat  7=Delete
+   * We want: show 1,2,4,6,7 — hide 3 (Details) and 5 (Date).
+   * So restore col 4,6,7 that the general rule hid, and hide col 3,5.
+   */
+  #requests .adm-table th:nth-child(4),
+  #requests .adm-table td:nth-child(4) { display: table-cell; } /* Status  — restore */
+  #requests .adm-table th:nth-child(6),
+  #requests .adm-table td:nth-child(6) { display: table-cell; } /* Chat    — restore */
+  #requests .adm-table th:nth-child(7),
+  #requests .adm-table td:nth-child(7) { display: table-cell; } /* Delete  — restore */
+
+  /* Hide Details (col 3) and Date (col 5) */
+  .adm-sr-details-cell,
+  #requests .adm-table th:nth-child(3)  { display: none; }
   #requests .adm-table th:nth-child(5),
-  #requests .adm-table td:nth-child(5) { display: none; }
+  #requests .adm-table td:nth-child(5)  { display: none; }
 
   /* Compact status select */
   .adm-sr-status-select {
-    font-size: 0.7rem;
-    padding: 0.2rem 0.35rem;
-    max-width: 88px;
+    font-size: 0.68rem;
+    padding: 0.18rem 0.3rem;
+    max-width: 84px;
   }
 
   /* Compact service badge */
-  .adm-sr-type { font-size: 0.72rem; padding: 0.18rem 0.45rem; }
+  .adm-sr-type { font-size: 0.7rem; padding: 0.15rem 0.4rem; }
 
   /* Tighten table cells */
   #requests .adm-table th,
-  #requests .adm-table td { padding: 0.5rem 0.4rem; }
+  #requests .adm-table td { padding: 0.45rem 0.35rem; }
 
   /* Smaller name / email text */
-  #requests .adm-table td:nth-child(1) div:first-child { font-size: 0.8rem; }
-  #requests .adm-table td:nth-child(1) div:last-child  { font-size: 0.7rem; }
-}
+  #requests .adm-table td:nth-child(1) div:first-child { font-size: 0.78rem; font-weight: 600; }
+  #requests .adm-table td:nth-child(1) div:last-child  { font-size: 0.68rem; }
 
-@media (max-width: 480px) {
-  /* On very small screens also hide the empty chat-col header */
-  #requests .adm-table th:nth-child(6) { display: none; }
-
-  /* Stack name + email tighter */
-  #requests .adm-table td:nth-child(1) { max-width: 110px; overflow: hidden; }
+  /* Truncate long names/emails */
+  #requests .adm-table td:nth-child(1) { max-width: 120px; }
   #requests .adm-table td:nth-child(1) div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 }

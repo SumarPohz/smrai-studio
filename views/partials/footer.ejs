@@ -212,7 +212,8 @@
     }
   }
 </style>
-<!-- Floating WhatsApp Support Button -->
+<% if (currentUser) { %>
+<!-- Floating WhatsApp Support Button — logged-in users only -->
 <a
   href="https://wa.me/918787509536?text=Hi%20Sumar%2C%20I%20need%20support%20regarding%20SmrAI-Studio."
   class="whatsapp-float"
@@ -222,6 +223,179 @@
 >
   <i class="fab fa-whatsapp"></i>
 </a>
+<% } else { %>
+<!-- ── Guest chat widget ──────────────────────────────────────────────────── -->
+<button id="gcBtn" class="gc-float" aria-label="Chat with us" type="button">
+  <i class="fas fa-comment-dots"></i>
+</button>
+
+<div id="gcBox" class="gc-box" hidden>
+  <div class="gc-header">
+    <div class="gc-header-info">
+      <div class="gc-avatar"><i class="fas fa-headset"></i></div>
+      <div>
+        <div class="gc-title">SmrAI Support</div>
+        <div class="gc-sub">We usually reply within a few hours</div>
+      </div>
+    </div>
+    <button class="gc-close" id="gcClose" type="button" aria-label="Close">&times;</button>
+  </div>
+
+  <!-- Pre-chat form -->
+  <div id="gcPreChat" class="gc-pre-chat">
+    <p class="gc-pre-desc">Enter your details to start chatting with us</p>
+    <form id="gcPreForm">
+      <input type="text"  id="gcName"  class="gc-field" placeholder="Your name"  required maxlength="100" autocomplete="name">
+      <input type="email" id="gcEmail" class="gc-field" placeholder="Your email" required maxlength="200" autocomplete="email">
+      <button type="submit" class="gc-start-btn" id="gcStartBtn">Start Chat <i class="fas fa-arrow-right"></i></button>
+    </form>
+  </div>
+
+  <!-- Chat area (hidden until pre-chat done) -->
+  <div id="gcChat" class="gc-chat" hidden>
+    <div class="gc-messages" id="gcMessages">
+      <div class="gc-empty">No messages yet — say hello! 👋</div>
+    </div>
+    <form class="gc-input-bar" id="gcForm" autocomplete="off">
+      <textarea class="gc-input" id="gcInput" rows="1" placeholder="Type a message…" maxlength="2000"></textarea>
+      <button class="gc-send" type="submit" aria-label="Send"><i class="fas fa-paper-plane"></i></button>
+    </form>
+  </div>
+</div>
+
+<script>
+(function () {
+  const gcBtn   = document.getElementById("gcBtn");
+  const gcBox   = document.getElementById("gcBox");
+  const gcClose = document.getElementById("gcClose");
+
+  // ── Toggle open/close ──────────────────────────────────────────────────────
+  gcBtn.addEventListener("click", () => { gcBox.hidden = !gcBox.hidden; });
+  gcClose.addEventListener("click", () => { gcBox.hidden = true; });
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function gcEsc(str) {
+    return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+
+  let gcLastId = 0;
+
+  function gcAppend(m) {
+    const el     = document.getElementById("gcMessages");
+    const empty  = el.querySelector(".gc-empty");
+    if (empty) empty.remove();
+    const isMe   = m.sender_role === "user";
+    const time   = new Date(m.created_at).toLocaleTimeString("en-IN", { hour:"2-digit", minute:"2-digit" });
+    const name   = isMe ? "" : (m.sender_name || "Support");
+    const row    = document.createElement("div");
+    row.className = `gc-bubble-row ${isMe ? "mine" : "theirs"}`;
+    row.innerHTML = `
+      ${!isMe ? `<div class="gc-sender-name">${gcEsc(name)}</div>` : ""}
+      <div class="gc-bubble ${isMe ? "mine" : "theirs"}">${gcEsc(m.message)}</div>
+      <div class="gc-bubble-meta">${time}</div>`;
+    el.appendChild(row);
+    el.scrollTop = el.scrollHeight;
+    if (m.id > gcLastId) gcLastId = m.id;
+  }
+
+  // ── Polling ────────────────────────────────────────────────────────────────
+  let gcPollTimer = null;
+
+  function gcStartPolling(requestId, token) {
+    clearInterval(gcPollTimer);
+    gcPollTimer = setInterval(async () => {
+      try {
+        const r = await fetch(`/api/guest/chat/${requestId}/messages?token=${encodeURIComponent(token)}`);
+        const d = await r.json();
+        if (!d.success) return;
+        d.messages.forEach(m => { if (m.id > gcLastId) gcAppend(m); });
+      } catch (_) {}
+    }, 6000);
+  }
+
+  // ── Load history + start polling ───────────────────────────────────────────
+  function gcStartChat(requestId, token) {
+    document.getElementById("gcPreChat").hidden = true;
+    document.getElementById("gcChat").hidden    = false;
+    fetch(`/api/guest/chat/${requestId}/messages?token=${encodeURIComponent(token)}`)
+      .then(r => r.json())
+      .then(d => {
+        if (!d.success) return;
+        d.messages.forEach(gcAppend);
+      })
+      .catch(() => {});
+    gcStartPolling(requestId, token);
+  }
+
+  // ── Restore session from localStorage ─────────────────────────────────────
+  try {
+    const stored = JSON.parse(localStorage.getItem("gcSession") || "null");
+    if (stored && stored.requestId && stored.token) {
+      gcStartChat(stored.requestId, stored.token);
+    }
+  } catch (_) {}
+
+  // ── Pre-chat form submit ───────────────────────────────────────────────────
+  document.getElementById("gcPreForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const btn   = document.getElementById("gcStartBtn");
+    const name  = document.getElementById("gcName").value.trim();
+    const email = document.getElementById("gcEmail").value.trim();
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting…';
+    try {
+      const r = await fetch("/api/guest/start-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email }),
+      });
+      const d = await r.json();
+      if (!d.success) { alert("Could not start chat. Please try again."); return; }
+      localStorage.setItem("gcSession", JSON.stringify({ requestId: d.requestId, token: d.token, name }));
+      gcStartChat(d.requestId, d.token);
+    } catch (_) {
+      alert("Network error. Please try again.");
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = 'Start Chat <i class="fas fa-arrow-right"></i>';
+    }
+  });
+
+  // ── Send message ───────────────────────────────────────────────────────────
+  document.getElementById("gcForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const input = document.getElementById("gcInput");
+    const msg   = input.value.trim();
+    if (!msg) return;
+    try {
+      const stored = JSON.parse(localStorage.getItem("gcSession") || "null");
+      if (!stored) return;
+      // Optimistic append
+      gcAppend({ id: Date.now(), sender_role:"user", message: msg, created_at: new Date().toISOString() });
+      input.value = ""; input.style.height = "";
+      await fetch("/api/guest/chat/message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestId: stored.requestId, token: stored.token, message: msg }),
+      });
+    } catch (_) {}
+  });
+
+  // ── Auto-grow textarea + Enter to send ────────────────────────────────────
+  const gcInput = document.getElementById("gcInput");
+  gcInput.addEventListener("input", function () {
+    this.style.height = "auto";
+    this.style.height = Math.min(this.scrollHeight, 100) + "px";
+  });
+  gcInput.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      document.getElementById("gcForm").requestSubmit();
+    }
+  });
+})();
+</script>
+<% } %>
 
 </body>
 </html>

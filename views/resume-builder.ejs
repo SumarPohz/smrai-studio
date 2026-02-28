@@ -347,6 +347,87 @@
                 rows="4"
               ><%= (draft && draft.skills) || '' %></textarea>
             </div>
+
+            <% if (template === 'tech-focused') { %>
+
+            <div class="rb-field ai-field-wrap">
+              <div class="ai-field-label">
+                <label for="technologies">Technologies / Stack</label>
+                <div class="ai-btn-group">
+                  <span class="fmic-status" aria-live="polite"></span>
+                  <button type="button" class="ai-btn" data-field="technologies">✨ AI Suggest</button>
+                  <button type="button" class="ai-undo-btn" data-field="technologies" disabled>↩ Undo</button>
+                </div>
+              </div>
+              <p class="rb-field-hint">One category per line — e.g. <em>Frontend: React, TypeScript, Tailwind</em></p>
+              <textarea
+                id="technologies"
+                name="technologies"
+                rows="5"
+                placeholder="Frontend: React, TypeScript, Tailwind CSS&#10;Backend: Node.js, Python, Express.js&#10;Database: PostgreSQL, MongoDB, Redis&#10;DevOps: Docker, AWS, GitHub Actions&#10;Tools: Git, Postman, Figma"
+              ><%= (draft && draft.technologies) || '' %></textarea>
+            </div>
+
+            <div class="rb-field ai-field-wrap">
+              <div class="ai-field-label">
+                <label for="projects">Projects</label>
+                <div class="ai-btn-group">
+                  <span class="fmic-status" aria-live="polite"></span>
+                  <button type="button" class="ai-btn" data-field="projects">✨ AI Suggest</button>
+                  <button type="button" class="ai-undo-btn" data-field="projects" disabled>↩ Undo</button>
+                </div>
+              </div>
+              <p class="rb-field-hint">Format: <em>Project Name | Tech: React, Node | https://link.com</em> then description on next lines. Blank line to separate projects.</p>
+              <textarea
+                id="projects"
+                name="projects"
+                rows="8"
+                placeholder="Portfolio Website | Tech: React, Tailwind | github.com/user/portfolio&#10;Built a responsive portfolio with dark mode and animations.&#10;• Deployed on Vercel with CI/CD pipeline&#10;&#10;API Service | Tech: Python, FastAPI | api.myproject.com&#10;REST API for ML sentiment analysis."
+              ><%= (draft && draft.projects) || '' %></textarea>
+            </div>
+
+            <div class="rb-field">
+              <label for="portfolioUrl">Portfolio or LinkedIn URL <span class="rb-badge-qr">→ QR Code</span></label>
+              <p class="rb-field-hint">This URL will be converted to a QR code on your resume.</p>
+              <input
+                type="url"
+                id="portfolioUrl"
+                name="portfolioUrl"
+                placeholder="https://yourportfolio.com  or  https://linkedin.com/in/yourname"
+                value="<%= (draft && draft.portfolioUrl) || '' %>"
+              />
+            </div>
+
+            <div class="rb-field">
+              <label for="githubUrl">GitHub Profile URL</label>
+              <input
+                type="url"
+                id="githubUrl"
+                name="githubUrl"
+                placeholder="https://github.com/yourusername"
+                value="<%= (draft && draft.githubUrl) || '' %>"
+              />
+            </div>
+
+            <div class="rb-field ai-field-wrap">
+              <div class="ai-field-label">
+                <label for="certifications">Certifications &amp; Achievements <span style="font-weight:400;color:#6b7280;font-size:0.85em;">(optional)</span></label>
+                <div class="ai-btn-group">
+                  <span class="fmic-status" aria-live="polite"></span>
+                  <button type="button" class="ai-btn" data-field="certifications">✨ AI Suggest</button>
+                  <button type="button" class="ai-undo-btn" data-field="certifications" disabled>↩ Undo</button>
+                </div>
+              </div>
+              <textarea
+                id="certifications"
+                name="certifications"
+                rows="4"
+                placeholder="AWS Certified Solutions Architect — 2024&#10;Google Professional Cloud Developer — 2023&#10;Meta React Developer Certificate — 2022"
+              ><%= (draft && draft.certifications) || '' %></textarea>
+            </div>
+
+            <% } %>
+
           </div>
         </div>
         <!-- NAVIGATION -->
@@ -477,6 +558,69 @@
               <div class="cgmini-section">
                 <h3>EXPERIENCE</h3>
                 <p id="pvExperience">Your experience will appear here as you type.</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <% } else if (template === 'tech-focused') { %>
+        <!-- Tech-Focused: dark navy header + summary band + two-column body -->
+        <div class="modern-mini-page tf-mode">
+
+          <div class="tfmini-header">
+            <div class="tfmini-photo"></div>
+            <div class="tfmini-header-info">
+              <div id="pvName" class="tfmini-name">Your Name</div>
+              <div id="pvRole" class="tfmini-role">Your Job Title</div>
+              <div class="tfmini-contact">
+                <span id="pvPhone">+91 0000000000</span>
+                <span id="pvEmail">email@example.com</span>
+                <span id="pvLocation">City, Country</span>
+              </div>
+              <div class="tfmini-links">
+                <span id="pvPortfolioUrl">portfolio.com</span>
+              </div>
+            </div>
+            <div class="tfmini-qr-block">
+              <div class="tfmini-qr-sq"></div>
+              <div class="tfmini-qr-label">QR</div>
+            </div>
+          </div>
+
+          <div class="tfmini-summary-band">
+            <div class="tfmini-band-label">PROFESSIONAL SUMMARY</div>
+            <p id="pvSummary">Your professional summary will appear here.</p>
+          </div>
+
+          <div class="tfmini-body">
+            <div class="tfmini-left">
+              <div class="tfmini-section">
+                <h3>TECHNICAL SKILLS</h3>
+                <div id="pvTechnologies" class="tfmini-tech-content">
+                  <span class="tfmini-placeholder">Technologies will appear here.</span>
+                </div>
+              </div>
+              <div class="tfmini-section">
+                <h3>EDUCATION</h3>
+                <p id="pvEducation">Education entries will appear here.</p>
+              </div>
+              <div class="tfmini-section">
+                <h3>CERTIFICATIONS</h3>
+                <p id="pvCertifications">Certifications will appear here.</p>
+              </div>
+              <div class="tfmini-section">
+                <h3>LANGUAGES</h3>
+                <p id="pvLanguages">Languages will appear here.</p>
+              </div>
+            </div>
+            <div class="tfmini-right">
+              <div class="tfmini-section">
+                <h3>WORK EXPERIENCE</h3>
+                <p id="pvExperience">Your experience will appear here as you type.</p>
+              </div>
+              <div class="tfmini-section">
+                <h3>PROJECTS</h3>
+                <p id="pvProjects">Projects will appear here.</p>
               </div>
             </div>
           </div>
@@ -647,6 +791,24 @@
 
   .rb-field-full {
     grid-column: 1 / -1;
+  }
+
+  .rb-field-hint {
+    font-size: 0.78rem;
+    color: #6b7280;
+    margin: 0 0 0.35rem;
+  }
+
+  .rb-badge-qr {
+    display: inline-block;
+    font-size: 0.7rem;
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+    border-radius: 4px;
+    padding: 0.05rem 0.35rem;
+    margin-left: 0.4rem;
+    font-weight: 500;
   }
 
   .rb-field label {
@@ -1209,6 +1371,236 @@
     color: #6b7280;
   }
 
+  /* ── Tech-Focused mini preview ── */
+  .modern-mini-page.tf-mode {
+    flex-direction: column;
+    background: #ffffff;
+  }
+
+  .tfmini-header {
+    background: #0f172a;
+    border-top: 3px solid #3b82f6;
+    padding: 0.5rem 0.6rem;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex-shrink: 0;
+    position: relative;
+  }
+
+  .tfmini-photo {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: rgba(59,130,246,0.2);
+    border: 2px solid rgba(59,130,246,0.4);
+    flex-shrink: 0;
+  }
+
+  .tfmini-header-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .tfmini-name {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #f8fafc;
+    line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .tfmini-role {
+    font-size: 0.5rem;
+    color: #93c5fd;
+    margin: 0.05rem 0 0.15rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .tfmini-contact {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.1rem 0.4rem;
+  }
+
+  .tfmini-contact span {
+    font-size: 0.42rem;
+    color: #cbd5e1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 90px;
+  }
+
+  .tfmini-links {
+    margin-top: 0.08rem;
+  }
+
+  .tfmini-links span {
+    font-size: 0.42rem;
+    color: #60a5fa;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    max-width: 110px;
+  }
+
+  .tfmini-qr-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.05rem;
+    flex-shrink: 0;
+  }
+
+  .tfmini-qr-sq {
+    width: 28px;
+    height: 28px;
+    border-radius: 3px;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(59,130,246,0.15) 0px,
+      rgba(59,130,246,0.15) 3px,
+      transparent 3px,
+      transparent 6px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(59,130,246,0.15) 0px,
+      rgba(59,130,246,0.15) 3px,
+      transparent 3px,
+      transparent 6px
+    );
+    border: 1px solid rgba(59,130,246,0.35);
+  }
+
+  .tfmini-qr-label {
+    font-size: 0.36rem;
+    color: #64748b;
+    letter-spacing: 0.05em;
+  }
+
+  .tfmini-summary-band {
+    background: #1e293b;
+    padding: 0.3rem 0.6rem;
+    flex-shrink: 0;
+  }
+
+  .tfmini-band-label {
+    font-size: 0.38rem;
+    font-weight: 700;
+    color: #60a5fa;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 0.1rem;
+  }
+
+  .tfmini-summary-band p {
+    font-size: 0.48rem;
+    color: #cbd5e1;
+    line-height: 1.4;
+    margin: 0;
+    overflow: hidden;
+    max-height: 2.5rem;
+    word-wrap: break-word;
+    white-space: normal;
+  }
+
+  .tfmini-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .tfmini-left {
+    width: 34%;
+    background: #f1f5f9;
+    padding: 0.4rem 0.35rem;
+    border-right: 1px solid #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    overflow: hidden;
+  }
+
+  .tfmini-right {
+    flex: 1;
+    padding: 0.4rem 0.45rem;
+    overflow: hidden;
+  }
+
+  .tfmini-section {
+    margin-bottom: 0.35rem;
+  }
+
+  .tfmini-section h3 {
+    font-size: 0.44rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: #3b82f6;
+    border-bottom: 1px solid #bfdbfe;
+    padding-bottom: 0.08rem;
+    margin-bottom: 0.18rem;
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+  }
+
+  .tfmini-section h3::before {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 1.5px;
+    background: #3b82f6;
+    border-radius: 1px;
+    flex-shrink: 0;
+  }
+
+  .tfmini-section p,
+  .tfmini-section .tfmini-placeholder {
+    font-size: 0.46rem;
+    line-height: 1.38;
+    color: #374151;
+    margin: 0;
+    overflow: hidden;
+    max-height: 2.8rem;
+    word-wrap: break-word;
+    white-space: normal;
+  }
+
+  .tfmini-placeholder {
+    color: #9ca3af;
+  }
+
+  .tfmini-tech-content {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.12rem;
+    overflow: hidden;
+    max-height: 3rem;
+  }
+
+  .tfmini-tech-tag {
+    font-size: 0.4rem;
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+    border-radius: 2px;
+    padding: 0.05rem 0.22rem;
+    white-space: nowrap;
+  }
+
+  .tfmini-right .tfmini-section p {
+    color: #374151;
+    max-height: 3.5rem;
+  }
+
   #pvExperience {
     font-size: 0.58rem;
     line-height: 1.38;
@@ -1725,6 +2117,54 @@
     }
 
     bindSkillsPills();
+
+    // === TECH-FOCUSED: live bindings for tech-specific fields ===
+    // bindText handles missing elements gracefully (returns early if null)
+    bindText("certifications", "pvCertifications", "Certifications will appear here.", true);
+    bindText("projects", "pvProjects", "Projects will appear here.", true);
+
+    // portfolioUrl → show stripped URL
+    (function () {
+      const input = document.getElementById("portfolioUrl");
+      const preview = document.getElementById("pvPortfolioUrl");
+      if (!input || !preview) return;
+      function sync() {
+        const val = input.value.trim().replace(/^https?:\/\//, "");
+        preview.textContent = val || "portfolio.com";
+      }
+      input.addEventListener("input", sync);
+      sync();
+    })();
+
+    // technologies → render as blue mini tags grouped by category
+    (function () {
+      const input = document.getElementById("technologies");
+      const container = document.getElementById("pvTechnologies");
+      if (!input || !container) return;
+      function sync() {
+        const val = input.value.trim();
+        container.innerHTML = "";
+        if (!val) {
+          const span = document.createElement("span");
+          span.className = "tfmini-placeholder";
+          span.textContent = "Technologies will appear here.";
+          container.appendChild(span);
+          return;
+        }
+        val.split(/\r?\n+/).map(l => l.trim()).filter(Boolean).forEach(line => {
+          const ci = line.indexOf(":");
+          const skillsStr = ci === -1 ? line : line.slice(ci + 1);
+          skillsStr.split(",").map(s => s.trim()).filter(Boolean).forEach(skill => {
+            const tag = document.createElement("span");
+            tag.className = "tfmini-tech-tag";
+            tag.textContent = skill;
+            container.appendChild(tag);
+          });
+        });
+      }
+      input.addEventListener("input", sync);
+      sync();
+    })();
 
     // === AUTO-SCALE MINI PREVIEW TO FIT COLUMN WIDTH ===
     function setupMiniScaling() {

@@ -31,6 +31,9 @@
         <i class="fas fa-inbox"></i> Requests
         <span class="adm-nav-badge" id="navRequestsBadge" hidden></span>
       </a>
+      <a href="#pricing"   class="adm-nav-link" data-section="pricing">
+        <i class="fas fa-tags"></i> Pricing
+      </a>
       <a href="/dashboard" class="adm-nav-link adm-nav-back">
         <i class="fas fa-arrow-left"></i> Back to App
       </a>
@@ -218,6 +221,74 @@
 
     </div><!-- /requests -->
 
+    <!-- ── Section: Pricing ───────────────────────────────────────────────── -->
+    <div id="pricing" class="adm-section-page" hidden>
+
+      <div class="adm-section">
+        <div class="adm-section-header">
+          <h2>Resume Pricing</h2>
+          <p class="adm-section-desc">Set the download price for each resume category. Changes apply immediately to all new purchases.</p>
+        </div>
+
+        <div class="adm-price-grid">
+
+          <!-- Fresher -->
+          <div class="adm-price-card">
+            <div class="adm-price-card-icon adm-icon-green"><i class="fas fa-seedling"></i></div>
+            <div class="adm-price-card-info">
+              <h3>Fresher</h3>
+              <p>Simple & Minimal templates for entry-level profiles</p>
+            </div>
+            <div class="adm-price-card-input-wrap">
+              <span class="adm-price-currency">₹</span>
+              <input type="number" class="adm-price-input" id="price_fresher" min="0" step="1" placeholder="100" />
+            </div>
+            <button class="adm-price-save-btn" data-key="price_fresher">
+              <i class="fas fa-check"></i> Save
+            </button>
+            <span class="adm-price-status" id="status_price_fresher" hidden></span>
+          </div>
+
+          <!-- Experienced -->
+          <div class="adm-price-card">
+            <div class="adm-price-card-icon adm-icon-blue"><i class="fas fa-briefcase"></i></div>
+            <div class="adm-price-card-info">
+              <h3>Experienced</h3>
+              <p>Modern, Bold Sidebar, Creative, Corporate templates</p>
+            </div>
+            <div class="adm-price-card-input-wrap">
+              <span class="adm-price-currency">₹</span>
+              <input type="number" class="adm-price-input" id="price_experienced" min="0" step="1" placeholder="100" />
+            </div>
+            <button class="adm-price-save-btn" data-key="price_experienced">
+              <i class="fas fa-check"></i> Save
+            </button>
+            <span class="adm-price-status" id="status_price_experienced" hidden></span>
+          </div>
+
+          <!-- Developer -->
+          <div class="adm-price-card">
+            <div class="adm-price-card-icon adm-icon-purple"><i class="fas fa-code"></i></div>
+            <div class="adm-price-card-info">
+              <h3>Developer</h3>
+              <p>Tech-Focused template for software engineers</p>
+            </div>
+            <div class="adm-price-card-input-wrap">
+              <span class="adm-price-currency">₹</span>
+              <input type="number" class="adm-price-input" id="price_developer" min="0" step="1" placeholder="500" />
+            </div>
+            <button class="adm-price-save-btn" data-key="price_developer">
+              <i class="fas fa-check"></i> Save
+            </button>
+            <span class="adm-price-status" id="status_price_developer" hidden></span>
+          </div>
+
+        </div><!-- /adm-price-grid -->
+
+      </div>
+
+    </div><!-- /pricing -->
+
   </div><!-- /adm-main -->
 </div><!-- /adm-shell -->
 
@@ -373,6 +444,7 @@ function showSection(id) {
     if (id === "users"    && !usersLoaded)   { loadUsers(1); }
     if (id === "activity" && !activityLoaded){ loadActivity(); }
     if (id === "requests" && !srLoaded)      { loadServiceRequests(1); }
+    if (id === "pricing"  && !pricingLoaded) { loadPricing(); }
   }, 120);
 }
 
@@ -1088,6 +1160,7 @@ const SR_SERVICE_LABELS = {
   logo:         "Logo + Brand",
   landing_page: "Landing Page",
   other:        "Other",
+  chat:         "💬 Guest Chat",
 };
 
 const SR_STATUS_CFG = {

@@ -505,5 +505,44 @@ export default function adminRouter(db) {
     }
   });
 
+  // ── GET /admin/api/settings — return all key-value settings ──────────────
+  router.get("/api/settings", async (req, res) => {
+    try {
+      const result = await db.query("SELECT key, value FROM admin_settings ORDER BY key");
+      const settings = {};
+      for (const row of result.rows) settings[row.key] = row.value;
+      res.json({ success: true, settings });
+    } catch (err) {
+      console.error("Admin settings GET error:", err);
+      res.status(500).json({ success: false });
+    }
+  });
+
+  // ── PATCH /admin/api/settings — update one or more settings ──────────────
+  router.patch("/api/settings", async (req, res) => {
+    try {
+      const ALLOWED_KEYS = ["price_fresher", "price_experienced", "price_developer"];
+      const updates = req.body || {};
+      const entries = Object.entries(updates).filter(([k]) => ALLOWED_KEYS.includes(k));
+
+      if (!entries.length) return res.status(400).json({ success: false, message: "No valid keys" });
+
+      for (const [key, value] of entries) {
+        const num = parseInt(value, 10);
+        if (isNaN(num) || num < 0) return res.status(400).json({ success: false, message: `Invalid value for ${key}` });
+        await db.query(
+          `INSERT INTO admin_settings (key, value, updated_at) VALUES ($1, $2, NOW())
+           ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`,
+          [key, String(num)]
+        );
+      }
+
+      res.json({ success: true });
+    } catch (err) {
+      console.error("Admin settings PATCH error:", err);
+      res.status(500).json({ success: false });
+    }
+  });
+
   return router;
 }

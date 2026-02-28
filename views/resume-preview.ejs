@@ -91,6 +91,49 @@
   }
   const experienceItems = parseExperience(_expInput);
   const skillsLines = renderBullets(data.skills || "");
+
+  // Parse "Category: skill1, skill2" lines → [{category, skills:[]}]
+  function parseTechnologies(text) {
+    if (!text || typeof text !== "string") return [];
+    return text.split(/\r?\n+/).map(l => l.trim()).filter(Boolean).map(line => {
+      const ci = line.indexOf(":");
+      if (ci === -1) return { category: "", skills: line.split(",").map(s => s.trim()).filter(Boolean) };
+      return {
+        category: line.slice(0, ci).trim(),
+        skills: line.slice(ci + 1).split(",").map(s => s.trim()).filter(Boolean),
+      };
+    });
+  }
+
+  // Parse projects textarea → [{name, tech, link, description:[]}]
+  function parseProjects(text) {
+    if (!text || typeof text !== "string") return [];
+    const projects = [];
+    let current = null;
+    for (const raw of text.split(/\r?\n/)) {
+      const line = raw.trim();
+      if (!line) { if (current) { projects.push(current); current = null; } continue; }
+      const pipes = (line.match(/\|/g) || []).length;
+      if (pipes >= 1 && !line.startsWith("•") && !line.startsWith("-")) {
+        if (current) projects.push(current);
+        const parts = line.split("|").map(p => p.trim());
+        const name = parts[0] || "";
+        let tech = "", link = "";
+        for (let i = 1; i < parts.length; i++) {
+          if (/^tech:/i.test(parts[i])) tech = parts[i].replace(/^tech:\s*/i, "");
+          else if (/^https?:\/\//i.test(parts[i]) || parts[i].includes(".")) link = parts[i];
+        }
+        current = { name, tech, link, description: [] };
+      } else if (current) {
+        current.description.push(line);
+      }
+    }
+    if (current) projects.push(current);
+    return projects;
+  }
+
+  const technologiesCategories = parseTechnologies(data.technologies || "");
+  const projectItems = parseProjects(data.projects || "");
 %>
 
 <style>
@@ -429,7 +472,7 @@
         </div>
 
         <div class="resume-page <%= safeTpl %>">
-          <%- include('templates/' + safeTpl, { data, experienceItems, skillsLines }) %>
+          <%- include('templates/' + safeTpl, { data, experienceItems, skillsLines, qrCodeDataUrl, technologiesCategories, projectItems }) %>
         </div>
       </div>
     </div>
@@ -442,8 +485,8 @@
 
 <!-- Download buttons — both unlock after a single payment -->
 <div class="download-btn-row">
-  <button id="download-image-btn">PAY ₹100 &amp; DOWNLOAD JPG (A4)</button>
-  <button id="download-pdf-btn">PAY ₹100 &amp; DOWNLOAD PDF (A4)</button>
+  <button id="download-image-btn">PAY ₹<%= displayPrice %> &amp; DOWNLOAD JPG (A4)</button>
+  <button id="download-pdf-btn">PAY ₹<%= displayPrice %> &amp; DOWNLOAD PDF (A4)</button>
 </div>
 
   <p style="margin-top:1rem;">
@@ -629,6 +672,11 @@
   experienceJson:  data.experienceJson  || "",
   education:       data.education       || "",
   skills:          data.skills          || "",
+  technologies:    data.technologies    || "",
+  projects:        data.projects        || "",
+  portfolioUrl:    data.portfolioUrl    || "",
+  githubUrl:       data.githubUrl       || "",
+  certifications:  data.certifications  || "",
   profileImageUrl: data.profileImageUrl || ""
 }) %>
 </script>
@@ -922,6 +970,7 @@
       const res  = await fetch("/api/razorpay/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ template: templateName }),
       });
       const json = await res.json();
       if (!json.success) throw new Error("Order creation failed");
