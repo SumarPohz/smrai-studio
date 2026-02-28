@@ -1102,6 +1102,7 @@
   align-items: center;
   gap: 1.2rem;
   position: relative;
+  color: #f8fafc;   /* ensures h1/h2/h3 color:inherit resolves to white */
 }
 
 /* Profile photo */

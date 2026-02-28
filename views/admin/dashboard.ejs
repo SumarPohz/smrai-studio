@@ -2,12 +2,10 @@
 <link rel="stylesheet" href="/css/admin.css">
 <script>
   document.body.classList.add("adm-page");
-  // Mobile: measure real header height so nav strip sticks right below it
-  if (window.innerWidth <= 768) {
-    const h = document.querySelector('.top-header');
-    if (h) document.documentElement.style.setProperty('--adm-header-h', h.offsetHeight + 'px');
-  }
 </script>
+
+<!-- Hamburger drawer overlay (mobile only) -->
+<div class="adm-drawer-overlay" id="admDrawerOverlay"></div>
 
 <div class="adm-shell">
 
@@ -530,31 +528,37 @@ async function loadCharts() {
 
 loadCharts();
 
-// ── Mobile nav pin — stick admin nav to top once site header scrolls away ──
+// ── Hamburger drawer (mobile) ───────────────────────────────────────────────
 (function() {
-  if (window.innerWidth > 768) return;
-  const header  = document.querySelector('.top-header');
-  const sidebar = document.querySelector('.adm-sidebar');
-  if (!header || !sidebar) return;
+  const menuBtn  = document.getElementById('admMobileMenu');
+  const sidebar  = document.querySelector('.adm-sidebar');
+  const overlay  = document.getElementById('admDrawerOverlay');
+  const navLinks = document.querySelectorAll('.adm-nav-link[data-section]');
 
-  function updateNav() {
-    if (header.getBoundingClientRect().bottom <= 0) {
-      sidebar.style.position = 'fixed';
-      sidebar.style.top      = '0';
-      sidebar.style.left     = '0';
-      sidebar.style.right    = '0';
-      sidebar.style.zIndex   = '1000';
-    } else {
-      sidebar.style.position = 'sticky';
-      sidebar.style.top      = '0';
-      sidebar.style.left     = '';
-      sidebar.style.right    = '';
-      sidebar.style.zIndex   = '200';
-    }
+  function openDrawer() {
+    sidebar.classList.add('adm-drawer-open');
+    overlay.classList.add('adm-overlay-open');
+    document.body.style.overflow = 'hidden';
+    menuBtn.innerHTML = '<i class="fas fa-times"></i>';
   }
 
-  window.addEventListener('scroll', updateNav, { passive: true });
-  updateNav();
+  function closeDrawer() {
+    sidebar.classList.remove('adm-drawer-open');
+    overlay.classList.remove('adm-overlay-open');
+    document.body.style.overflow = '';
+    menuBtn.innerHTML = '<i class="fas fa-bars"></i>';
+  }
+
+  menuBtn.addEventListener('click', () => {
+    sidebar.classList.contains('adm-drawer-open') ? closeDrawer() : openDrawer();
+  });
+
+  overlay.addEventListener('click', closeDrawer);
+
+  // Close drawer when a nav item is tapped
+  navLinks.forEach(l => l.addEventListener('click', () => {
+    if (window.innerWidth <= 768) closeDrawer();
+  }));
 })();
 
 // ── Users table ────────────────────────────────────────────────────────────
@@ -1435,6 +1439,65 @@ document.getElementById("admChatClose").addEventListener("click", () => {
 document.getElementById("admChatModal").addEventListener("click", function (e) {
   if (e.target === this) { this.hidden = true; admActiveChatId = null; }
 });
+
+// ── Pricing ─────────────────────────────────────────────────────────────────
+let pricingLoaded = false;
+
+async function loadPricing() {
+  try {
+    const res  = await fetch("/admin/api/settings");
+    const data = await res.json();
+    if (!data.success) return;
+    ["price_fresher", "price_experienced", "price_developer"].forEach(key => {
+      const input = document.getElementById(key);
+      if (input && data.settings[key] !== undefined) input.value = data.settings[key];
+    });
+    pricingLoaded = true;
+  } catch (err) {
+    console.error("Failed to load pricing:", err);
+  }
+}
+
+document.querySelectorAll(".adm-price-save-btn").forEach(btn => {
+  btn.addEventListener("click", async () => {
+    const key    = btn.dataset.key;
+    const input  = document.getElementById(key);
+    const status = document.getElementById("status_" + key);
+    if (!input || !status) return;
+
+    const value = input.value.trim();
+    if (!value || isNaN(parseInt(value, 10)) || parseInt(value, 10) < 0) {
+      showPriceStatus(status, "error", "Invalid price");
+      return;
+    }
+
+    btn.disabled = true;
+    try {
+      const res  = await fetch("/admin/api/settings", {
+        method:  "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ [key]: value }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showPriceStatus(status, "ok", "Saved ✓");
+      } else {
+        showPriceStatus(status, "error", data.message || "Error");
+      }
+    } catch (_) {
+      showPriceStatus(status, "error", "Network error");
+    } finally {
+      btn.disabled = false;
+    }
+  });
+});
+
+function showPriceStatus(el, type, msg) {
+  el.textContent = msg;
+  el.className   = "adm-price-status adm-price-status-" + type;
+  el.hidden      = false;
+  setTimeout(() => { el.hidden = true; }, 3000);
+}
 </script>
 
 <%- include("../partials/footer") %>
