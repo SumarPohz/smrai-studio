@@ -521,7 +521,7 @@ export default function adminRouter(db) {
   // ── PATCH /admin/api/settings — update one or more settings ──────────────
   router.patch("/api/settings", async (req, res) => {
     try {
-      const ALLOWED_KEYS = ["price_fresher", "price_experienced", "price_developer"];
+      const ALLOWED_KEYS = ["price_fresher", "price_experienced", "price_developer", "price_ats-friendly"];
       const updates = req.body || {};
       const entries = Object.entries(updates).filter(([k]) => ALLOWED_KEYS.includes(k));
 

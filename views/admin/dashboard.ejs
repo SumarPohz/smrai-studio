@@ -281,6 +281,23 @@
             <span class="adm-price-status" id="status_price_developer" hidden></span>
           </div>
 
+          <!-- ATS Friendly -->
+          <div class="adm-price-card">
+            <div class="adm-price-card-icon adm-icon-green"><i class="fas fa-robot"></i></div>
+            <div class="adm-price-card-info">
+              <h3>ATS Friendly CV</h3>
+              <p>ATS-optimised developer template with semantic headings and clickable contact links</p>
+            </div>
+            <div class="adm-price-card-input-wrap">
+              <span class="adm-price-currency">₹</span>
+              <input type="number" class="adm-price-input" id="price_ats-friendly" min="0" step="1" placeholder="500" />
+            </div>
+            <button class="adm-price-save-btn" data-key="price_ats-friendly">
+              <i class="fas fa-check"></i> Save
+            </button>
+            <span class="adm-price-status" id="status_price_ats-friendly" hidden></span>
+          </div>
+
         </div><!-- /adm-price-grid -->
 
       </div>
@@ -1452,7 +1469,7 @@ async function loadPricing() {
     const res  = await fetch("/admin/api/settings");
     const data = await res.json();
     if (!data.success) return;
-    ["price_fresher", "price_experienced", "price_developer"].forEach(key => {
+    ["price_fresher", "price_experienced", "price_developer", "price_ats-friendly"].forEach(key => {
       const input = document.getElementById(key);
       if (input && data.settings[key] !== undefined) input.value = data.settings[key];
     });

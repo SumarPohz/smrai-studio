@@ -348,7 +348,7 @@
               ><%= (draft && draft.skills) || '' %></textarea>
             </div>
 
-            <% if (template === 'tech-focused') { %>
+            <% if (template === 'tech-focused' || template === 'ats-friendly') { %>
 
             <div class="rb-field ai-field-wrap">
               <div class="ai-field-label">
@@ -425,6 +425,81 @@
                 placeholder="AWS Certified Solutions Architect — 2024&#10;Google Professional Cloud Developer — 2023&#10;Meta React Developer Certificate — 2022"
               ><%= (draft && draft.certifications) || '' %></textarea>
             </div>
+
+            <% if (template === 'ats-friendly') { %>
+
+            <div class="rb-field ai-field-wrap">
+              <div class="ai-field-label">
+                <label for="achievements">Key Achievements <span style="font-weight:400;color:#6b7280;font-size:0.85em;">(optional)</span></label>
+                <div class="ai-btn-group">
+                  <span class="fmic-status" aria-live="polite"></span>
+                  <button type="button" class="ai-btn" data-field="achievements">✨ AI Suggest</button>
+                  <button type="button" class="ai-undo-btn" data-field="achievements" disabled>↩ Undo</button>
+                </div>
+              </div>
+              <p class="rb-field-hint">One achievement per line. ATS scanners rank resumes higher when key wins are listed.</p>
+              <textarea
+                id="achievements"
+                name="achievements"
+                rows="4"
+                placeholder="Led migration to microservices, reducing load time by 40%&#10;Open-source library with 2k+ GitHub stars&#10;Promoted to Senior Engineer within 18 months"
+              ><%= (draft && draft.achievements) || '' %></textarea>
+            </div>
+
+            <div class="rb-field ai-field-wrap">
+              <div class="ai-field-label">
+                <label for="awards">Awards <span style="font-weight:400;color:#6b7280;font-size:0.85em;">(optional)</span></label>
+                <div class="ai-btn-group">
+                  <span class="fmic-status" aria-live="polite"></span>
+                  <button type="button" class="ai-btn" data-field="awards">✨ AI Suggest</button>
+                  <button type="button" class="ai-undo-btn" data-field="awards" disabled>↩ Undo</button>
+                </div>
+              </div>
+              <p class="rb-field-hint">One award per line — e.g. <em>Dean's List — Cornell 2022</em></p>
+              <textarea
+                id="awards"
+                name="awards"
+                rows="3"
+                placeholder="Dean's List — Cornell School of Engineering&#10;Hackathon Winner — Google DevFest 2023&#10;Best Final Year Project Award"
+              ><%= (draft && draft.awards) || '' %></textarea>
+            </div>
+
+            <div class="rb-field ai-field-wrap">
+              <div class="ai-field-label">
+                <label for="training">Training &amp; Courses <span style="font-weight:400;color:#6b7280;font-size:0.85em;">(optional)</span></label>
+                <div class="ai-btn-group">
+                  <span class="fmic-status" aria-live="polite"></span>
+                  <button type="button" class="ai-btn" data-field="training">✨ AI Suggest</button>
+                  <button type="button" class="ai-undo-btn" data-field="training" disabled>↩ Undo</button>
+                </div>
+              </div>
+              <p class="rb-field-hint">One course per line — e.g. <em>Machine Learning — Stanford Online, 2023</em></p>
+              <textarea
+                id="training"
+                name="training"
+                rows="3"
+                placeholder="Full-Stack Web Development — freeCodeCamp, 2023&#10;Machine Learning Specialization — Coursera, 2022&#10;Introduction to Cloud Computing — AWS Training"
+              ><%= (draft && draft.training) || '' %></textarea>
+            </div>
+
+            <div class="rb-field ai-field-wrap">
+              <div class="ai-field-label">
+                <label for="volunteering">Volunteering <span style="font-weight:400;color:#6b7280;font-size:0.85em;">(optional)</span></label>
+                <div class="ai-btn-group">
+                  <span class="fmic-status" aria-live="polite"></span>
+                  <button type="button" class="ai-btn" data-field="volunteering">✨ AI Suggest</button>
+                  <button type="button" class="ai-undo-btn" data-field="volunteering" disabled>↩ Undo</button>
+                </div>
+              </div>
+              <textarea
+                id="volunteering"
+                name="volunteering"
+                rows="3"
+                placeholder="Tech Mentor — Google Developer Student Club (2022–Present)&#10;Open Source Contributor — Mozilla Firefox, reported 3 critical bugs&#10;Code instructor — weekend coding bootcamp for underprivileged youth"
+              ><%= (draft && draft.volunteering) || '' %></textarea>
+            </div>
+
+            <% } %>
 
             <% } %>
 
@@ -563,8 +638,8 @@
           </div>
 
         </div>
-        <% } else if (template === 'tech-focused') { %>
-        <!-- Tech-Focused: dark navy header + summary band + two-column body -->
+        <% } else if (template === 'tech-focused' || template === 'ats-friendly') { %>
+        <!-- Tech-Focused / ATS-Friendly: dark navy header + summary band + two-column body -->
         <div class="modern-mini-page tf-mode">
 
           <div class="tfmini-header">

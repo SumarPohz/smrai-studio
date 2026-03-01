@@ -1,5 +1,5 @@
 <%
-/* Map skill names → icon paths (for tech-focused template) */
+/* Map skill names → icon paths (for ats-friendly template) */
 const TF_ICONS = {
   "css":          "/images/skills/css.png",
   "docker":       "/images/skills/docker.png",
@@ -54,7 +54,7 @@ const certLines = (data.certifications || "")
   .split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, "")).filter(Boolean);
 %>
 
-<div class="tf-wrap">
+<div class="tf-wrap tf-wrap--ats">
 
   <!-- ═══════════════ HEADER ═══════════════ -->
   <div class="tf-header">
@@ -77,13 +77,13 @@ const certLines = (data.certifications || "")
         <% if (data.phone) { %>
           <span class="tf-contact-item">
             <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3-8.59A2 2 0 0 1 3.77 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 5.61 5.61l.91-.91a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
-            <%= data.phone %>
+            <a href="tel:<%= data.phone %>"><%= data.phone %></a>
           </span>
         <% } %>
         <% if (data.email) { %>
           <span class="tf-contact-item">
             <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,12 2,6"></polyline></svg>
-            <%= data.email %>
+            <a href="mailto:<%= data.email %>"><%= data.email %></a>
           </span>
         <% } %>
         <% if (data.location) { %>
@@ -98,13 +98,13 @@ const certLines = (data.certifications || "")
         <% if (data.portfolioUrl) { %>
           <span class="tf-link-item">
             <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
-            <%= data.portfolioUrl.replace(/^https?:\/\//, '') %>
+            <a href="<%= data.portfolioUrl %>"><%= data.portfolioUrl.replace(/^https?:\/\//, '') %></a>
           </span>
         <% } %>
         <% if (data.githubUrl) { %>
           <span class="tf-link-item">
             <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
-            <%= data.githubUrl.replace(/^https?:\/\//, '') %>
+            <a href="<%= data.githubUrl %>"><%= data.githubUrl.replace(/^https?:\/\//, '') %></a>
           </span>
         <% } %>
       </div>
@@ -123,7 +123,7 @@ const certLines = (data.certifications || "")
   <!-- ═══════════════ SUMMARY BAND ═══════════════ -->
   <% if (data.summary) { %>
   <div class="tf-summary-band">
-    <div class="tf-summary-label">Professional Summary</div>
+    <h2 class="tf-summary-label">Summary</h2>
     <p><%= data.summary %></p>
   </div>
   <% } %>
@@ -131,12 +131,94 @@ const certLines = (data.certifications || "")
   <!-- ═══════════════ BODY (two-column) ═══════════════ -->
   <div class="tf-body">
 
-    <!-- LEFT SIDEBAR -->
+    <!-- RIGHT CONTENT — placed first in HTML for ATS parse order -->
+    <div class="tf-right">
+
+      <!-- Work Experience -->
+      <% if (experienceItems.length || data.experience) { %>
+      <div class="tf-right-section">
+        <h2 class="tf-section-title">Work Experience</h2>
+
+        <% if (experienceItems.length) { %>
+          <% experienceItems.forEach(function(exp) { %>
+            <div class="tf-exp-item">
+              <div class="tf-exp-header">
+                <div>
+                  <span class="tf-exp-title"><%= exp.title %></span>
+                  <% if (exp.company) { %><span class="tf-exp-company"> · <%= exp.company %></span><% } %>
+                </div>
+                <% if (exp.dates) { %><span class="tf-exp-dates"><%= exp.dates %></span><% } %>
+              </div>
+              <% if (exp.description) { %><p class="tf-exp-body"><%= exp.description %></p><% } %>
+            </div>
+          <% }); %>
+        <% } else { %>
+          <p class="tf-exp-body"><%= data.experience %></p>
+        <% } %>
+      </div>
+      <% } %>
+
+      <!-- Key Achievements -->
+      <% if (data.achievements) {
+        const achievementLines = data.achievements.split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, '')).filter(Boolean);
+        if (achievementLines.length) { %>
+      <div class="tf-right-section">
+        <h2 class="tf-section-title">Key Achievements</h2>
+        <ul class="tf-achievement-list">
+          <% achievementLines.forEach(function(line) { %>
+            <li><%= line %></li>
+          <% }); %>
+        </ul>
+      </div>
+      <% } } %>
+
+      <!-- Projects -->
+      <% if (projectItems.length) { %>
+      <div class="tf-right-section">
+        <h2 class="tf-section-title">Projects</h2>
+        <% projectItems.forEach(function(proj) { %>
+          <div class="tf-project-card">
+            <div class="tf-project-header">
+              <span class="tf-project-name"><%= proj.name %></span>
+              <% if (proj.link) { %>
+                <a href="<%= proj.link.startsWith('http') ? proj.link : 'https://' + proj.link %>" class="tf-project-link"><%= proj.link.replace(/^https?:\/\//, '') %> ↗</a>
+              <% } %>
+            </div>
+            <% if (proj.tech) { %>
+              <div class="tf-project-tech">
+                <% proj.tech.split(',').map(function(t){ return t.trim(); }).filter(Boolean).forEach(function(t) { %>
+                  <% const icon = tfIcon(t); %>
+                  <span class="tf-project-tech-tag">
+                    <% if (icon) { %><img src="<%= icon %>" class="tf-skill-icon-sm" alt="" /><% } %>
+                    <%= t %>
+                  </span>
+                <% }); %>
+              </div>
+            <% } %>
+            <% if (proj.description.length) { %>
+              <p class="tf-project-desc"><%= proj.description.join('\n') %></p>
+            <% } %>
+          </div>
+        <% }); %>
+      </div>
+      <% } %>
+
+      <!-- Volunteering -->
+      <% if (data.volunteering) { %>
+      <div class="tf-right-section">
+        <h2 class="tf-section-title">Volunteering</h2>
+        <p class="tf-exp-body"><%= data.volunteering %></p>
+      </div>
+      <% } %>
+
+    </div><!-- /tf-right -->
+
+    <!-- LEFT SIDEBAR — placed second in HTML; CSS order:1 keeps it visually left -->
     <div class="tf-left">
 
-      <!-- Technical Skills -->
+      <!-- Skills -->
       <div class="tf-left-section">
-        <div class="tf-section-title">Technical Skills</div>
+        <h2 class="tf-section-title">Skills</h2>
 
         <% if (technologiesCategories.length) { %>
           <% technologiesCategories.forEach(function(cat) { %>
@@ -173,16 +255,31 @@ const certLines = (data.certifications || "")
       <!-- Education -->
       <% if (data.education) { %>
       <div class="tf-left-section">
-        <div class="tf-section-title">Education</div>
+        <h2 class="tf-section-title">Education</h2>
         <p class="tf-left-text"><%= data.education %></p>
       </div>
       <div class="tf-divider"></div>
       <% } %>
 
+      <!-- Training / Courses -->
+      <% if (data.training) {
+        const trainingLines = data.training.split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, '')).filter(Boolean);
+        if (trainingLines.length) { %>
+      <div class="tf-left-section">
+        <h2 class="tf-section-title">Training &amp; Courses</h2>
+        <ul class="tf-cert-list">
+          <% trainingLines.forEach(function(t) { %>
+            <li><%= t %></li>
+          <% }); %>
+        </ul>
+      </div>
+      <div class="tf-divider"></div>
+      <% } } %>
+
       <!-- Certifications -->
       <% if (certLines.length) { %>
       <div class="tf-left-section">
-        <div class="tf-section-title">Certifications</div>
+        <h2 class="tf-section-title">Certifications</h2>
         <ul class="tf-cert-list">
           <% certLines.forEach(function(cert) { %>
             <li><%= cert %></li>
@@ -192,75 +289,31 @@ const certLines = (data.certifications || "")
       <div class="tf-divider"></div>
       <% } %>
 
+      <!-- Awards -->
+      <% if (data.awards) {
+        const awardLines = data.awards.split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, '')).filter(Boolean);
+        if (awardLines.length) { %>
+      <div class="tf-left-section">
+        <h2 class="tf-section-title">Awards</h2>
+        <ul class="tf-cert-list">
+          <% awardLines.forEach(function(a) { %>
+            <li><%= a %></li>
+          <% }); %>
+        </ul>
+      </div>
+      <div class="tf-divider"></div>
+      <% } } %>
+
       <!-- Languages -->
       <% if (data.languages) { %>
       <div class="tf-left-section">
-        <div class="tf-section-title">Languages</div>
+        <h2 class="tf-section-title">Languages</h2>
         <p class="tf-left-text"><%= data.languages %></p>
       </div>
       <% } %>
 
     </div><!-- /tf-left -->
 
-    <!-- RIGHT CONTENT -->
-    <div class="tf-right">
-
-      <!-- Work Experience -->
-      <% if (experienceItems.length || data.experience) { %>
-      <div class="tf-right-section">
-        <div class="tf-section-title">Work Experience</div>
-
-        <% if (experienceItems.length) { %>
-          <% experienceItems.forEach(function(exp) { %>
-            <div class="tf-exp-item">
-              <div class="tf-exp-header">
-                <div>
-                  <span class="tf-exp-title"><%= exp.title %></span>
-                  <% if (exp.company) { %><span class="tf-exp-company"> · <%= exp.company %></span><% } %>
-                </div>
-                <% if (exp.dates) { %><span class="tf-exp-dates"><%= exp.dates %></span><% } %>
-              </div>
-              <% if (exp.description) { %><p class="tf-exp-body"><%= exp.description %></p><% } %>
-            </div>
-          <% }); %>
-        <% } else { %>
-          <p class="tf-exp-body"><%= data.experience %></p>
-        <% } %>
-      </div>
-      <% } %>
-
-      <!-- Projects -->
-      <% if (projectItems.length) { %>
-      <div class="tf-right-section">
-        <div class="tf-section-title">Projects</div>
-        <% projectItems.forEach(function(proj) { %>
-          <div class="tf-project-card">
-            <div class="tf-project-header">
-              <span class="tf-project-name"><%= proj.name %></span>
-              <% if (proj.link) { %>
-                <span class="tf-project-link"><%= proj.link.replace(/^https?:\/\//, '') %> ↗</span>
-              <% } %>
-            </div>
-            <% if (proj.tech) { %>
-              <div class="tf-project-tech">
-                <% proj.tech.split(',').map(function(t){ return t.trim(); }).filter(Boolean).forEach(function(t) { %>
-                  <% const icon = tfIcon(t); %>
-                  <span class="tf-project-tech-tag">
-                    <% if (icon) { %><img src="<%= icon %>" class="tf-skill-icon-sm" alt="" /><% } %>
-                    <%= t %>
-                  </span>
-                <% }); %>
-              </div>
-            <% } %>
-            <% if (proj.description.length) { %>
-              <p class="tf-project-desc"><%= proj.description.join('\n') %></p>
-            <% } %>
-          </div>
-        <% }); %>
-      </div>
-      <% } %>
-
-    </div><!-- /tf-right -->
   </div><!-- /tf-body -->
 
-</div><!-- /tf-wrap -->
+</div><!-- /tf-wrap tf-wrap--ats -->
