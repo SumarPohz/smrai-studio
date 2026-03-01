@@ -79,6 +79,16 @@ export const TEMPLATES = [
     badge: "Coming Soon",
     category: "experienced",
   },
+  {
+    id: "ats-friendly",
+    title: "ATS Friendly CV",
+    description: "ATS-optimised developer template with semantic headings, clickable contact links, and correct parse order.",
+    previewImage: "/images/templates/tech.png",
+    isPaid: true,
+    isAvailable: true,
+    badge: "ATS Friendly",
+    category: "ats-friendly",
+  },
 ];
 
 export function getTemplateById(id) {

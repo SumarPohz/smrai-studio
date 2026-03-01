@@ -229,9 +229,10 @@ await db.query(`
     `);
     await db.query(`
       INSERT INTO admin_settings (key, value) VALUES
-        ('price_fresher',     '100'),
-        ('price_experienced', '100'),
-        ('price_developer',   '500')
+        ('price_fresher',      '100'),
+        ('price_experienced',  '100'),
+        ('price_developer',    '500'),
+        ('price_ats-friendly', '500')
       ON CONFLICT (key) DO NOTHING;
     `);
 

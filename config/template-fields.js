@@ -18,7 +18,7 @@ const COMMON_REQUIRED = [
 
 const PHOTO_OPTIONAL = { key: "profileImageUrl", label: "Profile Photo URL", type: "url" };
 
-const PHOTO_TEMPLATES = ["modern-1", "bold-sidebar", "creative-gradient", "tech-focused"];
+const PHOTO_TEMPLATES = ["modern-1", "bold-sidebar", "creative-gradient", "tech-focused", "ats-friendly"];
 
 export const TEMPLATE_STRUCTURE = {
   "modern-1":          { required: [...COMMON_REQUIRED], optional: [PHOTO_OPTIONAL] },
@@ -29,6 +29,7 @@ export const TEMPLATE_STRUCTURE = {
   "elegant-serif":     { required: [...COMMON_REQUIRED], optional: [] },
   "tech-focused":      { required: [...COMMON_REQUIRED], optional: [PHOTO_OPTIONAL] },
   "classic-border":    { required: [...COMMON_REQUIRED], optional: [] },
+  "ats-friendly":      { required: [...COMMON_REQUIRED], optional: [PHOTO_OPTIONAL] },
 };
 
 export function getFieldsForTemplate(id) {

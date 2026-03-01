@@ -1212,6 +1212,7 @@
   background: #1e293b;
   padding: 0.75rem 1.6rem;
   flex-shrink: 0;
+  color: #f8fafc;   /* ensures h2 color:inherit resolves to light text */
 }
 
 .tf-summary-label {
@@ -1277,8 +1278,35 @@
   flex-shrink: 0;
 }
 
+/* ── ATS Friendly variant modifier (used by ats-friendly.ejs) ────────────── */
+/* HTML source order: tf-right first, tf-left second. CSS order flips visual. */
+.tf-wrap--ats .tf-left  { order: 1; }
+.tf-wrap--ats .tf-right { order: 2; }
+
+/* h2 section titles: override .resume-page h2 {color:inherit} (0-1-1) via 0-2-0 */
+.tf-wrap--ats .tf-section-title {
+  color: #3b82f6;
+}
+.tf-wrap--ats .tf-summary-label {
+  color: #60a5fa;
+}
+
+/* Proper mailto:/tel: links in header — visually unchanged */
+.tf-wrap--ats .tf-contact-item a {
+  color: inherit;
+  text-decoration: none;
+}
+.tf-wrap--ats .tf-contact-item a:hover { text-decoration: underline; }
+.tf-wrap--ats .tf-link-item a {
+  color: inherit;
+  text-decoration: none;
+}
+.tf-wrap--ats .tf-link-item a:hover { text-decoration: underline; }
+
 .tf-left-section {
   margin-bottom: 0.95rem;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .tf-right-section {
@@ -1399,6 +1427,8 @@
   margin-bottom: 0.85rem;
   padding-bottom: 0.75rem;
   border-bottom: 1px solid #f1f5f9;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .tf-exp-item:last-child {
@@ -1440,6 +1470,33 @@
   margin: 0;
 }
 
+/* ── Key Achievements list (right column) ── */
+.tf-achievement-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.tf-achievement-list li {
+  font-size: 0.72rem;
+  color: #374151;
+  padding-left: 1rem;
+  position: relative;
+  line-height: 1.55;
+}
+
+.tf-achievement-list li::before {
+  content: '★';
+  position: absolute;
+  left: 0;
+  color: #3b82f6;
+  font-size: 0.6rem;
+  top: 0.15em;
+}
+
 /* ── Project cards (right) ── */
 .tf-project-card {
   border: 1px solid #e2e8f0;
@@ -1448,6 +1505,8 @@
   padding: 0.6rem 0.75rem;
   margin-bottom: 0.6rem;
   background: #fafafa;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .tf-project-header {

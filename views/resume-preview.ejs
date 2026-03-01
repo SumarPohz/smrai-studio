@@ -7,7 +7,8 @@
   // Allowed template IDs for partial loading
   const validTemplates = [
     "modern-1", "bold-sidebar", "minimal-1", "creative-gradient",
-    "corporate-clean", "elegant-serif", "tech-focused", "classic-border"
+    "corporate-clean", "elegant-serif", "tech-focused", "classic-border",
+    "ats-friendly"
   ];
   const safeTpl = validTemplates.includes(tpl) ? tpl : "modern-1";
 
@@ -297,6 +298,9 @@
     .experience-list li,
     .es-exp-item,
     .tf-exp-item,
+    .tf-project-card,
+    .tf-cert-list li,
+    .tf-achievement-list li,
     .cb-exp-item {
       page-break-inside: avoid;
       break-inside: avoid;
@@ -309,7 +313,8 @@
     .cg-section h3,
     .corp-section h3,
     .es-section h3,
-    .tf-section h3,
+    .tf-left-section h2,
+    .tf-right-section h2,
     .cb-section h3 {
       page-break-after: avoid;
       break-after: avoid;
@@ -322,7 +327,7 @@
     .cg-section,
     .corp-section,
     .es-section,
-    .tf-section,
+    .tf-left-section,
     .cb-section {
       page-break-inside: avoid;
       break-inside: avoid;
@@ -520,7 +525,7 @@
         ".cg-section, .cg-exp-item, .cg-refs-grid, .cg-ref-card, " +
         ".corp-section, " +
         ".es-section, " +
-        ".tf-section, " +
+        ".tf-left-section, .tf-exp-item, .tf-project-card, " +
         ".cb-section"
       );
       var a4Top = a4.getBoundingClientRect().top;
@@ -677,6 +682,10 @@
   portfolioUrl:    data.portfolioUrl    || "",
   githubUrl:       data.githubUrl       || "",
   certifications:  data.certifications  || "",
+  achievements:    data.achievements    || "",
+  awards:          data.awards          || "",
+  training:        data.training        || "",
+  volunteering:    data.volunteering    || "",
   profileImageUrl: data.profileImageUrl || ""
 }) %>
 </script>
