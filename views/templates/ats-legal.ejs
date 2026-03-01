@@ -1,0 +1,13 @@
+<% const roleConfig = {
+  expHeading:         "Legal Experience",
+  achievementHeading: "Key Achievements",
+  projectHeading:     "Notable Cases & Projects",
+  volunteerHeading:   "Pro Bono & Volunteering",
+  skillsHeading:      "Legal Skills & Areas of Practice",
+  certHeading:        "Bar Admissions & Licenses",
+  trainingHeading:    "Training & Continuing Education",
+  awardsHeading:      "Awards & Honors",
+  eduHeading:         "Education",
+  langHeading:        "Languages"
+}; %>
+<%- include('_ats-base', { roleConfig, data, experienceItems, skillsLines, qrCodeDataUrl, technologiesCategories, projectItems }) %>

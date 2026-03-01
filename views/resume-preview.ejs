@@ -8,7 +8,10 @@
   const validTemplates = [
     "modern-1", "bold-sidebar", "minimal-1", "creative-gradient",
     "corporate-clean", "elegant-serif", "tech-focused", "classic-border",
-    "ats-friendly"
+    "ats-friendly",
+    "ats-customer-service", "ats-sales", "ats-marketing", "ats-healthcare",
+    "ats-finance", "ats-teacher", "ats-hr", "ats-engineering",
+    "ats-admin", "ats-legal", "ats-logistics", "ats-hospitality"
   ];
   const safeTpl = validTemplates.includes(tpl) ? tpl : "modern-1";
 
@@ -527,9 +530,20 @@
         var pageNum  = Math.floor(elTop / A4_HEIGHT);
         var boundary = (pageNum + 1) * A4_HEIGHT;
 
-        if (elTop <= boundary && elBottom > boundary) {
-          /* Element straddles or touches boundary — push it just past */
-          var push   = boundary - elTop + 4; /* 4px breathing room — keeps gap minimal */
+        /*
+         * Push if:
+         *  (a) element straddles the boundary (original case), OR
+         *  (b) element starts within 80px of the boundary AND its bottom
+         *      enters the 8px pg-break zone above the boundary — this
+         *      prevents small sections (headings, cert lists, etc.) from
+         *      touching the page-break line from above.
+         */
+        var straddles = elTop < boundary && elBottom > boundary;
+        var nearEdge  = elTop > (boundary - 80) && elBottom > (boundary - 8);
+
+        if (straddles || nearEdge) {
+          /* Push 24px past boundary: 8px clears pg-break lower zone + 16px breathing */
+          var push   = boundary - elTop + 24;
           var origMt = el.style.marginTop || "";
           el.setAttribute("data-pb-push", origMt);
           el.style.marginTop = (parseFloat(origMt) || 0) + push + "px";
@@ -618,7 +632,8 @@
 
       var availableWidth = wrapper.getBoundingClientRect().width;
       if (availableWidth > window.innerWidth) availableWidth = window.innerWidth;
-      if (availableWidth <= 0) return;
+      /* On mobile first-paint the wrapper may not have laid out yet — retry */
+      if (availableWidth <= 0) { setTimeout(scalePreview, 100); return; }
 
       /*
        * Step 1 — remove any transform so avoidPageBreaks reads positions in
@@ -670,7 +685,26 @@
       requestAnimationFrame(function () {
         scalePreview();
       });
-      window.addEventListener("resize", scalePreview);
+
+      /*
+       * Debounce resize — on mobile the browser fires "resize" continuously
+       * as the address-bar hides/shows during scroll; raw handler would cause
+       * dozens of avoidPageBreaks() calls per second and visible jitter.
+       */
+      var resizeTimer;
+      window.addEventListener("resize", function () {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(scalePreview, 150);
+      });
+
+      /*
+       * orientationchange — viewport dimensions settle ~200 ms after the
+       * event fires; without the delay getBoundingClientRect returns stale
+       * values from the previous orientation.
+       */
+      window.addEventListener("orientationchange", function () {
+        setTimeout(scalePreview, 250);
+      });
     }
 
     if (document.readyState === "loading") {
@@ -707,8 +741,10 @@
   skills:          data.skills          || "",
   technologies:    data.technologies    || "",
   projects:        data.projects        || "",
+  zipCode:         data.zipCode         || "",
   portfolioUrl:    data.portfolioUrl    || "",
   githubUrl:       data.githubUrl       || "",
+  linkedinUrl:     data.linkedinUrl     || "",
   certifications:  data.certifications  || "",
   achievements:    data.achievements    || "",
   awards:          data.awards          || "",

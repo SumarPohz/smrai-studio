@@ -1,5 +1,10 @@
 <%
-/* Map skill names → icon paths (for ats-friendly template) */
+/* ===================================================================
+   _ats-base.ejs  —  Shared ATS-optimised two-column template
+   Called by role-specific wrappers that supply a `roleConfig` object.
+   =================================================================== */
+
+/* Map skill names → icon paths */
 const TF_ICONS = {
   "css":          "/images/skills/css.png",
   "docker":       "/images/skills/docker.png",
@@ -60,24 +65,34 @@ function boldMd(text) {
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 }
 
-/* Auto-bold the name/title part of a cert/award/training line.
-   If **bold** markers exist, uses those; otherwise bolds the text
-   before the first date/year separator (—, –, or -). */
+/* Auto-bold the name/title part of a cert/award/training line */
 function boldEntry(text) {
   if ((text || '').includes('**')) return boldMd(text);
   const safe = (text || '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  // "Name — 2024" or "Name — 2022–2023"
   const emMatch = safe.match(/^(.*?)\s+—\s+(\d{4}.*)$/);
   if (emMatch) return '<strong>' + emMatch[1] + '</strong> — ' + emMatch[2];
-  // "Name - Something" (hyphen separator)
   const hyphenMatch = safe.match(/^(.*?)\s+-\s+(.+)$/);
   if (hyphenMatch) return '<strong>' + hyphenMatch[1] + '</strong> - ' + hyphenMatch[2];
   return safe;
 }
+
+/* Role config with defaults */
+const rc = (typeof roleConfig !== 'undefined' && roleConfig) ? roleConfig : {};
+const _expHeading         = rc.expHeading         || "Experience";
+const _achievementHeading = rc.achievementHeading || "Key Achievements";
+const _projectHeading     = rc.projectHeading     || "Projects";
+const _volunteerHeading   = rc.volunteerHeading   || "Volunteering";
+const _skillsHeading      = rc.skillsHeading      || "Skills";
+const _certHeading        = rc.certHeading        || "Certifications";
+const _trainingHeading    = rc.trainingHeading    || "Training & Courses";
+const _awardsHeading      = rc.awardsHeading      || "Awards";
+const _eduHeading         = rc.eduHeading         || "Education";
+const _langHeading        = rc.langHeading        || "Languages";
+const _wrapClass          = rc.wrapClass          || "";
 %>
 
-<div class="tf-wrap tf-wrap--ats">
+<div class="tf-wrap tf-wrap--ats<%= _wrapClass ? ' ' + _wrapClass : '' %>">
 
   <!-- ═══════════════ HEADER ═══════════════ -->
   <div class="tf-header">
@@ -166,7 +181,7 @@ function boldEntry(text) {
       <!-- Experience -->
       <% if (experienceItems.length || data.experience) { %>
       <div class="tf-right-section">
-        <h2 class="tf-section-title">Experience</h2>
+        <h2 class="tf-section-title"><%= _expHeading %></h2>
 
         <% if (experienceItems.length) { %>
           <% experienceItems.forEach(function(exp) { %>
@@ -208,7 +223,7 @@ function boldEntry(text) {
         const achievementLines = data.achievements.split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, '')).filter(Boolean);
         if (achievementLines.length) { %>
       <div class="tf-right-section">
-        <h2 class="tf-section-title">Key Achievements</h2>
+        <h2 class="tf-section-title"><%= _achievementHeading %></h2>
         <ul class="tf-achievement-list">
           <% achievementLines.forEach(function(line) { %>
             <li><%- boldMd(line) %></li>
@@ -220,7 +235,7 @@ function boldEntry(text) {
       <!-- Projects -->
       <% if (projectItems.length) { %>
       <div class="tf-right-section">
-        <h2 class="tf-section-title">Projects</h2>
+        <h2 class="tf-section-title"><%= _projectHeading %></h2>
         <% projectItems.forEach(function(proj) { %>
           <div class="tf-project-card">
             <div class="tf-project-header">
@@ -261,7 +276,7 @@ function boldEntry(text) {
           .filter(Boolean);
         if (volunteerLines.length) { %>
       <div class="tf-right-section">
-        <h2 class="tf-section-title">Volunteering</h2>
+        <h2 class="tf-section-title"><%= _volunteerHeading %></h2>
         <ul class="tf-achievement-list">
           <% volunteerLines.forEach(function(line) { %>
             <li><%- boldMd(line) %></li>
@@ -277,7 +292,7 @@ function boldEntry(text) {
 
       <!-- Skills -->
       <div class="tf-left-section">
-        <h2 class="tf-section-title">Skills</h2>
+        <h2 class="tf-section-title"><%= _skillsHeading %></h2>
 
         <% if (technologiesCategories.length) { %>
           <% technologiesCategories.forEach(function(cat) { %>
@@ -316,10 +331,9 @@ function boldEntry(text) {
         const eduLines = data.education.split(/\r?\n+/).map(function(l){ return l.trim(); }).filter(Boolean);
       %>
       <div class="tf-left-section">
-        <h2 class="tf-section-title">Education</h2>
+        <h2 class="tf-section-title"><%= _eduHeading %></h2>
         <ul class="tf-cert-list">
           <% eduLines.forEach(function(line) {
-            // "2020 – B.Tech …" → "<strong>B.Tech …</strong> — 2020"
             const yearPrefix = line.match(/^(\d{4})\s*[–—-]+\s*(.+)$/);
             let rendered;
             if (yearPrefix) {
@@ -341,7 +355,7 @@ function boldEntry(text) {
         const trainingLines = data.training.split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, '')).filter(Boolean);
         if (trainingLines.length) { %>
       <div class="tf-left-section">
-        <h2 class="tf-section-title">Training &amp; Courses</h2>
+        <h2 class="tf-section-title"><%= _trainingHeading %></h2>
         <ul class="tf-cert-list">
           <% trainingLines.forEach(function(t) { %>
             <li><%- boldEntry(t) %></li>
@@ -354,7 +368,7 @@ function boldEntry(text) {
       <!-- Certifications -->
       <% if (certLines.length) { %>
       <div class="tf-left-section">
-        <h2 class="tf-section-title">Certifications</h2>
+        <h2 class="tf-section-title"><%= _certHeading %></h2>
         <ul class="tf-cert-list">
           <% certLines.forEach(function(cert) { %>
             <li><%- boldEntry(cert) %></li>
@@ -369,7 +383,7 @@ function boldEntry(text) {
         const awardLines = data.awards.split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, '')).filter(Boolean);
         if (awardLines.length) { %>
       <div class="tf-left-section">
-        <h2 class="tf-section-title">Awards</h2>
+        <h2 class="tf-section-title"><%= _awardsHeading %></h2>
         <ul class="tf-cert-list">
           <% awardLines.forEach(function(a) { %>
             <li><%- boldEntry(a) %></li>
@@ -382,7 +396,7 @@ function boldEntry(text) {
       <!-- Languages -->
       <% if (data.languages) { %>
       <div class="tf-left-section">
-        <h2 class="tf-section-title">Languages</h2>
+        <h2 class="tf-section-title"><%= _langHeading %></h2>
         <p class="tf-left-text"><%= data.languages %></p>
       </div>
       <% } %>
@@ -391,4 +405,4 @@ function boldEntry(text) {
 
   </div><!-- /tf-body -->
 
-</div><!-- /tf-wrap tf-wrap--ats -->
+</div><!-- /tf-wrap -->

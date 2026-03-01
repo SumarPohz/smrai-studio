@@ -1,0 +1,13 @@
+<% const roleConfig = {
+  expHeading:         "Engineering Experience",
+  achievementHeading: "Key Achievements",
+  projectHeading:     "Engineering Projects",
+  volunteerHeading:   "Volunteering",
+  skillsHeading:      "Technical Skills",
+  certHeading:        "Certifications & Licenses",
+  trainingHeading:    "Training & Courses",
+  awardsHeading:      "Awards & Recognition",
+  eduHeading:         "Education",
+  langHeading:        "Languages"
+}; %>
+<%- include('_ats-base', { roleConfig, data, experienceItems, skillsLines, qrCodeDataUrl, technologiesCategories, projectItems }) %>
