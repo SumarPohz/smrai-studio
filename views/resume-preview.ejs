@@ -367,15 +367,10 @@
     opacity: 1;
   }
 
-  .wm-tile-1 { top: 14%;  left: 6%; }
-  .wm-tile-2 { top: 44%;  right: 10%; }
-  .wm-tile-3 { bottom: 16%; left: 14%; }
-
   /* ── Central prominent stamp ── */
   .wm-center-stamp {
     position: absolute;
-    top: 50%;
-    left: 60%;
+    /* top / left are set via inline style by refreshWatermark() */
     transform: translate(-50%, -50%);
     display: flex;
     flex-direction: column;
@@ -453,28 +448,8 @@
     <div class="preview-scale-container" id="scaleContainer">
       <!-- A4 container we capture for JPG / print -->
       <div id="resumeA4" class="resume-a4">
-        <!-- WATERMARK (VISIBLE UNTIL PAYMENT) -->
-        <div class="resume-watermark">
-          <!-- Tiled diagonal stamps -->
-          <div class="wm-tile wm-tile-1">
-            <img src="/images/logo.png" class="wm-tile-logo" alt="">
-            <span>Not-Paid</span>
-          </div>
-          <div class="wm-tile wm-tile-2">
-            <img src="/images/logo.png" class="wm-tile-logo" alt="">
-            <span>Not-Paid</span>
-          </div>
-          <div class="wm-tile wm-tile-3">
-            <img src="/images/logo.png" class="wm-tile-logo" alt="">
-            <span>Not-Paid</span>
-          </div>
-          <!-- Central prominent stamp -->
-          <div class="wm-center-stamp">
-            <img src="/images/logo.png" class="wm-center-logo" alt="">
-            <span class="wm-center-brand">SmrAI-Studio</span>
-            <span class="wm-center-label">PREVIEW ONLY · NOT FOR USE</span>
-          </div>
-        </div>
+        <!-- WATERMARK (VISIBLE UNTIL PAYMENT) — tiles injected per-page by refreshWatermark() -->
+        <div class="resume-watermark"></div>
 
         <div class="resume-page <%= safeTpl %>">
           <%- include('templates/' + safeTpl, { data, experienceItems, skillsLines, qrCodeDataUrl, technologiesCategories, projectItems }) %>
@@ -518,7 +493,7 @@
       }
 
       /* Sections that must not be split across pages — all templates */
-      var els = a4.querySelectorAll(
+      var nodeList = a4.querySelectorAll(
         ".modern-section-block, .exp-entry, " +
         ".bs-section, .bs-content-section, .bs-exp-item, .bs-ref-grid, .bs-ref-entry, " +
         ".min-section, " +
@@ -528,24 +503,89 @@
         ".tf-left-section, .tf-exp-item, .tf-project-card, " +
         ".cb-section"
       );
+
+      /*
+       * Sort by VISUAL top position, not DOM order.
+       * Critical for two-column layouts where CSS `order` reverses DOM order
+       * (e.g. ATS template: tf-right is first in DOM but visually on the right).
+       * Processing top-to-bottom ensures each element's position is read AFTER
+       * elements above it have already been pushed, avoiding cascade misses.
+       */
       var a4Top = a4.getBoundingClientRect().top;
+      var els = Array.prototype.slice.call(nodeList).sort(function (a, b) {
+        return a.getBoundingClientRect().top - b.getBoundingClientRect().top;
+      });
 
       for (var s = 0; s < els.length; s++) {
-        var el   = els[s];
-        var rect = el.getBoundingClientRect();
+        var el = els[s];
+        /* Re-read position — previous iterations may have pushed elements above,
+           shifting this element's rendered position */
+        var rect     = el.getBoundingClientRect();
         var elTop    = rect.top    - a4Top;
         var elBottom = rect.bottom - a4Top;
 
         var pageNum  = Math.floor(elTop / A4_HEIGHT);
         var boundary = (pageNum + 1) * A4_HEIGHT;
 
-        if (elTop < boundary && elBottom > boundary) {
-          /* Element straddles boundary — push it below */
-          var push    = boundary - elTop + 40; /* 40px breathing room */
-          var origMt  = el.style.marginTop || "";
+        if (elTop <= boundary && elBottom > boundary) {
+          /* Element straddles or touches boundary — push it just past */
+          var push   = boundary - elTop + 4; /* 4px breathing room — keeps gap minimal */
+          var origMt = el.style.marginTop || "";
           el.setAttribute("data-pb-push", origMt);
           el.style.marginTop = (parseFloat(origMt) || 0) + push + "px";
         }
+      }
+    }
+
+    /*
+     * Inject/refresh watermark tiles — one set per A4 page.
+     * Static HTML tiles are replaced so every page always has coverage.
+     * Bails out immediately if the watermark element was removed (paid user).
+     */
+    function refreshWatermark() {
+      var a4 = document.getElementById("resumeA4");
+      var wm = a4 && a4.querySelector(".resume-watermark");
+      if (!wm) return; // removed after payment
+
+      /* Clear all existing tiles + stamps (static HTML or previous dynamic) */
+      var existing = wm.querySelectorAll(".wm-tile, .wm-center-stamp");
+      for (var i = 0; i < existing.length; i++) {
+        existing[i].parentNode.removeChild(existing[i]);
+      }
+
+      var totalPages = Math.ceil((a4.offsetHeight || A4_HEIGHT) / A4_HEIGHT);
+
+      for (var p = 0; p < totalPages; p++) {
+        var base = p * A4_HEIGHT;
+
+        /* Tile A — upper-left of this page */
+        var tA = document.createElement("div");
+        tA.className     = "wm-tile";
+        tA.style.top     = (base + A4_HEIGHT * 0.18) + "px";
+        tA.style.left    = "8%";
+        tA.style.right   = "auto";
+        tA.innerHTML     = '<img src="/images/logo.png" class="wm-tile-logo" alt=""><span>Not-Paid</span>';
+        wm.appendChild(tA);
+
+        /* Tile B — lower-right of this page */
+        var tB = document.createElement("div");
+        tB.className     = "wm-tile";
+        tB.style.top     = (base + A4_HEIGHT * 0.65) + "px";
+        tB.style.left    = "auto";
+        tB.style.right   = "8%";
+        tB.innerHTML     = '<img src="/images/logo.png" class="wm-tile-logo" alt=""><span>Not-Paid</span>';
+        wm.appendChild(tB);
+
+        /* Center stamp — middle of this page */
+        var stamp        = document.createElement("div");
+        stamp.className  = "wm-center-stamp";
+        stamp.style.top  = (base + A4_HEIGHT * 0.45) + "px";
+        stamp.style.left = "50%";
+        stamp.innerHTML  =
+          '<img src="/images/logo.png" class="wm-center-logo" alt="">' +
+          '<span class="wm-center-brand">SmrAI-Studio</span>' +
+          '<span class="wm-center-label">PREVIEW ONLY · NOT FOR USE</span>';
+        wm.appendChild(stamp);
       }
     }
 
@@ -576,51 +616,39 @@
       var a4        = document.getElementById("resumeA4");
       if (!wrapper || !container || !a4) return;
 
-      /*
-       * getBoundingClientRect() reads the ACTUAL rendered width of the wrapper.
-       * It is more reliable than clientWidth on mobile browsers where an
-       * overflowing child can inflate the parent's reported clientWidth.
-       * Clamp to window.innerWidth as a final safety net — the wrapper
-       * can never legitimately be wider than the viewport.
-       */
       var availableWidth = wrapper.getBoundingClientRect().width;
-      if (availableWidth > window.innerWidth) {
-        availableWidth = window.innerWidth;
-      }
-      if (availableWidth <= 0) return; /* layout not ready yet */
+      if (availableWidth > window.innerWidth) availableWidth = window.innerWidth;
+      if (availableWidth <= 0) return;
 
       /*
-       * Measure the A4's natural (un-transformed) height.
-       * If images haven't loaded yet this may be an underestimate — the
-       * "load" event re-runs scalePreview() once all resources are ready.
+       * Step 1 — remove any transform so avoidPageBreaks reads positions in
+       * logical (un-scaled) px, which match A4_HEIGHT = 1123 exactly.
+       * The browser batches DOM reads/writes in one frame so no visible flash.
        */
-      var naturalHeight = a4.offsetHeight || 1123;
+      container.style.transform = "none";
 
+      /* Step 2 — push sections past page boundaries */
+      avoidPageBreaks();
+
+      /*
+       * Step 3 — snap A4 height to full page multiples so every page is
+       * exactly A4 height in the preview (applies to all templates).
+       */
+      var rawHeight  = a4.offsetHeight || A4_HEIGHT;
+      var totalPages = Math.ceil(rawHeight / A4_HEIGHT);
+      a4.style.minHeight  = (totalPages * A4_HEIGHT) + "px";
+      var naturalHeight   = totalPages * A4_HEIGHT;
+
+      /* Step 4 — apply display transform and wrapper height */
       if (availableWidth >= A4_WIDTH) {
-        /*
-         * DESKTOP — center the 794px container inside the wrapper via
-         * translateX instead of margin:auto.  translateX is explicit and
-         * cannot be confused by the browser's block-layout auto-margin
-         * algorithm when the child is wider than the parent.
-         * transform-origin is already "top left" (set in CSS), so the
-         * translate is always relative to the element's own top-left corner.
-         */
+        /* DESKTOP — center 794px container with translateX */
         var offset = Math.round((availableWidth - A4_WIDTH) / 2);
-        container.style.transform      = "translateX(" + offset + "px)";
+        container.style.transform       = "translateX(" + offset + "px)";
         container.style.transformOrigin = "top left";
-        container.style.margin         = "0";
-        wrapper.style.height           = naturalHeight + "px";
+        container.style.margin          = "0";
+        wrapper.style.height            = naturalHeight + "px";
       } else {
-        /*
-         * MOBILE — scale the A4 down so its visual width exactly fills the
-         * available wrapper width.  transform-origin "top left" anchors the
-         * scale to the wrapper's top-left corner, so the left edge of the
-         * resume stays flush with the left edge of the wrapper — no
-         * rightward shift, no sidebar clipping.
-         *
-         * The wrapper's explicit height is set to the visually-scaled height
-         * so no empty space appears below the preview.
-         */
+        /* MOBILE — scale down to fit viewport width */
         var scale = availableWidth / A4_WIDTH;
         container.style.transform       = "scale(" + scale + ")";
         container.style.transformOrigin = "top left";
@@ -628,9 +656,9 @@
         wrapper.style.height            = Math.ceil(naturalHeight * scale) + "px";
       }
 
-      /* Push sections away from page boundaries, then draw dividers */
-      avoidPageBreaks();
+      /* Step 5 — draw visual page-break dividers, then sync watermarks */
       refreshPageBreaks();
+      refreshWatermark();
     }
 
     /*

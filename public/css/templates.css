@@ -1303,6 +1303,11 @@
 }
 .tf-wrap--ats .tf-link-item a:hover { text-decoration: underline; }
 
+/* ── ATS: tighter left sidebar spacing so fewer sections straddle page breaks ── */
+.tf-wrap--ats .tf-left-section { margin-bottom: 0.5rem; }
+.tf-wrap--ats .tf-cert-list    { gap: 0.16rem; }
+.tf-wrap--ats .tf-divider      { margin: 0.45rem 0; }
+
 .tf-left-section {
   margin-bottom: 0.95rem;
   break-inside: avoid;
