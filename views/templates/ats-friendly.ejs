@@ -204,12 +204,21 @@ const certLines = (data.certifications || "")
       <% } %>
 
       <!-- Volunteering -->
-      <% if (data.volunteering) { %>
+      <% if (data.volunteering) {
+        const volunteerLines = data.volunteering
+          .split(/\r?\n+/)
+          .map(l => l.trim().replace(/^[-*•]\s*/, '').replace(/\*\*(.*?)\*\*/g, '$1').trim())
+          .filter(Boolean);
+        if (volunteerLines.length) { %>
       <div class="tf-right-section">
         <h2 class="tf-section-title">Volunteering</h2>
-        <p class="tf-exp-body"><%= data.volunteering %></p>
+        <ul class="tf-achievement-list">
+          <% volunteerLines.forEach(function(line) { %>
+            <li><%= line %></li>
+          <% }); %>
+        </ul>
       </div>
-      <% } %>
+      <% } } %>
 
     </div><!-- /tf-right -->
 
