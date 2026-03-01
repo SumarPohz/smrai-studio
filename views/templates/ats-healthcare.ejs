@@ -1,0 +1,13 @@
+<% const roleConfig = {
+  expHeading:         "Clinical Experience",
+  achievementHeading: "Key Achievements",
+  projectHeading:     "Clinical Projects",
+  volunteerHeading:   "Volunteering",
+  skillsHeading:      "Clinical Skills",
+  certHeading:        "Licenses & Certifications",
+  trainingHeading:    "Professional Development",
+  awardsHeading:      "Awards & Honors",
+  eduHeading:         "Education",
+  langHeading:        "Languages"
+}; %>
+<%- include('_ats-base', { roleConfig, data, experienceItems, skillsLines, qrCodeDataUrl, technologiesCategories, projectItems }) %>

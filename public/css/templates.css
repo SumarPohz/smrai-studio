@@ -1167,6 +1167,13 @@
   color: #cbd5e1;
 }
 
+.tf-contact-label {
+  font-size: 0.6rem;
+  color: #94a3b8;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
 .tf-links-row {
   display: flex;
   flex-wrap: wrap;
@@ -1324,9 +1331,9 @@
 }
 
 .tf-tech-cat-label {
-  font-size: 0.65rem;
-  font-weight: 600;
-  color: #475569;
+  font-size: 0.67rem;
+  font-weight: 700;
+  color: #1e293b;
   margin-bottom: 0.2rem;
 }
 
@@ -1403,12 +1410,19 @@
   gap: 0.28rem;
 }
 
-.tf-cert-list li {
+.tf-cert-list li,
+.resume-page .tf-cert-list li {
   font-size: 0.7rem;
   color: #374151;
   padding-left: 0.85rem;
   position: relative;
   line-height: 1.45;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  margin: 0;
+  box-shadow: none;
+  white-space: normal;
 }
 
 .tf-cert-list li::before {
@@ -1460,6 +1474,12 @@
   font-style: italic;
 }
 
+.tf-exp-location {
+  font-size: 0.7rem;
+  color: #64748b;
+  font-style: italic;
+}
+
 .tf-exp-dates {
   font-size: 0.67rem;
   color: #64748b;
@@ -1485,12 +1505,19 @@
   gap: 0.3rem;
 }
 
-.tf-achievement-list li {
+.tf-achievement-list li,
+.resume-page .tf-achievement-list li {
   font-size: 0.72rem;
   color: #374151;
   padding-left: 1rem;
   position: relative;
   line-height: 1.55;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  margin: 0;
+  box-shadow: none;
+  white-space: normal;
 }
 
 .tf-achievement-list li::before {
@@ -1565,6 +1592,17 @@
   line-height: 1.55;
   white-space: pre-wrap;
   margin: 0;
+}
+
+/* Project description bullets: visible dot (overrides tiny star) */
+.tf-project-card .tf-achievement-list {
+  margin-top: 0.3rem;
+}
+.tf-project-card .tf-achievement-list li::before {
+  content: '▸';
+  font-size: 0.7rem;
+  top: 0.08em;
+  color: #3b82f6;
 }
 
 /* ===== CLASSIC-BORDER (bordered sections with blue accents) ===== */

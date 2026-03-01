@@ -176,6 +176,17 @@
               />
             </div>
 
+            <div class="rb-field">
+              <label for="zipCode">ZIP / Postal Code</label>
+              <input
+                type="text"
+                id="zipCode"
+                name="zipCode"
+                placeholder="560001"
+                value="<%= (draft && draft.zipCode) || '' %>"
+              />
+            </div>
+
 <% const _existingPhoto = (draft && draft.profileImageUrl) || (profile && profile.profile_image_url) || ''; %>
 <% if (isPhotoTpl) { %>
             <!-- Photo upload widget (photo-supporting templates only) -->
@@ -259,7 +270,7 @@
               id="experience"
               name="experience"
               rows="10"
-              placeholder="e.g. I worked as a Security Supervisor at ACPS from 2020 to present. I managed a team of 10 officers..."
+              placeholder="e.g. I worked as a Security Supervisor at ACPS, Delhi, India from 2020 to present. I managed a team of 10 officers and reduced incidents by 30%..."
             ><%= (draft && draft.experience) || (profile && profile.experience) || '' %></textarea>
           </div>
         </div>
@@ -406,6 +417,17 @@
                 name="githubUrl"
                 placeholder="https://github.com/yourusername"
                 value="<%= (draft && draft.githubUrl) || '' %>"
+              />
+            </div>
+
+            <div class="rb-field">
+              <label for="linkedinUrl">LinkedIn Profile URL</label>
+              <input
+                type="url"
+                id="linkedinUrl"
+                name="linkedinUrl"
+                placeholder="https://linkedin.com/in/yourname"
+                value="<%= (draft && draft.linkedinUrl) || '' %>"
               />
             </div>
 
