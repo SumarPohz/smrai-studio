@@ -1374,21 +1374,30 @@
   gap: 0.2rem;
 }
 
-.tf-skill-list li {
+.tf-skill-list li,
+.resume-page .tf-skill-list li {
   display: flex;
   align-items: center;
   gap: 0.4rem;
   font-size: 0.72rem;
   color: #374151;
+  padding: 0;
+  background: transparent;
+  border: none;
+  margin: 0;
+  box-shadow: none;
+  white-space: normal;
 }
 
-.tf-skill-list li::before {
+.tf-skill-list li::before,
+.resume-page .tf-skill-list li::before {
   content: '';
   width: 5px;
   height: 5px;
   border-radius: 50%;
   background: #3b82f6;
   flex-shrink: 0;
+  display: block;
 }
 
 /* ── Left column plain text (education, languages) ── */
@@ -1791,6 +1800,540 @@
   white-space: pre-wrap;
   margin: 0;
 }
+
+/* ================================================================
+   ATS ROLE TEMPLATES — UNIQUE VISUAL DESIGNS
+   Scope: .resume-page.[id] .tf-* (specificity 0,3,0)
+   Overrides base .tf-* (0,1,0) and .tf-wrap--ats .tf-* (0,2,0)
+   ================================================================ */
+
+/* ─── Helper: reset ::before to text-character mode ─── */
+/* Used when we set a text/icon character as section title prefix */
+
+/* ─────────────────────────────────────────────────────────────────
+   1. CUSTOMER SERVICE — Amber / Warm Brown
+   Professional, warm, friendly service aesthetic
+   ───────────────────────────────────────────────────────────────── */
+.resume-page.ats-customer-service .tf-header {
+  background: #7c2d12;
+  border-top-color: #f59e0b;
+}
+.resume-page.ats-customer-service .tf-summary-band {
+  background: #92400e;
+}
+.resume-page.ats-customer-service .tf-left {
+  background: #fff7ed;
+  width: 30%;
+}
+.resume-page.ats-customer-service .tf-section-title {
+  color: #b45309;
+  border-bottom: 2px solid #f59e0b;
+  padding-bottom: 0.15rem;
+}
+.resume-page.ats-customer-service .tf-section-title::before {
+  background: #f59e0b;
+}
+.resume-page.ats-customer-service .tf-summary-label { color: #fcd34d; }
+.resume-page.ats-customer-service .tf-exp-dates     { color: #b45309; }
+.resume-page.ats-customer-service .tf-exp-company   { color: #d97706; }
+.resume-page.ats-customer-service .tf-exp-title     { color: #7c2d12; }
+.resume-page.ats-customer-service .tf-tech-tag {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #fcd34d;
+}
+.resume-page.ats-customer-service .tf-project-link { color: #d97706; }
+.resume-page.ats-customer-service .tf-divider      { background: #fde68a; }
+.resume-page.ats-customer-service .tf-cert-list li::before       { color: #d97706; }
+.resume-page.ats-customer-service .tf-achievement-list li::before { color: #d97706; }
+.resume-page.ats-customer-service .tf-skill-list li::before      { background: #d97706; }
+.resume-page.ats-customer-service .tf-project-card { border-left-color: #f59e0b; }
+
+/* ─────────────────────────────────────────────────────────────────
+   2. SALES & BUSINESS DEVELOPMENT — Emerald Green
+   Bold, results-driven, confident energy
+   ───────────────────────────────────────────────────────────────── */
+.resume-page.ats-sales .tf-header {
+  background: #064e3b;
+  border-top-color: #34d399;
+}
+.resume-page.ats-sales .tf-summary-band {
+  background: #065f46;
+}
+.resume-page.ats-sales .tf-left {
+  background: #ecfdf5;
+  width: 32%;
+}
+.resume-page.ats-sales .tf-section-title {
+  color: #065f46;
+}
+.resume-page.ats-sales .tf-section-title::before {
+  background: #10b981;
+}
+.resume-page.ats-sales .tf-summary-label { color: #6ee7b7; }
+.resume-page.ats-sales .tf-exp-dates     { color: #059669; }
+.resume-page.ats-sales .tf-exp-company   { color: #059669; }
+.resume-page.ats-sales .tf-exp-title     { color: #064e3b; }
+.resume-page.ats-sales .tf-tech-tag {
+  background: #d1fae5;
+  color: #064e3b;
+  border-color: #6ee7b7;
+}
+.resume-page.ats-sales .tf-project-link  { color: #059669; }
+.resume-page.ats-sales .tf-divider       { background: #a7f3d0; }
+.resume-page.ats-sales .tf-cert-list li::before       { color: #10b981; }
+.resume-page.ats-sales .tf-achievement-list li::before { color: #10b981; }
+.resume-page.ats-sales .tf-skill-list li::before      { background: #10b981; }
+.resume-page.ats-sales .tf-project-card { border-left-color: #10b981; }
+
+/* ─────────────────────────────────────────────────────────────────
+   3. MARKETING & DIGITAL — Purple / Magenta Gradient
+   Creative, digital-native, vibrant brand energy
+   ───────────────────────────────────────────────────────────────── */
+.resume-page.ats-marketing .tf-header {
+  background: linear-gradient(135deg, #4c1d95 0%, #9d174d 100%);
+  border-top-color: #e879f9;
+}
+.resume-page.ats-marketing .tf-summary-band {
+  background: #4c1d95;
+}
+.resume-page.ats-marketing .tf-left {
+  background: #fdf4ff;
+  width: 35%;
+}
+.resume-page.ats-marketing .tf-section-title {
+  color: #6d28d9;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.resume-page.ats-marketing .tf-section-title::before {
+  background: #a21caf;
+  border-radius: 50%;
+  width: 8px;
+  height: 8px;
+}
+.resume-page.ats-marketing .tf-summary-label { color: #f0abfc; }
+.resume-page.ats-marketing .tf-exp-dates     { color: #7c3aed; }
+.resume-page.ats-marketing .tf-exp-company   { color: #a21caf; }
+.resume-page.ats-marketing .tf-exp-title     { color: #4c1d95; }
+.resume-page.ats-marketing .tf-tech-tag {
+  background: #ede9fe;
+  color: #4c1d95;
+  border-color: #c4b5fd;
+}
+.resume-page.ats-marketing .tf-project-link  { color: #7c3aed; }
+.resume-page.ats-marketing .tf-divider       { background: #e9d5ff; }
+.resume-page.ats-marketing .tf-cert-list li::before       { color: #a21caf; }
+.resume-page.ats-marketing .tf-achievement-list li::before { color: #7c3aed; }
+.resume-page.ats-marketing .tf-skill-list li::before      { background: #a21caf; }
+.resume-page.ats-marketing .tf-project-card { border-left-color: #7c3aed; }
+
+/* ─────────────────────────────────────────────────────────────────
+   4. HEALTHCARE & NURSING — Clinical Sky Blue
+   Clean, clinical, trustworthy; narrow sidebar for content density
+   ───────────────────────────────────────────────────────────────── */
+.resume-page.ats-healthcare .tf-header {
+  background: #0c4a6e;
+  border-top-color: #38bdf8;
+}
+.resume-page.ats-healthcare .tf-summary-band {
+  background: #075985;
+}
+.resume-page.ats-healthcare .tf-left {
+  background: #f0f9ff;
+  width: 28%;
+}
+.resume-page.ats-healthcare .tf-section-title {
+  color: #0369a1;
+}
+.resume-page.ats-healthcare .tf-section-title::before {
+  content: '+';
+  display: inline-block;
+  width: auto;
+  height: auto;
+  background: transparent;
+  color: #0284c7;
+  font-size: 0.85rem;
+  font-weight: 900;
+  line-height: 1;
+  margin-right: 0.2rem;
+}
+.resume-page.ats-healthcare .tf-summary-label { color: #7dd3fc; }
+.resume-page.ats-healthcare .tf-exp-dates     { color: #0284c7; }
+.resume-page.ats-healthcare .tf-exp-company   { color: #0ea5e9; }
+.resume-page.ats-healthcare .tf-exp-title     { color: #0c4a6e; }
+.resume-page.ats-healthcare .tf-tech-tag {
+  background: #e0f2fe;
+  color: #0c4a6e;
+  border-color: #7dd3fc;
+}
+.resume-page.ats-healthcare .tf-project-link  { color: #0284c7; }
+.resume-page.ats-healthcare .tf-divider       { background: #bae6fd; }
+.resume-page.ats-healthcare .tf-cert-list li::before       { color: #0284c7; }
+.resume-page.ats-healthcare .tf-achievement-list li::before { color: #0284c7; }
+.resume-page.ats-healthcare .tf-skill-list li::before      { background: #0284c7; }
+.resume-page.ats-healthcare .tf-project-card { border-left-color: #38bdf8; }
+
+/* ─────────────────────────────────────────────────────────────────
+   5. FINANCE & ACCOUNTING — Deep Navy / Gold
+   Conservative, prestigious, boardroom-ready
+   ───────────────────────────────────────────────────────────────── */
+.resume-page.ats-finance .tf-header {
+  background: #1e3a5f;
+  border-top-color: #f59e0b;
+}
+.resume-page.ats-finance .tf-summary-band {
+  background: #1a2f4e;
+}
+.resume-page.ats-finance .tf-left {
+  background: #fefce8;
+  width: 33%;
+}
+.resume-page.ats-finance .tf-section-title {
+  color: #92400e;
+  font-variant: small-caps;
+  letter-spacing: 0.14em;
+  border-bottom: 1px solid #d97706;
+  padding-bottom: 0.12rem;
+}
+.resume-page.ats-finance .tf-section-title::before {
+  background: #d97706;
+}
+.resume-page.ats-finance .tf-summary-label { color: #fde68a; }
+.resume-page.ats-finance .tf-exp-dates     { color: #b45309; }
+.resume-page.ats-finance .tf-exp-company   { color: #d97706; }
+.resume-page.ats-finance .tf-exp-title     { color: #1e3a5f; }
+.resume-page.ats-finance .tf-tech-tag {
+  background: #fef9c3;
+  color: #713f12;
+  border-color: #fde68a;
+}
+.resume-page.ats-finance .tf-project-link  { color: #d97706; }
+.resume-page.ats-finance .tf-divider       { background: #fde68a; }
+.resume-page.ats-finance .tf-cert-list li::before       { color: #d97706; }
+.resume-page.ats-finance .tf-achievement-list li::before { color: #d97706; }
+.resume-page.ats-finance .tf-skill-list li::before      { background: #d97706; }
+.resume-page.ats-finance .tf-project-card { border-left-color: #f59e0b; }
+
+/* ─────────────────────────────────────────────────────────────────
+   6. TEACHING & EDUCATION — Burgundy / Warm Cream
+   Academic, nurturing, scholarly warmth
+   ───────────────────────────────────────────────────────────────── */
+.resume-page.ats-teacher .tf-header {
+  background: #881337;
+  border-top-color: #fb7185;
+}
+.resume-page.ats-teacher .tf-summary-band {
+  background: #9f1239;
+}
+.resume-page.ats-teacher .tf-left {
+  background: #fff1f2;
+  width: 35%;
+}
+.resume-page.ats-teacher .tf-section-title {
+  color: #9f1239;
+  border-bottom: 1px solid #fda4af;
+  padding-bottom: 0.15rem;
+}
+.resume-page.ats-teacher .tf-section-title::before {
+  content: '◆';
+  display: inline-block;
+  width: auto;
+  height: auto;
+  background: transparent;
+  color: #e11d48;
+  font-size: 0.55rem;
+  line-height: 1;
+  margin-right: 0.3rem;
+  vertical-align: middle;
+}
+.resume-page.ats-teacher .tf-summary-label { color: #fda4af; }
+.resume-page.ats-teacher .tf-exp-dates     { color: #e11d48; }
+.resume-page.ats-teacher .tf-exp-company   { color: #be123c; }
+.resume-page.ats-teacher .tf-exp-title     { color: #881337; }
+.resume-page.ats-teacher .tf-tech-tag {
+  background: #ffe4e6;
+  color: #881337;
+  border-color: #fda4af;
+}
+.resume-page.ats-teacher .tf-project-link  { color: #be123c; }
+.resume-page.ats-teacher .tf-divider       { background: #fecdd3; }
+.resume-page.ats-teacher .tf-cert-list li::before       { color: #e11d48; }
+.resume-page.ats-teacher .tf-achievement-list li::before { color: #e11d48; }
+.resume-page.ats-teacher .tf-skill-list li::before      { background: #e11d48; }
+.resume-page.ats-teacher .tf-project-card { border-left-color: #fb7185; }
+
+/* ─────────────────────────────────────────────────────────────────
+   7. HUMAN RESOURCES — Dark Teal / Slate
+   People-focused, professional, warm yet structured
+   ───────────────────────────────────────────────────────────────── */
+.resume-page.ats-hr .tf-header {
+  background: #134e4a;
+  border-top-color: #2dd4bf;
+}
+.resume-page.ats-hr .tf-summary-band {
+  background: #115e59;
+}
+.resume-page.ats-hr .tf-left {
+  background: #f0fdfa;
+  width: 31%;
+}
+.resume-page.ats-hr .tf-section-title {
+  color: #0f766e;
+}
+.resume-page.ats-hr .tf-section-title::before {
+  content: '◆';
+  display: inline-block;
+  width: auto;
+  height: auto;
+  background: transparent;
+  color: #0d9488;
+  font-size: 0.5rem;
+  line-height: 1;
+  margin-right: 0.3rem;
+  vertical-align: middle;
+}
+.resume-page.ats-hr .tf-summary-label { color: #5eead4; }
+.resume-page.ats-hr .tf-exp-dates     { color: #0d9488; }
+.resume-page.ats-hr .tf-exp-company   { color: #14b8a6; }
+.resume-page.ats-hr .tf-exp-title     { color: #134e4a; }
+.resume-page.ats-hr .tf-tech-tag {
+  background: #ccfbf1;
+  color: #134e4a;
+  border-color: #5eead4;
+}
+.resume-page.ats-hr .tf-project-link  { color: #0d9488; }
+.resume-page.ats-hr .tf-divider       { background: #99f6e4; }
+.resume-page.ats-hr .tf-cert-list li::before       { color: #0d9488; }
+.resume-page.ats-hr .tf-achievement-list li::before { color: #0d9488; }
+.resume-page.ats-hr .tf-skill-list li::before      { background: #0d9488; }
+.resume-page.ats-hr .tf-project-card { border-left-color: #2dd4bf; }
+
+/* ─────────────────────────────────────────────────────────────────
+   8. ENGINEERING — Graphite / Burnt Orange
+   Technical, precise, industrial strength
+   ───────────────────────────────────────────────────────────────── */
+.resume-page.ats-engineering .tf-header {
+  background: #1c1917;
+  border-top-color: #f97316;
+}
+.resume-page.ats-engineering .tf-summary-band {
+  background: #292524;
+}
+.resume-page.ats-engineering .tf-left {
+  background: #fff7ed;
+  width: 33%;
+}
+.resume-page.ats-engineering .tf-section-title {
+  color: #c2410c;
+  font-family: 'Courier New', Courier, monospace;
+  letter-spacing: 0.05em;
+}
+.resume-page.ats-engineering .tf-section-title::before {
+  content: '■';
+  display: inline-block;
+  width: auto;
+  height: auto;
+  background: transparent;
+  color: #ea580c;
+  font-size: 0.6rem;
+  line-height: 1;
+  margin-right: 0.3rem;
+  vertical-align: middle;
+}
+.resume-page.ats-engineering .tf-summary-label { color: #fdba74; }
+.resume-page.ats-engineering .tf-exp-dates     { color: #ea580c; }
+.resume-page.ats-engineering .tf-exp-company   { color: #f97316; }
+.resume-page.ats-engineering .tf-exp-title     { color: #1c1917; }
+.resume-page.ats-engineering .tf-tech-tag {
+  background: #ffedd5;
+  color: #7c2d12;
+  border-color: #fdba74;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.68rem;
+}
+.resume-page.ats-engineering .tf-project-link  { color: #ea580c; }
+.resume-page.ats-engineering .tf-divider       { background: #fed7aa; }
+.resume-page.ats-engineering .tf-cert-list li::before       { color: #ea580c; }
+.resume-page.ats-engineering .tf-achievement-list li::before { color: #ea580c; }
+.resume-page.ats-engineering .tf-skill-list li::before      { background: #ea580c; }
+.resume-page.ats-engineering .tf-project-card { border-left-color: #f97316; }
+
+/* ─────────────────────────────────────────────────────────────────
+   9. ADMINISTRATIVE & OFFICE — Steel Blue / Clean White
+   Organised, efficient, professional office aesthetic
+   ───────────────────────────────────────────────────────────────── */
+.resume-page.ats-admin .tf-header {
+  background: #1e40af;
+  border-top-color: #93c5fd;
+}
+.resume-page.ats-admin .tf-summary-band {
+  background: #1d4ed8;
+}
+.resume-page.ats-admin .tf-left {
+  background: #eff6ff;
+  width: 32%;
+}
+.resume-page.ats-admin .tf-section-title {
+  color: #1d4ed8;
+  border-bottom: 1px solid #bfdbfe;
+  padding-bottom: 0.15rem;
+  letter-spacing: 0.08em;
+}
+.resume-page.ats-admin .tf-section-title::before {
+  background: #2563eb;
+}
+.resume-page.ats-admin .tf-summary-label { color: #bfdbfe; }
+.resume-page.ats-admin .tf-exp-dates     { color: #2563eb; }
+.resume-page.ats-admin .tf-exp-company   { color: #3b82f6; }
+.resume-page.ats-admin .tf-exp-title     { color: #1e3a8a; }
+.resume-page.ats-admin .tf-tech-tag {
+  background: #dbeafe;
+  color: #1e40af;
+  border-color: #93c5fd;
+}
+.resume-page.ats-admin .tf-project-link  { color: #2563eb; }
+.resume-page.ats-admin .tf-divider       { background: #bfdbfe; }
+.resume-page.ats-admin .tf-cert-list li::before       { color: #2563eb; }
+.resume-page.ats-admin .tf-achievement-list li::before { color: #2563eb; }
+.resume-page.ats-admin .tf-skill-list li::before      { background: #2563eb; }
+.resume-page.ats-admin .tf-project-card { border-left-color: #60a5fa; }
+
+/* ─────────────────────────────────────────────────────────────────
+   10. LEGAL & COMPLIANCE — Deep Navy / Antique Gold
+   Formal, authoritative, traditional legal gravitas
+   ───────────────────────────────────────────────────────────────── */
+.resume-page.ats-legal .tf-header {
+  background: #0f1c3f;
+  border-top: 5px solid #b45309;
+}
+.resume-page.ats-legal .tf-summary-band {
+  background: #0a1628;
+}
+.resume-page.ats-legal .tf-left {
+  background: #faf7f2;
+  width: 30%;
+}
+.resume-page.ats-legal .tf-section-title {
+  color: #78350f;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-variant: small-caps;
+  border-bottom: 1px solid #b45309;
+  padding-bottom: 0.12rem;
+}
+.resume-page.ats-legal .tf-section-title::before {
+  background: #b45309;
+  width: 12px;
+}
+.resume-page.ats-legal .tf-summary-label { color: #fcd34d; }
+.resume-page.ats-legal .tf-exp-dates     { color: #b45309; }
+.resume-page.ats-legal .tf-exp-company   { color: #92400e; }
+.resume-page.ats-legal .tf-exp-title     { color: #0f1c3f; }
+.resume-page.ats-legal .tf-tech-tag {
+  background: #fef3c7;
+  color: #78350f;
+  border-color: #d97706;
+  border-radius: 2px;
+}
+.resume-page.ats-legal .tf-project-link  { color: #b45309; }
+.resume-page.ats-legal .tf-divider       { background: #d97706; opacity: 0.3; }
+.resume-page.ats-legal .tf-cert-list li::before       { color: #b45309; }
+.resume-page.ats-legal .tf-achievement-list li::before { color: #b45309; content: '§'; font-size: 0.7rem; }
+.resume-page.ats-legal .tf-skill-list li::before      { background: #b45309; }
+.resume-page.ats-legal .tf-project-card { border-left-color: #b45309; }
+
+/* ─────────────────────────────────────────────────────────────────
+   11. LOGISTICS & SUPPLY CHAIN — Bold Red / Dark Charcoal
+   Dynamic, operational, high-throughput energy
+   ───────────────────────────────────────────────────────────────── */
+.resume-page.ats-logistics .tf-header {
+  background: #7f1d1d;
+  border-top-color: #fca5a5;
+}
+.resume-page.ats-logistics .tf-summary-band {
+  background: #991b1b;
+}
+.resume-page.ats-logistics .tf-left {
+  background: #fef2f2;
+  width: 32%;
+}
+.resume-page.ats-logistics .tf-section-title {
+  color: #b91c1c;
+}
+.resume-page.ats-logistics .tf-section-title::before {
+  content: '▶';
+  display: inline-block;
+  width: auto;
+  height: auto;
+  background: transparent;
+  color: #dc2626;
+  font-size: 0.55rem;
+  line-height: 1;
+  margin-right: 0.3rem;
+  vertical-align: middle;
+}
+.resume-page.ats-logistics .tf-summary-label { color: #fca5a5; }
+.resume-page.ats-logistics .tf-exp-dates     { color: #dc2626; }
+.resume-page.ats-logistics .tf-exp-company   { color: #ef4444; }
+.resume-page.ats-logistics .tf-exp-title     { color: #7f1d1d; }
+.resume-page.ats-logistics .tf-tech-tag {
+  background: #fee2e2;
+  color: #7f1d1d;
+  border-color: #fca5a5;
+}
+.resume-page.ats-logistics .tf-project-link  { color: #dc2626; }
+.resume-page.ats-logistics .tf-divider       { background: #fecaca; }
+.resume-page.ats-logistics .tf-cert-list li::before       { color: #dc2626; }
+.resume-page.ats-logistics .tf-achievement-list li::before { color: #dc2626; }
+.resume-page.ats-logistics .tf-skill-list li::before      { background: #dc2626; }
+.resume-page.ats-logistics .tf-project-card { border-left-color: #ef4444; }
+
+/* ─────────────────────────────────────────────────────────────────
+   12. HOSPITALITY & TOURISM — Warm Brown / Golden
+   Welcoming, warm, world-class service ambiance
+   ───────────────────────────────────────────────────────────────── */
+.resume-page.ats-hospitality .tf-header {
+  background: #78350f;
+  border-top-color: #fbbf24;
+}
+.resume-page.ats-hospitality .tf-summary-band {
+  background: #92400e;
+}
+.resume-page.ats-hospitality .tf-left {
+  background: #fefce8;
+  width: 34%;
+}
+.resume-page.ats-hospitality .tf-section-title {
+  color: #92400e;
+}
+.resume-page.ats-hospitality .tf-section-title::before {
+  content: '★';
+  display: inline-block;
+  width: auto;
+  height: auto;
+  background: transparent;
+  color: #d97706;
+  font-size: 0.65rem;
+  line-height: 1;
+  margin-right: 0.3rem;
+  vertical-align: middle;
+}
+.resume-page.ats-hospitality .tf-summary-label { color: #fde68a; }
+.resume-page.ats-hospitality .tf-exp-dates     { color: #b45309; }
+.resume-page.ats-hospitality .tf-exp-company   { color: #d97706; }
+.resume-page.ats-hospitality .tf-exp-title     { color: #78350f; }
+.resume-page.ats-hospitality .tf-tech-tag {
+  background: #fef9c3;
+  color: #78350f;
+  border-color: #fde68a;
+}
+.resume-page.ats-hospitality .tf-project-link  { color: #d97706; }
+.resume-page.ats-hospitality .tf-divider       { background: #fde68a; }
+.resume-page.ats-hospitality .tf-cert-list li::before       { color: #d97706; }
+.resume-page.ats-hospitality .tf-achievement-list li::before { color: #d97706; content: '★'; font-size: 0.6rem; }
+.resume-page.ats-hospitality .tf-skill-list li::before      { background: #d97706; }
+.resume-page.ats-hospitality .tf-project-card { border-left-color: #fbbf24; }
 
 /* Reference cards: 3 side by side */
 .bs-ref-grid {
