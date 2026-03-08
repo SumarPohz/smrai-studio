@@ -32,6 +32,12 @@
       <a href="#pricing"   class="adm-nav-link" data-section="pricing">
         <i class="fas fa-tags"></i> Pricing
       </a>
+      <a href="#templates" class="adm-nav-link" data-section="templates">
+        <i class="fas fa-layer-group"></i> Templates
+      </a>
+      <a href="#homepage" class="adm-nav-link" data-section="homepage">
+        <i class="fas fa-home"></i> Home Page
+      </a>
       <a href="/dashboard" class="adm-nav-link adm-nav-back">
         <i class="fas fa-arrow-left"></i> Back to App
       </a>
@@ -129,7 +135,7 @@
           <input class="adm-search" id="userSearch" type="search" placeholder="Search name or email…">
         </div>
         <div class="adm-table-wrap">
-          <table class="adm-table">
+          <table class="adm-table adm-users-table">
             <thead>
               <tr>
                 <th>User</th>
@@ -197,7 +203,7 @@
         </div>
 
         <div class="adm-table-wrap">
-          <table class="adm-table">
+          <table class="adm-table adm-requests-table">
             <thead>
               <tr>
                 <th>From</th>
@@ -304,6 +310,645 @@
 
     </div><!-- /pricing -->
 
+    <!-- ══════════════════════════════════════════════════════════════════════
+         SECTION: TEMPLATES — Admin Template Builder
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <div id="templates" class="adm-section-page" hidden>
+
+      <div class="adm-section">
+        <div class="adm-section-header adm-section-header--actions">
+          <div>
+            <h2>Template Builder</h2>
+            <p class="adm-section-desc">Create, configure and publish custom resume templates. Published templates appear in the public gallery.</p>
+          </div>
+          <button class="adm-btn-primary" id="admTplCreateBtn" type="button">
+            <i class="fas fa-plus"></i> Create Template
+          </button>
+        </div>
+
+        <!-- Stats row -->
+        <div class="adm-tpl-stats-row">
+          <div class="adm-tpl-stat"><span id="admTplTotal">0</span><label>Total</label></div>
+          <div class="adm-tpl-stat adm-tpl-stat--green"><span id="admTplPublished">0</span><label>Published</label></div>
+          <div class="adm-tpl-stat adm-tpl-stat--grey"><span id="admTplDraft">0</span><label>Draft</label></div>
+        </div>
+
+        <!-- Template list table -->
+        <div class="adm-table-wrap" style="margin-top:1rem;">
+          <table class="adm-table adm-tpl-table">
+            <thead>
+              <tr>
+                <th style="width:64px;">Preview</th>
+                <th>Title</th>
+                <th>Category</th>
+                <th>Layout</th>
+                <th>Sections</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="admTplTableBody">
+              <tr id="admTplEmptyRow">
+                <td colspan="7" style="text-align:center;color:#6b7280;padding:2rem;">
+                  No templates yet. Click <strong>Create Template</strong> to get started.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+
+      <!-- ── Manage Static Templates ─────────────────────────────────────── -->
+      <div class="adm-section" style="margin-top:2rem;">
+        <div class="adm-section-header">
+          <div>
+            <h2>Manage Static Templates</h2>
+            <p class="adm-section-desc">Edit title, description, preview image, and Live/Coming Soon status for the built-in templates.</p>
+          </div>
+        </div>
+        <!-- Filter bar -->
+        <div class="adm-stpl-filters">
+          <input  type="text"   id="staticTplSearch"   class="adm-stpl-filter-input" placeholder="&#xF002; Search title…" />
+          <select id="staticTplCatFilter"  class="adm-stpl-filter-select">
+            <option value="">All Categories</option>
+            <option value="experienced">Experienced</option>
+            <option value="fresher">Fresher</option>
+            <option value="developer">Developer</option>
+            <option value="ats-friendly">ATS Friendly</option>
+          </select>
+          <select id="staticTplStatusFilter" class="adm-stpl-filter-select">
+            <option value="">All Status</option>
+            <option value="live">Live</option>
+            <option value="coming-soon">Coming Soon</option>
+          </select>
+        </div>
+
+        <div class="adm-table-wrap" style="margin-top:.75rem;">
+          <table class="adm-table adm-tpl-table">
+            <thead>
+              <tr>
+                <th style="width:64px;">Preview</th>
+                <th>Title</th>
+                <th>Category</th>
+                <th>Badge</th>
+                <th>Status</th>
+                <th style="width:80px;">Edit</th>
+              </tr>
+            </thead>
+            <tbody id="staticTplTableBody">
+              <tr><td colspan="6" style="text-align:center;color:#6b7280;padding:2rem;">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- /templates -->
+
+    <!-- ════════════════════════════════════════════════════════════════════
+         HOME PAGE EDITOR
+    ════════════════════════════════════════════════════════════════════════ -->
+    <div id="homepage" class="adm-section-page" hidden>
+
+      <div class="adm-section">
+        <div class="adm-section-header">
+          <div>
+            <h2>Home Page Editor</h2>
+            <p class="adm-section-desc">Edit every visible section of the public home page. Changes go live instantly when saved.</p>
+          </div>
+        </div>
+
+        <!-- Sub-tabs -->
+        <div class="adm-hp-tabs" id="admHpTabs">
+          <button class="adm-hp-tab active" data-hp-tab="hero">          <i class="fas fa-rocket"></i>       Hero       </button>
+          <button class="adm-hp-tab"        data-hp-tab="services">      <i class="fas fa-th-large"></i>     Services   </button>
+          <button class="adm-hp-tab"        data-hp-tab="features">      <i class="fas fa-star"></i>         Features   </button>
+          <button class="adm-hp-tab"        data-hp-tab="testimonials">  <i class="fas fa-comment-dots"></i> Testimonials</button>
+        </div>
+
+        <!-- ── Hero Tab ───────────────────────────────────────────────────── -->
+        <div class="adm-hp-panel active" data-hp-panel="hero">
+          <div class="adm-hp-form">
+            <div class="adm-stpl-field">
+              <label>Tag Line</label>
+              <input type="text" id="hp_hero_tag" placeholder="AI-Powered Resume Studio" maxlength="120" />
+            </div>
+            <div class="adm-stpl-field">
+              <label>Main Headline <span class="adm-req">*</span></label>
+              <input type="text" id="hp_hero_headline" placeholder="Build a job-ready resume in minutes, not hours." maxlength="200" />
+            </div>
+            <div class="adm-stpl-field">
+              <label>Subtitle</label>
+              <textarea id="hp_hero_subtitle" rows="3" placeholder="Short description below the headline…"></textarea>
+            </div>
+            <div class="adm-stpl-field">
+              <label>Trust Bar Text</label>
+              <input type="text" id="hp_hero_trust" placeholder="No design skills needed · 8 templates · AI-powered" maxlength="200" />
+            </div>
+            <div class="adm-hp-form-footer">
+              <button class="adm-btn-primary" onclick="saveHpSection('hero')"><i class="fas fa-check"></i> Save Hero</button>
+              <span class="adm-hp-msg" id="hp_hero_msg"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Services Tab ───────────────────────────────────────────────── -->
+        <div class="adm-hp-panel" data-hp-panel="services">
+          <div class="adm-hp-form">
+            <div class="adm-hp-section-titles">
+              <div class="adm-stpl-field">
+                <label>Section Title</label>
+                <input type="text" id="hp_svc_title" maxlength="120" />
+              </div>
+              <div class="adm-stpl-field">
+                <label>Section Subtitle</label>
+                <input type="text" id="hp_svc_subtitle" maxlength="200" />
+              </div>
+            </div>
+            <p class="adm-hp-hint"><i class="fas fa-info-circle"></i> Edit or reorder the 4 service cards. Upload an image or leave blank to use the default background style.</p>
+            <div id="hp_svc_cards_list"></div>
+            <button class="adm-btn-secondary" style="margin-top:.5rem;" onclick="addHpCard('svc')">
+              <i class="fas fa-plus"></i> Add Card
+            </button>
+            <div class="adm-hp-form-footer">
+              <button class="adm-btn-primary" onclick="saveHpSection('services')"><i class="fas fa-check"></i> Save Services</button>
+              <span class="adm-hp-msg" id="hp_svc_msg"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Features Tab ───────────────────────────────────────────────── -->
+        <div class="adm-hp-panel" data-hp-panel="features">
+          <div class="adm-hp-form">
+            <div class="adm-hp-section-titles">
+              <div class="adm-stpl-field">
+                <label>Section Title</label>
+                <input type="text" id="hp_feat_title" maxlength="120" />
+              </div>
+              <div class="adm-stpl-field">
+                <label>Section Subtitle</label>
+                <input type="text" id="hp_feat_subtitle" maxlength="200" />
+              </div>
+            </div>
+            <p class="adm-hp-hint"><i class="fas fa-info-circle"></i> Each card has an emoji icon, a color accent, a title, and a description.</p>
+            <div id="hp_feat_cards_list"></div>
+            <button class="adm-btn-secondary" style="margin-top:.5rem;" onclick="addHpCard('feat')">
+              <i class="fas fa-plus"></i> Add Card
+            </button>
+            <div class="adm-hp-form-footer">
+              <button class="adm-btn-primary" onclick="saveHpSection('features')"><i class="fas fa-check"></i> Save Features</button>
+              <span class="adm-hp-msg" id="hp_feat_msg"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Testimonials Tab ───────────────────────────────────────────── -->
+        <div class="adm-hp-panel" data-hp-panel="testimonials">
+          <div class="adm-hp-form">
+            <div class="adm-hp-section-titles">
+              <div class="adm-stpl-field">
+                <label>Section Title</label>
+                <input type="text" id="hp_tst_title" maxlength="120" />
+              </div>
+              <div class="adm-stpl-field">
+                <label>Section Subtitle</label>
+                <input type="text" id="hp_tst_subtitle" maxlength="200" />
+              </div>
+            </div>
+            <p class="adm-hp-hint"><i class="fas fa-info-circle"></i> Each testimonial shows an avatar, a quote, the person's name and role.</p>
+            <div id="hp_tst_cards_list"></div>
+            <button class="adm-btn-secondary" style="margin-top:.5rem;" onclick="addHpCard('tst')">
+              <i class="fas fa-plus"></i> Add Testimonial
+            </button>
+            <div class="adm-hp-form-footer">
+              <button class="adm-btn-primary" onclick="saveHpSection('testimonials')"><i class="fas fa-check"></i> Save Testimonials</button>
+              <span class="adm-hp-msg" id="hp_tst_msg"></span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- /homepage -->
+
+    <!-- ── Static Template Edit Dialog (centered) ────────────────────────────── -->
+    <div id="staticTplModal" class="adm-stpl-backdrop" hidden>
+      <div class="adm-stpl-dialog" role="dialog" aria-modal="true" aria-labelledby="staticTplDialogTitle">
+
+        <!-- Header -->
+        <div class="adm-stpl-dialog-header">
+          <div class="adm-stpl-dialog-header-left">
+            <div class="adm-stpl-dialog-icon"><i class="fas fa-layer-group"></i></div>
+            <div>
+              <h2 class="adm-stpl-dialog-title" id="staticTplDialogTitle">Edit Template</h2>
+              <p class="adm-stpl-dialog-subtitle" id="staticTplSubtitle">&nbsp;</p>
+            </div>
+          </div>
+          <button class="adm-stpl-dialog-close" id="staticTplModalClose" type="button" aria-label="Close">&times;</button>
+        </div>
+
+        <input type="hidden" id="staticTplId" />
+
+        <!-- Body -->
+        <div class="adm-stpl-dialog-body">
+
+          <!-- Left: clickable image upload zone -->
+          <div class="adm-stpl-preview-col">
+            <div class="adm-stpl-img-zone" id="staticTplImgZone" title="Click to change image">
+              <img id="staticTplPreviewImg" src="" alt="Template preview" />
+              <div class="adm-stpl-img-overlay">
+                <i class="fas fa-camera"></i>
+                <span>Change Image</span>
+              </div>
+            </div>
+            <input type="file" id="staticTplImageFile" accept="image/jpeg,image/png,image/webp" hidden />
+            <p class="adm-stpl-img-hint"><i class="fas fa-info-circle"></i> Click image to upload · JPG / PNG · Max 5 MB</p>
+          </div>
+
+          <!-- Right: form -->
+          <div class="adm-stpl-form-col">
+            <div class="adm-stpl-field">
+              <label for="staticTplTitle">Title <span class="adm-req">*</span></label>
+              <input type="text" id="staticTplTitle" maxlength="100" placeholder="Template name" autocomplete="off" />
+            </div>
+
+            <div class="adm-stpl-field">
+              <label for="staticTplDesc">Description</label>
+              <textarea id="staticTplDesc" rows="3" placeholder="Short description shown in the template gallery…"></textarea>
+            </div>
+
+            <div class="adm-stpl-field-row">
+              <div class="adm-stpl-field">
+                <label for="staticTplBadge">Badge</label>
+                <input type="text" id="staticTplBadge" maxlength="60" placeholder="e.g. Popular, New, ATS Friendly" />
+              </div>
+              <div class="adm-stpl-field">
+                <label>Visibility</label>
+                <div class="adm-stpl-vis-toggle">
+                  <button type="button" class="adm-stpl-vis-btn" id="staticTplStatusLive" data-val="true">
+                    <i class="fas fa-circle"></i> Live
+                  </button>
+                  <button type="button" class="adm-stpl-vis-btn" id="staticTplStatusSoon" data-val="false">
+                    <i class="fas fa-clock"></i> Coming Soon
+                  </button>
+                </div>
+                <input type="hidden" id="staticTplAvailable" value="true" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="adm-stpl-dialog-footer">
+          <button class="adm-btn-secondary" id="staticTplCancelBtn" type="button">
+            <i class="fas fa-times"></i> Cancel
+          </button>
+          <button class="adm-btn-primary" id="staticTplSaveBtn" type="button">
+            <i class="fas fa-check"></i> Save Changes
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         TEMPLATE BUILDER OVERLAY (slide-in panel)
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <div id="admTplBuilder" class="adm-tpl-builder-overlay" hidden>
+      <div class="adm-tpl-builder-inner">
+
+        <!-- Header -->
+        <div class="adm-tpl-builder-header">
+          <h2 class="adm-tpl-builder-title" id="admTplBuilderTitle">Create Template</h2>
+          <button class="adm-tpl-builder-close" id="admTplBuilderClose" type="button">&times;</button>
+        </div>
+
+        <!-- Tabs -->
+        <div class="adm-tpl-tabs">
+          <button class="adm-tpl-tab active" data-tab="basic">Basic Info</button>
+          <button class="adm-tpl-tab" data-tab="layout">Layout &amp; Colors</button>
+          <button class="adm-tpl-tab" data-tab="sections">Form Sections</button>
+          <button class="adm-tpl-tab" data-tab="design">Design</button>
+          <button class="adm-tpl-tab" data-tab="pricing">Pricing</button>
+          <button class="adm-tpl-tab" data-tab="preview">
+            <i class="fas fa-eye" style="margin-right:0.3rem;"></i>Preview
+          </button>
+        </div>
+
+        <!-- Tab: Basic Info -->
+        <div class="adm-tpl-tab-content active" data-tab-content="basic">
+          <div class="adm-tpl-field">
+            <label>Template Title <span class="adm-req">*</span></label>
+            <input type="text" id="admTplTitle" placeholder="e.g. Executive Clean" maxlength="100" />
+          </div>
+          <div class="adm-tpl-field">
+            <label>Description</label>
+            <textarea id="admTplDesc" rows="3" placeholder="Short description shown in the template gallery..."></textarea>
+          </div>
+          <div class="adm-tpl-field-row">
+            <div class="adm-tpl-field">
+              <label>Category</label>
+              <select id="admTplCategory">
+                <option value="experienced">Experienced</option>
+                <option value="fresher">Fresher</option>
+                <option value="developer">Developer</option>
+                <option value="ats-friendly">ATS Friendly</option>
+              </select>
+            </div>
+            <div class="adm-tpl-field">
+              <label>Badge Label</label>
+              <input type="text" id="admTplBadge" placeholder="e.g. New, Popular, Hot" maxlength="30" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab: Layout & Colors -->
+        <div class="adm-tpl-tab-content" data-tab-content="layout">
+          <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.75rem;">Layout Type</label>
+          <div class="adm-tpl-layout-grid">
+            <label class="adm-tpl-layout-card">
+              <input type="radio" name="admTplLayout" value="two-column-left" checked />
+              <div class="adm-tpl-layout-preview">
+                <div class="adm-lp-sidebar"></div><div class="adm-lp-main"></div>
+              </div>
+              <span>Left Sidebar</span>
+            </label>
+            <label class="adm-tpl-layout-card">
+              <input type="radio" name="admTplLayout" value="two-column-right" />
+              <div class="adm-tpl-layout-preview">
+                <div class="adm-lp-main"></div><div class="adm-lp-sidebar"></div>
+              </div>
+              <span>Right Sidebar</span>
+            </label>
+            <label class="adm-tpl-layout-card">
+              <input type="radio" name="admTplLayout" value="header-split" />
+              <div class="adm-tpl-layout-preview adm-lp-header-split">
+                <div class="adm-lp-header"></div>
+                <div class="adm-lp-body"></div>
+              </div>
+              <span>Header Split</span>
+            </label>
+            <label class="adm-tpl-layout-card">
+              <input type="radio" name="admTplLayout" value="single-column" />
+              <div class="adm-tpl-layout-preview">
+                <div class="adm-lp-full"></div>
+              </div>
+              <span>Single Column</span>
+            </label>
+          </div>
+
+          <label style="font-weight:600;font-size:0.85rem;display:block;margin:1.25rem 0 0.75rem;">Color Scheme</label>
+          <div class="adm-tpl-color-row">
+            <div class="adm-tpl-color-swatch">
+              <input type="color" id="admTplColorPrimary" value="#1e3a5f" />
+              <label>Primary</label>
+            </div>
+            <div class="adm-tpl-color-swatch">
+              <input type="color" id="admTplColorSecondary" value="#f3f4f6" />
+              <label>Secondary</label>
+            </div>
+            <div class="adm-tpl-color-swatch">
+              <input type="color" id="admTplColorAccent" value="#3b82f6" />
+              <label>Accent</label>
+            </div>
+            <div class="adm-tpl-color-swatch">
+              <input type="color" id="admTplColorText" value="#1f2937" />
+              <label>Text</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab: Form Sections -->
+        <div class="adm-tpl-tab-content" data-tab-content="sections">
+          <p style="font-size:0.82rem;color:#6b7280;margin-bottom:1rem;">
+            Toggle which sections users will fill in. Name &amp; Contact are always included.
+            Drag rows to reorder.
+          </p>
+          <div id="admTplSectionsList">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+
+        <!-- Tab: Design (Typography, Elements, Thumbnail) -->
+        <div class="adm-tpl-tab-content" data-tab-content="design">
+
+          <!-- ─── Typography ─────────────────────────────────── -->
+          <p class="adm-ds-section-heading">Typography</p>
+          <div class="adm-tpl-field-row">
+            <div class="adm-tpl-field">
+              <label>Font Family</label>
+              <select id="dsFont">
+                <option value="segoe">Segoe UI (system)</option>
+                <option value="inter">Inter (modern)</option>
+                <option value="georgia">Georgia (serif)</option>
+                <option value="playfair">Playfair Display (elegant)</option>
+                <option value="arial">Arial (neutral)</option>
+                <option value="courier">Courier New (mono)</option>
+              </select>
+            </div>
+            <div class="adm-tpl-field">
+              <label>Heading Weight</label>
+              <select id="dsHeadingWeight">
+                <option value="600">Semi-Bold (600)</option>
+                <option value="700">Bold (700)</option>
+                <option value="800">Extra-Bold (800)</option>
+              </select>
+            </div>
+            <div class="adm-tpl-field">
+              <label>Body Font Size</label>
+              <select id="dsBodySize">
+                <option value="small">Small (0.82rem)</option>
+                <option value="medium">Medium (0.88rem)</option>
+                <option value="large">Large (0.93rem)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- ─── Shape & Shadow ────────────────────────────── -->
+          <p class="adm-ds-section-heading" style="margin-top:1.1rem;">Shape &amp; Shadow</p>
+          <div class="adm-tpl-field-row">
+            <div class="adm-tpl-field">
+              <label>Border Radius</label>
+              <select id="dsBorderRadius">
+                <option value="none">None (sharp)</option>
+                <option value="soft">Soft (4–6px)</option>
+                <option value="rounded">Rounded (10–12px)</option>
+              </select>
+            </div>
+            <div class="adm-tpl-field">
+              <label>Shadow Level</label>
+              <select id="dsShadow">
+                <option value="none">None</option>
+                <option value="subtle">Subtle</option>
+                <option value="medium">Medium</option>
+              </select>
+            </div>
+            <div class="adm-tpl-field">
+              <label>Pill / Tag Shape</label>
+              <select id="dsPillShape">
+                <option value="rounded">Rounded (99px)</option>
+                <option value="square">Square (4px)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- ─── Style Variants ────────────────────────────── -->
+          <p class="adm-ds-section-heading" style="margin-top:1.1rem;">Style Variants</p>
+          <div class="adm-tpl-field-row">
+            <div class="adm-tpl-field">
+              <label>Section Title Style</label>
+              <select id="dsSectionTitleStyle">
+                <option value="underline">Underline (classic)</option>
+                <option value="badge">Badge (filled bg)</option>
+                <option value="plain">Plain (bold only)</option>
+                <option value="dots">Dots</option>
+              </select>
+            </div>
+            <div class="adm-tpl-field">
+              <label>Header / Sidebar Style</label>
+              <select id="dsHeaderStyle">
+                <option value="classic">Classic (border)</option>
+                <option value="filled">Filled (primary color bg)</option>
+                <option value="accent">Accent (colored bar)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- ─── Divider ────────────────────────────────────── -->
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:1.5rem 0 1.25rem;" />
+
+          <!-- ─── Thumbnail upload ────────────────────────────── -->
+          <p style="font-size:0.85rem;color:#374151;margin-bottom:0.5rem;">
+            <strong>Gallery Thumbnail</strong> — shown as the template preview card in the gallery.
+          </p>
+          <p class="adm-tpl-hint-text" style="margin-bottom:1rem;">
+            <i class="fas fa-lightbulb" style="color:#f59e0b;"></i>
+            Tip: Go to the <strong>Preview</strong> tab, take a screenshot, then upload it here.
+          </p>
+
+          <!-- Current thumbnail preview -->
+          <div id="admTplThumbBox" class="adm-tpl-thumb-box" hidden>
+            <img id="admTplThumb" src="" alt="Template thumbnail" />
+            <button class="adm-tpl-thumb-remove" id="admTplThumbRemove" type="button" title="Remove thumbnail">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+
+          <!-- Upload drop zone -->
+          <label class="adm-tpl-upload-zone" id="admTplUploadZone" for="admTplThumbFile">
+            <i class="fas fa-cloud-upload-alt adm-tpl-upload-icon"></i>
+            <span class="adm-tpl-upload-label">Click or drag &amp; drop to upload thumbnail</span>
+            <span class="adm-tpl-upload-hint">PNG, JPG, WEBP · max 5 MB</span>
+            <input type="file" id="admTplThumbFile" accept="image/png,image/jpeg,image/webp" style="display:none;" />
+          </label>
+          <span id="admTplThumbStatus" class="adm-tpl-status-text" style="display:block;margin-top:0.5rem;"></span>
+
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:1.5rem 0 1.25rem;" />
+
+          <!-- ─── Resume Background upload ───────────────────────── -->
+          <p style="font-size:0.85rem;color:#374151;margin-bottom:0.35rem;">
+            <strong>Resume Background</strong> — texture or pattern shown inside the resume pages.
+            Leave empty to keep the default pattern.
+          </p>
+          <p class="adm-tpl-hint-text" style="margin-bottom:1rem;">
+            <i class="fas fa-lightbulb" style="color:#f59e0b;"></i>
+            Tip: Use a subtle texture (paper grain, dot grid, etc.) for best results.
+          </p>
+
+          <!-- Current background preview -->
+          <div id="admTplBgBox" class="adm-tpl-thumb-box" hidden>
+            <img id="admTplBgImg" src="" alt="Background preview" style="object-fit:cover;" />
+            <button class="adm-tpl-thumb-remove" id="admTplBgRemove" type="button" title="Remove background">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+
+          <!-- Upload drop zone -->
+          <label class="adm-tpl-upload-zone" id="admTplBgZone" for="admTplBgFile">
+            <i class="fas fa-image adm-tpl-upload-icon"></i>
+            <span class="adm-tpl-upload-label">Click or drag &amp; drop to upload background</span>
+            <span class="adm-tpl-upload-hint">PNG, JPG, WEBP · max 5 MB · overlays all resume pages</span>
+            <input type="file" id="admTplBgFile" accept="image/png,image/jpeg,image/webp" style="display:none;" />
+          </label>
+          <span id="admTplBgStatus" class="adm-tpl-status-text" style="display:block;margin-top:0.5rem;"></span>
+        </div>
+
+        <!-- Tab: Pricing -->
+        <div class="adm-tpl-tab-content" data-tab-content="pricing">
+          <div class="adm-tpl-field-row" style="align-items:center;">
+            <div class="adm-tpl-field">
+              <label>Paid Template?</label>
+              <label class="adm-tpl-toggle">
+                <input type="checkbox" id="admTplIsPaid" checked />
+                <span class="adm-tpl-toggle-slider"></span>
+              </label>
+            </div>
+            <div class="adm-tpl-field" id="admTplPriceWrap">
+              <label>Price (₹)</label>
+              <input type="number" id="admTplPrice" value="49" min="0" step="1" class="adm-tpl-price-input" />
+            </div>
+          </div>
+          <p style="font-size:0.78rem;color:#9ca3af;margin-top:0.5rem;">
+            Users must complete Razorpay payment before downloading if Paid is on.
+          </p>
+        </div>
+
+        <!-- Tab: Preview -->
+        <div class="adm-tpl-tab-content" data-tab-content="preview">
+          <div class="adm-tpl-preview-hint" id="admPreviewHint">
+            <i class="fas fa-info-circle"></i>
+            Save a draft first to enable preview.
+          </div>
+          <div id="admPreviewFrame" hidden>
+            <div class="adm-tpl-preview-toolbar">
+              <span class="adm-tpl-preview-label">
+                <i class="fas fa-flask"></i> Sample data preview
+              </span>
+              <div style="display:flex;gap:0.5rem;">
+                <button class="adm-btn-secondary adm-tpl-preview-refresh" id="admPreviewRefreshBtn" type="button">
+                  <i class="fas fa-sync-alt"></i> Save &amp; Refresh
+                </button>
+                <a class="adm-btn-secondary" id="admPreviewOpenBtn" href="#" target="_blank" rel="noopener">
+                  <i class="fas fa-external-link-alt"></i> Full Preview
+                </a>
+              </div>
+            </div>
+            <div class="adm-tpl-preview-scale-wrap">
+              <iframe
+                id="admPreviewIframe"
+                class="adm-tpl-preview-iframe"
+                title="Template Preview"
+                frameborder="0"
+                scrolling="yes"
+              ></iframe>
+            </div>
+          </div>
+        </div>
+
+        <!-- Builder footer -->
+        <div class="adm-tpl-builder-footer">
+          <span id="admTplBuilderError" class="adm-tpl-error" hidden></span>
+          <div class="adm-tpl-footer-nav">
+            <button class="adm-btn-ghost" id="admTplBackBtn" type="button" hidden>
+              <i class="fas fa-chevron-left"></i> Back
+            </button>
+            <button class="adm-btn-ghost adm-btn-next" id="admTplNextBtn" type="button">
+              Next <i class="fas fa-chevron-right"></i>
+            </button>
+          </div>
+          <div class="adm-tpl-footer-actions">
+            <a class="adm-btn-secondary" id="admTplPreviewBtn" href="#" target="_blank" rel="noopener" style="display:none;">
+              <i class="fas fa-eye"></i> Preview
+            </a>
+            <button class="adm-btn-secondary" id="admTplSaveDraft" type="button">Save Draft</button>
+            <button class="adm-btn-primary" id="admTplSavePublish" type="button">
+              <i class="fas fa-globe"></i> Save &amp; Publish
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- /admTplBuilder -->
+
   </div><!-- /adm-main -->
 </div><!-- /adm-shell -->
 
@@ -356,6 +1001,21 @@
       <button class="adm-confirm-cancel" id="userDeleteCancel" type="button">Cancel</button>
       <button class="adm-confirm-delete" id="userDeleteConfirm" type="button">
         <i class="fas fa-user-times"></i> Yes, Delete
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Delete template confirmation modal ────────────────────────────────── -->
+<div id="tplDeleteModal" class="adm-modal-backdrop" hidden>
+  <div class="adm-modal adm-confirm-modal">
+    <div class="adm-confirm-icon"><i class="fas fa-layer-group"></i></div>
+    <h3 class="adm-confirm-title">Delete Template</h3>
+    <p class="adm-confirm-msg" id="tplDeleteMsg"></p>
+    <div class="adm-confirm-actions">
+      <button class="adm-confirm-cancel" id="tplDeleteCancel">Cancel</button>
+      <button class="adm-confirm-delete" id="tplDeleteConfirm">
+        <i class="fas fa-trash-alt"></i> Yes, Delete
       </button>
     </div>
   </div>
@@ -460,6 +1120,8 @@ function showSection(id) {
     if (id === "activity" && !activityLoaded){ loadActivity(); }
     if (id === "requests" && !srLoaded)      { loadServiceRequests(1); }
     if (id === "pricing"  && !pricingLoaded) { loadPricing(); }
+    if (id === "templates" && !tplLoaded)    { loadTemplates(); loadStaticTemplates(); }
+    if (id === "homepage"  && !hpLoaded)     { loadHomepage(); }
   }, 120);
 }
 
@@ -1518,6 +2180,1101 @@ function showPriceStatus(el, type, msg) {
   el.className   = "adm-price-status adm-price-status-" + type;
   el.hidden      = false;
   setTimeout(() => { el.hidden = true; }, 3000);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TEMPLATE BUILDER
+// ═══════════════════════════════════════════════════════════════
+let tplLoaded     = false;
+let tplList       = [];         // all templates from API
+let builderTplId  = null;       // currently editing template id
+
+const SECTION_DEFS = [
+  { key: "summary",        label: "Professional Summary",  defaultPlacement: "main",    defaultDisplay: "plain",    defaultDisabled: false },
+  { key: "experience",     label: "Work Experience",       defaultPlacement: "main",    defaultDisplay: "timeline", defaultDisabled: false },
+  { key: "education",      label: "Education",             defaultPlacement: "sidebar", defaultDisplay: "bullets",  defaultDisabled: false },
+  { key: "skills",         label: "Skills",                defaultPlacement: "sidebar", defaultDisplay: "pills",    defaultDisabled: false },
+  { key: "languages",      label: "Languages",             defaultPlacement: "sidebar", defaultDisplay: "pills",    defaultDisabled: false },
+  { key: "certifications", label: "Certifications",        defaultPlacement: "sidebar", defaultDisplay: "bullets",  defaultDisabled: false },
+  { key: "technologies",   label: "Technologies / Stack",  defaultPlacement: "main",    defaultDisplay: "bullets",  defaultDisabled: false },
+  { key: "projects",       label: "Projects",              defaultPlacement: "main",    defaultDisplay: "bullets",  defaultDisabled: false },
+  { key: "achievements",   label: "Achievements",          defaultPlacement: "main",    defaultDisplay: "bullets",  defaultDisabled: false },
+  { key: "volunteering",   label: "Volunteering",          defaultPlacement: "main",    defaultDisplay: "bullets",  defaultDisabled: false },
+  { key: "references",     label: "References",            defaultPlacement: "sidebar", defaultDisplay: "bullets",  defaultDisabled: false },
+  { key: "hobbies",        label: "Hobbies & Interests",   defaultPlacement: "sidebar", defaultDisplay: "pills",    defaultDisabled: true  },
+  { key: "awards",         label: "Awards",                defaultPlacement: "main",    defaultDisplay: "bullets",  defaultDisabled: true  },
+  { key: "training",       label: "Training & Courses",    defaultPlacement: "main",    defaultDisplay: "bullets",  defaultDisabled: true  },
+  { key: "publications",   label: "Publications",          defaultPlacement: "main",    defaultDisplay: "bullets",  defaultDisabled: true  },
+  { key: "custom_1",       label: "Custom Section 1",      defaultPlacement: "main",    defaultDisplay: "bullets",  defaultDisabled: true, isCustom: true },
+  { key: "custom_2",       label: "Custom Section 2",      defaultPlacement: "main",    defaultDisplay: "bullets",  defaultDisabled: true, isCustom: true },
+  { key: "custom_3",       label: "Custom Section 3",      defaultPlacement: "main",    defaultDisplay: "bullets",  defaultDisabled: true, isCustom: true },
+];
+
+// ── Load templates list ──────────────────────────────────────────────────────
+async function loadTemplates() {
+  try {
+    const r = await fetch("/admin/api/templates");
+    const d = await r.json();
+    if (d.success) {
+      tplList = d.templates;
+      renderTplTable();
+      tplLoaded = true;
+    }
+  } catch (err) { console.error("loadTemplates:", err); }
+}
+
+function renderTplTable() {
+  const tbody = document.getElementById("admTplTableBody");
+  const total = tplList.length;
+  const pub   = tplList.filter(t => t.is_published).length;
+  document.getElementById("admTplTotal").textContent     = total;
+  document.getElementById("admTplPublished").textContent = pub;
+  document.getElementById("admTplDraft").textContent     = total - pub;
+
+  if (!total) {
+    tbody.innerHTML = `<tr id="admTplEmptyRow"><td colspan="7" style="text-align:center;color:#6b7280;padding:2rem;">No templates yet. Click <strong>Create Template</strong> to get started.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = tplList.map(t => `
+    <tr>
+      <td>
+        ${t.thumbnail_url
+          ? `<img src="${escHtml(t.thumbnail_url)}" style="width:60px;height:40px;object-fit:cover;border-radius:4px;border:1px solid #e5e7eb;">`
+          : `<div style="width:60px;height:40px;background:#f1f5f9;border-radius:4px;border:1px solid #e5e7eb;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:0.65rem;">No img</div>`
+        }
+      </td>
+      <td>
+        <strong>${escHtml(t.title)}</strong>
+        ${t.badge ? `<span class="adm-tpl-badge-chip">${escHtml(t.badge)}</span>` : ""}
+      </td>
+      <td style="text-transform:capitalize;">${escHtml(t.category)}</td>
+      <td style="font-size:0.78rem;color:#6b7280;">${escHtml(t.layout_type || '')}</td>
+      <td style="font-size:0.8rem;">${t.enabled_sections ?? '—'}</td>
+      <td>
+        <span class="adm-tpl-status-pill ${t.is_published ? 'adm-tpl-status-pub' : 'adm-tpl-status-draft'}">
+          ${t.is_published ? 'Published' : 'Draft'}
+        </span>
+      </td>
+      <td>
+        <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
+          <button class="adm-tbl-action-btn" onclick="openBuilder(${t.id})" title="Edit">
+            <i class="fas fa-edit"></i>
+          </button>
+          <button class="adm-tbl-action-btn ${t.is_published ? 'adm-tbl-btn-orange' : 'adm-tbl-btn-green'}"
+            onclick="togglePublish(${t.id})" title="${t.is_published ? 'Unpublish' : 'Publish'}">
+            <i class="fas fa-${t.is_published ? 'eye-slash' : 'globe'}"></i>
+          </button>
+          <button class="adm-tbl-action-btn adm-tbl-btn-red" onclick="deleteTemplate(${t.id})" title="Delete">
+            <i class="fas fa-trash-alt"></i>
+          </button>
+        </div>
+      </td>
+    </tr>
+  `).join("");
+}
+
+function escHtml(s) {
+  return String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+// ── Builder panel open / close ───────────────────────────────────────────────
+document.getElementById("admTplCreateBtn").addEventListener("click", () => openBuilder(null));
+document.getElementById("admTplBuilderClose").addEventListener("click", closeBuilder);
+
+// Click on the dark backdrop (outside inner panel) to close
+document.getElementById("admTplBuilder").addEventListener("click", function(e) {
+  if (e.target === this) closeBuilder();
+});
+
+// ESC key closes the builder
+document.addEventListener("keydown", function(e) {
+  if (e.key === "Escape" && !document.getElementById("admTplBuilder").hidden) closeBuilder();
+});
+
+function openBuilder(id) {
+  builderTplId = id;
+  const tpl    = id ? tplList.find(t => t.id === id) : null;
+  document.getElementById("admTplBuilderTitle").textContent = id ? "Edit Template" : "Create Template";
+
+  // Reset form
+  document.getElementById("admTplTitle").value    = tpl?.title       || "";
+  document.getElementById("admTplDesc").value     = tpl?.description || "";
+  document.getElementById("admTplCategory").value = tpl?.category    || "experienced";
+  document.getElementById("admTplBadge").value    = tpl?.badge       || "New";
+
+  const cs = tpl?.color_scheme || {};
+  document.getElementById("admTplColorPrimary").value   = cs.primary   || "#1e3a5f";
+  document.getElementById("admTplColorSecondary").value = cs.secondary || "#f3f4f6";
+  document.getElementById("admTplColorAccent").value    = cs.accent    || "#3b82f6";
+  document.getElementById("admTplColorText").value      = cs.text      || "#1f2937";
+
+  // Layout radio
+  const layoutVal = tpl?.layout_type || "two-column-left";
+  document.querySelectorAll("input[name='admTplLayout']").forEach(r => {
+    r.checked = r.value === layoutVal;
+  });
+
+  // Pricing
+  document.getElementById("admTplIsPaid").checked = tpl ? tpl.is_paid : true;
+  document.getElementById("admTplPrice").value    = tpl?.price_inr || CATEGORY_PRICE[document.getElementById("admTplCategory").value] || 49;
+  document.getElementById("admTplPriceWrap").style.display = tpl ? (tpl.is_paid ? "" : "none") : "";
+
+  // Thumbnail
+  const thumbBox = document.getElementById("admTplThumbBox");
+  const thumbImg = document.getElementById("admTplThumb");
+  if (tpl?.thumbnail_url) {
+    thumbImg.src   = tpl.thumbnail_url;
+    thumbBox.hidden = false;
+  } else {
+    thumbBox.hidden = true;
+  }
+
+  // Reset thumbnail status
+  document.getElementById("admTplThumbStatus").textContent = "";
+
+  // Background image
+  setAdmBgPreview(tpl?.background_image_url || null);
+  document.getElementById("admTplBgStatus").textContent = "";
+
+  // Design settings
+  const ds = tpl?.design_settings || {};
+  document.getElementById("dsFont").value              = ds.fontFamily        || "segoe";
+  document.getElementById("dsHeadingWeight").value     = ds.headingWeight     || "800";
+  document.getElementById("dsBodySize").value          = ds.bodySize          || "medium";
+  document.getElementById("dsBorderRadius").value      = ds.borderRadius      || "soft";
+  document.getElementById("dsShadow").value            = ds.shadow            || "none";
+  document.getElementById("dsSectionTitleStyle").value = ds.sectionTitleStyle || "underline";
+  document.getElementById("dsHeaderStyle").value       = ds.headerStyle       || "classic";
+  document.getElementById("dsPillShape").value         = ds.pillShape         || "rounded";
+
+  // Sections
+  renderSectionsList(tpl ? null : null); // load from API if editing
+  if (id) {
+    fetch(`/admin/api/templates/${id}/sections`)
+      .then(r => r.json())
+      .then(d => d.success && renderSectionsList(d.sections))
+      .catch(() => {});
+  }
+
+  // Switch to first tab
+  switchTplTab("basic");
+  document.getElementById("admTplBuilderError").hidden = true;
+  document.getElementById("admTplBuilder").hidden = false;
+  document.getElementById("admTplBuilder").scrollTop = 0;
+
+  // Enable preview links if editing existing template
+  if (id) updatePreviewLinks();
+}
+
+function closeBuilder() {
+  document.getElementById("admTplBuilder").hidden = true;
+  builderTplId = null;
+}
+
+// ── Tab switching ────────────────────────────────────────────────────────────
+const TAB_ORDER = ["basic", "layout", "sections", "design", "pricing", "preview"];
+
+document.querySelectorAll(".adm-tpl-tab").forEach(tab => {
+  tab.addEventListener("click", () => switchTplTab(tab.dataset.tab));
+});
+
+document.getElementById("admTplNextBtn").addEventListener("click", () => {
+  const cur = TAB_ORDER.indexOf(currentTab());
+  if (cur < TAB_ORDER.length - 1) switchTplTab(TAB_ORDER[cur + 1]);
+});
+document.getElementById("admTplBackBtn").addEventListener("click", () => {
+  const cur = TAB_ORDER.indexOf(currentTab());
+  if (cur > 0) switchTplTab(TAB_ORDER[cur - 1]);
+});
+
+function currentTab() {
+  const active = document.querySelector(".adm-tpl-tab.active");
+  return active ? active.dataset.tab : "basic";
+}
+
+function switchTplTab(name) {
+  document.querySelectorAll(".adm-tpl-tab").forEach(t => t.classList.toggle("active", t.dataset.tab === name));
+  document.querySelectorAll(".adm-tpl-tab-content").forEach(c => c.classList.toggle("active", c.dataset.tabContent === name));
+  if (name === "preview" && builderTplId) updatePreviewLinks();
+  // Update Back / Next buttons
+  const idx = TAB_ORDER.indexOf(name);
+  document.getElementById("admTplBackBtn").hidden = idx <= 0;
+  document.getElementById("admTplNextBtn").hidden = idx >= TAB_ORDER.length - 1;
+}
+
+// ── Preview tab helpers ───────────────────────────────────────────────────────
+function updatePreviewLinks() {
+  if (!builderTplId) return;
+  const tpl = tplList.find(t => t.id === builderTplId);
+  if (!tpl) return;
+  const previewUrl = `/admin/preview/${tpl.slug}`;
+
+  // Footer preview button
+  const footerBtn = document.getElementById("admTplPreviewBtn");
+  footerBtn.href = previewUrl;
+  footerBtn.style.display = "";
+
+  // Preview tab
+  document.getElementById("admPreviewHint").hidden = true;
+  document.getElementById("admPreviewFrame").hidden = false;
+  document.getElementById("admPreviewOpenBtn").href = previewUrl;
+  const iframe = document.getElementById("admPreviewIframe");
+  if (!iframe.src || iframe.src === window.location.href) {
+    iframe.src = previewUrl + "?compact=1";
+  }
+}
+
+document.getElementById("admPreviewRefreshBtn").addEventListener("click", async () => {
+  await saveTemplate(false, true);
+  const tpl = tplList.find(t => t.id === builderTplId);
+  if (tpl) {
+    document.getElementById("admPreviewIframe").src = `/admin/preview/${tpl.slug}?compact=1&t=${Date.now()}`;
+  }
+});
+
+// ── Paid toggle ──────────────────────────────────────────────────────────────
+document.getElementById("admTplIsPaid").addEventListener("change", function() {
+  document.getElementById("admTplPriceWrap").style.display = this.checked ? "" : "none";
+});
+
+// ── Category → default price ──────────────────────────────────────────────────
+const CATEGORY_PRICE = { experienced: 49, fresher: 29, developer: 59, "ats-friendly": 69 };
+document.getElementById("admTplCategory").addEventListener("change", function() {
+  const priceInput = document.getElementById("admTplPrice");
+  // Only auto-fill if admin hasn't manually changed the price from any category default
+  const currentDefault = Object.values(CATEGORY_PRICE);
+  if (currentDefault.includes(+priceInput.value) || priceInput.value === "") {
+    priceInput.value = CATEGORY_PRICE[this.value] ?? 49;
+  }
+});
+
+// ── Sections list renderer ───────────────────────────────────────────────────
+let sectionStates = {}; // { key: { enabled, order } }
+
+function renderSectionsList(apiSections) {
+  // Build state from API or defaults
+  sectionStates = {};
+  SECTION_DEFS.forEach((s, i) => {
+    const api = apiSections ? apiSections.find(a => a.section_key === s.key) : null;
+    sectionStates[s.key] = {
+      enabled:        api ? api.is_enabled      : !s.defaultDisabled,
+      order:          api ? api.sort_order      : i,
+      placement:      api ? (api.placement      || s.defaultPlacement) : s.defaultPlacement,
+      display_type:   api ? (api.display_type   || s.defaultDisplay)   : s.defaultDisplay,
+      label_override: api ? (api.label_override || null)               : null,
+    };
+  });
+
+  const container = document.getElementById("admTplSectionsList");
+  container.innerHTML = SECTION_DEFS
+    .slice()
+    .sort((a, b) => sectionStates[a.key].order - sectionStates[b.key].order)
+    .map(s => {
+      const st = sectionStates[s.key];
+      return `
+      <div class="adm-tpl-section-row" draggable="true" data-sec="${s.key}">
+        <i class="fas fa-grip-vertical adm-tpl-drag-handle"></i>
+        <span class="adm-tpl-sec-label">${st.label_override || s.label}${s.defaultDisabled ? ' <span class="adm-sec-badge-new">NEW</span>' : ''}</span>
+        <div class="adm-tpl-sec-actions">
+          <button type="button" class="adm-tpl-sec-settings-btn" data-sec-key="${s.key}" title="Section settings">
+            <i class="fas fa-cog"></i>
+          </button>
+          <label class="adm-tpl-toggle">
+            <input type="checkbox" data-sec-key="${s.key}" ${st.enabled ? "checked" : ""} />
+            <span class="adm-tpl-toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+      <div class="adm-tpl-sec-settings-panel" data-sec-panel="${s.key}" hidden>
+        <div class="adm-tpl-sec-settings-row">
+          <div class="adm-tpl-sec-setting">
+            <label>Placement</label>
+            <select data-sec-placement="${s.key}">
+              <option value="auto"    ${st.placement === 'auto'    ? 'selected' : ''}>Auto</option>
+              <option value="sidebar" ${st.placement === 'sidebar' ? 'selected' : ''}>Sidebar</option>
+              <option value="main"    ${st.placement === 'main'    ? 'selected' : ''}>Main</option>
+            </select>
+          </div>
+          <div class="adm-tpl-sec-setting">
+            <label>Display Style</label>
+            <select data-sec-display="${s.key}">
+              <option value="bullets"  ${st.display_type === 'bullets'  ? 'selected' : ''}>Bullets</option>
+              <option value="pills"    ${st.display_type === 'pills'    ? 'selected' : ''}>Pills / Tags</option>
+              <option value="plain"    ${st.display_type === 'plain'    ? 'selected' : ''}>Plain text</option>
+              <option value="timeline" ${st.display_type === 'timeline' ? 'selected' : ''}>Timeline</option>
+            </select>
+          </div>
+          <div class="adm-tpl-sec-setting adm-tpl-sec-setting-wide">
+            <label>Label Override</label>
+            <input type="text" data-sec-label="${s.key}" value="${st.label_override || ''}" placeholder="${s.label}" />
+          </div>
+        </div>
+      </div>`;
+    }).join("");
+
+  // Sync checkbox changes to state
+  container.querySelectorAll("input[data-sec-key]").forEach(cb => {
+    cb.addEventListener("change", () => {
+      sectionStates[cb.dataset.secKey].enabled = cb.checked;
+    });
+  });
+
+  // Settings button toggle
+  container.querySelectorAll(".adm-tpl-sec-settings-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const key = btn.dataset.secKey;
+      const panel = container.querySelector(`[data-sec-panel="${key}"]`);
+      if (panel) panel.hidden = !panel.hidden;
+    });
+  });
+
+  // Sync placement / display / label changes to state
+  container.querySelectorAll("[data-sec-placement]").forEach(sel => {
+    sel.addEventListener("change", () => { sectionStates[sel.dataset.secPlacement].placement = sel.value; });
+  });
+  container.querySelectorAll("[data-sec-display]").forEach(sel => {
+    sel.addEventListener("change", () => { sectionStates[sel.dataset.secDisplay].display_type = sel.value; });
+  });
+  container.querySelectorAll("[data-sec-label]").forEach(inp => {
+    inp.addEventListener("input", () => {
+      const key = inp.dataset.secLabel;
+      sectionStates[key].label_override = inp.value.trim() || null;
+      // Update visible label in row
+      const row = container.querySelector(`[data-sec="${key}"] .adm-tpl-sec-label`);
+      if (row) {
+        const def = SECTION_DEFS.find(d => d.key === key);
+        const badge = def && def.defaultDisabled ? ' <span class="adm-sec-badge-new">NEW</span>' : '';
+        row.innerHTML = (inp.value.trim() || (def && def.label) || key) + badge;
+      }
+    });
+  });
+
+  // Drag-and-drop reordering
+  let dragSrc = null;
+  container.querySelectorAll(".adm-tpl-section-row").forEach(row => {
+    row.addEventListener("dragstart", () => { dragSrc = row; row.style.opacity = "0.4"; });
+    row.addEventListener("dragend",   () => { dragSrc = null; row.style.opacity = ""; });
+    row.addEventListener("dragover",  e  => { e.preventDefault(); row.style.background = "#eff6ff"; });
+    row.addEventListener("dragleave", () => { row.style.background = ""; });
+    row.addEventListener("drop", e => {
+      e.preventDefault();
+      row.style.background = "";
+      if (dragSrc && dragSrc !== row) {
+        container.insertBefore(dragSrc, row);
+        // Update order in state
+        container.querySelectorAll(".adm-tpl-section-row").forEach((r, i) => {
+          sectionStates[r.dataset.sec].order = i;
+        });
+      }
+    });
+  });
+}
+
+// ── Save Draft / Save & Publish ──────────────────────────────────────────────
+document.getElementById("admTplSaveDraft").addEventListener("click", () => saveTemplate(false));
+document.getElementById("admTplSavePublish").addEventListener("click", () => saveTemplate(true));
+
+async function saveTemplate(publish, keepOpen) {
+  const title = document.getElementById("admTplTitle").value.trim();
+  if (!title) {
+    showTplError("Title is required.");
+    switchTplTab("basic");
+    return;
+  }
+
+  const color_scheme = {
+    primary:   document.getElementById("admTplColorPrimary").value,
+    secondary: document.getElementById("admTplColorSecondary").value,
+    accent:    document.getElementById("admTplColorAccent").value,
+    text:      document.getElementById("admTplColorText").value,
+  };
+  const layout_type = document.querySelector("input[name='admTplLayout']:checked")?.value || "two-column-left";
+
+  const design_settings = {
+    fontFamily:        document.getElementById("dsFont").value,
+    headingWeight:     document.getElementById("dsHeadingWeight").value,
+    bodySize:          document.getElementById("dsBodySize").value,
+    borderRadius:      document.getElementById("dsBorderRadius").value,
+    shadow:            document.getElementById("dsShadow").value,
+    sectionTitleStyle: document.getElementById("dsSectionTitleStyle").value,
+    headerStyle:       document.getElementById("dsHeaderStyle").value,
+    pillShape:         document.getElementById("dsPillShape").value,
+  };
+
+  const body = {
+    title,
+    description: document.getElementById("admTplDesc").value.trim(),
+    category:    document.getElementById("admTplCategory").value,
+    badge:       document.getElementById("admTplBadge").value.trim(),
+    layout_type,
+    color_scheme,
+    design_settings,
+    is_paid:   document.getElementById("admTplIsPaid").checked,
+    price_inr: parseInt(document.getElementById("admTplPrice").value) || 49,
+  };
+
+  try {
+    let tplId = builderTplId;
+    if (!tplId) {
+      // Create
+      const r = await fetch("/admin/api/templates", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const d = await r.json();
+      if (!d.success) { showTplError(d.error || "Create failed."); return; }
+      tplId      = d.template.id;
+      builderTplId = tplId;
+      document.getElementById("admTplThumbStatus").textContent = "";
+    } else {
+      // Update
+      const r = await fetch(`/admin/api/templates/${tplId}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const d = await r.json();
+      if (!d.success) { showTplError(d.error || "Update failed."); return; }
+    }
+
+    // Save sections
+    const sections = SECTION_DEFS.map(s => ({
+      section_key:    s.key,
+      is_enabled:     sectionStates[s.key]?.enabled !== false,
+      sort_order:     sectionStates[s.key]?.order   || 0,
+      placement:      sectionStates[s.key]?.placement     || s.defaultPlacement || 'auto',
+      display_type:   sectionStates[s.key]?.display_type  || s.defaultDisplay   || 'bullets',
+      label_override: sectionStates[s.key]?.label_override || null,
+    }));
+    await fetch(`/admin/api/templates/${tplId}/sections`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sections }),
+    });
+
+    // Toggle publish if needed
+    const existingTpl = tplList.find(t => t.id === tplId);
+    if (publish && !(existingTpl?.is_published)) {
+      await fetch(`/admin/api/templates/${tplId}/publish`, { method: "POST" });
+    }
+
+    // Reload list
+    tplLoaded = false;
+    await loadTemplates();
+    updatePreviewLinks();
+    if (!keepOpen) closeBuilder();
+  } catch (err) {
+    showTplError("Network error: " + err.message);
+  }
+}
+
+function showTplError(msg) {
+  const el = document.getElementById("admTplBuilderError");
+  el.textContent = msg;
+  el.hidden = false;
+}
+
+// ── Toggle publish from table ────────────────────────────────────────────────
+async function togglePublish(id) {
+  try {
+    const r = await fetch(`/admin/api/templates/${id}/publish`, { method: "POST" });
+    const d = await r.json();
+    if (d.success) { tplLoaded = false; await loadTemplates(); }
+  } catch (err) { console.error("togglePublish:", err); }
+}
+
+// ── Delete template modal ────────────────────────────────────────────────────
+let pendingDeleteTplId = null;
+
+function deleteTemplate(id) {
+  const tpl = tplList.find(t => t.id === id);
+  pendingDeleteTplId = id;
+  document.getElementById("tplDeleteMsg").textContent =
+    `Are you sure you want to delete "${tpl?.title || 'this template'}"? This cannot be undone.`;
+  document.getElementById("tplDeleteModal").hidden = false;
+}
+
+document.getElementById("tplDeleteCancel").addEventListener("click", () => {
+  document.getElementById("tplDeleteModal").hidden = true;
+  pendingDeleteTplId = null;
+});
+document.getElementById("tplDeleteConfirm").addEventListener("click", async () => {
+  if (!pendingDeleteTplId) return;
+  document.getElementById("tplDeleteModal").hidden = true;
+  try {
+    await fetch(`/admin/api/templates/${pendingDeleteTplId}`, { method: "DELETE" });
+    tplLoaded = false;
+    await loadTemplates();
+  } catch (err) { console.error("deleteTemplate:", err); }
+  pendingDeleteTplId = null;
+});
+
+// ── Thumbnail file upload ─────────────────────────────────────────────────────
+async function uploadThumbnailFile(file) {
+  if (!builderTplId) { alert("Save a draft first before uploading a thumbnail."); return; }
+  const statusEl = document.getElementById("admTplThumbStatus");
+  if (file.size > 5 * 1024 * 1024) { statusEl.textContent = "File too large (max 5 MB)."; return; }
+  statusEl.textContent = "Uploading…";
+  const fd = new FormData();
+  fd.append("image", file);
+  try {
+    const r = await fetch(`/admin/api/templates/${builderTplId}/image`, { method: "POST", body: fd });
+    const d = await r.json();
+    if (!d.success) { statusEl.textContent = "Upload failed."; return; }
+    document.getElementById("admTplThumb").src = d.imageUrl;
+    document.getElementById("admTplThumbBox").hidden = false;
+    statusEl.textContent = "Thumbnail saved!";
+    tplLoaded = false;
+    loadTemplates();
+  } catch (err) {
+    statusEl.textContent = "Error: " + err.message;
+  }
+}
+
+document.getElementById("admTplThumbFile").addEventListener("change", function() {
+  if (this.files[0]) uploadThumbnailFile(this.files[0]);
+});
+
+// Drag & drop on the upload zone
+const uploadZone = document.getElementById("admTplUploadZone");
+uploadZone.addEventListener("dragover", e => { e.preventDefault(); uploadZone.classList.add("adm-tpl-upload-zone--over"); });
+uploadZone.addEventListener("dragleave", ()  => uploadZone.classList.remove("adm-tpl-upload-zone--over"));
+uploadZone.addEventListener("drop", e => {
+  e.preventDefault();
+  uploadZone.classList.remove("adm-tpl-upload-zone--over");
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith("image/")) uploadThumbnailFile(file);
+});
+
+// Remove thumbnail
+document.getElementById("admTplThumbRemove").addEventListener("click", async () => {
+  if (!builderTplId) return;
+  await fetch(`/admin/api/templates/${builderTplId}/thumbnail`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ thumbnailUrl: null }),
+  });
+  document.getElementById("admTplThumbBox").hidden = true;
+  document.getElementById("admTplThumb").src = "";
+  document.getElementById("admTplThumbStatus").textContent = "Thumbnail removed.";
+  tplLoaded = false;
+  loadTemplates();
+});
+
+// ── Background image upload ───────────────────────────────────────────────────
+function setAdmBgPreview(url) {
+  const bgBox  = document.getElementById("admTplBgBox");
+  const bgImg  = document.getElementById("admTplBgImg");
+  const bgZone = document.getElementById("admTplBgZone");
+  if (url) {
+    bgImg.src = url;
+    bgBox.hidden = false;
+    bgZone.style.display = "none";
+  } else {
+    bgImg.src = "";
+    bgBox.hidden = true;
+    bgZone.style.display = "";
+  }
+}
+
+async function uploadBgFile(file) {
+  if (!builderTplId) { alert("Save a draft first before uploading a background."); return; }
+  const statusEl = document.getElementById("admTplBgStatus");
+  if (file.size > 5 * 1024 * 1024) { statusEl.textContent = "File too large (max 5 MB)."; return; }
+  statusEl.textContent = "Uploading…";
+  const fd = new FormData();
+  fd.append("image", file);
+  try {
+    const r = await fetch(`/admin/api/templates/${builderTplId}/background`, { method: "POST", body: fd });
+    const d = await r.json();
+    if (!d.success) { statusEl.textContent = "Upload failed."; return; }
+    setAdmBgPreview(d.imageUrl);
+    statusEl.textContent = "✓ Background saved!";
+  } catch (err) {
+    statusEl.textContent = "Error: " + err.message;
+  }
+}
+
+document.getElementById("admTplBgFile").addEventListener("change", function() {
+  if (this.files[0]) uploadBgFile(this.files[0]);
+  this.value = "";
+});
+
+const bgUploadZone = document.getElementById("admTplBgZone");
+bgUploadZone.addEventListener("dragover",  e => { e.preventDefault(); bgUploadZone.classList.add("adm-tpl-upload-zone--over"); });
+bgUploadZone.addEventListener("dragleave", ()  => bgUploadZone.classList.remove("adm-tpl-upload-zone--over"));
+bgUploadZone.addEventListener("drop", e => {
+  e.preventDefault();
+  bgUploadZone.classList.remove("adm-tpl-upload-zone--over");
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith("image/")) uploadBgFile(file);
+});
+
+document.getElementById("admTplBgRemove").addEventListener("click", async () => {
+  if (!builderTplId) return;
+  await fetch(`/admin/api/templates/${builderTplId}/background`, { method: "DELETE" });
+  setAdmBgPreview(null);
+  document.getElementById("admTplBgStatus").textContent = "✓ Background removed.";
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+//  STATIC TEMPLATE MANAGEMENT
+// ════════════════════════════════════════════════════════════════════════════
+let staticTplList = [];
+let staticTplLoaded = false;
+
+async function loadStaticTemplates() {
+  if (staticTplLoaded) return;
+  const r = await fetch("/admin/api/static-templates");
+  const d = await r.json();
+  if (!d.success) return;
+  staticTplList = d.templates;
+  renderStaticTplTable();
+  staticTplLoaded = true;
+}
+
+function renderStaticTplTable() {
+  const tbody      = document.getElementById("staticTplTableBody");
+  const search     = (document.getElementById("staticTplSearch")?.value     || "").toLowerCase().trim();
+  const catFilter  = (document.getElementById("staticTplCatFilter")?.value  || "");
+  const statusFilter = (document.getElementById("staticTplStatusFilter")?.value || "");
+
+  const filtered = staticTplList.filter(t => {
+    if (search     && !t.title.toLowerCase().includes(search))       return false;
+    if (catFilter  && t.category !== catFilter)                      return false;
+    if (statusFilter === "live"        && !t.isAvailable)            return false;
+    if (statusFilter === "coming-soon" &&  t.isAvailable)            return false;
+    return true;
+  });
+
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#6b7280;padding:2rem;">No templates match your filters.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = filtered.map(t => `
+    <tr>
+      <td><img src="${escHtml(t.previewImage)}" alt="" style="width:56px;height:40px;object-fit:cover;border-radius:4px;border:1px solid #e5e7eb;" onerror="this.src='/images/templates/SmrAI-Studio-Resume-A4.jpg'"></td>
+      <td><strong>${escHtml(t.title)}</strong></td>
+      <td><span style="text-transform:capitalize;">${escHtml(t.category)}</span></td>
+      <td>${escHtml(t.badge || '')}</td>
+      <td><span class="adm-tpl-status-pill ${t.isAvailable ? 'adm-tpl-status-live' : 'adm-tpl-status-draft'}">${t.isAvailable ? 'Live' : 'Coming Soon'}</span></td>
+      <td>
+        <button class="adm-btn-icon" title="Edit" onclick="openStaticTplModal('${escHtml(t.id)}')">
+          <i class="fas fa-pencil-alt"></i>
+        </button>
+      </td>
+    </tr>
+  `).join("");
+}
+
+// Wire up filter controls
+["staticTplSearch","staticTplCatFilter","staticTplStatusFilter"].forEach(id => {
+  document.getElementById(id)?.addEventListener("input", renderStaticTplTable);
+});
+
+function setStaticTplStatus(isLive) {
+  document.getElementById("staticTplAvailable").value = isLive ? "true" : "false";
+  document.getElementById("staticTplStatusLive").classList.toggle("adm-stpl-vis-btn--active", isLive);
+  document.getElementById("staticTplStatusSoon").classList.toggle("adm-stpl-vis-btn--active", !isLive);
+}
+
+function openStaticTplModal(id) {
+  const t = staticTplList.find(x => x.id === id);
+  if (!t) return;
+  document.getElementById("staticTplId").value        = t.id;
+  document.getElementById("staticTplSubtitle").textContent = t.category.charAt(0).toUpperCase() + t.category.slice(1).replace(/-/g," ");
+  document.getElementById("staticTplTitle").value     = t.title;
+  document.getElementById("staticTplDesc").value      = t.description || "";
+  document.getElementById("staticTplBadge").value     = t.badge || "";
+  document.getElementById("staticTplPreviewImg").src  = t.previewImage || "";
+  document.getElementById("staticTplImageFile").value = "";
+  setStaticTplStatus(t.isAvailable !== false);
+  document.getElementById("staticTplModal").hidden    = false;
+  document.body.style.overflow = "hidden";
+}
+
+function closeStaticTplModal() {
+  document.getElementById("staticTplModal").hidden = true;
+  document.body.style.overflow = "";
+}
+
+// Visibility toggle buttons
+document.getElementById("staticTplStatusLive").addEventListener("click", () => setStaticTplStatus(true));
+document.getElementById("staticTplStatusSoon").addEventListener("click", () => setStaticTplStatus(false));
+
+// Image zone click → trigger hidden file input
+document.getElementById("staticTplImgZone").addEventListener("click", () => {
+  document.getElementById("staticTplImageFile").click();
+});
+// Preview selected image immediately
+document.getElementById("staticTplImageFile").addEventListener("change", function() {
+  if (!this.files.length) return;
+  const url = URL.createObjectURL(this.files[0]);
+  document.getElementById("staticTplPreviewImg").src = url;
+});
+
+document.getElementById("staticTplModalClose").addEventListener("click", closeStaticTplModal);
+document.getElementById("staticTplCancelBtn").addEventListener("click",  closeStaticTplModal);
+document.getElementById("staticTplModal").addEventListener("click", function(e) {
+  if (e.target === this) closeStaticTplModal();
+});
+document.addEventListener("keydown", function(e) {
+  if (e.key === "Escape" && !document.getElementById("staticTplModal").hidden) closeStaticTplModal();
+});
+
+document.getElementById("staticTplSaveBtn").addEventListener("click", async () => {
+  const id    = document.getElementById("staticTplId").value;
+  const title = document.getElementById("staticTplTitle").value.trim();
+  if (!title) { alert("Title is required."); return; }
+
+  const btn = document.getElementById("staticTplSaveBtn");
+  btn.disabled = true; btn.textContent = "Saving…";
+
+  try {
+    // 1. Save text fields
+    const r = await fetch(`/admin/api/static-templates/${encodeURIComponent(id)}`, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title,
+        description: document.getElementById("staticTplDesc").value.trim() || null,
+        badge:       document.getElementById("staticTplBadge").value.trim() || null,
+        isAvailable: document.getElementById("staticTplAvailable").value === "true",
+      }),
+    });
+    if (!(await r.json()).success) throw new Error("Save failed");
+
+    // 2. Upload image if selected
+    const fileInput = document.getElementById("staticTplImageFile");
+    if (fileInput.files.length) {
+      const fd = new FormData();
+      fd.append("image", fileInput.files[0]);
+      const ir = await fetch(`/admin/api/static-templates/${encodeURIComponent(id)}/image`, { method: "POST", body: fd });
+      const id2 = await ir.json();
+      if (id2.success && id2.imageUrl) {
+        document.getElementById("staticTplPreviewImg").src = id2.imageUrl;
+      }
+    }
+
+    closeStaticTplModal();
+    staticTplLoaded = false;
+    await loadStaticTemplates();
+    showAdmToast("Template updated successfully.", "success");
+  } catch (err) {
+    showAdmToast("Error: " + err.message, "error");
+  } finally {
+    btn.disabled = false; btn.textContent = "Save Changes";
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+//  HOME PAGE EDITOR
+// ════════════════════════════════════════════════════════════════════════════
+let hpData  = {};
+let hpLoaded = false;
+
+// Sub-tab switching
+document.querySelectorAll(".adm-hp-tab").forEach(btn => {
+  btn.addEventListener("click", function() {
+    document.querySelectorAll(".adm-hp-tab").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".adm-hp-panel").forEach(p => p.classList.remove("active"));
+    this.classList.add("active");
+    document.querySelector(`[data-hp-panel="${this.dataset.hpTab}"]`)?.classList.add("active");
+  });
+});
+
+async function loadHomepage() {
+  if (hpLoaded) return;
+  const r = await fetch("/admin/api/homepage");
+  const d = await r.json();
+  if (!d.success) return;
+  hpData   = d.data;
+  hpLoaded = true;
+  populateHeroForm(hpData.hero         || {});
+  populateSvcCards(hpData.services     || {});
+  populateFeatCards(hpData.features    || {});
+  populateTstCards(hpData.testimonials || {});
+}
+
+// ── Hero ───────────────────────────────────────────────────────────────────
+function populateHeroForm(h) {
+  document.getElementById("hp_hero_tag").value      = h.tag      || "";
+  document.getElementById("hp_hero_headline").value = h.headline || "";
+  document.getElementById("hp_hero_subtitle").value = h.subtitle || "";
+  document.getElementById("hp_hero_trust").value    = h.trustText|| "";
+}
+
+async function saveHpSection(section) {
+  let payload = {};
+  let msgEl;
+
+  if (section === "hero") {
+    msgEl   = document.getElementById("hp_hero_msg");
+    payload = {
+      tag:       document.getElementById("hp_hero_tag").value.trim(),
+      headline:  document.getElementById("hp_hero_headline").value.trim(),
+      subtitle:  document.getElementById("hp_hero_subtitle").value.trim(),
+      trustText: document.getElementById("hp_hero_trust").value.trim(),
+    };
+    if (!payload.headline) { showHpMsg(msgEl,"Headline is required.","error"); return; }
+  } else if (section === "services") {
+    msgEl   = document.getElementById("hp_svc_msg");
+    payload = {
+      title:    document.getElementById("hp_svc_title").value.trim(),
+      subtitle: document.getElementById("hp_svc_subtitle").value.trim(),
+      cards:    collectHpCards("svc"),
+    };
+  } else if (section === "features") {
+    msgEl   = document.getElementById("hp_feat_msg");
+    payload = {
+      title:    document.getElementById("hp_feat_title").value.trim(),
+      subtitle: document.getElementById("hp_feat_subtitle").value.trim(),
+      cards:    collectHpCards("feat"),
+    };
+  } else if (section === "testimonials") {
+    msgEl   = document.getElementById("hp_tst_msg");
+    payload = {
+      title:    document.getElementById("hp_tst_title").value.trim(),
+      subtitle: document.getElementById("hp_tst_subtitle").value.trim(),
+      cards:    collectHpCards("tst"),
+    };
+  }
+
+  showHpMsg(msgEl, "Saving…", "info");
+  try {
+    const r = await fetch(`/admin/api/homepage/${section}`, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const d = await r.json();
+    if (d.success) { showHpMsg(msgEl, "Saved! Changes are live.", "ok"); hpLoaded = false; }
+    else           { showHpMsg(msgEl, "Save failed.", "error"); }
+  } catch (err) {
+    showHpMsg(msgEl, "Error: " + err.message, "error");
+  }
+}
+
+function showHpMsg(el, text, type) {
+  if (!el) return;
+  el.textContent = text;
+  el.className   = "adm-hp-msg adm-hp-msg--" + type;
+  if (type === "ok") setTimeout(() => { el.textContent = ""; el.className = "adm-hp-msg"; }, 3500);
+}
+
+// ── Services cards ─────────────────────────────────────────────────────────
+function populateSvcCards(s) {
+  document.getElementById("hp_svc_title").value    = s.title    || "";
+  document.getElementById("hp_svc_subtitle").value = s.subtitle || "";
+  const container = document.getElementById("hp_svc_cards_list");
+  container.innerHTML = "";
+  (s.cards || []).forEach((c, i) => appendSvcCard(container, c, i));
+}
+
+function appendSvcCard(container, c, i) {
+  const el = document.createElement("div");
+  el.className = "adm-hp-card-row";
+  el.dataset.idx = i;
+  el.innerHTML = `
+    <div class="adm-hp-card-row-header">
+      <span class="adm-hp-card-num">${i+1}</span>
+      <strong class="adm-hp-card-title-preview">${escHtml(c.title||"New Card")}</strong>
+      <button type="button" class="adm-btn-icon adm-hp-card-delete" title="Remove"><i class="fas fa-trash"></i></button>
+    </div>
+    <div class="adm-hp-card-body">
+      <div class="adm-stpl-field-row">
+        <div class="adm-stpl-field">
+          <label>Title</label>
+          <input type="text" class="svc-title" value="${escHtml(c.title||"")}" maxlength="80" />
+        </div>
+        <div class="adm-stpl-field">
+          <label>Link (optional)</label>
+          <input type="text" class="svc-link" value="${escHtml(c.link||"")}" placeholder="/resume-templates" />
+        </div>
+      </div>
+      <div class="adm-stpl-field">
+        <label>Description</label>
+        <textarea class="svc-desc" rows="2">${escHtml(c.description||"")}</textarea>
+      </div>
+      <div class="adm-stpl-field">
+        <label>Image URL <small style="font-weight:400;color:#94a3b8;">— or upload below</small></label>
+        <div class="adm-hp-img-row">
+          <input type="text" class="svc-img-url" value="${escHtml(c.imageUrl||"")}" placeholder="https://… or leave blank for default style" />
+          <input type="file" class="svc-img-file" accept="image/*" hidden />
+          <button type="button" class="adm-btn-secondary adm-hp-upload-btn"><i class="fas fa-upload"></i></button>
+        </div>
+        <% if (true) { /* service image preview */ %><img class="adm-hp-img-preview" src="${escHtml(c.imageUrl||"")}" alt="" style="${c.imageUrl?'':'display:none'}" /><% } %>
+      </div>
+    </div>`;
+  wireCardDelete(el, "services");
+  wireImgUpload(el, ".svc-img-file", ".adm-hp-upload-btn", ".svc-img-url", ".adm-hp-img-preview");
+  container.appendChild(el);
+}
+
+function addHpCard(prefix) {
+  if (prefix === "svc") {
+    const c = document.getElementById("hp_svc_cards_list");
+    appendSvcCard(c, {}, c.children.length);
+  } else if (prefix === "feat") {
+    const c = document.getElementById("hp_feat_cards_list");
+    appendFeatCard(c, {}, c.children.length);
+  } else if (prefix === "tst") {
+    const c = document.getElementById("hp_tst_cards_list");
+    appendTstCard(c, {}, c.children.length);
+  }
+}
+
+function collectHpCards(prefix) {
+  const map = { svc:"hp_svc_cards_list", feat:"hp_feat_cards_list", tst:"hp_tst_cards_list" };
+  const rows = document.getElementById(map[prefix]).querySelectorAll(".adm-hp-card-row");
+  const cards = [];
+  if (prefix === "svc") {
+    rows.forEach(row => cards.push({
+      title:       row.querySelector(".svc-title")?.value.trim()   || "",
+      description: row.querySelector(".svc-desc")?.value.trim()    || "",
+      link:        row.querySelector(".svc-link")?.value.trim()     || "",
+      imageUrl:    row.querySelector(".svc-img-url")?.value.trim()  || "",
+      bgClass:     "resume-bg",
+    }));
+  } else if (prefix === "feat") {
+    rows.forEach(row => cards.push({
+      icon:        row.querySelector(".feat-icon")?.value.trim()    || "",
+      color:       row.querySelector(".feat-color")?.value          || "blue",
+      title:       row.querySelector(".feat-title")?.value.trim()   || "",
+      description: row.querySelector(".feat-desc")?.value.trim()    || "",
+    }));
+  } else if (prefix === "tst") {
+    rows.forEach(row => cards.push({
+      avatar:  row.querySelector(".tst-avatar-url")?.value.trim()   || "",
+      name:    row.querySelector(".tst-name")?.value.trim()         || "",
+      role:    row.querySelector(".tst-role")?.value.trim()         || "",
+      text:    row.querySelector(".tst-text")?.value.trim()         || "",
+    }));
+  }
+  return cards;
+}
+
+// ── Features cards ─────────────────────────────────────────────────────────
+function populateFeatCards(f) {
+  document.getElementById("hp_feat_title").value    = f.title    || "";
+  document.getElementById("hp_feat_subtitle").value = f.subtitle || "";
+  const container = document.getElementById("hp_feat_cards_list");
+  container.innerHTML = "";
+  (f.cards || []).forEach((c, i) => appendFeatCard(container, c, i));
+}
+
+const COLOR_OPTS = ["orange","blue","red","green","yellow","purple","pink","teal"];
+function appendFeatCard(container, c, i) {
+  const colorOpts = COLOR_OPTS.map(col =>
+    `<option value="${col}" ${c.color===col?"selected":""}>${col}</option>`
+  ).join("");
+  const el = document.createElement("div");
+  el.className = "adm-hp-card-row";
+  el.innerHTML = `
+    <div class="adm-hp-card-row-header">
+      <span class="adm-hp-card-num">${i+1}</span>
+      <strong class="adm-hp-card-title-preview">${escHtml(c.title||"New Feature")}</strong>
+      <button type="button" class="adm-btn-icon adm-hp-card-delete" title="Remove"><i class="fas fa-trash"></i></button>
+    </div>
+    <div class="adm-hp-card-body">
+      <div class="adm-stpl-field-row">
+        <div class="adm-stpl-field" style="flex:0 0 90px;">
+          <label>Icon (emoji)</label>
+          <input type="text" class="feat-icon" value="${escHtml(c.icon||"")}" maxlength="8" style="font-size:1.3rem;text-align:center;" />
+        </div>
+        <div class="adm-stpl-field" style="flex:0 0 110px;">
+          <label>Color</label>
+          <select class="feat-color">${colorOpts}</select>
+        </div>
+        <div class="adm-stpl-field">
+          <label>Title</label>
+          <input type="text" class="feat-title" value="${escHtml(c.title||"")}" maxlength="80" />
+        </div>
+      </div>
+      <div class="adm-stpl-field">
+        <label>Description</label>
+        <textarea class="feat-desc" rows="2">${escHtml(c.description||"")}</textarea>
+      </div>
+    </div>`;
+  wireCardDelete(el, "features");
+  container.appendChild(el);
+}
+
+// ── Testimonials cards ─────────────────────────────────────────────────────
+function populateTstCards(t) {
+  document.getElementById("hp_tst_title").value    = t.title    || "";
+  document.getElementById("hp_tst_subtitle").value = t.subtitle || "";
+  const container = document.getElementById("hp_tst_cards_list");
+  container.innerHTML = "";
+  (t.cards || []).forEach((c, i) => appendTstCard(container, c, i));
+}
+
+function appendTstCard(container, c, i) {
+  const el = document.createElement("div");
+  el.className = "adm-hp-card-row";
+  el.innerHTML = `
+    <div class="adm-hp-card-row-header">
+      <img class="adm-hp-tst-thumb" src="${escHtml(c.avatar||"")}" alt="" onerror="this.src='https://i.pravatar.cc/40?img=1'" />
+      <strong class="adm-hp-card-title-preview">${escHtml(c.name||"New Testimonial")}</strong>
+      <button type="button" class="adm-btn-icon adm-hp-card-delete" title="Remove"><i class="fas fa-trash"></i></button>
+    </div>
+    <div class="adm-hp-card-body">
+      <div class="adm-stpl-field-row">
+        <div class="adm-stpl-field">
+          <label>Name</label>
+          <input type="text" class="tst-name" value="${escHtml(c.name||"")}" maxlength="80" />
+        </div>
+        <div class="adm-stpl-field">
+          <label>Role / Title</label>
+          <input type="text" class="tst-role" value="${escHtml(c.role||"")}" maxlength="80" />
+        </div>
+      </div>
+      <div class="adm-stpl-field">
+        <label>Quote</label>
+        <textarea class="tst-text" rows="3">${escHtml(c.text||"")}</textarea>
+      </div>
+      <div class="adm-stpl-field">
+        <label>Avatar</label>
+        <div class="adm-hp-img-row">
+          <input type="text" class="tst-avatar-url" value="${escHtml(c.avatar||"")}" placeholder="https://… or upload" />
+          <input type="file" class="tst-img-file" accept="image/*" hidden />
+          <button type="button" class="adm-btn-secondary adm-hp-upload-btn"><i class="fas fa-upload"></i></button>
+        </div>
+        <img class="adm-hp-img-preview adm-hp-tst-preview" src="${escHtml(c.avatar||"")}" alt="" style="${c.avatar?'':'display:none'}" />
+      </div>
+    </div>`;
+  wireCardDelete(el, "testimonials");
+  wireImgUpload(el, ".tst-img-file", ".adm-hp-upload-btn", ".tst-avatar-url", ".adm-hp-tst-preview");
+  container.appendChild(el);
+}
+
+// ── Shared helpers ─────────────────────────────────────────────────────────
+function wireCardDelete(el, section) {
+  el.querySelector(".adm-hp-card-delete").addEventListener("click", async function() {
+    if (!confirm("Remove this card? It will be deleted immediately.")) return;
+    el.remove();
+    await saveHpSection(section); // persist to DB right away
+  });
+}
+
+function wireImgUpload(el, fileSelector, btnSelector, urlSelector, previewSelector) {
+  const fileInput = el.querySelector(fileSelector);
+  const btn       = el.querySelector(btnSelector);
+  const urlInput  = el.querySelector(urlSelector);
+  const preview   = el.querySelector(previewSelector);
+  btn.addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener("change", async function() {
+    if (!this.files.length) return;
+    const fd = new FormData();
+    fd.append("image", this.files[0]);
+    try {
+      const r = await fetch("/admin/api/homepage/upload-image", { method: "POST", body: fd });
+      const d = await r.json();
+      if (d.success) {
+        urlInput.value = d.imageUrl;
+        if (preview) { preview.src = d.imageUrl; preview.style.display = ""; }
+      }
+    } catch(e) { showAdmToast("Upload failed", "error"); }
+  });
+  urlInput.addEventListener("input", function() {
+    if (preview && this.value) { preview.src = this.value; preview.style.display = ""; }
+    else if (preview)          { preview.style.display = "none"; }
+  });
 }
 </script>
 

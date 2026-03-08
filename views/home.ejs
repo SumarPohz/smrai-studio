@@ -10,25 +10,24 @@
 </div>
 
 <div class="page-container">
+
+  <!-- ── Hero ─────────────────────────────────────────────────────────────── -->
   <section class="hero">
     <div class="hero-content">
-      <p class="hero-tag">AI-Powered Resume Studio</p>
-      <h1>Build a job-ready resume in minutes, not hours.</h1>
+      <p class="hero-tag"><%= hp_hero.tag || 'AI-Powered Resume Studio' %></p>
+      <h1><%- hp_hero.headline || 'Build a job-ready resume in minutes, not hours.' %></h1>
 
-      <!-- Mobile-only card (sits between h1 and subtitle) -->
+      <!-- Mobile-only card -->
       <div class="hero-illustration hero-illustration-inline">
         <div class="hero-card">
           <div class="hero-card-header">
             <span class="badge">Live Preview</span>
-            <span class="dot-group">
-              <span></span><span></span><span></span>
-            </span>
+            <span class="dot-group"><span></span><span></span><span></span></span>
           </div>
           <div class="hero-card-body">
-            <img class="hero-avatar" src="/images/hero-photo.png" alt="Profile" onerror="this.style.background='linear-gradient(135deg,#3b82f6,#22c55e)';this.src='';this.onerror=null;">
-            <div class="hero-lines">
-              <span></span><span></span><span class="short"></span>
-            </div>
+            <img class="hero-avatar" src="/images/hero-photo.png" alt="Profile"
+                 onerror="this.style.background='linear-gradient(135deg,#3b82f6,#22c55e)';this.src='';this.onerror=null;">
+            <div class="hero-lines"><span></span><span></span><span class="short"></span></div>
           </div>
           <div class="hero-card-footer">
             <span class="pill">PDF</span>
@@ -38,10 +37,7 @@
         </div>
       </div>
 
-      <p class="hero-subtitle">
-        SmrAI-Studio helps you create clean, modern resumes with AI guidance,
-        professional layouts, and instant download as PDF or JPG.
-      </p>
+      <p class="hero-subtitle"><%- hp_hero.subtitle || '' %></p>
 
       <div class="hero-actions">
         <% if (currentUser) { %>
@@ -52,25 +48,20 @@
         <% } %>
       </div>
 
-      <p class="hero-trust">
-        No design skills needed &middot; 8 professional templates &middot; AI-powered content
-      </p>
-
+      <p class="hero-trust"><%- hp_hero.trustText || '' %></p>
     </div>
 
+    <!-- Desktop illustration card -->
     <div class="hero-illustration">
       <div class="hero-card">
         <div class="hero-card-header">
           <span class="badge">Live Preview</span>
-          <span class="dot-group">
-            <span></span><span></span><span></span>
-          </span>
+          <span class="dot-group"><span></span><span></span><span></span></span>
         </div>
         <div class="hero-card-body">
-          <img class="hero-avatar" src="/images/hero-photo.png" alt="Profile" onerror="this.style.background='linear-gradient(135deg,#3b82f6,#22c55e)';this.src='';this.onerror=null;">
-          <div class="hero-lines">
-            <span></span><span></span><span class="short"></span>
-          </div>
+          <img class="hero-avatar" src="/images/hero-photo.png" alt="Profile"
+               onerror="this.style.background='linear-gradient(135deg,#3b82f6,#22c55e)';this.src='';this.onerror=null;">
+          <div class="hero-lines"><span></span><span></span><span class="short"></span></div>
         </div>
         <div class="hero-card-footer">
           <span class="pill">PDF</span>
@@ -81,141 +72,75 @@
     </div>
   </section>
 
+  <!-- ── Services ──────────────────────────────────────────────────────────── -->
   <section class="services-section">
-    <h2>What you can do with SmrAI-Studio</h2>
-    <p class="section-subtitle">
-      From your first resume to your next promotion, SmrAI-Studio grows with your career.
-    </p>
+    <h2><%= (hp_services.title) || 'What you can do with SmrAI-Studio' %></h2>
+    <p class="section-subtitle"><%= (hp_services.subtitle) || '' %></p>
 
     <div class="service-cards">
-      <a href="<%= currentUser ? '/resume-templates' : '/login' %>" class="service-card service-card-link">
-        <div class="service-image resume-bg"></div>
-        <div class="service-card-body">
-          <h3>Resume Making</h3>
-          <p>
-            Generate a clean, ATS-friendly resume with professional wording and layout in minutes.
-          </p>
-        </div>
-      </a>
-
-      <article class="service-card">
-        <div class="service-image cover-bg"></div>
-        <div class="service-card-body">
-          <h3>AI Cover Letters</h3>
-          <p>
-            Tailored cover letters for each job description, matching your skills and experience.
-          </p>
-        </div>
-      </article>
-
-      <article class="service-card">
-        <div class="service-image portfolio-bg"></div>
-        <div class="service-card-body">
-          <h3>Profile & Portfolio</h3>
-          <p>
-            Keep your details saved, update once, and export resumes or profiles whenever you need.
-          </p>
-        </div>
-      </article>
-
-      <a href="/application-builder" class="service-card service-card-link">
-        <div class="service-image app-bg"></div>
-        <div class="service-card-body">
-          <h3>Applications (A4)</h3>
-          <p>
-            Write formal applications — sick leave, resignation, appreciation and more — with AI guidance and voice input.
-          </p>
-        </div>
-      </a>
+      <% const svcCards = hp_services.cards || []; %>
+      <% svcCards.forEach(function(card) { %>
+        <% if (card.link) { %>
+          <a href="<%= card.link === '/resume-templates' ? (currentUser ? '/resume-templates' : '/login') : card.link %>"
+             class="service-card service-card-link">
+        <% } else { %>
+          <article class="service-card">
+        <% } %>
+          <% if (card.imageUrl) { %>
+            <div class="service-image" style="background-image:url('<%= card.imageUrl %>');background-size:cover;background-position:center;"></div>
+          <% } else { %>
+            <div class="service-image <%= card.bgClass || '' %>"></div>
+          <% } %>
+          <div class="service-card-body">
+            <h3><%- card.title %></h3>
+            <p><%- card.description %></p>
+          </div>
+        <% if (card.link) { %>
+          </a>
+        <% } else { %>
+          </article>
+        <% } %>
+      <% }); %>
     </div>
   </section>
 
+  <!-- ── Features ──────────────────────────────────────────────────────────── -->
   <section class="features-section">
-    <h2>Our Main Features</h2>
-    <p class="section-subtitle">
-      Start building your resume today and land your next role faster.
-    </p>
+    <h2><%= (hp_features.title) || 'Our Main Features' %></h2>
+    <p class="section-subtitle"><%= (hp_features.subtitle) || '' %></p>
 
     <div class="features-grid">
-      <div class="feature-card">
-        <div class="feature-icon orange">📄</div>
-        <h3>Proven Templates</h3>
-        <p>Layouts designed to pass ATS scans and impress hiring managers.</p>
-      </div>
-
-      <div class="feature-card">
-        <div class="feature-icon blue">🎨</div>
-        <h3>Modern & Clean Design</h3>
-        <p>Balanced typography, spacing, and structure—no messy Word docs.</p>
-      </div>
-
-      <div class="feature-card">
-        <div class="feature-icon red">⚙️</div>
-        <h3>AI Writing Assistance</h3>
-        <p>SmrAI helps with bullet points, summaries, and role descriptions.</p>
-      </div>
-
-      <div class="feature-card">
-        <div class="feature-icon green">⚡</div>
-        <h3>1-Click Download</h3>
-        <p>Export as high quality PDF or JPG, ready to send anywhere.</p>
-      </div>
-
-      <div class="feature-card">
-        <div class="feature-icon yellow">🔔</div>
-        <h3>Profile Saved</h3>
-        <p>Your details stay saved—update once, reuse in multiple templates.</p>
-      </div>
-
-      <div class="feature-card">
-        <div class="feature-icon purple">🌐</div>
-        <h3>Accessible Anywhere</h3>
-        <p>Works from any device with a browser—no installs needed.</p>
-      </div>
+      <% const fCards = hp_features.cards || []; %>
+      <% fCards.forEach(function(card) { %>
+        <div class="feature-card">
+          <div class="feature-icon <%= card.color || '' %>"><%= card.icon || '' %></div>
+          <h3><%- card.title %></h3>
+          <p><%- card.description %></p>
+        </div>
+      <% }); %>
     </div>
   </section>
 
+  <!-- ── Testimonials ───────────────────────────────────────────────────────── -->
   <section class="testimonials-section">
-    <h2>Your Success, Our Inspiration</h2>
-    <p class="section-subtitle">
-      Don't just take it from us. Here's what users say about SmrAI-Studio.
-    </p>
+    <h2><%= (hp_testimonials.title) || 'Your Success, Our Inspiration' %></h2>
+    <p class="section-subtitle"><%= (hp_testimonials.subtitle) || '' %></p>
 
     <div class="testimonials-grid">
-      <article class="testimonial-card">
-        <div class="quote-flag">❝</div>
-        <img class="testimonial-avatar" src="https://i.pravatar.cc/56?img=11" alt="Ajay Mehra">
-        <p class="testimonial-text">
-          SmrAI-Studio made my resume look 10x more professional. I updated everything in under an hour
-          and started getting callbacks within a week.
-        </p>
-        <p class="testimonial-name">Ajay Mehra</p>
-        <p class="testimonial-role">Full Stack Developer</p>
-      </article>
-
-      <article class="testimonial-card">
-        <div class="quote-flag">❝</div>
-        <img class="testimonial-avatar" src="https://i.pravatar.cc/56?img=47" alt="Suchi Gupta">
-        <p class="testimonial-text">
-          Clean design and very easy to use. I update my resume for different roles and download new
-          versions instantly. Huge time saver.
-        </p>
-        <p class="testimonial-name">Suchi Gupta</p>
-        <p class="testimonial-role">HR Manager</p>
-      </article>
-
-      <article class="testimonial-card">
-        <div class="quote-flag">❝</div>
-        <img class="testimonial-avatar" src="https://i.pravatar.cc/56?img=68" alt="Puneet Srivastava">
-        <p class="testimonial-text">
-          The AI suggestions for bullet points helped me describe my experience clearly and confidently.
-          Highly recommended.
-        </p>
-        <p class="testimonial-name">Puneet Srivastava</p>
-        <p class="testimonial-role">Sales Manager</p>
-      </article>
+      <% const tCards = hp_testimonials.cards || []; %>
+      <% tCards.forEach(function(card) { %>
+        <article class="testimonial-card">
+          <div class="quote-flag">❝</div>
+          <img class="testimonial-avatar" src="<%= card.avatar || '' %>" alt="<%= card.name || '' %>"
+               onerror="this.src='https://i.pravatar.cc/56?img=1'">
+          <p class="testimonial-text"><%- card.text %></p>
+          <p class="testimonial-name"><%- card.name %></p>
+          <p class="testimonial-role"><%- card.role %></p>
+        </article>
+      <% }); %>
     </div>
   </section>
+
 </div>
 
 <style>
@@ -228,7 +153,6 @@
     overflow: hidden;
   }
 
-  /* Dot-grid overlay for depth */
   .hblob-grid {
     position: absolute;
     inset: 0;
@@ -243,53 +167,10 @@
     animation: hblobDrift ease-in-out infinite alternate;
   }
 
-  /* Blue orb — top left */
-  .hblob-1 {
-    width: 580px;
-    height: 580px;
-    background: radial-gradient(circle at 40% 40%, #3b82f6, #1d4ed8);
-    opacity: 0.18;
-    top: -180px;
-    left: -160px;
-    animation-duration: 18s;
-    animation-delay: 0s;
-  }
-
-  /* Teal orb — top right */
-  .hblob-2 {
-    width: 480px;
-    height: 480px;
-    background: radial-gradient(circle at 60% 40%, #06b6d4, #0ea5e9);
-    opacity: 0.14;
-    top: -80px;
-    right: -120px;
-    animation-duration: 22s;
-    animation-delay: -7s;
-  }
-
-  /* Indigo orb — bottom center */
-  .hblob-3 {
-    width: 420px;
-    height: 420px;
-    background: radial-gradient(circle at 50% 60%, #6366f1, #8b5cf6);
-    opacity: 0.12;
-    bottom: -100px;
-    left: 30%;
-    animation-duration: 26s;
-    animation-delay: -13s;
-  }
-
-  /* Soft green orb — mid right */
-  .hblob-4 {
-    width: 320px;
-    height: 320px;
-    background: radial-gradient(circle at 50% 50%, #10b981, #059669);
-    opacity: 0.10;
-    top: 40%;
-    right: 5%;
-    animation-duration: 20s;
-    animation-delay: -5s;
-  }
+  .hblob-1 { width:580px;height:580px;background:radial-gradient(circle at 40% 40%,#3b82f6,#1d4ed8);opacity:.18;top:-180px;left:-160px;animation-duration:18s; }
+  .hblob-2 { width:480px;height:480px;background:radial-gradient(circle at 60% 40%,#06b6d4,#0ea5e9);opacity:.14;top:-80px;right:-120px;animation-duration:22s;animation-delay:-7s; }
+  .hblob-3 { width:420px;height:420px;background:radial-gradient(circle at 50% 60%,#6366f1,#8b5cf6);opacity:.12;bottom:-100px;left:30%;animation-duration:26s;animation-delay:-13s; }
+  .hblob-4 { width:320px;height:320px;background:radial-gradient(circle at 50% 50%,#10b981,#059669);opacity:.10;top:40%;right:5%;animation-duration:20s;animation-delay:-5s; }
 
   @keyframes hblobDrift {
     0%   { transform: translate(0px,   0px)  scale(1);    }
@@ -298,14 +179,10 @@
     100% { transform: translate(15px,  40px) scale(1.02); }
   }
 
-  /* Ensure all page content renders above the background */
-  .page-container,
-  nav, header, footer,
-  .navbar, .site-footer {
+  .page-container, nav, header, footer, .navbar, .site-footer {
     position: relative;
     z-index: 1;
   }
-
 </style>
 
 <%- include("partials/footer") %>

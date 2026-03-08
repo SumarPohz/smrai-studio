@@ -1,4 +1,37 @@
+<%
+  const isAdminPreview = locals.isAdminPreview === true;
+  const isCompact      = locals.isCompact === true;
+%>
+<% if (isCompact) { %>
+<style>
+  body { margin: 0; padding: 0; background: #f3f4f6; }
+  .preview-section { padding: 0.4rem 0.5rem 0; }
+  .preview-wrapper { margin: 0 auto; }
+</style>
+<% } else { %>
 <%- include("partials/header") %>
+<% } %>
+
+<% if (isAdminPreview && !isCompact) { %>
+<style>
+  .adm-preview-banner {
+    background: #1e3a5f; color: #fff;
+    padding: 0.6rem 1.5rem;
+    display: flex; align-items: center; gap: 0.75rem;
+    font-size: 0.85rem; font-weight: 500;
+    position: sticky; top: 0; z-index: 9999;
+  }
+  .adm-preview-banner-close {
+    margin-left: auto; color: rgba(255,255,255,0.7);
+    text-decoration: none; cursor: pointer; font-size: 1rem;
+  }
+  .adm-preview-banner-close:hover { color: #fff; }
+</style>
+<div class="adm-preview-banner">
+  <i class="fas fa-eye"></i> Admin Preview Mode — using sample data
+  <a href="javascript:window.close()" class="adm-preview-banner-close">&#x2715; Close</a>
+</div>
+<% } %>
 
 <%
   // Normalize template name
@@ -6,14 +39,15 @@
 
   // Allowed template IDs for partial loading
   const validTemplates = [
-    "modern-1", "bold-sidebar", "minimal-1", "creative-gradient",
+    "modern-1", "bold-sidebar", "minimal-1", "creative-gradient", "photo-resume",
     "corporate-clean", "elegant-serif", "tech-focused", "classic-border",
     "ats-friendly",
     "ats-customer-service", "ats-sales", "ats-marketing", "ats-healthcare",
     "ats-finance", "ats-teacher", "ats-hr", "ats-engineering",
     "ats-admin", "ats-legal", "ats-logistics", "ats-hospitality"
   ];
-  const safeTpl = validTemplates.includes(tpl) ? tpl : "modern-1";
+  const isAdminTpl = typeof tpl === 'string' && /^adm-[a-z0-9-]+$/.test(tpl);
+  const safeTpl = validTemplates.includes(tpl) ? tpl : (isAdminTpl ? 'admin-dynamic' : 'modern-1');
 
   // Parse experience into [{title, company, dates, description}] objects.
   // Accepts either:
@@ -63,6 +97,11 @@
 
     if (currentHeading) {
       jobs.push({ heading: currentHeading, description: currentDesc.join(" ") });
+    }
+
+    // Fallback: no dash-prefixed headings found — treat whole text as one entry
+    if (jobs.length === 0 && lines.length > 0) {
+      return [{ title: "", company: "", dates: "", description: lines.join("\n") }];
     }
 
     return jobs.map(job => {
@@ -437,6 +476,7 @@
 </style>
 
 <section class="preview-section">
+<% if (!isCompact) { %>
   <h1>Resume Preview</h1>
   <p>
     Review your resume below. Download as JPG or PDF after payment.
@@ -444,6 +484,7 @@
     Template: <strong><%= tpl %></strong>
     &nbsp;&middot;&nbsp; <a href="/resume-templates">Change template</a>
   </p>
+<% } %>
 
   <!-- OUTER: clips overflow, prevents horizontal scroll -->
   <div class="preview-wrapper">
@@ -451,30 +492,231 @@
     <div class="preview-scale-container" id="scaleContainer">
       <!-- A4 container we capture for JPG / print -->
       <div id="resumeA4" class="resume-a4">
+        <% if (!isAdminPreview) { %>
         <!-- WATERMARK (VISIBLE UNTIL PAYMENT) — tiles injected per-page by refreshWatermark() -->
         <div class="resume-watermark"></div>
+        <% } %>
 
         <div class="resume-page <%= safeTpl %>">
-          <%- include('templates/' + safeTpl, { data, experienceItems, skillsLines, qrCodeDataUrl, technologiesCategories, projectItems }) %>
+          <%- include('templates/' + safeTpl, { data, experienceItems, skillsLines, qrCodeDataUrl, technologiesCategories, projectItems, adminTemplateConfig: typeof adminTemplateConfig !== 'undefined' ? adminTemplateConfig : null, templateSections: typeof templateSections !== 'undefined' ? templateSections : null }) %>
         </div>
+        <% if (locals.bgImageUrl) { %>
+        <style>
+          /* ── Admin-uploaded custom resume background ── */
+          .resume-tpl-bg-overlay {
+            position: absolute; inset: 0; z-index: 0; pointer-events: none;
+            background: url('<%= locals.bgImageUrl %>') center / cover no-repeat;
+            opacity: 0.06;
+          }
+          /* Hide built-in pattern when custom background is active */
+          .pr-bg-pattern { display: none !important; }
+        </style>
+        <script>
+          (function() {
+            var pages = document.querySelectorAll('[class$="-page"],[class*="-page "],.adm-tpl');
+            pages.forEach(function(p) {
+              if (p.classList.contains('modern-mini-page') || p.classList.contains('resume-page')) return;
+              p.style.position = 'relative';
+              p.style.overflow = 'hidden';
+              var ov = document.createElement('div');
+              ov.className = 'resume-tpl-bg-overlay';
+              p.insertBefore(ov, p.firstChild);
+            });
+          })();
+        </script>
+        <% } %>
       </div>
     </div>
   </div>
 
-  <!-- Download buttons — both unlock after a single payment -->
-<p class="payment-note">
-  🔓 One-time payment unlocks both JPG and PDF downloads.
-</p>
+<% if (!isAdminPreview) { %>
+  <!-- Single pay button + post-payment download modal -->
+  <div class="dl-cta-wrap">
+    <div class="dl-cta-card">
+      <div class="dl-cta-icon">🔒</div>
+      <div class="dl-cta-text">
+        <p class="dl-cta-title">Download Your Resume</p>
+        <p class="dl-cta-sub">One-time payment · Unlocks JPG &amp; PDF instantly</p>
+      </div>
+      <button id="download-image-btn" class="dl-pay-btn" style="display:none"></button>
+      <button id="download-pdf-btn"   class="dl-pay-btn" style="display:none"></button>
+      <button id="dl-unlock-btn" class="dl-unlock-btn">
+        Pay ₹<%= displayPrice %> &amp; Unlock Downloads
+      </button>
+    </div>
+    <a href="/resume-builder" class="dl-edit-link">← Edit details</a>
+  </div>
 
-<!-- Download buttons — both unlock after a single payment -->
-<div class="download-btn-row">
-  <button id="download-image-btn">PAY ₹<%= displayPrice %> &amp; DOWNLOAD JPG (A4)</button>
-  <button id="download-pdf-btn">PAY ₹<%= displayPrice %> &amp; DOWNLOAD PDF (A4)</button>
-</div>
+  <!-- Post-payment download modal -->
+  <div id="dl-modal-overlay" class="dl-modal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="dl-modal-title">
+    <div class="dl-modal">
+      <div class="dl-modal-icon">🎉</div>
+      <h2 class="dl-modal-title" id="dl-modal-title">Payment Successful!</h2>
+      <p class="dl-modal-sub">Your resume is ready. Choose your format:</p>
+      <div class="dl-modal-btns">
+        <button id="dl-jpg-btn" class="dl-modal-btn dl-modal-btn--jpg">
+          <span class="dl-modal-btn-icon">🖼️</span>
+          <span class="dl-modal-btn-label">Download JPG</span>
+          <span class="dl-modal-btn-desc">Best for sharing &amp; WhatsApp</span>
+        </button>
+        <button id="dl-pdf-btn" class="dl-modal-btn dl-modal-btn--pdf">
+          <span class="dl-modal-btn-icon">📄</span>
+          <span class="dl-modal-btn-label">Download PDF</span>
+          <span class="dl-modal-btn-desc">Best for job applications</span>
+        </button>
+      </div>
+      <button id="dl-modal-close" class="dl-modal-close" aria-label="Close">✕ Close</button>
+    </div>
+  </div>
 
-  <p style="margin-top:1rem;">
-    <a href="/resume-builder">Edit details</a>
-  </p>
+  <style>
+    /* ── CTA wrap ── */
+    .dl-cta-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+      margin: 1.5rem auto 0;
+      max-width: 560px;
+    }
+    .dl-cta-card {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 1rem 1.25rem;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      width: 100%;
+    }
+    .dl-cta-icon { font-size: 1.6rem; flex-shrink: 0; }
+    .dl-cta-text { flex: 1; min-width: 0; }
+    .dl-cta-title {
+      font-size: 0.97rem;
+      font-weight: 700;
+      color: #111827;
+      margin: 0 0 0.15rem;
+    }
+    .dl-cta-sub {
+      font-size: 0.78rem;
+      color: #6b7280;
+      margin: 0;
+    }
+    .dl-unlock-btn {
+      flex-shrink: 0;
+      background: linear-gradient(135deg, #27355a, #1d4ed8);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 0.65rem 1.2rem;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity 0.15s, transform 0.1s;
+      box-shadow: 0 2px 8px rgba(29,78,216,0.3);
+    }
+    .dl-unlock-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+    .dl-unlock-btn:active { transform: translateY(0); }
+    .dl-unlock-btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+    .dl-edit-link {
+      font-size: 0.82rem;
+      color: #6b7280;
+      text-decoration: none;
+    }
+    .dl-edit-link:hover { color: #374151; }
+
+    /* ── Modal overlay ── */
+    .dl-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(3px);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      animation: dlFadeIn 0.2s ease;
+    }
+    @keyframes dlFadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .dl-modal {
+      background: #fff;
+      border-radius: 20px;
+      padding: 2rem 2rem 1.5rem;
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+      animation: dlSlideUp 0.25s ease;
+    }
+    @keyframes dlSlideUp { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .dl-modal-icon { font-size: 2.8rem; margin-bottom: 0.5rem; }
+    .dl-modal-title {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: #111827;
+      margin: 0 0 0.35rem;
+    }
+    .dl-modal-sub {
+      font-size: 0.88rem;
+      color: #6b7280;
+      margin: 0 0 1.5rem;
+    }
+    .dl-modal-btns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+    .dl-modal-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 1rem 0.75rem;
+      border-radius: 14px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+    .dl-modal-btn--jpg {
+      background: #f0f9ff;
+      border-color: #bae6fd;
+      color: #0369a1;
+    }
+    .dl-modal-btn--jpg:hover { background: #e0f2fe; border-color: #7dd3fc; transform: translateY(-2px); }
+    .dl-modal-btn--pdf {
+      background: #fef3f2;
+      border-color: #fecaca;
+      color: #dc2626;
+    }
+    .dl-modal-btn--pdf:hover { background: #fee2e2; border-color: #f87171; transform: translateY(-2px); }
+    .dl-modal-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .dl-modal-btn-icon { font-size: 1.8rem; }
+    .dl-modal-btn-label { font-size: 0.9rem; font-weight: 700; }
+    .dl-modal-btn-desc  { font-size: 0.72rem; opacity: 0.75; }
+    .dl-modal-close {
+      background: none;
+      border: none;
+      color: #9ca3af;
+      font-size: 0.82rem;
+      cursor: pointer;
+      padding: 0.4rem 0.75rem;
+      border-radius: 8px;
+      transition: color 0.15s, background 0.15s;
+    }
+    .dl-modal-close:hover { color: #374151; background: #f3f4f6; }
+
+    @media (max-width: 560px) {
+      .dl-cta-card { flex-wrap: wrap; }
+      .dl-unlock-btn { width: 100%; text-align: center; }
+      .dl-modal-btns { grid-template-columns: 1fr; }
+    }
+  </style>
+<% } %>
 </section>
 
 <!-- ===== DYNAMIC MOBILE SCALING + MULTI-PAGE BREAKS ===== -->
@@ -1093,11 +1335,19 @@
               downloadBtn.textContent = "Download JPG (A4)";
               pdfBtn.textContent      = "Download PDF (A4)";
 
+              // Update unlock button UI
+              if (unlockBtn) {
+                unlockBtn.innerHTML = '✅ Unlocked — Choose Format';
+                unlockBtn.style.background = 'linear-gradient(135deg,#16a34a,#15803d)';
+              }
+
               // Run the action that originally triggered the payment
               if (action === "jpg") {
                 await generateJpg();
               } else if (action === "pdf") {
                 await generatePdf();
+              } else if (action === "_modal") {
+                showDownloadModal();
               }
 
             } catch (err) {
@@ -1123,7 +1373,72 @@
     }
 
     // ================================================================
-    // Button click handlers
+    // New single-button + modal UI
+    // ================================================================
+    const unlockBtn      = document.getElementById("dl-unlock-btn");
+    const modalOverlay   = document.getElementById("dl-modal-overlay");
+    const modalJpgBtn    = document.getElementById("dl-jpg-btn");
+    const modalPdfBtn    = document.getElementById("dl-pdf-btn");
+    const modalCloseBtn  = document.getElementById("dl-modal-close");
+
+    function showDownloadModal() {
+      if (modalOverlay) modalOverlay.style.display = "flex";
+    }
+    function hideDownloadModal() {
+      if (modalOverlay) modalOverlay.style.display = "none";
+    }
+
+    // After payment verified → show modal instead of auto-downloading
+    const _origHandler = handler => handler;
+
+    if (unlockBtn) {
+      unlockBtn.addEventListener("click", function () {
+        if (paymentVerified) {
+          showDownloadModal();
+        } else {
+          unlockBtn.disabled = true;
+          unlockBtn.textContent = "Opening payment…";
+          startPayment("_modal").finally(function () {
+            if (!paymentVerified) {
+              unlockBtn.disabled = false;
+              unlockBtn.innerHTML = "Pay ₹<%= displayPrice %> &amp; Unlock Downloads";
+            }
+          });
+        }
+      });
+    }
+
+    if (modalJpgBtn) {
+      modalJpgBtn.addEventListener("click", async function () {
+        modalJpgBtn.disabled = true;
+        modalJpgBtn.querySelector(".dl-modal-btn-label").textContent = "Generating…";
+        await generateJpg();
+        modalJpgBtn.disabled = false;
+        modalJpgBtn.querySelector(".dl-modal-btn-label").textContent = "Download JPG";
+      });
+    }
+
+    if (modalPdfBtn) {
+      modalPdfBtn.addEventListener("click", async function () {
+        modalPdfBtn.disabled = true;
+        modalPdfBtn.querySelector(".dl-modal-btn-label").textContent = "Generating…";
+        await generatePdf();
+        modalPdfBtn.disabled = false;
+        modalPdfBtn.querySelector(".dl-modal-btn-label").textContent = "Download PDF";
+      });
+    }
+
+    if (modalCloseBtn) {
+      modalCloseBtn.addEventListener("click", hideDownloadModal);
+    }
+    if (modalOverlay) {
+      modalOverlay.addEventListener("click", function (e) {
+        if (e.target === modalOverlay) hideDownloadModal();
+      });
+    }
+
+    // ================================================================
+    // Hidden original button click handlers (kept for logic compatibility)
     // ================================================================
     downloadBtn.addEventListener("click", function () {
       if (paymentVerified) { generateJpg(); } else { startPayment("jpg"); }

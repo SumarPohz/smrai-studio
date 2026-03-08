@@ -2368,3 +2368,270 @@
   font-size: 0.72rem;
   color: #374151;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   photo-resume   (.pr-)
+   Two-column: left sidebar (About Me / Education / Languages) |
+               right main  (Work Experience / Skills)
+   Header: profile photo + name + role + contact row
+   Design: black/white/gray, uppercase section titles, subtle bg pattern
+═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Page wrapper ── */
+.resume-page.photo-resume {
+  display: block;
+  background: #fff;
+}
+
+.pr-page {
+  position: relative;
+  width: 794px;
+  min-height: 1123px;
+  background: #fff;
+  font-family: "Segoe UI", Arial, sans-serif;
+  color: #111;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* ── Subtle diagonal grid background ── */
+.pr-bg-pattern {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 20px,
+      rgba(0,0,0,0.03) 20px,
+      rgba(0,0,0,0.03) 21px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 20px,
+      rgba(0,0,0,0.03) 20px,
+      rgba(0,0,0,0.03) 21px
+    );
+  filter: blur(0.4px);
+}
+
+/* ── Header ── */
+.pr-header {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  padding: 28px 32px 22px;
+  border-bottom: 1px solid #ddd;
+  gap: 26px;
+}
+
+/* Profile photo */
+.pr-photo-wrap {
+  flex-shrink: 0;
+  width: 116px;
+  height: 136px;
+}
+.pr-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.pr-photo-placeholder {
+  width: 100%;
+  height: 100%;
+  background: #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  font-size: 2.8rem;
+}
+
+/* Name / role / contact */
+.pr-header-info {
+  flex: 1;
+  padding-top: 6px;
+}
+.pr-name {
+  font-size: 2.5rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.1em;
+  color: #111 !important;
+  margin: 0 0 3px !important;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+.pr-role {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #555;
+  margin: 0 0 10px !important;
+}
+.pr-header-rule {
+  border: none !important;
+  border-top: 1px solid #ccc !important;
+  margin: 0 0 10px !important;
+}
+.pr-contact-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  font-size: 0.7rem;
+  color: #444;
+}
+.pr-contact-line {
+  display: flex;
+  align-items: center;
+  gap: 3px 6px;
+  flex-wrap: wrap;
+}
+.pr-contact-item { white-space: nowrap; }
+.pr-contact-sep  { color: #bbb; }
+
+/* ── Body (two columns) ── */
+.pr-body {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  min-height: calc(1123px - 188px);
+}
+.pr-left {
+  width: 38%;
+  padding: 22px 18px 22px 32px;
+  border-right: 1px solid #e8e8e8;
+  box-sizing: border-box;
+}
+.pr-right {
+  width: 62%;
+  padding: 22px 32px 22px 20px;
+  box-sizing: border-box;
+}
+
+/* ── Section ── */
+.pr-section {
+  margin-bottom: 20px;
+}
+.pr-section-title {
+  font-size: 0.68rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: #111 !important;
+  margin: 0 0 7px !important;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #ccc;
+}
+
+/* ── About Me ── */
+.pr-about-text {
+  font-size: 0.74rem;
+  line-height: 1.65;
+  color: #333;
+  text-align: justify;
+  margin: 0 !important;
+}
+
+/* ── Education ── */
+.pr-edu-entry {
+  margin-bottom: 11px;
+}
+.pr-edu-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 4px;
+  margin-bottom: 3px;
+}
+.pr-edu-name {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #111;
+  flex: 1;
+}
+.pr-edu-dates {
+  font-size: 0.68rem;
+  color: #555;
+  white-space: nowrap;
+}
+.pr-edu-bullet {
+  font-size: 0.7rem;
+  color: #333;
+  margin: 0 0 2px !important;
+  line-height: 1.5;
+}
+
+/* ── Languages ── */
+.pr-lang-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+.pr-lang-name {
+  font-size: 0.7rem;
+  color: #333;
+  width: 72px;
+  flex-shrink: 0;
+}
+.pr-lang-bar {
+  flex: 1;
+  height: 3px;
+  background: #e0e0e0;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.pr-lang-bar-fill {
+  height: 100%;
+  background: #555;
+  border-radius: 2px;
+}
+
+/* ── Work Experience ── */
+.pr-exp-entry {
+  margin-bottom: 16px;
+}
+.pr-exp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.pr-exp-company {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #111;
+  flex: 1;
+}
+.pr-exp-dates {
+  font-size: 0.68rem;
+  color: #555;
+  white-space: nowrap;
+}
+.pr-exp-bullet {
+  font-size: 0.71rem;
+  color: #333;
+  margin: 0 0 2px !important;
+  line-height: 1.55;
+}
+
+/* ── Skills 2-col grid ── */
+.pr-skills-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 16px;
+}
+.pr-skill-item {
+  font-size: 0.71rem;
+  color: #333;
+}
