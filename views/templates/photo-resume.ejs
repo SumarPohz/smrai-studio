@@ -1,0 +1,195 @@
+<%
+/*  photo-resume.ejs   Class prefix: .pr-
+    Two-column layout: left sidebar (38%) | right main (62%)
+    Header: profile photo + name + role + contact row
+    Design: clean black/white/gray, uppercase section titles, subtle bg pattern
+*/
+
+// ── Education parser ──────────────────────────────────────────────────────────
+// Accepts two formats:
+//   Advanced: entries separated by blank lines; first line = "Institution | YEAR–YEAR"
+//   Simple:   one degree per line (no pipe, no blank lines)
+function parsePrEdu(text) {
+  if (!text) return [];
+  var hasPipe = text.indexOf('|') > -1;
+  var raw = hasPipe ? text.split(/\n{2,}/) : text.split(/\n/);
+  return raw.map(function(block) {
+    var lines = block.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
+    if (!lines.length) return null;
+    var first = lines[0];
+    var pipeIdx = first.lastIndexOf('|');
+    var inst  = pipeIdx > -1 ? first.slice(0, pipeIdx).trim() : first;
+    var dates = pipeIdx > -1 ? first.slice(pipeIdx + 1).trim() : '';
+    return { inst: inst, dates: dates, bullets: lines.slice(1) };
+  }).filter(Boolean);
+}
+
+var prEduItems   = parsePrEdu(data.education || '');
+var prLangs      = (data.languages || '').split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
+var prExpItems   = experienceItems || [];
+var prSkills     = skillsLines || [];
+var prCerts      = (data.certifications || '').split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
+%>
+
+<div class="pr-page">
+  <!-- Subtle geometric background pattern -->
+  <div class="pr-bg-pattern" aria-hidden="true"></div>
+
+  <!-- ═══════════════════════════════════ HEADER ══════════════════════════════ -->
+  <header class="pr-header">
+    <!-- Profile photo -->
+    <div class="pr-photo-wrap">
+      <% if (data.profileImageUrl) { %>
+        <img class="pr-photo" src="<%= data.profileImageUrl %>" alt="Profile photo of <%= data.fullName %>" />
+      <% } else { %>
+        <div class="pr-photo pr-photo-placeholder">
+          <i class="fas fa-user"></i>
+        </div>
+      <% } %>
+    </div>
+
+    <!-- Name, role, contact -->
+    <div class="pr-header-info">
+      <h1 class="pr-name"><%= data.fullName || 'Your Name' %></h1>
+      <% if (data.roleTitle) { %>
+        <p class="pr-role"><%= data.roleTitle %></p>
+      <% } %>
+      <hr class="pr-header-rule" />
+      <div class="pr-contact-row">
+        <!-- Line 1: phone | email -->
+        <div class="pr-contact-line">
+          <% if (data.phone) { %>
+            <span class="pr-contact-item"><%= data.phone %></span>
+          <% } %>
+          <% if (data.email) { %>
+            <% if (data.phone) { %><span class="pr-contact-sep">|</span><% } %>
+            <span class="pr-contact-item"><%= data.email %></span>
+          <% } %>
+        </div>
+        <!-- Line 2: location | linkedin -->
+        <div class="pr-contact-line">
+          <% if (data.location) { %>
+            <span class="pr-contact-item"><%= data.location %></span>
+          <% } %>
+          <% if (data.linkedinUrl) { %>
+            <% if (data.location) { %><span class="pr-contact-sep">|</span><% } %>
+            <span class="pr-contact-item"><%= data.linkedinUrl %></span>
+          <% } %>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ════════════════════════════════════ BODY ═══════════════════════════════ -->
+  <div class="pr-body">
+
+    <!-- ── LEFT COLUMN ────────────────────────────────────────────────────── -->
+    <div class="pr-left">
+
+      <!-- About Me -->
+      <% if (data.summary) { %>
+      <section class="pr-section">
+        <h2 class="pr-section-title">About Me</h2>
+        <p class="pr-about-text"><%= data.summary %></p>
+      </section>
+      <% } %>
+
+      <!-- Education -->
+      <% if (prEduItems.length) { %>
+      <section class="pr-section">
+        <h2 class="pr-section-title">Education</h2>
+        <% prEduItems.forEach(function(edu) { %>
+          <div class="pr-edu-entry">
+            <div class="pr-edu-row">
+              <span class="pr-edu-name"><%= edu.inst %></span>
+              <% if (edu.dates) { %><span class="pr-edu-dates"><%= edu.dates %></span><% } %>
+            </div>
+            <% edu.bullets.forEach(function(b) { %>
+              <p class="pr-edu-bullet">• <%= b %></p>
+            <% }); %>
+          </div>
+        <% }); %>
+      </section>
+      <% } %>
+
+      <!-- Languages -->
+      <% if (prLangs.length) { %>
+      <section class="pr-section">
+        <h2 class="pr-section-title">Languages</h2>
+        <% prLangs.forEach(function(lang, i) { %>
+          <div class="pr-lang-item">
+            <span class="pr-lang-name"><%= lang %></span>
+            <div class="pr-lang-bar">
+              <div class="pr-lang-bar-fill" style="width:<%= 85 - (i * 15 > 35 ? 35 : i * 15) %>%"></div>
+            </div>
+          </div>
+        <% }); %>
+      </section>
+      <% } %>
+
+      <!-- Certifications -->
+      <% if (prCerts.length) { %>
+      <section class="pr-section">
+        <h2 class="pr-section-title">Certifications</h2>
+        <% prCerts.forEach(function(c) { %>
+          <p class="pr-edu-bullet">• <%= c %></p>
+        <% }); %>
+      </section>
+      <% } %>
+
+    </div><!-- /pr-left -->
+
+    <!-- ── RIGHT COLUMN ───────────────────────────────────────────────────── -->
+    <div class="pr-right">
+
+      <!-- Work Experience -->
+      <% if (prExpItems.length) { %>
+      <section class="pr-section">
+        <h2 class="pr-section-title">Work Experience</h2>
+        <% prExpItems.forEach(function(exp) { %>
+          <div class="pr-exp-entry">
+            <div class="pr-exp-header">
+              <span class="pr-exp-company">
+                <%= exp.company %><% if (exp.company && exp.title) { %> – <% } %><%= exp.title %>
+              </span>
+              <% if (exp.dates) { %><span class="pr-exp-dates"><%= exp.dates %></span><% } %>
+            </div>
+            <% if (exp.description) { %>
+              <% exp.description.split('\n').forEach(function(line) {
+                   var t = line.replace(/^[•\-\*]\s*/, '').trim();
+                   if (t) { %>
+                <p class="pr-exp-bullet">• <%= t %></p>
+              <% } }); %>
+            <% } %>
+          </div>
+        <% }); %>
+      </section>
+      <% } %>
+
+      <!-- Skills -->
+      <% if (prSkills.length) { %>
+      <section class="pr-section">
+        <h2 class="pr-section-title">Skills</h2>
+        <div class="pr-skills-grid">
+          <% prSkills.forEach(function(skill) { %>
+            <span class="pr-skill-item">• <%= skill %></span>
+          <% }); %>
+        </div>
+      </section>
+      <% } %>
+
+      <!-- Achievements -->
+      <% if (data.achievements) { %>
+      <section class="pr-section">
+        <h2 class="pr-section-title">Achievements</h2>
+        <% data.achievements.split('\n').forEach(function(line) {
+             var t = line.replace(/^[•\-\*]\s*/, '').trim(); if (t) { %>
+          <p class="pr-exp-bullet">• <%= t %></p>
+        <% } }); %>
+      </section>
+      <% } %>
+
+    </div><!-- /pr-right -->
+
+  </div><!-- /pr-body -->
+</div><!-- /pr-page -->

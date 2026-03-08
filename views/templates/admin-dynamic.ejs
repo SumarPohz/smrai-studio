@@ -1,0 +1,415 @@
+<%
+/*
+  admin-dynamic.ejs — Generic resume renderer for admin-created templates.
+  Receives: data, experienceItems, skillsLines, adminTemplateConfig, templateSections
+*/
+const cfg    = adminTemplateConfig || {};
+const cs     = (typeof cfg.color_scheme === 'object' && cfg.color_scheme)
+               ? cfg.color_scheme
+               : { primary: '#1e3a5f', secondary: '#f3f4f6', accent: '#3b82f6', text: '#1f2937' };
+const layout = cfg.layout_type || 'two-column-left';
+
+// ── Design settings ──────────────────────────────────────────────────────────
+const ds = (typeof cfg.design_settings === 'object' && cfg.design_settings) ? cfg.design_settings : {};
+
+const dsBgImageUrl    = cfg.background_image_url || null;
+const dsFont          = ds.fontFamily        || 'segoe';
+const dsHeadingWeight = ds.headingWeight     || '800';
+const dsBodySize      = ds.bodySize          || 'medium';
+const dsBorderRadius  = ds.borderRadius      || 'soft';
+const dsShadow        = ds.shadow            || 'none';
+const dsSectionStyle  = ds.sectionTitleStyle || 'underline';
+const dsHeaderStyle   = ds.headerStyle       || 'classic';
+const dsPillShape     = ds.pillShape         || 'rounded';
+
+const FONT_MAP   = {
+  segoe:    "'Segoe UI', Arial, sans-serif",
+  inter:    "'Inter', sans-serif",
+  georgia:  "Georgia, 'Times New Roman', serif",
+  playfair: "'Playfair Display', Georgia, serif",
+  arial:    "Arial, Helvetica, sans-serif",
+  courier:  "'Courier New', Courier, monospace",
+};
+const SIZE_MAP   = { small: '0.82rem', medium: '0.88rem', large: '0.93rem' };
+const RADIUS_MAP = { none: '0px', soft: '5px', rounded: '11px' };
+const SHADOW_MAP = {
+  none:   'none',
+  subtle: '0 1px 4px rgba(0,0,0,0.07)',
+  medium: '0 2px 10px rgba(0,0,0,0.12)',
+};
+const PILL_MAP   = { rounded: '99px', square: '4px' };
+
+const cssFont     = FONT_MAP[dsFont]          || FONT_MAP.segoe;
+const cssBodySize = SIZE_MAP[dsBodySize]      || '0.88rem';
+const cssRadius   = RADIUS_MAP[dsBorderRadius]|| '5px';
+const cssShadow   = SHADOW_MAP[dsShadow]      || 'none';
+const cssPill     = PILL_MAP[dsPillShape]     || '99px';
+
+const headerStyleClass = (dsHeaderStyle === 'filled' || dsHeaderStyle === 'accent')
+  ? ` adm-tpl--header-${dsHeaderStyle}` : '';
+
+// ── Helper: is value non-empty? ───────────────────────────────────────────────
+const v = (val) => val && String(val).trim() !== '';
+
+// ── Experience parsing ────────────────────────────────────────────────────────
+const expItems = Array.isArray(experienceItems) && experienceItems.length
+  ? experienceItems
+  : (v(data.experience) ? [{ title: '', company: '', dates: '', description: data.experience }] : []);
+
+// ── Pre-parsed line arrays ────────────────────────────────────────────────────
+const skills   = Array.isArray(skillsLines) && skillsLines.length
+  ? skillsLines
+  : (v(data.skills) ? data.skills.split('\n').map(s => s.trim()).filter(Boolean) : []);
+const langLines = v(data.languages)      ? data.languages.split('\n').map(l=>l.trim()).filter(Boolean)      : [];
+const certLines = v(data.certifications) ? data.certifications.split('\n').map(l=>l.trim()).filter(Boolean) : [];
+const achLines  = v(data.achievements)   ? data.achievements.split('\n').map(l=>l.trim()).filter(Boolean)   : [];
+const volLines  = v(data.volunteering)   ? data.volunteering.split('\n').map(l=>l.trim()).filter(Boolean)   : [];
+const refLines  = v(data.references)     ? data.references.split('\n').map(l=>l.trim()).filter(Boolean)     : [];
+
+// ── Section data registry ─────────────────────────────────────────────────────
+const sectionData = {
+  summary:        { value: data.summary },
+  experience:     { items: expItems },
+  education:      { lines: v(data.education)    ? data.education.split('\n').map(l=>l.trim()).filter(Boolean)    : [] },
+  skills:         { lines: skills },
+  languages:      { lines: langLines },
+  certifications: { lines: certLines },
+  technologies:   { lines: v(data.technologies) ? data.technologies.split('\n').map(l=>l.trim()).filter(Boolean) : [] },
+  projects:       { lines: v(data.projects)     ? data.projects.split('\n').map(l=>l.trim()).filter(Boolean)     : [] },
+  achievements:   { lines: achLines },
+  volunteering:   { lines: volLines },
+  references:     { lines: refLines },
+  hobbies:        { lines: v(data.hobbies)       ? data.hobbies.split('\n').map(l=>l.trim()).filter(Boolean)       : [] },
+  awards:         { lines: v(data.awards)        ? data.awards.split('\n').map(l=>l.trim()).filter(Boolean)        : [] },
+  training:       { lines: v(data.training)      ? data.training.split('\n').map(l=>l.trim()).filter(Boolean)      : [] },
+  publications:   { lines: v(data.publications)  ? data.publications.split('\n').map(l=>l.trim()).filter(Boolean)  : [] },
+  custom_1:       { lines: v(data.custom_1)      ? data.custom_1.split('\n').map(l=>l.trim()).filter(Boolean)      : [] },
+  custom_2:       { lines: v(data.custom_2)      ? data.custom_2.split('\n').map(l=>l.trim()).filter(Boolean)      : [] },
+  custom_3:       { lines: v(data.custom_3)      ? data.custom_3.split('\n').map(l=>l.trim()).filter(Boolean)      : [] },
+};
+
+// ── Active sections (ordered, enabled only) ───────────────────────────────────
+const activeSections = (Array.isArray(templateSections) && templateSections.length)
+  ? templateSections.filter(s => s.is_enabled)
+  : Object.keys(sectionData).map((k,i) => ({ section_key: k, placement:'auto', display_type:'bullets', sort_order:i, label_override:null }));
+
+// ── Default display labels ────────────────────────────────────────────────────
+const DEFAULT_LABELS = {
+  summary:'Professional Summary', experience:'Work Experience', education:'Education',
+  skills:'Skills', languages:'Languages', certifications:'Certifications',
+  technologies:'Technologies', projects:'Projects', achievements:'Achievements',
+  volunteering:'Volunteering', references:'References', hobbies:'Hobbies & Interests',
+  awards:'Awards', training:'Training & Courses', publications:'Publications',
+  custom_1:'Custom Section', custom_2:'Custom Section', custom_3:'Custom Section',
+};
+
+const sidebarDefaults = new Set(['education','skills','languages','certifications','references','hobbies']);
+
+function getPlacement(sec) {
+  if (sec.placement && sec.placement !== 'auto') return sec.placement;
+  return sidebarDefaults.has(sec.section_key) ? 'sidebar' : 'main';
+}
+
+function hasSectionData(key) {
+  const sd = sectionData[key];
+  if (!sd) return false;
+  if (key === 'experience') return sd.items && sd.items.length > 0;
+  if (key === 'summary')    return v(sd.value);
+  return sd.lines && sd.lines.length > 0;
+}
+
+const secTitleClass = `adm-tpl-section-title adm-tpl-section-title--${dsSectionStyle}`;
+
+function renderSection(sec) {
+  const key = sec.section_key;
+  if (!hasSectionData(key)) return '';
+  const label = sec.label_override || DEFAULT_LABELS[key] || key;
+  const dt    = sec.display_type || 'bullets';
+  const sd    = sectionData[key];
+
+  let inner = '';
+
+  if (key === 'summary') {
+    inner = `<p style="font-size:${cssBodySize};margin:0;white-space:pre-wrap;">${data.summary}</p>`;
+  } else if (key === 'experience') {
+    inner = sd.items.map(e => `
+      <div class="adm-exp-entry">
+        <div class="adm-exp-header">
+          <span class="adm-exp-title">${e.title || ''}</span>
+          <span class="adm-exp-dates">${e.dates || ''}</span>
+        </div>
+        ${v(e.company) ? `<div class="adm-exp-company">${e.company}</div>` : ''}
+        ${v(e.description) ? `<div class="adm-exp-desc">${e.description}</div>` : ''}
+      </div>`).join('');
+  } else if (dt === 'pills') {
+    inner = `<div>${sd.lines.map(l => `<span class="adm-skill-pill">${l}</span>`).join('')}</div>`;
+  } else {
+    // bullets (default)
+    inner = sd.lines.map(l => `<p class="adm-line-item">${l}</p>`).join('');
+  }
+
+  return `<h2 class="${secTitleClass}">${label}</h2>${inner}`;
+}
+
+// Partition sections for two-column layouts
+const sidebarSecs = activeSections.filter(s => getPlacement(s) === 'sidebar');
+const mainSecs    = activeSections.filter(s => getPlacement(s) !== 'sidebar');
+%>
+
+<% if (dsFont === 'inter') { %>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+<% } else if (dsFont === 'playfair') { %>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet" />
+<% } %>
+
+<style>
+  /* ── Root + CSS custom properties ── */
+  .adm-tpl {
+    --tp: <%= cs.primary %>;
+    --ts: <%= cs.secondary %>;
+    --ta: <%= cs.accent %>;
+    --tt: <%= cs.text %>;
+    --tr: <%= cssRadius %>;
+    --tsh: <%= cssShadow %>;
+    --tpill: <%= cssPill %>;
+    font-family: <%= cssFont %>;
+    color: var(--tt);
+    width: 100%;
+    box-sizing: border-box;
+    font-size: <%= cssBodySize %>;
+    line-height: 1.5;
+    box-shadow: var(--tsh);
+  }
+
+  /* ── Section titles: base ── */
+  .adm-tpl-section-title {
+    font-size: 0.72rem;
+    font-weight: <%= dsHeadingWeight %>;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--tp);
+    margin: 0.9rem 0 0.5rem;
+    padding-bottom: 0.2rem;
+  }
+  .adm-tpl-section-title:first-of-type { margin-top: 0; }
+
+  /* ── Section title variants ── */
+  .adm-tpl-section-title--underline {
+    border-bottom: 2px solid var(--ta);
+  }
+  .adm-tpl-section-title--badge {
+    background: var(--tp);
+    color: #fff;
+    padding: 0.15rem 0.55rem;
+    border-radius: var(--tr);
+    border-bottom: none;
+  }
+  .adm-tpl-section-title--plain {
+    /* bold text only */
+  }
+  .adm-tpl-section-title--dots {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .adm-tpl-section-title--dots::before {
+    content: '';
+    display: inline-block;
+    width: 6px; height: 6px;
+    background: var(--ta);
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ── Experience ── */
+  .adm-exp-entry { margin-bottom: 0.7rem; }
+  .adm-exp-header { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 0.25rem; }
+  .adm-exp-title  { font-weight: <%= dsHeadingWeight %>; font-size: <%= cssBodySize %>; }
+  .adm-exp-company{ font-size: 0.8rem; color: var(--ta); }
+  .adm-exp-dates  { font-size: 0.75rem; color: #6b7280; }
+  .adm-exp-desc   { font-size: 0.8rem; margin-top: 0.2rem; color: var(--tt); white-space: pre-wrap; }
+
+  /* ── Skill pill ── */
+  .adm-skill-pill {
+    display: inline-block;
+    background: var(--ts);
+    border: 1px solid color-mix(in srgb, var(--ta) 30%, transparent);
+    color: var(--tt);
+    border-radius: var(--tpill);
+    padding: 0.15rem 0.55rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    margin: 0.15rem 0.2rem 0.15rem 0;
+  }
+
+  /* ── Line items ── */
+  .adm-line-item { font-size: 0.8rem; margin-bottom: 0.25rem; }
+  .adm-line-item::before { content: '▪ '; color: var(--ta); }
+
+  /* ── Header style modifiers ── */
+  /* Filled: sidebar/header gets primary color bg */
+  .adm-tpl--header-filled .adm-sidebar,
+  .adm-tpl--header-filled .adm-header { background: var(--tp) !important; }
+  .adm-tpl--header-filled .adm-sidebar-name,
+  .adm-tpl--header-filled .adm-sidebar-role,
+  .adm-tpl--header-filled .adm-contact-item,
+  .adm-tpl--header-filled .adm-tpl-section-title { color: #fff !important; }
+  .adm-tpl--header-filled .adm-skill-pill { background: rgba(255,255,255,0.15); color: #fff; border-color: rgba(255,255,255,0.25); }
+  .adm-tpl--header-filled .adm-tpl-section-title--underline { border-bottom-color: rgba(255,255,255,0.35); }
+  .adm-tpl--header-filled .adm-tpl-section-title--badge { background: rgba(255,255,255,0.2); }
+  .adm-tpl--header-filled .adm-line-item { color: rgba(255,255,255,0.9); }
+  .adm-tpl--header-filled .adm-line-item::before { color: rgba(255,255,255,0.6); }
+
+  /* Accent: decorative accent bar/gradient */
+  .adm-tpl--header-accent.adm-layout-single .adm-header,
+  .adm-tpl--header-accent.adm-layout-header-split .adm-header {
+    background: linear-gradient(135deg, var(--tp), var(--ta));
+  }
+  .adm-tpl--header-accent .adm-layout-two-column-left .adm-sidebar,
+  .adm-tpl--header-accent .adm-layout-two-column-right .adm-sidebar {
+    border-top: 5px solid var(--ta);
+  }
+
+  /* ── Layout: single-column ── */
+  .adm-tpl.adm-layout-single { padding: 1.5rem; }
+  .adm-layout-single .adm-header {
+    background: var(--tp);
+    color: #fff;
+    padding: 1.2rem 1.5rem;
+    margin: -1.5rem -1.5rem 1.2rem;
+    border-radius: var(--tr) var(--tr) 0 0;
+  }
+  .adm-layout-single .adm-header-name  { font-size: 1.5rem; font-weight: <%= dsHeadingWeight %>; margin: 0 0 0.15rem; }
+  .adm-layout-single .adm-header-role  { font-size: 0.9rem; opacity: 0.85; margin: 0 0 0.5rem; }
+  .adm-layout-single .adm-header-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .adm-layout-single .adm-chip {
+    background: rgba(255,255,255,0.15);
+    border-radius: var(--tpill);
+    padding: 0.1rem 0.55rem;
+    font-size: 0.72rem;
+  }
+
+  /* ── Layout: two-column-left (sidebar left) ── */
+  .adm-tpl.adm-layout-two-column-left { display: flex; min-height: 100%; }
+  .adm-layout-two-column-left .adm-sidebar {
+    width: 32%;
+    background: var(--ts);
+    padding: 1.4rem 1rem;
+    border-right: 3px solid var(--tp);
+    flex-shrink: 0;
+  }
+  .adm-layout-two-column-left .adm-main   { flex: 1; padding: 1.4rem 1.2rem; }
+  .adm-layout-two-column-left .adm-sidebar-name { font-size: 1.1rem; font-weight: <%= dsHeadingWeight %>; color: var(--tp); margin: 0 0 0.2rem; }
+  .adm-layout-two-column-left .adm-sidebar-role { font-size: 0.8rem; color: var(--ta); margin: 0 0 0.8rem; }
+  .adm-layout-two-column-left .adm-contact-item { font-size: 0.75rem; margin-bottom: 0.3rem; color: var(--tt); word-break: break-word; }
+
+  /* ── Layout: two-column-right (sidebar right) ── */
+  .adm-tpl.adm-layout-two-column-right { display: flex; min-height: 100%; }
+  .adm-layout-two-column-right .adm-main { flex: 1; padding: 1.4rem 1.2rem; border-right: 3px solid var(--tp); }
+  .adm-layout-two-column-right .adm-sidebar { width: 32%; background: var(--ts); padding: 1.4rem 1rem; flex-shrink: 0; }
+  .adm-layout-two-column-right .adm-main-header { margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 3px solid var(--tp); }
+  .adm-layout-two-column-right .adm-main-header-name { font-size: 1.5rem; font-weight: <%= dsHeadingWeight %>; color: var(--tp); margin: 0 0 0.2rem; }
+  .adm-layout-two-column-right .adm-main-header-role { font-size: 0.9rem; color: var(--ta); margin: 0 0 0.4rem; }
+  .adm-layout-two-column-right .adm-contact-row { display: flex; flex-wrap: wrap; gap: 0.4rem; font-size: 0.75rem; }
+  .adm-layout-two-column-right .adm-contact-chip { background: var(--ts); border-radius: var(--tpill); padding: 0.1rem 0.55rem; border: 1px solid color-mix(in srgb, var(--ta) 25%, transparent); }
+  .adm-layout-two-column-right .adm-contact-item { font-size: 0.75rem; margin-bottom: 0.3rem; color: var(--tt); }
+
+  /* ── Layout: header-split ── */
+  .adm-tpl.adm-layout-header-split { display: flex; flex-direction: column; }
+  .adm-layout-header-split .adm-header {
+    background: var(--tp); color: #fff;
+    padding: 1.4rem 1.8rem; display: flex; justify-content: space-between; align-items: flex-end;
+    flex-wrap: wrap; gap: 0.75rem;
+  }
+  .adm-layout-header-split .adm-header-name { font-size: 1.6rem; font-weight: <%= dsHeadingWeight %>; margin: 0 0 0.15rem; }
+  .adm-layout-header-split .adm-header-role { font-size: 0.9rem; opacity: 0.85; margin: 0; }
+  .adm-layout-header-split .adm-header-right { display: flex; flex-direction: column; gap: 0.2rem; align-items: flex-end; font-size: 0.78rem; opacity: 0.9; }
+  .adm-layout-header-split .adm-body { padding: 1.4rem 1.8rem; }
+
+  @media print { .adm-tpl { font-size: 0.8rem; } }
+  <% if (dsBgImageUrl) { %>
+  /* ── Custom background image ── */
+  .adm-tpl { position: relative !important; overflow: hidden !important; }
+  .adm-tpl > * { position: relative; z-index: 1; }
+  .adm-tpl::before {
+    content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+    background: url('<%= dsBgImageUrl %>') center / cover no-repeat;
+    opacity: 0.06;
+  }
+  <% } %>
+</style>
+
+<% if (layout === 'single-column') { %>
+<!-- ═══════════════════════ SINGLE COLUMN ═══════════════════════ -->
+<div class="adm-tpl adm-layout-single<%= headerStyleClass %>">
+  <div class="adm-header">
+    <h1 class="adm-header-name"><%= data.fullName || '' %></h1>
+    <% if (v(data.roleTitle)) { %><p class="adm-header-role"><%= data.roleTitle %></p><% } %>
+    <div class="adm-header-chips">
+      <% if (v(data.phone))    { %><span class="adm-chip"><%= data.phone %></span><% } %>
+      <% if (v(data.email))    { %><span class="adm-chip"><%= data.email %></span><% } %>
+      <% if (v(data.location)) { %><span class="adm-chip"><%= data.location %></span><% } %>
+      <% if (v(data.linkedinUrl))  { %><span class="adm-chip"><%= data.linkedinUrl %></span><% } %>
+      <% if (v(data.portfolioUrl)) { %><span class="adm-chip"><%= data.portfolioUrl %></span><% } %>
+    </div>
+  </div>
+  <%- activeSections.map(sec => renderSection(sec)).join('') %>
+</div>
+
+<% } else if (layout === 'two-column-right') { %>
+<!-- ═══════════════════════ TWO-COLUMN RIGHT SIDEBAR ═══════════════════════ -->
+<div class="adm-tpl adm-layout-two-column-right<%= headerStyleClass %>">
+  <div class="adm-main">
+    <div class="adm-main-header">
+      <h1 class="adm-main-header-name"><%= data.fullName || '' %></h1>
+      <% if (v(data.roleTitle)) { %><p class="adm-main-header-role"><%= data.roleTitle %></p><% } %>
+      <div class="adm-contact-row">
+        <% if (v(data.phone))    { %><span class="adm-contact-chip"><%= data.phone %></span><% } %>
+        <% if (v(data.email))    { %><span class="adm-contact-chip"><%= data.email %></span><% } %>
+        <% if (v(data.location)) { %><span class="adm-contact-chip"><%= data.location %></span><% } %>
+      </div>
+    </div>
+    <%- mainSecs.map(sec => renderSection(sec)).join('') %>
+  </div>
+  <div class="adm-sidebar">
+    <%- sidebarSecs.map(sec => renderSection(sec)).join('') %>
+  </div>
+</div>
+
+<% } else if (layout === 'header-split') { %>
+<!-- ═══════════════════════ HEADER SPLIT ═══════════════════════ -->
+<div class="adm-tpl adm-layout-header-split<%= headerStyleClass %>">
+  <div class="adm-header">
+    <div class="adm-header-left">
+      <h1 class="adm-header-name"><%= data.fullName || '' %></h1>
+      <% if (v(data.roleTitle)) { %><p class="adm-header-role"><%= data.roleTitle %></p><% } %>
+    </div>
+    <div class="adm-header-right">
+      <% if (v(data.phone))    { %><span><%= data.phone %></span><% } %>
+      <% if (v(data.email))    { %><span><%= data.email %></span><% } %>
+      <% if (v(data.location)) { %><span><%= data.location %></span><% } %>
+    </div>
+  </div>
+  <div class="adm-body">
+    <%- activeSections.map(sec => renderSection(sec)).join('') %>
+  </div>
+</div>
+
+<% } else { %>
+<!-- ═══════════════════ TWO-COLUMN LEFT SIDEBAR (default) ═══════════════════ -->
+<div class="adm-tpl adm-layout-two-column-left<%= headerStyleClass %>">
+  <div class="adm-sidebar">
+    <p class="adm-sidebar-name"><%= data.fullName || '' %></p>
+    <% if (v(data.roleTitle)) { %><p class="adm-sidebar-role"><%= data.roleTitle %></p><% } %>
+    <% if (v(data.phone))    { %><p class="adm-contact-item">📞 <%= data.phone %></p><% } %>
+    <% if (v(data.email))    { %><p class="adm-contact-item">✉ <%= data.email %></p><% } %>
+    <% if (v(data.location)) { %><p class="adm-contact-item">📍 <%= data.location %></p><% } %>
+    <% if (v(data.linkedinUrl))  { %><p class="adm-contact-item">🔗 <%= data.linkedinUrl %></p><% } %>
+    <% if (v(data.portfolioUrl)) { %><p class="adm-contact-item">🌐 <%= data.portfolioUrl %></p><% } %>
+    <%- sidebarSecs.map(sec => renderSection(sec)).join('') %>
+  </div>
+  <div class="adm-main">
+    <%- mainSecs.map(sec => renderSection(sec)).join('') %>
+  </div>
+</div>
+<% } %>

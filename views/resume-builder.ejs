@@ -1,4 +1,14 @@
 <%- include("partials/header") %>
+<%
+  // For admin-created templates: check if a section is enabled.
+  // templateSections is array of {section_key, is_enabled} passed from GET /resume-builder.
+  // If null/undefined (static template), all sections are enabled.
+  function isSectionEnabled(key) {
+    if (!templateSections || !Array.isArray(templateSections)) return true;
+    const sec = templateSections.find(s => s.section_key === key);
+    return sec ? sec.is_enabled : false;
+  }
+%>
 
 <section class="builder-section">
   <div class="builder-header-row">
@@ -221,6 +231,7 @@
         </div>
 
         <!-- STEP 2: SUMMARY -->
+        <% if (isSectionEnabled('summary')) { %>
         <div class="rb-step" data-step="2">
           <h2 class="rb-step-title">Professional Summary</h2>
           <p class="rb-step-subtitle">
@@ -246,8 +257,10 @@
             ><%= (draft && draft.summary) || (profile && profile.summary) || '' %></textarea>
           </div>
         </div>
+        <% } %>
 
         <!-- STEP 3: EXPERIENCE -->
+        <% if (isSectionEnabled('experience')) { %>
         <div class="rb-step" data-step="3">
           <h2 class="rb-step-title">Experience</h2>
 
@@ -271,11 +284,29 @@
               name="experience"
               rows="10"
               placeholder="e.g. I worked as a Security Supervisor at ACPS, Delhi, India from 2020 to present. I managed a team of 10 officers and reduced incidents by 30%..."
-            ><%= (draft && draft.experience) || (profile && profile.experience) || '' %></textarea>
+><% {
+              var _rawExp = (draft && draft.experience) || (profile && profile.experience) || '';
+              var _expText = '';
+              if (Array.isArray(_rawExp)) {
+                _expText = _rawExp.map(function(e){
+                  var parts = [];
+                  if (e.title || e.company) parts.push((e.title||'') + (e.company?' at '+e.company:'') + (e.dates?' ('+e.dates+')':''));
+                  if (e.description) parts.push(e.description);
+                  return parts.join('\n');
+                }).join('\n\n');
+              } else {
+                _expText = String(_rawExp || '');
+              }
+            } %><%= _expText %></textarea>
+            <% if (Array.isArray(draft && draft.experience)) { %>
+            <input type="hidden" name="experienceJson" id="experienceJson" value="<%= JSON.stringify(draft.experience) %>">
+            <% } %>
           </div>
         </div>
+        <% } %>
 
         <!-- STEP 4: EDUCATION, LANGUAGES, SKILLS -->
+        <% if (isSectionEnabled('education') || isSectionEnabled('skills') || isSectionEnabled('languages')) { %>
         <div class="rb-step" data-step="4">
           <h2 class="rb-step-title">Education, Languages &amp; Skills</h2>
           <p class="rb-step-subtitle">
@@ -318,7 +349,7 @@
               ><%= (draft && draft.languages) || '' %></textarea>
             </div>
 
-            <% if (template === 'bold-sidebar' || template === 'creative-gradient') { %>
+            <% if (template === 'bold-sidebar' || template === 'creative-gradient' || (template !== 'photo-resume' && isSectionEnabled('references'))) { %>
             <div class="rb-field ai-field-wrap">
               <div class="ai-field-label">
                 <label for="references">References <span style="font-weight:400;color:#6b7280;font-size:0.85em;">(optional)</span></label>
@@ -359,8 +390,9 @@
               ><%= (draft && draft.skills) || '' %></textarea>
             </div>
 
-            <% if (template === 'tech-focused' || template === 'ats-friendly') { %>
+            <% if (template === 'tech-focused' || template === 'ats-friendly' || isSectionEnabled('technologies') || isSectionEnabled('projects') || isSectionEnabled('certifications')) { %>
 
+            <% if (template !== 'photo-resume') { %>
             <div class="rb-field ai-field-wrap">
               <div class="ai-field-label">
                 <label for="technologies">Technologies / Stack</label>
@@ -378,7 +410,9 @@
                 placeholder="Frontend: React, TypeScript, Tailwind CSS&#10;Backend: Node.js, Python, Express.js&#10;Database: PostgreSQL, MongoDB, Redis&#10;DevOps: Docker, AWS, GitHub Actions&#10;Tools: Git, Postman, Figma"
               ><%= (draft && draft.technologies) || '' %></textarea>
             </div>
+            <% } %>
 
+            <% if (template !== 'photo-resume') { %>
             <div class="rb-field ai-field-wrap">
               <div class="ai-field-label">
                 <label for="projects">Projects</label>
@@ -419,6 +453,7 @@
                 value="<%= (draft && draft.githubUrl) || '' %>"
               />
             </div>
+            <% } %>
 
             <div class="rb-field">
               <label for="linkedinUrl">LinkedIn Profile URL</label>
@@ -436,6 +471,7 @@
                 <label for="certifications">Certifications &amp; Achievements <span style="font-weight:400;color:#6b7280;font-size:0.85em;">(optional)</span></label>
                 <div class="ai-btn-group">
                   <span class="fmic-status" aria-live="polite"></span>
+                  <button type="button" class="ai-mic-field-btn" data-mic-target="certifications" title="Voice input" aria-label="Start voice input for Certifications">🎤</button>
                   <button type="button" class="ai-btn" data-field="certifications">✨ AI Suggest</button>
                   <button type="button" class="ai-undo-btn" data-field="certifications" disabled>↩ Undo</button>
                 </div>
@@ -448,13 +484,14 @@
               ><%= (draft && draft.certifications) || '' %></textarea>
             </div>
 
-            <% if (template === 'ats-friendly') { %>
+            <% if (template === 'ats-friendly' || isSectionEnabled('achievements') || isSectionEnabled('awards') || isSectionEnabled('training') || isSectionEnabled('volunteering')) { %>
 
             <div class="rb-field ai-field-wrap">
               <div class="ai-field-label">
                 <label for="achievements">Key Achievements <span style="font-weight:400;color:#6b7280;font-size:0.85em;">(optional)</span></label>
                 <div class="ai-btn-group">
                   <span class="fmic-status" aria-live="polite"></span>
+                  <button type="button" class="ai-mic-field-btn" data-mic-target="achievements" title="Voice input" aria-label="Start voice input for Achievements">🎤</button>
                   <button type="button" class="ai-btn" data-field="achievements">✨ AI Suggest</button>
                   <button type="button" class="ai-undo-btn" data-field="achievements" disabled>↩ Undo</button>
                 </div>
@@ -468,6 +505,7 @@
               ><%= (draft && draft.achievements) || '' %></textarea>
             </div>
 
+            <% if (template !== 'photo-resume') { %>
             <div class="rb-field ai-field-wrap">
               <div class="ai-field-label">
                 <label for="awards">Awards <span style="font-weight:400;color:#6b7280;font-size:0.85em;">(optional)</span></label>
@@ -520,13 +558,55 @@
                 placeholder="Tech Mentor — Google Developer Student Club (2022–Present)&#10;Open Source Contributor — Mozilla Firefox, reported 3 critical bugs&#10;Code instructor — weekend coding bootcamp for underprivileged youth"
               ><%= (draft && draft.volunteering) || '' %></textarea>
             </div>
+            <% } %>
 
             <% } %>
 
+            <% } %>
+
+            <% if (template !== 'photo-resume' && isSectionEnabled('hobbies')) { %>
+            <div class="rb-field">
+              <label for="hobbies">Hobbies &amp; Interests <span style="font-weight:400;color:#6b7280;font-size:0.85em;">(optional)</span></label>
+              <textarea id="hobbies" name="hobbies" rows="3"
+                placeholder="Photography, Chess, Open Source, Rock Climbing..."
+              ><%= (draft && draft.hobbies) || '' %></textarea>
+            </div>
+            <% } %>
+
+            <% if (template !== 'photo-resume' && isSectionEnabled('publications')) { %>
+            <div class="rb-field">
+              <label for="publications">Publications <span style="font-weight:400;color:#6b7280;font-size:0.85em;">(optional)</span></label>
+              <p class="rb-field-hint">One per line — e.g. <em>Title, Journal/Platform, Year</em></p>
+              <textarea id="publications" name="publications" rows="3"
+                placeholder="Deep Learning for NLP — IEEE Conference, 2024&#10;Building Scalable APIs — Medium, 2023"
+              ><%= (draft && draft.publications) || '' %></textarea>
+            </div>
+            <% } %>
+
+            <% if (template !== 'photo-resume' && isSectionEnabled('custom_1')) { %>
+            <div class="rb-field">
+              <label for="custom_1"><%= (templateSections && templateSections.find(s => s.section_key === 'custom_1') && templateSections.find(s => s.section_key === 'custom_1').label_override) || 'Custom Section 1' %></label>
+              <textarea id="custom_1" name="custom_1" rows="4"><%= (draft && draft.custom_1) || '' %></textarea>
+            </div>
+            <% } %>
+
+            <% if (template !== 'photo-resume' && isSectionEnabled('custom_2')) { %>
+            <div class="rb-field">
+              <label for="custom_2"><%= (templateSections && templateSections.find(s => s.section_key === 'custom_2') && templateSections.find(s => s.section_key === 'custom_2').label_override) || 'Custom Section 2' %></label>
+              <textarea id="custom_2" name="custom_2" rows="4"><%= (draft && draft.custom_2) || '' %></textarea>
+            </div>
+            <% } %>
+
+            <% if (template !== 'photo-resume' && isSectionEnabled('custom_3')) { %>
+            <div class="rb-field">
+              <label for="custom_3"><%= (templateSections && templateSections.find(s => s.section_key === 'custom_3') && templateSections.find(s => s.section_key === 'custom_3').label_override) || 'Custom Section 3' %></label>
+              <textarea id="custom_3" name="custom_3" rows="4"><%= (draft && draft.custom_3) || '' %></textarea>
+            </div>
             <% } %>
 
           </div>
         </div>
+        <% } %>
         <!-- NAVIGATION -->
         <div class="rb-nav">
           <button type="button" class="btn-ghost" id="rbBackBtn">Back</button>
@@ -660,8 +740,8 @@
           </div>
 
         </div>
-        <% } else if (template === 'tech-focused' || template === 'ats-friendly') { %>
-        <!-- Tech-Focused / ATS-Friendly: dark navy header + summary band + two-column body -->
+        <% } else if (template === 'tech-focused' || template.startsWith('ats-')) { %>
+        <!-- Tech-Focused / ATS: dark navy header + summary band + two-column body -->
         <div class="modern-mini-page tf-mode">
 
           <div class="tfmini-header">
@@ -718,6 +798,58 @@
               <div class="tfmini-section">
                 <h3>PROJECTS</h3>
                 <p id="pvProjects">Projects will appear here.</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <% } else if (template === 'photo-resume') { %>
+        <!-- Photo Resume: white header with photo + two-column body -->
+        <div class="modern-mini-page pr-mode">
+
+          <div class="prmini-header">
+            <div class="prmini-photo-wrap">
+              <div class="prmini-photo-placeholder"><i class="fas fa-user"></i></div>
+            </div>
+            <div class="prmini-header-info">
+              <div id="pvName" class="prmini-name">Your Name</div>
+              <div id="pvRole" class="prmini-role">Your Job Title</div>
+              <div class="prmini-rule"></div>
+              <div class="prmini-contact">
+                <span id="pvPhone">+91 0000000000</span>
+                <span class="prmini-sep">|</span>
+                <span id="pvEmail">email@example.com</span>
+                <span class="prmini-sep">|</span>
+                <span id="pvLocation">City, Country</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="prmini-body">
+            <div class="prmini-left">
+              <div class="prmini-section">
+                <h3>ABOUT ME</h3>
+                <p id="pvSummary">Your professional summary will appear here.</p>
+              </div>
+              <div class="prmini-section">
+                <h3>EDUCATION</h3>
+                <p id="pvEducation">Education entries will appear here.</p>
+              </div>
+              <div class="prmini-section">
+                <h3>LANGUAGES</h3>
+                <p id="pvLanguages">Languages will appear here.</p>
+              </div>
+            </div>
+            <div class="prmini-right">
+              <div class="prmini-section">
+                <h3>WORK EXPERIENCE</h3>
+                <p id="pvExperience">Experience will appear here as you type.</p>
+              </div>
+              <div class="prmini-section">
+                <h3>SKILLS</h3>
+                <div id="pvSkills" class="modern-mini-skills prmini-skills">
+                  <span>Skills will appear here.</span>
+                </div>
               </div>
             </div>
           </div>
@@ -1698,6 +1830,122 @@
     max-height: 3.5rem;
   }
 
+  /* ── Photo-Resume mini preview ── */
+  .modern-mini-page.pr-mode {
+    flex-direction: column;
+    background: #ffffff;
+  }
+
+  .prmini-header {
+    display: flex;
+    align-items: flex-start;
+    padding: 0.5rem 0.55rem 0.4rem;
+    border-bottom: 1px solid #e0e0e0;
+    flex-shrink: 0;
+    gap: 0.4rem;
+  }
+
+  .prmini-photo-wrap {
+    width: 28px;
+    height: 34px;
+    flex-shrink: 0;
+    background: #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #9ca3af;
+    font-size: 0.65rem;
+  }
+
+  .prmini-header-info {
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .prmini-name {
+    font-size: 0.62rem;
+    font-weight: 800;
+    color: #111;
+    margin: 0 0 0.05rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .prmini-role {
+    font-size: 0.38rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #555;
+    margin: 0 0 0.1rem;
+  }
+
+  .prmini-rule {
+    border-top: 1px solid #ccc;
+    margin: 0.1rem 0;
+  }
+
+  .prmini-contact {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.05rem 0.15rem;
+    font-size: 0.36rem;
+    color: #555;
+  }
+
+  .prmini-sep {
+    color: #bbb;
+  }
+
+  .prmini-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .prmini-left {
+    width: 38%;
+    padding: 0.4rem 0.3rem 0.4rem 0.4rem;
+    border-right: 1px solid #e8e8e8;
+    overflow: hidden;
+  }
+
+  .prmini-right {
+    width: 62%;
+    padding: 0.4rem 0.4rem 0.4rem 0.3rem;
+    overflow: hidden;
+  }
+
+  .prmini-section {
+    margin-bottom: 0.35rem;
+  }
+
+  .prmini-section h3 {
+    font-size: 0.38rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #111;
+    margin: 0 0 0.12rem;
+    padding-bottom: 0.08rem;
+    border-bottom: 1px solid #ccc;
+  }
+
+  .prmini-section p {
+    font-size: 0.42rem;
+    color: #333;
+    margin: 0;
+    line-height: 1.4;
+    overflow: hidden;
+    max-height: 2.5rem;
+  }
+
+  .prmini-skills {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.1rem;
+  }
+
   #pvExperience {
     font-size: 0.58rem;
     line-height: 1.38;
@@ -2517,7 +2765,7 @@ document.addEventListener("DOMContentLoaded", () => {
 (function () {
   const TEMPLATE_ID = "<%= template %>";
   // Templates that support a profile photo (must match config/template-fields.js)
-  const IS_PHOTO_TEMPLATE = ["modern-1", "bold-sidebar", "creative-gradient"].includes(TEMPLATE_ID);
+  const IS_PHOTO_TEMPLATE = ["modern-1", "bold-sidebar", "creative-gradient", "photo-resume"].includes(TEMPLATE_ID);
 
   // DOM refs — Q&A UI
   const openBtn    = document.getElementById("aiInterviewBtn");

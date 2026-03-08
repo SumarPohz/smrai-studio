@@ -18,13 +18,20 @@ const COMMON_REQUIRED = [
 
 const PHOTO_OPTIONAL = { key: "profileImageUrl", label: "Profile Photo URL", type: "url" };
 
-const PHOTO_TEMPLATES = ["modern-1", "bold-sidebar", "creative-gradient", "tech-focused", "ats-friendly"];
+const PHOTO_TEMPLATES = ["modern-1", "bold-sidebar", "creative-gradient", "tech-focused", "ats-friendly", "photo-resume"];
+
+const PHOTO_RESUME_EXTRA = [
+  { key: "certifications", label: "Certifications", type: "textarea", question: "List any certifications you hold (e.g. AWS, PMP, Google Cloud)." },
+  { key: "achievements",   label: "Achievements",   type: "textarea", question: "What are your key achievements or career highlights?" },
+  { key: "linkedinUrl",    label: "LinkedIn URL",   type: "url",       question: null },
+];
 
 export const TEMPLATE_STRUCTURE = {
   "modern-1":          { required: [...COMMON_REQUIRED], optional: [PHOTO_OPTIONAL] },
   "bold-sidebar":      { required: [...COMMON_REQUIRED], optional: [PHOTO_OPTIONAL] },
   "minimal-1":         { required: [...COMMON_REQUIRED], optional: [] },
   "creative-gradient": { required: [...COMMON_REQUIRED], optional: [PHOTO_OPTIONAL] },
+  "photo-resume":      { required: [...COMMON_REQUIRED, ...PHOTO_RESUME_EXTRA], optional: [PHOTO_OPTIONAL] },
   "corporate-clean":   { required: [...COMMON_REQUIRED], optional: [] },
   "elegant-serif":     { required: [...COMMON_REQUIRED], optional: [] },
   "tech-focused":      { required: [...COMMON_REQUIRED], optional: [PHOTO_OPTIONAL] },

@@ -236,7 +236,110 @@ await db.query(`
       ON CONFLICT (key) DO NOTHING;
     `);
 
-    console.log("✅ Tables ready: service_requests, resumes, resume_events, payments, activity_logs, request_messages, admin_settings");
+    // ── Homepage editable content defaults ───────────────────────────────────
+    const homepageDefaults = [
+      ['homepage_hero', JSON.stringify({
+        tag:       "AI-Powered Resume Studio",
+        headline:  "Build a job-ready resume in minutes, not hours.",
+        subtitle:  "SmrAI-Studio helps you create clean, modern resumes with AI guidance, professional layouts, and instant download as PDF or JPG.",
+        trustText: "No design skills needed · 8 professional templates · AI-powered content",
+      })],
+      ['homepage_services', JSON.stringify({
+        title:    "What you can do with SmrAI-Studio",
+        subtitle: "From your first resume to your next promotion, SmrAI-Studio grows with your career.",
+        cards: [
+          { title: "Resume Making",     description: "Generate a clean, ATS-friendly resume with professional wording and layout in minutes.",                                                   link: "/resume-templates",     bgClass: "resume-bg",    imageUrl: "" },
+          { title: "AI Cover Letters",  description: "Tailored cover letters for each job description, matching your skills and experience.",                                                   link: "",                      bgClass: "cover-bg",     imageUrl: "" },
+          { title: "Profile & Portfolio", description: "Keep your details saved, update once, and export resumes or profiles whenever you need.",                                               link: "",                      bgClass: "portfolio-bg", imageUrl: "" },
+          { title: "Applications (A4)", description: "Write formal applications — sick leave, resignation, appreciation and more — with AI guidance and voice input.",                         link: "/application-builder",  bgClass: "app-bg",       imageUrl: "" },
+        ],
+      })],
+      ['homepage_features', JSON.stringify({
+        title:    "Our Main Features",
+        subtitle: "Start building your resume today and land your next role faster.",
+        cards: [
+          { icon: "📄", color: "orange", title: "Proven Templates",      description: "Layouts designed to pass ATS scans and impress hiring managers." },
+          { icon: "🎨", color: "blue",   title: "Modern & Clean Design", description: "Balanced typography, spacing, and structure—no messy Word docs." },
+          { icon: "⚙️", color: "red",    title: "AI Writing Assistance", description: "SmrAI helps with bullet points, summaries, and role descriptions." },
+          { icon: "⚡", color: "green",  title: "1-Click Download",      description: "Export as high quality PDF or JPG, ready to send anywhere." },
+          { icon: "🔔", color: "yellow", title: "Profile Saved",         description: "Your details stay saved—update once, reuse in multiple templates." },
+          { icon: "🌐", color: "purple", title: "Accessible Anywhere",   description: "Works from any device with a browser—no installs needed." },
+        ],
+      })],
+      ['homepage_testimonials', JSON.stringify({
+        title:    "Your Success, Our Inspiration",
+        subtitle: "Don't just take it from us. Here's what users say about SmrAI-Studio.",
+        cards: [
+          { avatar: "https://i.pravatar.cc/56?img=11", name: "Ajay Mehra",       role: "Full Stack Developer", text: "SmrAI-Studio made my resume look 10x more professional. I updated everything in under an hour and started getting callbacks within a week." },
+          { avatar: "https://i.pravatar.cc/56?img=47", name: "Suchi Gupta",      role: "HR Manager",          text: "Clean design and very easy to use. I update my resume for different roles and download new versions instantly. Huge time saver." },
+          { avatar: "https://i.pravatar.cc/56?img=68", name: "Puneet Srivastava",role: "Sales Manager",       text: "The AI suggestions for bullet points helped me describe my experience clearly and confidently. Highly recommended." },
+        ],
+      })],
+    ];
+    for (const [key, value] of homepageDefaults) {
+      await db.query(
+        `INSERT INTO admin_settings (key, value) VALUES ($1,$2) ON CONFLICT (key) DO NOTHING`,
+        [key, value]
+      );
+    }
+
+    /* ── Admin Template Builder: dynamic templates created via admin panel ── */
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS admin_templates (
+        id           SERIAL PRIMARY KEY,
+        slug         VARCHAR(100) UNIQUE NOT NULL,
+        title        VARCHAR(255) NOT NULL,
+        description  TEXT,
+        category     VARCHAR(50) NOT NULL DEFAULT 'experienced',
+        badge        VARCHAR(100) DEFAULT 'New',
+        layout_type  VARCHAR(50) DEFAULT 'two-column-left',
+        color_scheme JSONB DEFAULT '{"primary":"#1e3a5f","secondary":"#f3f4f6","accent":"#3b82f6","text":"#1f2937"}',
+        thumbnail_url TEXT,
+        adobe_design_id TEXT,
+        is_paid      BOOLEAN DEFAULT true,
+        price_inr    INTEGER DEFAULT 49,
+        is_published BOOLEAN DEFAULT false,
+        sort_order   INTEGER DEFAULT 0,
+        created_by   INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at   TIMESTAMPTZ DEFAULT NOW(),
+        updated_at   TIMESTAMPTZ DEFAULT NOW()
+      );
+    `).catch(() => {});
+
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS admin_template_sections (
+        id          SERIAL PRIMARY KEY,
+        template_id INTEGER REFERENCES admin_templates(id) ON DELETE CASCADE,
+        section_key VARCHAR(100) NOT NULL,
+        is_enabled  BOOLEAN DEFAULT true,
+        sort_order  INTEGER DEFAULT 0,
+        UNIQUE(template_id, section_key)
+      );
+    `).catch(() => {});
+
+    // Idempotent column additions — safe to run every startup
+    await db.query(`ALTER TABLE admin_template_sections ADD COLUMN IF NOT EXISTS placement VARCHAR(20) DEFAULT 'auto'`).catch(() => {});
+    await db.query(`ALTER TABLE admin_template_sections ADD COLUMN IF NOT EXISTS display_type VARCHAR(30) DEFAULT 'bullets'`).catch(() => {});
+    await db.query(`ALTER TABLE admin_template_sections ADD COLUMN IF NOT EXISTS label_override VARCHAR(150)`).catch(() => {});
+
+    await db.query(`ALTER TABLE admin_templates ADD COLUMN IF NOT EXISTS design_settings JSONB DEFAULT '{"fontFamily":"segoe","headingWeight":"800","bodySize":"medium","borderRadius":"soft","shadow":"none","sectionTitleStyle":"underline","headerStyle":"classic","pillShape":"rounded"}'::jsonb`).catch(() => {});
+    await db.query(`ALTER TABLE admin_templates ADD COLUMN IF NOT EXISTS background_image_url TEXT`).catch(() => {});
+    await db.query(`ALTER TABLE template_overrides ADD COLUMN IF NOT EXISTS background_image_url TEXT`).catch(() => {});
+
+    /* ── Static template overrides: admin edits to hardcoded templates ── */
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS template_overrides (
+        template_id       VARCHAR(100) PRIMARY KEY,
+        title             VARCHAR(255),
+        description       TEXT,
+        preview_image_url TEXT,
+        is_available      BOOLEAN,
+        badge             VARCHAR(100),
+        updated_at        TIMESTAMPTZ DEFAULT NOW()
+      );
+    `).catch(() => {});
+
+    console.log("✅ Tables ready: service_requests, resumes, resume_events, payments, activity_logs, request_messages, admin_settings, admin_templates, template_overrides");
   } catch (err) {
     console.error("❌ Error initializing DB:", err);
   }
@@ -554,8 +657,23 @@ app.get("/api/public/stats", async (req, res) => {
 });
 
 // Home: your AI services landing page
-app.get("/", (req, res) => {
-  res.render("home");
+app.get("/", async (_req, res) => {
+  try {
+    const keys = ["homepage_hero","homepage_services","homepage_features","homepage_testimonials"];
+    const rows = (await db.query(
+      `SELECT key, value FROM admin_settings WHERE key = ANY($1)`, [keys]
+    )).rows;
+    const map = Object.fromEntries(rows.map(r => [r.key, JSON.parse(r.value)]));
+    res.render("home", {
+      hp_hero:         map.homepage_hero         || {},
+      hp_services:     map.homepage_services     || {},
+      hp_features:     map.homepage_features     || {},
+      hp_testimonials: map.homepage_testimonials || {},
+    });
+  } catch (err) {
+    console.error("Home page error:", err);
+    res.render("home", { hp_hero:{}, hp_services:{}, hp_features:{}, hp_testimonials:{} });
+  }
 });
 
 // Register
@@ -784,6 +902,7 @@ app.post("/resume/save", ensureAuthenticated, async (req, res) => {
       email,
       phone,
       location,
+      zipCode,
       profileImageUrl,
       summary,
       experience,
@@ -791,6 +910,19 @@ app.post("/resume/save", ensureAuthenticated, async (req, res) => {
       education,
       skills,
       languages,
+      certifications,
+      achievements,
+      linkedinUrl,
+      portfolioUrl,
+      githubUrl,
+      technologies,
+      projects,
+      references,
+      awards,
+      training,
+      volunteering,
+      publications,
+      hobbies,
       experienceLevel,
     } = body;
 
@@ -812,12 +944,26 @@ app.post("/resume/save", ensureAuthenticated, async (req, res) => {
       email,
       phone,
       location,
+      zipCode,
       profileImageUrl,
       summary,
       experience: experienceData,
       education,
       skills,
       languages,
+      certifications,
+      achievements,
+      linkedinUrl,
+      portfolioUrl,
+      githubUrl,
+      technologies,
+      projects,
+      references,
+      awards,
+      training,
+      volunteering,
+      publications,
+      hobbies,
     };
 
     let savedId;
@@ -916,13 +1062,39 @@ app.get("/resume-builder", ensureAuthenticated, async (req, res) => {
       console.error("Error loading resume for edit:", err);
     }
   } else if (req.query.template) {
-    const tpl = getTemplateById(req.query.template);
-    template = tpl.isAvailable ? tpl.id : "modern-1";
+    const reqTpl = req.query.template;
+    if (reqTpl.startsWith("adm-")) {
+      // Admin-created template — verify it's published
+      try {
+        const tplRow = await db.query(
+          "SELECT slug FROM admin_templates WHERE slug=$1 AND is_published=true", [reqTpl]
+        );
+        template = tplRow.rows[0] ? reqTpl : "modern-1";
+      } catch (_) { template = "modern-1"; }
+    } else {
+      const tpl = getTemplateById(reqTpl);
+      template = tpl.isAvailable ? tpl.id : "modern-1";
+    }
     req.session.lastTemplate = template;
   } else if (req.session?.lastTemplate) {
     template = req.session.lastTemplate;
   } else {
     req.session.lastTemplate = template;
+  }
+
+  // For admin-created templates, fetch the section config
+  let templateSections = null;
+  if (template.startsWith("adm-")) {
+    try {
+      const tplRow = await db.query("SELECT id FROM admin_templates WHERE slug=$1", [template]);
+      if (tplRow.rows[0]) {
+        const secRes = await db.query(
+          "SELECT section_key, is_enabled, sort_order, placement, display_type, label_override FROM admin_template_sections WHERE template_id=$1 ORDER BY sort_order",
+          [tplRow.rows[0].id]
+        );
+        templateSections = secRes.rows;
+      }
+    } catch (_) { /* ignore, show all sections */ }
   }
 
   res.render("resume-builder", {
@@ -933,6 +1105,7 @@ app.get("/resume-builder", ensureAuthenticated, async (req, res) => {
     currentUser: req.user,
     user: req.user,
     resumeId: req.session.currentResumeId || null,
+    templateSections,
   });
 });
 
@@ -1018,8 +1191,44 @@ app.get("/api/template-fields/:templateId", ensureAuthenticated, (req, res) => {
   res.json({ success: true, fields });
 });
 
-app.get("/resume-templates", ensureAuthenticated, (req, res) => {
-  res.render("resume-templates", { RESUME_TEMPLATES: TEMPLATES });
+app.get("/resume-templates", ensureAuthenticated, async (_req, res) => {
+  try {
+    const [adminRows, overrideRows] = await Promise.all([
+      db.query("SELECT * FROM admin_templates WHERE is_published=true ORDER BY sort_order, created_at DESC"),
+      db.query("SELECT * FROM template_overrides"),
+    ]);
+
+    // Apply static template overrides
+    const overrideMap = Object.fromEntries(overrideRows.rows.map(o => [o.template_id, o]));
+    const staticTpls = TEMPLATES.map(t => {
+      const ov = overrideMap[t.id] || {};
+      return {
+        ...t,
+        title:        ov.title          ?? t.title,
+        description:  ov.description    ?? t.description,
+        previewImage: ov.preview_image_url ?? t.previewImage,
+        isAvailable:  ov.is_available   != null ? ov.is_available : t.isAvailable,
+        badge:        ov.badge          ?? t.badge,
+      };
+    });
+
+    // Map admin-created templates
+    const adminTpls = adminRows.rows.map(r => ({
+      id: r.slug,
+      title: r.title,
+      description: r.description || "",
+      previewImage: r.thumbnail_url || "/images/templates/placeholder.png",
+      isPaid: r.is_paid,
+      isAvailable: true,
+      badge: r.badge || "New",
+      category: r.category,
+    }));
+
+    res.render("resume-templates", { RESUME_TEMPLATES: [...staticTpls, ...adminTpls] });
+  } catch (err) {
+    console.error("resume-templates error:", err);
+    res.render("resume-templates", { RESUME_TEMPLATES: TEMPLATES });
+  }
 });
 
 // ---------- Application Builder ----------
@@ -1031,6 +1240,7 @@ app.get("/application-builder", ensureAuthenticated, (req, res) => {
     profile,
   });
 });
+
 
 app.post("/application-builder/preview", ensureAuthenticated, (req, res) => {
   const data = req.body || {};
@@ -1045,7 +1255,25 @@ app.post("/application-builder/preview", ensureAuthenticated, (req, res) => {
 app.post("/resume-builder/preview", ensureAuthenticated, async (req, res) => {
   const data = req.body;
   const rawTemplate = data.template || req.session?.lastTemplate || "modern-1";
-  const template = getTemplateById(rawTemplate).id;
+  const isAdminTpl = rawTemplate.startsWith("adm-");
+  const template = isAdminTpl ? rawTemplate : getTemplateById(rawTemplate).id;
+
+  // For admin templates, fetch config + section config for the renderer
+  let adminTemplateConfig = null;
+  let templateSections = null;
+  if (isAdminTpl) {
+    try {
+      const tplRow = await db.query("SELECT * FROM admin_templates WHERE slug=$1", [template]);
+      adminTemplateConfig = tplRow.rows[0] || null;
+      if (adminTemplateConfig) {
+        const secRes = await db.query(
+          "SELECT section_key, is_enabled, sort_order, placement, display_type, label_override FROM admin_template_sections WHERE template_id=$1 ORDER BY sort_order",
+          [adminTemplateConfig.id]
+        );
+        templateSections = secRes.rows;
+      }
+    } catch (_) { /* fallback gracefully */ }
+  }
 
   try {
     // upsert profile
@@ -1104,16 +1332,33 @@ app.post("/resume-builder/preview", ensureAuthenticated, async (req, res) => {
       } catch (_) { /* ignore QR errors */ }
     }
 
-    // Read dynamic price from admin_settings
-    const tplCategory = getTemplateById(template).category || "experienced";
-    const priceKey = `price_${tplCategory}`;
+    // Read dynamic price
     let displayPrice = 100;
-    try {
-      const priceRes = await db.query("SELECT value FROM admin_settings WHERE key = $1", [priceKey]);
-      if (priceRes.rows.length) displayPrice = parseInt(priceRes.rows[0].value, 10);
-    } catch (_) { /* ignore, use default */ }
+    if (isAdminTpl && adminTemplateConfig) {
+      // Admin-created template: use its own price_inr
+      displayPrice = adminTemplateConfig.is_paid ? (adminTemplateConfig.price_inr || 49) : 0;
+    } else {
+      // Static template: read from admin_settings by category
+      const tplCategory = getTemplateById(template).category || "experienced";
+      const priceKey = `price_${tplCategory}`;
+      try {
+        const priceRes = await db.query("SELECT value FROM admin_settings WHERE key = $1", [priceKey]);
+        if (priceRes.rows.length) displayPrice = parseInt(priceRes.rows[0].value, 10);
+      } catch (_) { /* ignore, use default */ }
+    }
 
-    res.render("resume-preview", { data, template, qrCodeDataUrl, displayPrice });
+    // Fetch background image URL for this template
+    let bgImageUrl = null;
+    if (isAdminTpl && adminTemplateConfig) {
+      bgImageUrl = adminTemplateConfig.background_image_url || null;
+    } else {
+      try {
+        const ovRow = await db.query("SELECT background_image_url FROM template_overrides WHERE template_id=$1", [template]);
+        bgImageUrl = ovRow.rows[0]?.background_image_url || null;
+      } catch (_) { /* ignore */ }
+    }
+
+    res.render("resume-preview", { data, template, qrCodeDataUrl, displayPrice, adminTemplateConfig, templateSections, bgImageUrl });
   } catch (err) {
     console.error("Error saving profile:", err);
     res.send("Error while saving profile.");
@@ -2229,15 +2474,26 @@ app.post(
 app.post("/api/razorpay/create-order", ensureAuthenticated, async (req, res) => {
   try {
     const { template } = req.body || {};
-    const category = getTemplateById(template || "modern-1").category || "experienced";
-    const priceKey = `price_${category}`;
+    let priceRupees = 100;
 
-    // Read price from DB (fallback: 100)
-    const priceRes = await db.query(
-      "SELECT value FROM admin_settings WHERE key = $1",
-      [priceKey]
-    );
-    const priceRupees = priceRes.rows.length ? parseInt(priceRes.rows[0].value, 10) : 100;
+    if (template && template.startsWith("adm-")) {
+      // Admin-created template: use its own price_inr
+      const tplRow = await db.query(
+        "SELECT price_inr, is_paid FROM admin_templates WHERE slug=$1", [template]
+      );
+      if (tplRow.rows[0]) {
+        priceRupees = tplRow.rows[0].is_paid ? (tplRow.rows[0].price_inr || 49) : 0;
+      }
+    } else {
+      // Static template: read from admin_settings by category
+      const category = getTemplateById(template || "modern-1").category || "experienced";
+      const priceKey = `price_${category}`;
+      const priceRes = await db.query(
+        "SELECT value FROM admin_settings WHERE key = $1", [priceKey]
+      );
+      if (priceRes.rows.length) priceRupees = parseInt(priceRes.rows[0].value, 10);
+    }
+
     const priceInPaise = priceRupees * 100;
 
     const options = {
