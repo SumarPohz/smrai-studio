@@ -145,6 +145,28 @@ main {
   box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
 }
 
+/* ── Header Play Store badge ─────────────────────────────────────────── */
+.header-play-btn {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  padding: 0.35rem 0.7rem;
+  background: #0f172a; color: #fff;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px; text-decoration: none; white-space: nowrap;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  font-size: 0.78rem; font-weight: 600;
+}
+.header-play-btn:hover {
+  border-color: rgba(52,211,153,0.5);
+  box-shadow: 0 0 14px rgba(16,185,129,0.25);
+}
+.header-play-label { font-size: 0.78rem; font-weight: 600; }
+
+/* Hide text label on small screens — icon only */
+@media (max-width: 480px) {
+  .header-play-label { display: none; }
+  .header-play-btn { padding: 0.35rem 0.45rem; }
+}
+
 .btn-google {
   display: flex; align-items: center; justify-content: center; gap: 0.6rem;
   width: 100%; padding: 0.65rem 1rem;
