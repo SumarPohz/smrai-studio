@@ -235,6 +235,7 @@ await db.query(`
         ('price_ats-friendly', '500')
       ON CONFLICT (key) DO NOTHING;
     `);
+    await db.query(`INSERT INTO admin_settings (key, value) VALUES ('ads_enabled', 'true') ON CONFLICT (key) DO NOTHING`);
 
     // ── Homepage editable content defaults ───────────────────────────────────
     const homepageDefaults = [
@@ -339,7 +340,19 @@ await db.query(`
       );
     `).catch(() => {});
 
-    console.log("✅ Tables ready: service_requests, resumes, resume_events, payments, activity_logs, request_messages, admin_settings, admin_templates, template_overrides");
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS ads (
+        id         SERIAL PRIMARY KEY,
+        slot       VARCHAR(20) NOT NULL CHECK (slot IN ('sidebar','footer')),
+        title      VARCHAR(200),
+        image_url  TEXT,
+        link_url   TEXT NOT NULL,
+        is_active  BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+    `).catch(() => {});
+
+    console.log("✅ Tables ready: service_requests, resumes, resume_events, payments, activity_logs, request_messages, admin_settings, admin_templates, template_overrides, ads");
   } catch (err) {
     console.error("❌ Error initializing DB:", err);
   }
@@ -601,6 +614,18 @@ app.use(async (req, res, next) => {
       console.error("Error loading user profile:", err);
     }
   }
+
+  // Active ads for ad slots + master on/off
+  try {
+    const [sbAd, ftAd, aeRow] = await Promise.all([
+      db.query("SELECT * FROM ads WHERE slot='sidebar' AND is_active=true ORDER BY id DESC LIMIT 1"),
+      db.query("SELECT * FROM ads WHERE slot='footer'  AND is_active=true ORDER BY id DESC LIMIT 1"),
+      db.query("SELECT value FROM admin_settings WHERE key='ads_enabled'"),
+    ]);
+    res.locals.sidebarAd  = sbAd.rows[0] || null;
+    res.locals.footerAd   = ftAd.rows[0] || null;
+    res.locals.adsEnabled = (aeRow.rows[0]?.value ?? 'true') === 'true';
+  } catch (_) { res.locals.sidebarAd = null; res.locals.footerAd = null; res.locals.adsEnabled = true; }
 
   next();
 });
