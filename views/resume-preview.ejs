@@ -533,19 +533,20 @@
   <!-- Single pay button + post-payment download modal -->
   <div class="dl-cta-wrap">
     <div class="dl-cta-card">
-      <div class="dl-cta-icon">🔒</div>
-      <div class="dl-cta-middle">
+      <div class="dl-cta-top">
+        <div class="dl-cta-icon">🔒</div>
         <div class="dl-cta-text">
           <p class="dl-cta-title">Download Your Resume</p>
           <p class="dl-cta-sub">One-time payment · Unlocks JPG &amp; PDF instantly</p>
         </div>
+      </div>
 
-        <!-- Inline coupon section -->
-        <div class="dl-coupon-section" id="dlCouponSection">
+      <!-- Inline coupon section -->
+      <div class="dl-coupon-section" id="dlCouponSection">
         <p class="dl-coupon-label">🎟️ Have a coupon code?</p>
         <div class="dl-coupon-row">
           <input type="text" id="couponInput" class="dl-coupon-input"
-                 placeholder="Enter code" maxlength="50" autocomplete="off" spellcheck="false">
+                 placeholder="ENTER CODE" maxlength="50" autocomplete="off" spellcheck="false">
           <button type="button" id="couponApplyBtn" class="dl-coupon-apply-btn">Apply</button>
         </div>
         <div id="couponMsg" class="dl-coupon-msg" style="display:none;"></div>
@@ -553,7 +554,6 @@
           <span id="couponSavingsText"></span>
           <button type="button" id="couponRemoveBtn" class="dl-coupon-remove" title="Remove coupon">×</button>
         </div>
-      </div>
       </div>
 
       <button id="download-image-btn" class="dl-pay-btn" style="display:none"></button>
@@ -599,8 +599,8 @@
     }
     .dl-cta-card {
       display: flex;
-      align-items: center;
-      gap: 1rem;
+      flex-direction: column;
+      gap: 0.75rem;
       background: #fff;
       border: 1px solid #e5e7eb;
       border-radius: 14px;
@@ -608,8 +608,8 @@
       box-shadow: 0 2px 12px rgba(0,0,0,0.07);
       width: 100%;
     }
+    .dl-cta-top { display: flex; align-items: center; gap: 0.75rem; }
     .dl-cta-icon { font-size: 1.6rem; flex-shrink: 0; }
-    .dl-cta-middle { flex: 1; min-width: 0; }
     .dl-cta-text { min-width: 0; }
     .dl-cta-title {
       font-size: 0.97rem;
@@ -623,7 +623,7 @@
       margin: 0;
     }
     .dl-unlock-btn {
-      flex-shrink: 0;
+      width: 100%;
       background: linear-gradient(135deg, #27355a, #1d4ed8);
       color: #fff;
       border: none;
@@ -764,8 +764,7 @@
     }
 
     @media (max-width: 560px) {
-      .dl-cta-card { flex-wrap: wrap; }
-      .dl-unlock-btn { width: 100%; text-align: center; }
+      .dl-unlock-btn { text-align: center; }
       .dl-modal-btns { grid-template-columns: 1fr; }
     }
   </style>
