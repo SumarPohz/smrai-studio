@@ -2227,14 +2227,39 @@ app.post("/api/guest/chat/message", express.json(), async (req, res) => {
       [requestId, token]
     );
     if (!check.rows.length) return res.status(403).json({ success: false });
-    await db.query(
+    const msgResult = await db.query(
       `INSERT INTO request_messages (request_id, sender_id, sender_role, message)
-       VALUES ($1, NULL, 'user', $2)`,
+       VALUES ($1, NULL, 'user', $2) RETURNING id, sender_role, message, created_at`,
       [requestId, msg]
     );
-    return res.json({ success: true });
+    const row = { ...msgResult.rows[0], request_id: requestId, sender_name: null };
+    // Push to admin in real-time via Socket.io
+    io.to(`request-${requestId}`).emit("message", row);
+    return res.json({ success: true, id: msgResult.rows[0].id });
   } catch (err) {
     console.error(err);
+    return res.status(500).json({ success: false });
+  }
+});
+
+app.post("/api/guest/chat/typing", express.json(), async (req, res) => {
+  const { requestId, token } = req.body;
+  if (!requestId || !token) return res.status(400).json({ success: false });
+  try {
+    const check = await db.query(
+      "SELECT id FROM service_requests WHERE id=$1 AND guest_token=$2",
+      [parseInt(requestId, 10), token]
+    );
+    if (!check.rows.length) return res.status(403).json({ success: false });
+    const rid = parseInt(requestId, 10);
+    guestTypingStore.set(rid, Date.now());
+    setTimeout(() => {
+      if (guestTypingStore.get(rid) <= Date.now() - 3800) guestTypingStore.delete(rid);
+    }, 4000);
+    // Notify admin in real-time
+    io.to(`request-${rid}`).emit("user-typing", rid);
+    return res.json({ success: true });
+  } catch (_) {
     return res.status(500).json({ success: false });
   }
 });
@@ -2258,7 +2283,9 @@ app.get("/api/guest/chat/:requestId/messages", async (req, res) => {
        ORDER BY m.created_at ASC`,
       [requestId]
     );
-    return res.json({ success: true, messages: msgs.rows });
+    const lastTyping = adminTypingStore.get(requestId) || 0;
+    const adminTyping = (Date.now() - lastTyping) < 3000;
+    return res.json({ success: true, messages: msgs.rows, adminTyping });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ success: false });
@@ -2266,6 +2293,10 @@ app.get("/api/guest/chat/:requestId/messages", async (req, res) => {
 });
 
 // ── HTTP server + Socket.io ───────────────────────────────────────────────────
+// In-memory typing indicators: requestId → timestamp of last keystroke
+const adminTypingStore = new Map();
+const guestTypingStore = new Map();
+
 const server = createServer(app);
 const io = new SocketServer(server, { cors: { origin: false } });
 
@@ -2293,6 +2324,17 @@ io.on("connection", (socket) => {
       } catch (_) { return; }
     }
     socket.join(`request-${rid}`);
+  });
+
+  socket.on("admin-typing", (requestId) => {
+    if (user.role !== "admin") return;
+    const rid = parseInt(requestId, 10);
+    if (!rid) return;
+    adminTypingStore.set(rid, Date.now());
+    // Auto-expire after 4s (cleanup)
+    setTimeout(() => {
+      if (adminTypingStore.get(rid) <= Date.now() - 3800) adminTypingStore.delete(rid);
+    }, 4000);
   });
 
   socket.on("send-message", async ({ requestId, message }) => {

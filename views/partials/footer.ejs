@@ -298,6 +298,22 @@
     if (m.id > gcLastId) gcLastId = m.id;
   }
 
+  // ── Typing indicator ───────────────────────────────────────────────────────
+  function gcShowTyping(show) {
+    let el = document.getElementById("gcTypingIndicator");
+    if (show && !el) {
+      const msgs = document.getElementById("gcMessages");
+      el = document.createElement("div");
+      el.id = "gcTypingIndicator";
+      el.className = "gc-bubble-row theirs gc-typing-row";
+      el.innerHTML = `<div class="gc-bubble theirs gc-typing-bubble"><span></span><span></span><span></span></div>`;
+      msgs.appendChild(el);
+      msgs.scrollTop = msgs.scrollHeight;
+    } else if (!show && el) {
+      el.remove();
+    }
+  }
+
   // ── Polling ────────────────────────────────────────────────────────────────
   let gcPollTimer = null;
 
@@ -309,14 +325,23 @@
         const d = await r.json();
         if (!d.success) return;
         d.messages.forEach(m => { if (m.id > gcLastId) gcAppend(m); });
+        gcShowTyping(!!d.adminTyping);
       } catch (_) {}
-    }, 6000);
+    }, 2500);
   }
 
   // ── Load history + start polling ───────────────────────────────────────────
-  function gcStartChat(requestId, token) {
+  function gcStartChat(requestId, token, introName, introEmail) {
     document.getElementById("gcPreChat").hidden = true;
     document.getElementById("gcChat").hidden    = false;
+    if (introName) {
+      gcAppend({
+        id: 0,
+        sender_role: "user",
+        message: introName + (introEmail ? " (" + introEmail + ")" : ""),
+        created_at: new Date().toISOString()
+      });
+    }
     fetch(`/api/guest/chat/${requestId}/messages?token=${encodeURIComponent(token)}`)
       .then(r => r.json())
       .then(d => {
@@ -352,7 +377,7 @@
       const d = await r.json();
       if (!d.success) { alert("Could not start chat. Please try again."); return; }
       localStorage.setItem("gcSession", JSON.stringify({ requestId: d.requestId, token: d.token, name }));
-      gcStartChat(d.requestId, d.token);
+      gcStartChat(d.requestId, d.token, name, email);
     } catch (_) {
       alert("Network error. Please try again.");
     } finally {
@@ -370,22 +395,37 @@
     try {
       const stored = JSON.parse(localStorage.getItem("gcSession") || "null");
       if (!stored) return;
-      // Optimistic append
-      gcAppend({ id: Date.now(), sender_role:"user", message: msg, created_at: new Date().toISOString() });
+      // Optimistic append with temporary id (-1 won't affect gcLastId)
+      gcAppend({ id: -1, sender_role:"user", message: msg, created_at: new Date().toISOString() });
       input.value = ""; input.style.height = "";
-      await fetch("/api/guest/chat/message", {
+      const resp = await fetch("/api/guest/chat/message", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ requestId: stored.requestId, token: stored.token, message: msg }),
       });
+      const rd = await resp.json().catch(() => ({}));
+      // Advance gcLastId to the real DB id so polling deduplication works
+      if (rd.id && rd.id > gcLastId) gcLastId = rd.id;
     } catch (_) {}
   });
 
   // ── Auto-grow textarea + Enter to send ────────────────────────────────────
   const gcInput = document.getElementById("gcInput");
+
+  // Typing signal — debounced, max once per 2s
+  let gcTypingTimer = null;
   gcInput.addEventListener("input", function () {
     this.style.height = "auto";
     this.style.height = Math.min(this.scrollHeight, 100) + "px";
+    if (gcTypingTimer) return; // throttle
+    gcTypingTimer = setTimeout(() => { gcTypingTimer = null; }, 2000);
+    const stored = JSON.parse(localStorage.getItem("gcSession") || "null");
+    if (!stored) return;
+    fetch("/api/guest/chat/typing", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ requestId: stored.requestId, token: stored.token }),
+    }).catch(() => {});
   });
   gcInput.addEventListener("keydown", function (e) {
     if (e.key === "Enter" && !e.shiftKey) {

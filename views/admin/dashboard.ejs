@@ -2046,6 +2046,7 @@ function admOpenChat(requestId, name, email) {
   document.getElementById("admChatTitle").textContent = name || "User";
   document.getElementById("admChatSub").textContent   = email || "";
   document.getElementById("admChatMessages").innerHTML = '<div class="adm-chat-empty">Loading messages…</div>';
+  clearTimeout(admTypingHideTimer);
   document.getElementById("admChatModal").hidden = false;
   document.getElementById("admChatInput").focus();
 
@@ -2092,7 +2093,33 @@ function admEscHtml(str) {
 
 admSocket.on("message", (m) => {
   if (m.request_id !== admActiveChatId) return;
+  admShowTyping(false); // clear typing bubble when real message arrives
   admAppendMessage(m, true);
+});
+
+// ── Typing indicator (user → admin) ─────────────────────────────────────────
+let admTypingHideTimer = null;
+
+function admShowTyping(show) {
+  const el = document.getElementById("admChatMessages");
+  let bubble = document.getElementById("admTypingIndicator");
+  if (show && !bubble) {
+    bubble = document.createElement("div");
+    bubble.id = "admTypingIndicator";
+    bubble.className = "adm-chat-bubble-row theirs adm-typing-row";
+    bubble.innerHTML = `<div class="adm-chat-bubble theirs adm-typing-bubble"><span></span><span></span><span></span></div>`;
+    el.appendChild(bubble);
+    el.scrollTop = el.scrollHeight;
+  } else if (!show && bubble) {
+    bubble.remove();
+  }
+}
+
+admSocket.on("user-typing", (requestId) => {
+  if (requestId !== admActiveChatId) return;
+  admShowTyping(true);
+  clearTimeout(admTypingHideTimer);
+  admTypingHideTimer = setTimeout(() => admShowTyping(false), 3200);
 });
 
 document.getElementById("admChatForm").addEventListener("submit", function (e) {
@@ -2113,6 +2140,15 @@ document.getElementById("admChatInput").addEventListener("input", function () {
 
 document.getElementById("admChatInput").addEventListener("keydown", function (e) {
   if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); document.getElementById("admChatForm").requestSubmit(); }
+});
+
+// Typing indicator — debounced emit
+let admTypingTimer = null;
+document.getElementById("admChatInput").addEventListener("input", function () {
+  if (!admActiveChatId) return;
+  admSocket.emit("admin-typing", admActiveChatId);
+  clearTimeout(admTypingTimer);
+  admTypingTimer = setTimeout(() => {}, 3000); // let server-side timeout handle expiry
 });
 
 document.getElementById("admChatClose").addEventListener("click", () => {
