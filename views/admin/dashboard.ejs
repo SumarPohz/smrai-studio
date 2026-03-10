@@ -38,6 +38,9 @@
       <a href="#homepage" class="adm-nav-link" data-section="homepage">
         <i class="fas fa-home"></i> Home Page
       </a>
+      <a href="#ads" class="adm-nav-link" data-section="ads">
+        <i class="fas fa-rectangle-ad"></i> Ads
+      </a>
       <a href="/dashboard" class="adm-nav-link adm-nav-back">
         <i class="fas fa-arrow-left"></i> Back to App
       </a>
@@ -529,6 +532,71 @@
 
       </div>
     </div><!-- /homepage -->
+
+    <!-- ── Section: Ads ───────────────────────────────────────────────────── -->
+    <div id="ads" class="adm-section-page" hidden>
+      <div class="adm-section-header">
+        <h2><i class="fas fa-rectangle-ad"></i> Ad Management</h2>
+        <p class="adm-section-desc">Upload custom banners for the sidebar and before-footer slots. When no custom ad is active, Google AdSense fills the slot automatically.</p>
+      </div>
+
+      <!-- Master on/off toggle -->
+      <div class="adm-ads-master-card" id="adsMasterCard">
+        <div class="adm-ads-master-info">
+          <i class="fas fa-circle-dot" id="adsMasterIcon"></i>
+          <div>
+            <strong id="adsMasterStatus">Loading…</strong>
+            <p id="adsMasterDesc"></p>
+          </div>
+        </div>
+        <button class="adm-ads-master-btn" id="adsMasterBtn" type="button" disabled>…</button>
+      </div>
+
+      <!-- Add ad form -->
+      <div class="adm-ads-form-card">
+        <h3 class="adm-ads-form-title">Add New Ad</h3>
+        <form id="adsAddForm" class="adm-ads-form">
+          <div class="adm-ads-form-row">
+            <div class="adm-ads-field">
+              <label>Slot</label>
+              <select name="slot" id="adsSlot" required>
+                <option value="sidebar">Top Banner (below nav, full-width)</option>
+                <option value="footer">Before Footer (full-width banner)</option>
+              </select>
+            </div>
+            <div class="adm-ads-field">
+              <label>Title <span class="adm-optional">(optional)</span></label>
+              <input type="text" name="title" id="adsTitle" placeholder="e.g. Summer Sale Banner" maxlength="200">
+            </div>
+          </div>
+          <div class="adm-ads-field">
+            <label>Click URL <span class="adm-req">*</span></label>
+            <input type="url" name="link_url" id="adsLink" placeholder="https://example.com" required>
+          </div>
+          <div class="adm-ads-field">
+            <label>Banner Image <span class="adm-req">*</span></label>
+            <div class="adm-ads-img-row">
+              <input type="file" id="adsImage" name="image" accept="image/*" required>
+            </div>
+            <img id="adsImagePreview" class="adm-ads-img-preview" src="" alt="" style="display:none">
+          </div>
+          <div class="adm-ads-form-actions">
+            <button type="submit" class="adm-btn-primary" id="adsSubmitBtn">
+              <i class="fas fa-plus"></i> Add Ad
+            </button>
+            <span class="adm-ads-msg" id="adsMsgAdd"></span>
+          </div>
+        </form>
+      </div>
+
+      <!-- Existing ads table -->
+      <div class="adm-ads-table-card">
+        <h3 class="adm-ads-form-title">Current Ads</h3>
+        <div id="adsTableWrap">
+          <p class="adm-loading-text"><i class="fas fa-spinner fa-spin"></i> Loading…</p>
+        </div>
+      </div>
+    </div><!-- /ads -->
 
     <!-- ── Static Template Edit Dialog (centered) ────────────────────────────── -->
     <div id="staticTplModal" class="adm-stpl-backdrop" hidden>
@@ -1122,6 +1190,7 @@ function showSection(id) {
     if (id === "pricing"  && !pricingLoaded) { loadPricing(); }
     if (id === "templates" && !tplLoaded)    { loadTemplates(); loadStaticTemplates(); }
     if (id === "homepage"  && !hpLoaded)     { loadHomepage(); }
+    if (id === "ads"       && !adsLoaded)    { loadAds(); }
   }, 120);
 }
 
@@ -3003,7 +3072,8 @@ document.getElementById("staticTplSaveBtn").addEventListener("click", async () =
 //  HOME PAGE EDITOR
 // ════════════════════════════════════════════════════════════════════════════
 let hpData  = {};
-let hpLoaded = false;
+let hpLoaded  = false;
+let adsLoaded = false;
 
 // Sub-tab switching
 document.querySelectorAll(".adm-hp-tab").forEach(btn => {
@@ -3312,6 +3382,168 @@ function wireImgUpload(el, fileSelector, btnSelector, urlSelector, previewSelect
     else if (preview)          { preview.style.display = "none"; }
   });
 }
+
+// ── Ads section ─────────────────────────────────────────────────────────────
+async function loadAds() {
+  adsLoaded = true;
+  try {
+    const sr = await fetch("/admin/api/ads/settings");
+    const sd = await sr.json();
+    renderMasterToggle(sd.adsEnabled !== false);
+  } catch(_) { renderMasterToggle(true); }
+  await renderAdsTable();
+}
+
+function renderMasterToggle(enabled) {
+  const btn  = document.getElementById("adsMasterBtn");
+  const stat = document.getElementById("adsMasterStatus");
+  const desc = document.getElementById("adsMasterDesc");
+  const icon = document.getElementById("adsMasterIcon");
+  if (enabled) {
+    stat.textContent = "Ads are ON";
+    desc.textContent = "All ad slots are active and visible to visitors.";
+    btn.textContent  = "Turn Off Ads";
+    btn.className    = "adm-ads-master-btn adm-ads-master-off";
+    icon.className   = "fas fa-circle-dot adm-master-icon-on";
+  } else {
+    stat.textContent = "Ads are OFF";
+    desc.textContent = "No ads are shown anywhere on the site.";
+    btn.textContent  = "Turn On Ads";
+    btn.className    = "adm-ads-master-btn adm-ads-master-on";
+    icon.className   = "fas fa-circle-dot adm-master-icon-off";
+  }
+  btn.disabled = false;
+  btn.onclick = () => toggleMasterAds(!enabled);
+}
+
+async function toggleMasterAds(enable) {
+  const btn = document.getElementById("adsMasterBtn");
+  btn.disabled = true;
+  try {
+    const r = await fetch("/admin/api/ads/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled: enable }),
+    });
+    const d = await r.json();
+    if (d.success) {
+      renderMasterToggle(d.adsEnabled);
+      showAdmToast(d.adsEnabled ? "Ads turned ON" : "Ads turned OFF");
+    } else {
+      showAdmToast("Failed to update ads setting", "error");
+      btn.disabled = false;
+    }
+  } catch(_) {
+    showAdmToast("Network error", "error");
+    btn.disabled = false;
+  }
+}
+
+async function renderAdsTable() {
+  const wrap = document.getElementById("adsTableWrap");
+  try {
+    const r = await fetch("/admin/api/ads");
+    const d = await r.json();
+    if (!d.success || !d.ads.length) {
+      wrap.innerHTML = '<p class="adm-empty-msg">No ads yet. Add one above.</p>';
+      return;
+    }
+    const slotLabel = { sidebar: "Top Banner", footer: "Before Footer" };
+    wrap.innerHTML = `
+      <table class="adm-ads-table">
+        <thead>
+          <tr>
+            <th>Slot</th><th>Preview</th><th>Title</th><th>Link</th><th>Status</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${d.ads.map(ad => `
+            <tr data-id="${ad.id}">
+              <td><span class="adm-ads-slot-badge adm-ads-slot-${ad.slot}">${slotLabel[ad.slot] || ad.slot}</span></td>
+              <td><img src="${escHtml(ad.image_url || '')}" class="adm-ads-thumb" alt=""></td>
+              <td>${escHtml(ad.title || '—')}</td>
+              <td><a href="${escHtml(ad.link_url)}" target="_blank" class="adm-ads-link" title="${escHtml(ad.link_url)}">${escHtml(ad.link_url.length > 35 ? ad.link_url.slice(0,35)+'…' : ad.link_url)}</a></td>
+              <td>
+                <button class="adm-ads-toggle adm-ads-toggle-${ad.is_active ? 'on' : 'off'}" data-id="${ad.id}" title="${ad.is_active ? 'Click to deactivate' : 'Click to activate'}">
+                  ${ad.is_active ? '<i class="fas fa-toggle-on"></i> Active' : '<i class="fas fa-toggle-off"></i> Inactive'}
+                </button>
+              </td>
+              <td>
+                <button class="adm-btn-danger adm-ads-delete" data-id="${ad.id}"><i class="fas fa-trash"></i></button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>`;
+
+    // Wire toggle buttons
+    wrap.querySelectorAll(".adm-ads-toggle").forEach(btn => {
+      btn.addEventListener("click", async function() {
+        const id = this.dataset.id;
+        try {
+          await fetch(`/admin/api/ads/${id}/toggle`, { method: "PUT" });
+          await renderAdsTable();
+        } catch(_) { showAdmToast("Toggle failed", "error"); }
+      });
+    });
+
+    // Wire delete buttons
+    wrap.querySelectorAll(".adm-ads-delete").forEach(btn => {
+      btn.addEventListener("click", async function() {
+        if (!confirm("Delete this ad permanently?")) return;
+        const id = this.dataset.id;
+        try {
+          await fetch(`/admin/api/ads/${id}`, { method: "DELETE" });
+          await renderAdsTable();
+          showAdmToast("Ad deleted");
+        } catch(_) { showAdmToast("Delete failed", "error"); }
+      });
+    });
+  } catch(_) {
+    wrap.innerHTML = '<p class="adm-empty-msg adm-error-text">Failed to load ads.</p>';
+  }
+}
+
+// Image preview
+document.getElementById("adsImage").addEventListener("change", function() {
+  const preview = document.getElementById("adsImagePreview");
+  if (this.files[0]) {
+    preview.src = URL.createObjectURL(this.files[0]);
+    preview.style.display = "";
+  } else {
+    preview.style.display = "none";
+  }
+});
+
+// Add form submit
+document.getElementById("adsAddForm").addEventListener("submit", async function(e) {
+  e.preventDefault();
+  const btn = document.getElementById("adsSubmitBtn");
+  const msg = document.getElementById("adsMsgAdd");
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading…';
+  msg.textContent = "";
+  const fd = new FormData(this);
+  try {
+    const r = await fetch("/admin/api/ads", { method: "POST", body: fd });
+    const d = await r.json();
+    if (d.success) {
+      showAdmToast("Ad added successfully");
+      this.reset();
+      document.getElementById("adsImagePreview").style.display = "none";
+      await renderAdsTable();
+    } else {
+      msg.textContent = d.error || "Failed to add ad.";
+      msg.className = "adm-ads-msg adm-msg-error";
+    }
+  } catch(_) {
+    msg.textContent = "Network error.";
+    msg.className = "adm-ads-msg adm-msg-error";
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-plus"></i> Add Ad';
+  }
+});
 </script>
 
 <%- include("../partials/footer") %>

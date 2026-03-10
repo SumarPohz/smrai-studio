@@ -20,6 +20,15 @@ const tplImgStorage = multer.diskStorage({
 });
 const tplUpload = multer({ storage: tplImgStorage, limits: { fileSize: 5 * 1024 * 1024 } });
 
+// Multer for ad image uploads
+const adImgDir = path.join(__dirname, "..", "public", "uploads", "ads");
+if (!fs.existsSync(adImgDir)) fs.mkdirSync(adImgDir, { recursive: true });
+const adImgStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, adImgDir),
+  filename: (_req, file, cb) => { cb(null, `ad-${Date.now()}${path.extname(file.originalname)}`); },
+});
+const adUpload = multer({ storage: adImgStorage, limits: { fileSize: 5 * 1024 * 1024 } });
+
 export default function adminRouter(db) {
   const router = Router();
 
@@ -1013,6 +1022,64 @@ export default function adminRouter(db) {
       console.error("Admin preview error:", err);
       res.status(500).send("Preview error: " + err.message);
     }
+  });
+
+  // ── Ads master on/off setting ─────────────────────────────────────────────
+  router.get("/api/ads/settings", async (req, res) => {
+    try {
+      const r = await db.query("SELECT value FROM admin_settings WHERE key='ads_enabled'");
+      res.json({ success: true, adsEnabled: (r.rows[0]?.value ?? 'true') === 'true' });
+    } catch { res.status(500).json({ success: false }); }
+  });
+
+  router.put("/api/ads/settings", async (req, res) => {
+    try {
+      const enabled = req.body.enabled !== false;
+      await db.query("UPDATE admin_settings SET value=$1 WHERE key='ads_enabled'", [enabled ? 'true' : 'false']);
+      res.json({ success: true, adsEnabled: enabled });
+    } catch { res.status(500).json({ success: false }); }
+  });
+
+  // ── Ads CRUD ──────────────────────────────────────────────────────────────
+  router.get("/api/ads", async (req, res) => {
+    try {
+      const result = await db.query("SELECT * FROM ads ORDER BY id DESC");
+      res.json({ success: true, ads: result.rows });
+    } catch (err) { res.status(500).json({ success: false }); }
+  });
+
+  router.post("/api/ads", adUpload.single("image"), async (req, res) => {
+    const { slot, title, link_url } = req.body;
+    if (!slot || !link_url) return res.status(400).json({ success: false, message: "slot and link_url required" });
+    const image_url = req.file ? `/uploads/ads/${req.file.filename}` : null;
+    try {
+      const result = await db.query(
+        "INSERT INTO ads (slot, title, image_url, link_url) VALUES ($1,$2,$3,$4) RETURNING *",
+        [slot, title || null, image_url, link_url]
+      );
+      res.json({ success: true, ad: result.rows[0] });
+    } catch (err) { res.status(500).json({ success: false }); }
+  });
+
+  router.put("/api/ads/:id/toggle", async (req, res) => {
+    try {
+      const result = await db.query(
+        "UPDATE ads SET is_active = NOT is_active WHERE id=$1 RETURNING *",
+        [parseInt(req.params.id, 10)]
+      );
+      res.json({ success: true, ad: result.rows[0] });
+    } catch (err) { res.status(500).json({ success: false }); }
+  });
+
+  router.delete("/api/ads/:id", async (req, res) => {
+    try {
+      const row = await db.query("DELETE FROM ads WHERE id=$1 RETURNING image_url", [parseInt(req.params.id, 10)]);
+      if (row.rows[0]?.image_url) {
+        const filePath = path.join(__dirname, "..", "public", row.rows[0].image_url);
+        fs.unlink(filePath, () => {});
+      }
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ success: false }); }
   });
 
   return router;

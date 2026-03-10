@@ -104,6 +104,23 @@
     </div>
   </section>
 
+  <% if (locals.adsEnabled) { %>
+  <div class="ad-top-banner">
+    <span class="ad-label">Advertisement</span>
+    <% if (locals.sidebarAd) { %>
+      <a href="<%= sidebarAd.link_url %>" target="_blank" rel="noopener noreferrer sponsored">
+        <img src="<%= sidebarAd.image_url %>" alt="<%= sidebarAd.title || 'Advertisement' %>">
+      </a>
+    <% } else { %>
+      <ins class="adsbygoogle" style="display:block"
+           data-ad-client="ca-pub-PLACEHOLDER"
+           data-ad-slot="TOP_SLOT_ID"
+           data-ad-format="auto" data-full-width-responsive="true"></ins>
+      <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    <% } %>
+  </div>
+  <% } %>
+
   <!-- ── Features ──────────────────────────────────────────────────────────── -->
   <section class="features-section">
     <h2><%= (hp_features.title) || 'Our Main Features' %></h2>
