@@ -88,6 +88,17 @@
   </nav>
 
   <div class="header-right">
+    <a href="https://play.google.com/store/apps/details?id=com.smrai.studio&pli=1"
+       class="header-play-btn" target="_blank" rel="noopener noreferrer" title="Get it on Google Play">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="flex-shrink:0">
+        <path fill="#4285F4" d="M1.22 0C.55.37.1 1.05.1 1.9v20.2c0 .85.45 1.53 1.12 1.9l.09.05 11.33-11.33v-.27L1.31-.05l-.09.05z"/>
+        <path fill="#34A853" d="M16.14 16.14l-3.6-3.6v-.27l3.6-3.6.08.05 4.27 2.43c1.22.69 1.22 1.82 0 2.51l-4.27 2.43-.08.05z"/>
+        <path fill="#FBBC05" d="M16.22 16.09L12.54 12.4 1.22 23.72c.4.43 1.07.48 1.82.05l13.18-7.68z"/>
+        <path fill="#EA4335" d="M16.22 7.91L3.04.23C2.29-.2 1.62-.15 1.22.28L12.54 11.6l3.68-3.69z"/>
+      </svg>
+      <span class="header-play-label">Google Play</span>
+    </a>
+
     <% if (currentUser) { %>
       <button id="user-menu-toggle" class="user-avatar-btn" type="button" title="<%= userProfile && userProfile.profile_image_url ? 'View profile' : 'Upload your photo' %>">
         <% if (userProfile && userProfile.profile_image_url) { %>
