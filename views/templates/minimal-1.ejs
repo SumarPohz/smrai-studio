@@ -8,6 +8,9 @@
     <% if (data.location) { %>
       <span><strong>📍</strong> <%= data.location %></span>
     <% } %>
+    <% if (data.linkedinUrl) { %>
+      <span><strong>🔗</strong> <%= data.linkedinUrl.replace(/^https?:\/\//, '') %></span>
+    <% } %>
   </div>
 </div>
 
@@ -55,3 +58,86 @@
   <h3>Languages</h3>
   <p><%= data.languages || "" %></p>
 </div>
+
+<% const _min_certLines = (data.certifications || "").split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, "")).filter(Boolean); %>
+<% if (_min_certLines.length) { %>
+<div class="min-section">
+  <h3>Certifications</h3>
+  <ul>
+    <% _min_certLines.forEach(function(c) { %><li><%= c %></li><% }); %>
+  </ul>
+</div>
+<% } %>
+
+<% if (projectItems && projectItems.length) { %>
+<div class="min-section">
+  <h3>Projects</h3>
+  <% projectItems.forEach(function(proj) { %>
+    <div class="exp-entry">
+      <div class="exp-heading">
+        <span class="exp-title"><strong><%= proj.name %></strong><% if (proj.link) { %> <em class="exp-company"> · <%= proj.link.replace(/^https?:\/\//, '') %></em><% } %></span>
+        <% if (proj.tech) { %><span class="exp-dates"><%= proj.tech %></span><% } %>
+      </div>
+      <% if (proj.description && proj.description.length) { %><div class="exp-body"><%= proj.description.join(' ') %></div><% } %>
+    </div>
+  <% }); %>
+</div>
+<% } %>
+
+<% const _min_achLines = (data.achievements || "").split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, "")).filter(Boolean); %>
+<% if (_min_achLines.length) { %>
+<div class="min-section">
+  <h3>Achievements</h3>
+  <ul>
+    <% _min_achLines.forEach(function(a) { %><li><%= a %></li><% }); %>
+  </ul>
+</div>
+<% } %>
+
+<% const _min_awdLines = (data.awards || "").split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, "")).filter(Boolean); %>
+<% if (_min_awdLines.length) { %>
+<div class="min-section">
+  <h3>Awards</h3>
+  <ul>
+    <% _min_awdLines.forEach(function(a) { %><li><%= a %></li><% }); %>
+  </ul>
+</div>
+<% } %>
+
+<% if (data.training) { %>
+<div class="min-section">
+  <h3>Training</h3>
+  <p><%= data.training %></p>
+</div>
+<% } %>
+
+<% if (data.volunteering) { %>
+<div class="min-section">
+  <h3>Volunteering</h3>
+  <p><%= data.volunteering %></p>
+</div>
+<% } %>
+
+<% if (data.hobbies) { %>
+<div class="min-section">
+  <h3>Hobbies &amp; Interests</h3>
+  <p><%= data.hobbies %></p>
+</div>
+<% } %>
+
+<% const _min_pubLines = (data.publications || "").split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, "")).filter(Boolean); %>
+<% if (_min_pubLines.length) { %>
+<div class="min-section">
+  <h3>Publications</h3>
+  <ul>
+    <% _min_pubLines.forEach(function(p) { %><li><%= p %></li><% }); %>
+  </ul>
+</div>
+<% } %>
+
+<% if (data.references) { %>
+<div class="min-section">
+  <h3>References</h3>
+  <p><%= data.references %></p>
+</div>
+<% } %>

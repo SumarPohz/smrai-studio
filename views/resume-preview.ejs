@@ -534,10 +534,28 @@
   <div class="dl-cta-wrap">
     <div class="dl-cta-card">
       <div class="dl-cta-icon">🔒</div>
-      <div class="dl-cta-text">
-        <p class="dl-cta-title">Download Your Resume</p>
-        <p class="dl-cta-sub">One-time payment · Unlocks JPG &amp; PDF instantly</p>
+      <div class="dl-cta-middle">
+        <div class="dl-cta-text">
+          <p class="dl-cta-title">Download Your Resume</p>
+          <p class="dl-cta-sub">One-time payment · Unlocks JPG &amp; PDF instantly</p>
+        </div>
+
+        <!-- Inline coupon section -->
+        <div class="dl-coupon-section" id="dlCouponSection">
+        <p class="dl-coupon-label">🎟️ Have a coupon code?</p>
+        <div class="dl-coupon-row">
+          <input type="text" id="couponInput" class="dl-coupon-input"
+                 placeholder="Enter code" maxlength="50" autocomplete="off" spellcheck="false">
+          <button type="button" id="couponApplyBtn" class="dl-coupon-apply-btn">Apply</button>
+        </div>
+        <div id="couponMsg" class="dl-coupon-msg" style="display:none;"></div>
+        <div id="couponSavingsBadge" class="dl-coupon-badge" style="display:none;">
+          <span id="couponSavingsText"></span>
+          <button type="button" id="couponRemoveBtn" class="dl-coupon-remove" title="Remove coupon">×</button>
+        </div>
       </div>
+      </div>
+
       <button id="download-image-btn" class="dl-pay-btn" style="display:none"></button>
       <button id="download-pdf-btn"   class="dl-pay-btn" style="display:none"></button>
       <button id="dl-unlock-btn" class="dl-unlock-btn">
@@ -591,7 +609,8 @@
       width: 100%;
     }
     .dl-cta-icon { font-size: 1.6rem; flex-shrink: 0; }
-    .dl-cta-text { flex: 1; min-width: 0; }
+    .dl-cta-middle { flex: 1; min-width: 0; }
+    .dl-cta-text { min-width: 0; }
     .dl-cta-title {
       font-size: 0.97rem;
       font-weight: 700;
@@ -709,6 +728,40 @@
       transition: color 0.15s, background 0.15s;
     }
     .dl-modal-close:hover { color: #374151; background: #f3f4f6; }
+
+    /* ── Inline coupon section ── */
+    .dl-coupon-section { width: 100%; margin: 0.6rem 0; }
+    .dl-coupon-label { font-size: 0.8rem; color: #64748b; margin: 0 0 0.35rem; font-weight: 600; }
+    .dl-coupon-row { display: flex; gap: 0.45rem; }
+    .dl-coupon-input {
+      flex: 1; padding: 0.55rem 0.8rem;
+      border: 1.5px solid #e2e8f0; border-radius: 8px;
+      font-size: 0.875rem; font-weight: 600; letter-spacing: 0.04em;
+      text-transform: uppercase; outline: none;
+      transition: border-color 0.15s;
+    }
+    .dl-coupon-input:focus { border-color: #6366f1; }
+    .dl-coupon-apply-btn {
+      padding: 0.55rem 0.9rem; background: #6366f1; color: #fff;
+      border: none; border-radius: 8px; font-size: 0.8rem; font-weight: 700;
+      cursor: pointer; white-space: nowrap; transition: background 0.15s;
+    }
+    .dl-coupon-apply-btn:hover:not(:disabled) { background: #4f46e5; }
+    .dl-coupon-apply-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+    .dl-coupon-msg { font-size: 0.78rem; margin-top: 0.35rem; padding: 0.3rem 0.5rem; border-radius: 6px; }
+    .dl-coupon-msg.success { background: #d1fae5; color: #065f46; }
+    .dl-coupon-msg.error   { background: #fee2e2; color: #991b1b; }
+    .dl-coupon-badge {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 0.5rem; margin-top: 0.4rem;
+      background: #d1fae5; border: 1px solid #6ee7b7;
+      color: #065f46; border-radius: 8px;
+      padding: 0.4rem 0.7rem; font-size: 0.8rem; font-weight: 600;
+    }
+    .dl-coupon-remove {
+      background: none; border: none; color: #065f46;
+      font-size: 1rem; cursor: pointer; line-height: 1; padding: 0;
+    }
 
     @media (max-width: 560px) {
       .dl-cta-card { flex-wrap: wrap; }
@@ -1281,20 +1334,23 @@
     // Razorpay payment — shared between JPG and PDF actions
     // Only ONE transaction is triggered; both buttons unlock after it
     // ================================================================
-    async function createOrder() {
+    // Active coupon state
+    let activeCouponCode = null;
+
+    async function createOrder(couponCode) {
       const res  = await fetch("/api/razorpay/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ template: templateName }),
+        body: JSON.stringify({ template: templateName, couponCode: couponCode || null }),
       });
       const json = await res.json();
       if (!json.success) throw new Error("Order creation failed");
       return json;
     }
 
-    async function startPayment(action) {
+    async function startPayment(action, couponCode) {
       try {
-        const orderData = await createOrder();
+        const orderData = await createOrder(couponCode);
 
         const options = {
           key:         orderData.key,
@@ -1315,6 +1371,7 @@
                   razorpay_signature:  response.razorpay_signature,
                   purpose:             "download",
                   resumeId:            resumeId || null,
+                  couponCode:          couponCode || null,
                 }),
               });
 
@@ -1372,6 +1429,71 @@
       }
     }
 
+    // ── Inline coupon logic ───────────────────────────────────────────────────
+    const couponInput    = document.getElementById("couponInput");
+    const couponApplyBtn = document.getElementById("couponApplyBtn");
+    const couponMsg      = document.getElementById("couponMsg");
+    const couponBadge    = document.getElementById("couponSavingsBadge");
+    const couponBadgeTxt = document.getElementById("couponSavingsText");
+    const couponRemoveBtn= document.getElementById("couponRemoveBtn");
+    const displayPriceRaw = <%= displayPrice %>;
+
+    function showCouponMsg(msg, type) {
+      couponMsg.textContent = msg;
+      couponMsg.className = "dl-coupon-msg " + type;
+      couponMsg.style.display = "block";
+    }
+    function resetCoupon() {
+      activeCouponCode = null;
+      couponInput.value = "";
+      couponBadge.style.display = "none";
+      couponMsg.style.display = "none";
+      if (unlockBtn) unlockBtn.innerHTML = "Pay ₹<%= displayPrice %> &amp; Unlock Downloads";
+    }
+
+    couponInput.addEventListener("input", function() {
+      this.value = this.value.toUpperCase();
+      if (activeCouponCode) resetCoupon();
+      else { couponMsg.style.display = "none"; couponBadge.style.display = "none"; }
+    });
+    couponInput.addEventListener("keydown", function(e) {
+      if (e.key === "Enter") couponApplyBtn.click();
+    });
+
+    couponApplyBtn.addEventListener("click", async function() {
+      const code = couponInput.value.trim();
+      if (!code) { showCouponMsg("Please enter a coupon code.", "error"); return; }
+      couponApplyBtn.disabled = true;
+      couponApplyBtn.textContent = "Checking…";
+      couponMsg.style.display = "none";
+      couponBadge.style.display = "none";
+      try {
+        const r = await fetch("/api/coupons/validate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code, template: templateName }),
+        });
+        const d = await r.json();
+        if (d.valid) {
+          activeCouponCode = d.code;
+          couponBadgeTxt.textContent = `✅ ${d.code} — ${d.discountType === "percent" ? d.discountValue + "%" : "₹" + d.discountValue} off! ₹${d.originalAmount} → ₹${d.finalAmount}`;
+          couponBadge.style.display = "flex";
+          if (unlockBtn) unlockBtn.innerHTML = `Pay ₹${d.finalAmount} &amp; Unlock Downloads`;
+          showCouponMsg(d.message, "success");
+        } else {
+          activeCouponCode = null;
+          showCouponMsg(d.message || "Invalid coupon.", "error");
+        }
+      } catch(_) {
+        showCouponMsg("Network error. Please try again.", "error");
+      } finally {
+        couponApplyBtn.disabled = false;
+        couponApplyBtn.textContent = "Apply";
+      }
+    });
+
+    couponRemoveBtn.addEventListener("click", resetCoupon);
+
     // ================================================================
     // New single-button + modal UI
     // ================================================================
@@ -1398,10 +1520,12 @@
         } else {
           unlockBtn.disabled = true;
           unlockBtn.textContent = "Opening payment…";
-          startPayment("_modal").finally(function () {
+          startPayment("_modal", activeCouponCode || null).finally(function() {
             if (!paymentVerified) {
               unlockBtn.disabled = false;
-              unlockBtn.innerHTML = "Pay ₹<%= displayPrice %> &amp; Unlock Downloads";
+              unlockBtn.innerHTML = activeCouponCode
+                ? unlockBtn.innerHTML  // keep discounted label if coupon still active
+                : "Pay ₹<%= displayPrice %> &amp; Unlock Downloads";
             }
           });
         }
@@ -1441,11 +1565,11 @@
     // Hidden original button click handlers (kept for logic compatibility)
     // ================================================================
     downloadBtn.addEventListener("click", function () {
-      if (paymentVerified) { generateJpg(); } else { startPayment("jpg"); }
+      if (paymentVerified) { generateJpg(); } else { startPayment("jpg", activeCouponCode || null); }
     });
 
     pdfBtn.addEventListener("click", function () {
-      if (paymentVerified) { generatePdf(); } else { startPayment("pdf"); }
+      if (paymentVerified) { generatePdf(); } else { startPayment("pdf", activeCouponCode || null); }
     });
 
   })();

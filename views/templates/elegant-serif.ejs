@@ -10,6 +10,10 @@
       <span class="es-divider">|</span>
       <span>📍 <%= data.location %></span>
     <% } %>
+    <% if (data.linkedinUrl) { %>
+      <span class="es-divider">|</span>
+      <span>🔗 <%= data.linkedinUrl.replace(/^https?:\/\//, '') %></span>
+    <% } %>
   </div>
 </div>
 
@@ -60,4 +64,87 @@
       <p><%= data.skills || "" %></p>
     <% } %>
   </div>
+
+  <% const _es_certLines = (data.certifications || "").split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, "")).filter(Boolean); %>
+  <% if (_es_certLines.length) { %>
+  <div class="es-section">
+    <h3>Certifications</h3>
+    <div class="es-skills">
+      <% _es_certLines.forEach(function(c) { %><span class="es-skill"><%= c %></span><% }); %>
+    </div>
+  </div>
+  <% } %>
+
+  <% if (projectItems && projectItems.length) { %>
+  <div class="es-section">
+    <h3>Projects</h3>
+    <% projectItems.forEach(function(proj) { %>
+      <div class="exp-entry">
+        <div class="exp-heading">
+          <span class="exp-title"><strong><%= proj.name %></strong><% if (proj.link) { %> <em class="exp-company"> · <%= proj.link.replace(/^https?:\/\//, '') %></em><% } %></span>
+          <% if (proj.tech) { %><span class="exp-dates"><%= proj.tech %></span><% } %>
+        </div>
+        <% if (proj.description && proj.description.length) { %><div class="exp-body"><%= proj.description.join(' ') %></div><% } %>
+      </div>
+    <% }); %>
+  </div>
+  <% } %>
+
+  <% const _es_achLines = (data.achievements || "").split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, "")).filter(Boolean); %>
+  <% if (_es_achLines.length) { %>
+  <div class="es-section">
+    <h3>Achievements</h3>
+    <ul>
+      <% _es_achLines.forEach(function(a) { %><li><%= a %></li><% }); %>
+    </ul>
+  </div>
+  <% } %>
+
+  <% const _es_awdLines = (data.awards || "").split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, "")).filter(Boolean); %>
+  <% if (_es_awdLines.length) { %>
+  <div class="es-section">
+    <h3>Awards</h3>
+    <ul>
+      <% _es_awdLines.forEach(function(a) { %><li><%= a %></li><% }); %>
+    </ul>
+  </div>
+  <% } %>
+
+  <% if (data.training) { %>
+  <div class="es-section">
+    <h3>Training</h3>
+    <p><%= data.training %></p>
+  </div>
+  <% } %>
+
+  <% if (data.volunteering) { %>
+  <div class="es-section">
+    <h3>Volunteering</h3>
+    <p><%= data.volunteering %></p>
+  </div>
+  <% } %>
+
+  <% if (data.hobbies) { %>
+  <div class="es-section">
+    <h3>Hobbies &amp; Interests</h3>
+    <p><%= data.hobbies %></p>
+  </div>
+  <% } %>
+
+  <% const _es_pubLines = (data.publications || "").split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, "")).filter(Boolean); %>
+  <% if (_es_pubLines.length) { %>
+  <div class="es-section">
+    <h3>Publications</h3>
+    <ul>
+      <% _es_pubLines.forEach(function(p) { %><li><%= p %></li><% }); %>
+    </ul>
+  </div>
+  <% } %>
+
+  <% if (data.references) { %>
+  <div class="es-section">
+    <h3>References</h3>
+    <p><%= data.references %></p>
+  </div>
+  <% } %>
 </div>

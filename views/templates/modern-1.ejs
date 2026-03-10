@@ -20,6 +20,9 @@
     <% if (data.location) { %>
       <p><span>📍</span> <%= data.location %></p>
     <% } %>
+    <% if (data.linkedinUrl) { %>
+      <p><span>🔗</span> <%= data.linkedinUrl.replace(/^https?:\/\//, '') %></p>
+    <% } %>
   </div>
 
   <div class="modern-sidebar-section">
@@ -31,6 +34,67 @@
     <h3>LANGUAGES</h3>
     <p><%= data.languages || "" %></p>
   </div>
+
+  <% const _mod_certLines = (data.certifications || "").split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, "")).filter(Boolean); %>
+  <% if (_mod_certLines.length) { %>
+  <div class="modern-sidebar-section">
+    <h3>CERTIFICATIONS</h3>
+    <ul>
+      <% _mod_certLines.forEach(function(c) { %><li><%= c %></li><% }); %>
+    </ul>
+  </div>
+  <% } %>
+
+  <% const _mod_achLines = (data.achievements || "").split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, "")).filter(Boolean); %>
+  <% if (_mod_achLines.length) { %>
+  <div class="modern-sidebar-section">
+    <h3>ACHIEVEMENTS</h3>
+    <ul>
+      <% _mod_achLines.forEach(function(a) { %><li><%= a %></li><% }); %>
+    </ul>
+  </div>
+  <% } %>
+
+  <% const _mod_awdLines = (data.awards || "").split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, "")).filter(Boolean); %>
+  <% if (_mod_awdLines.length) { %>
+  <div class="modern-sidebar-section">
+    <h3>AWARDS</h3>
+    <ul>
+      <% _mod_awdLines.forEach(function(a) { %><li><%= a %></li><% }); %>
+    </ul>
+  </div>
+  <% } %>
+
+  <% if (data.training) { %>
+  <div class="modern-sidebar-section">
+    <h3>TRAINING</h3>
+    <p><%= data.training %></p>
+  </div>
+  <% } %>
+
+  <% if (data.volunteering) { %>
+  <div class="modern-sidebar-section">
+    <h3>VOLUNTEERING</h3>
+    <p><%= data.volunteering %></p>
+  </div>
+  <% } %>
+
+  <% if (data.hobbies) { %>
+  <div class="modern-sidebar-section">
+    <h3>HOBBIES</h3>
+    <p><%= data.hobbies %></p>
+  </div>
+  <% } %>
+
+  <% const _mod_pubLines = (data.publications || "").split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, "")).filter(Boolean); %>
+  <% if (_mod_pubLines.length) { %>
+  <div class="modern-sidebar-section">
+    <h3>PUBLICATIONS</h3>
+    <ul>
+      <% _mod_pubLines.forEach(function(p) { %><li><%= p %></li><% }); %>
+    </ul>
+  </div>
+  <% } %>
 </div>
 
 <div class="modern-right">
@@ -69,4 +133,26 @@
       <p><%= data.skills || "" %></p>
     <% } %>
   </div>
+
+  <% if (projectItems && projectItems.length) { %>
+  <div class="modern-section-block">
+    <h3>PROJECTS</h3>
+    <% projectItems.forEach(function(proj) { %>
+      <div class="exp-entry">
+        <div class="exp-heading">
+          <span class="exp-title"><strong><%= proj.name %></strong><% if (proj.link) { %> <em class="exp-company"> · <%= proj.link.replace(/^https?:\/\//, '') %></em><% } %></span>
+          <% if (proj.tech) { %><span class="exp-dates"><%= proj.tech %></span><% } %>
+        </div>
+        <% if (proj.description && proj.description.length) { %><div class="exp-body"><%= proj.description.join(' ') %></div><% } %>
+      </div>
+    <% }); %>
+  </div>
+  <% } %>
+
+  <% if (data.references) { %>
+  <div class="modern-section-block">
+    <h3>REFERENCES</h3>
+    <p class="exp-text"><%= data.references %></p>
+  </div>
+  <% } %>
 </div>

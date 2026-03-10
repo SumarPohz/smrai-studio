@@ -107,6 +107,12 @@ const certLines = (data.certifications || "")
             <%= data.githubUrl.replace(/^https?:\/\//, '') %>
           </span>
         <% } %>
+        <% if (data.linkedinUrl) { %>
+          <span class="tf-link-item">
+            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+            <%= data.linkedinUrl.replace(/^https?:\/\//, '') %>
+          </span>
+        <% } %>
       </div>
     </div>
 
@@ -197,6 +203,78 @@ const certLines = (data.certifications || "")
       <div class="tf-left-section">
         <div class="tf-section-title">Languages</div>
         <p class="tf-left-text"><%= data.languages %></p>
+      </div>
+      <% } %>
+
+      <!-- Achievements -->
+      <% const _achLines = (data.achievements || "").split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, "")).filter(Boolean); %>
+      <% if (_achLines.length) { %>
+      <div class="tf-divider"></div>
+      <div class="tf-left-section">
+        <div class="tf-section-title">Achievements</div>
+        <ul class="tf-cert-list">
+          <% _achLines.forEach(function(line) { %><li><%= line %></li><% }); %>
+        </ul>
+      </div>
+      <% } %>
+
+      <!-- Awards -->
+      <% const _awdLines = (data.awards || "").split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, "")).filter(Boolean); %>
+      <% if (_awdLines.length) { %>
+      <div class="tf-divider"></div>
+      <div class="tf-left-section">
+        <div class="tf-section-title">Awards</div>
+        <ul class="tf-cert-list">
+          <% _awdLines.forEach(function(line) { %><li><%= line %></li><% }); %>
+        </ul>
+      </div>
+      <% } %>
+
+      <!-- Training -->
+      <% if (data.training) { %>
+      <div class="tf-divider"></div>
+      <div class="tf-left-section">
+        <div class="tf-section-title">Training</div>
+        <p class="tf-left-text"><%= data.training %></p>
+      </div>
+      <% } %>
+
+      <!-- Volunteering -->
+      <% if (data.volunteering) { %>
+      <div class="tf-divider"></div>
+      <div class="tf-left-section">
+        <div class="tf-section-title">Volunteering</div>
+        <p class="tf-left-text"><%= data.volunteering %></p>
+      </div>
+      <% } %>
+
+      <!-- Hobbies -->
+      <% if (data.hobbies) { %>
+      <div class="tf-divider"></div>
+      <div class="tf-left-section">
+        <div class="tf-section-title">Hobbies &amp; Interests</div>
+        <p class="tf-left-text"><%= data.hobbies %></p>
+      </div>
+      <% } %>
+
+      <!-- Publications -->
+      <% const _pubLines = (data.publications || "").split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, "")).filter(Boolean); %>
+      <% if (_pubLines.length) { %>
+      <div class="tf-divider"></div>
+      <div class="tf-left-section">
+        <div class="tf-section-title">Publications</div>
+        <ul class="tf-cert-list">
+          <% _pubLines.forEach(function(line) { %><li><%= line %></li><% }); %>
+        </ul>
+      </div>
+      <% } %>
+
+      <!-- References -->
+      <% if (data.references) { %>
+      <div class="tf-divider"></div>
+      <div class="tf-left-section">
+        <div class="tf-section-title">References</div>
+        <p class="tf-left-text"><%= data.references %></p>
       </div>
       <% } %>
 

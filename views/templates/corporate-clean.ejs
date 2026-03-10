@@ -7,9 +7,8 @@
   <div class="corp-header-right">
     <p>📞 <%= data.phone || "" %></p>
     <p>✉️ <%= data.email || "" %></p>
-    <% if (data.location) { %>
-      <p>📍 <%= data.location %></p>
-    <% } %>
+    <% if (data.location)    { %><p>📍 <%= data.location %></p><% } %>
+    <% if (data.linkedinUrl) { %><p>🔗 <%= data.linkedinUrl.replace(/^https?:\/\//, '') %></p><% } %>
   </div>
 </div>
 
@@ -50,6 +49,28 @@
           <p><%= data.skills || "" %></p>
         <% } %>
       </div>
+
+      <% if (projectItems && projectItems.length) { %>
+      <div class="corp-section">
+        <h3>Projects</h3>
+        <% projectItems.forEach(function(proj) { %>
+          <div class="exp-entry">
+            <div class="exp-heading">
+              <span class="exp-title"><strong><%= proj.name %></strong><% if (proj.link) { %> <em class="exp-company"> · <%= proj.link.replace(/^https?:\/\//, '') %></em><% } %></span>
+              <% if (proj.tech) { %><span class="exp-dates"><%= proj.tech %></span><% } %>
+            </div>
+            <% if (proj.description && proj.description.length) { %><div class="exp-body"><%= proj.description.join(' ') %></div><% } %>
+          </div>
+        <% }); %>
+      </div>
+      <% } %>
+
+      <% if (data.training) { %>
+      <div class="corp-section">
+        <h3>Training</h3>
+        <p><%= data.training %></p>
+      </div>
+      <% } %>
     </div>
 
     <div class="corp-side">
@@ -62,6 +83,67 @@
         <h3>Languages</h3>
         <p><%= data.languages || "" %></p>
       </div>
+
+      <% const _corp_certLines = (data.certifications || "").split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, "")).filter(Boolean); %>
+      <% if (_corp_certLines.length) { %>
+      <div class="corp-section">
+        <h3>Certifications</h3>
+        <ul>
+          <% _corp_certLines.forEach(function(c) { %><li><%= c %></li><% }); %>
+        </ul>
+      </div>
+      <% } %>
+
+      <% const _corp_achLines = (data.achievements || "").split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, "")).filter(Boolean); %>
+      <% if (_corp_achLines.length) { %>
+      <div class="corp-section">
+        <h3>Achievements</h3>
+        <ul>
+          <% _corp_achLines.forEach(function(a) { %><li><%= a %></li><% }); %>
+        </ul>
+      </div>
+      <% } %>
+
+      <% const _corp_awdLines = (data.awards || "").split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, "")).filter(Boolean); %>
+      <% if (_corp_awdLines.length) { %>
+      <div class="corp-section">
+        <h3>Awards</h3>
+        <ul>
+          <% _corp_awdLines.forEach(function(a) { %><li><%= a %></li><% }); %>
+        </ul>
+      </div>
+      <% } %>
     </div>
   </div>
+
+  <% if (data.volunteering) { %>
+  <div class="corp-section corp-full">
+    <h3>Volunteering</h3>
+    <p><%= data.volunteering %></p>
+  </div>
+  <% } %>
+
+  <% if (data.hobbies) { %>
+  <div class="corp-section corp-full">
+    <h3>Hobbies &amp; Interests</h3>
+    <p><%= data.hobbies %></p>
+  </div>
+  <% } %>
+
+  <% const _corp_pubLines = (data.publications || "").split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, "")).filter(Boolean); %>
+  <% if (_corp_pubLines.length) { %>
+  <div class="corp-section corp-full">
+    <h3>Publications</h3>
+    <ul>
+      <% _corp_pubLines.forEach(function(p) { %><li><%= p %></li><% }); %>
+    </ul>
+  </div>
+  <% } %>
+
+  <% if (data.references) { %>
+  <div class="corp-section corp-full">
+    <h3>References</h3>
+    <p><%= data.references %></p>
+  </div>
+  <% } %>
 </div>

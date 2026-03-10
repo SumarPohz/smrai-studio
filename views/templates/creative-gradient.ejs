@@ -26,9 +26,10 @@
     <div class="cg-sb-section">
       <h3>CONTACT</h3>
       <div class="cg-sb-divider"></div>
-      <% if (data.phone)    { %><p class="cg-sb-item">📞 <%= data.phone %></p><% } %>
-      <% if (data.email)    { %><p class="cg-sb-item">✉ <%= data.email %></p><% } %>
-      <% if (data.location) { %><p class="cg-sb-item">📍 <%= data.location %></p><% } %>
+      <% if (data.phone)       { %><p class="cg-sb-item">📞 <%= data.phone %></p><% } %>
+      <% if (data.email)       { %><p class="cg-sb-item">✉ <%= data.email %></p><% } %>
+      <% if (data.location)    { %><p class="cg-sb-item">📍 <%= data.location %></p><% } %>
+      <% if (data.linkedinUrl) { %><p class="cg-sb-item">🔗 <%= data.linkedinUrl.replace(/^https?:\/\//, '') %></p><% } %>
     </div>
 
     <% if (data.education) { %>
@@ -62,6 +63,47 @@
           <li><%= l %></li>
         <% }); %>
       </ul>
+    </div>
+    <% } %>
+
+    <% const _cg_certLines = (data.certifications || "").split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, "")).filter(Boolean); %>
+    <% if (_cg_certLines.length) { %>
+    <div class="cg-sb-section">
+      <h3>CERTIFICATIONS</h3>
+      <div class="cg-sb-divider"></div>
+      <ul class="cg-sb-list">
+        <% _cg_certLines.forEach(function(c) { %><li><%= c %></li><% }); %>
+      </ul>
+    </div>
+    <% } %>
+
+    <% const _cg_achLines = (data.achievements || "").split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, "")).filter(Boolean); %>
+    <% if (_cg_achLines.length) { %>
+    <div class="cg-sb-section">
+      <h3>ACHIEVEMENTS</h3>
+      <div class="cg-sb-divider"></div>
+      <ul class="cg-sb-list">
+        <% _cg_achLines.forEach(function(a) { %><li><%= a %></li><% }); %>
+      </ul>
+    </div>
+    <% } %>
+
+    <% const _cg_awdLines = (data.awards || "").split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, "")).filter(Boolean); %>
+    <% if (_cg_awdLines.length) { %>
+    <div class="cg-sb-section">
+      <h3>AWARDS</h3>
+      <div class="cg-sb-divider"></div>
+      <ul class="cg-sb-list">
+        <% _cg_awdLines.forEach(function(a) { %><li><%= a %></li><% }); %>
+      </ul>
+    </div>
+    <% } %>
+
+    <% if (data.hobbies) { %>
+    <div class="cg-sb-section">
+      <h3>HOBBIES</h3>
+      <div class="cg-sb-divider"></div>
+      <p class="cg-sb-text"><%= data.hobbies %></p>
     </div>
     <% } %>
 
@@ -104,6 +146,54 @@
       <h2>Experience</h2>
       <div class="cg-section-divider"></div>
       <p><%= data.experience %></p>
+    </div>
+    <% } %>
+
+    <% if (projectItems && projectItems.length) { %>
+    <div class="cg-section">
+      <h2>Projects</h2>
+      <div class="cg-section-divider"></div>
+      <% projectItems.forEach(function(proj) { %>
+        <div class="cg-exp-item">
+          <div class="cg-exp-header">
+            <span class="cg-exp-title"><%= proj.name %></span>
+            <% if (proj.tech) { %><span class="cg-exp-year"><%= proj.tech %></span><% } %>
+          </div>
+          <% if (proj.link) { %><p class="cg-exp-company"><%= proj.link.replace(/^https?:\/\//, '') %></p><% } %>
+          <% if (proj.description && proj.description.length) { %>
+            <ul class="cg-exp-bullets">
+              <% proj.description.forEach(function(line) { %><li><%= line %></li><% }); %>
+            </ul>
+          <% } %>
+        </div>
+      <% }); %>
+    </div>
+    <% } %>
+
+    <% if (data.training) { %>
+    <div class="cg-section">
+      <h2>Training</h2>
+      <div class="cg-section-divider"></div>
+      <p><%= data.training %></p>
+    </div>
+    <% } %>
+
+    <% if (data.volunteering) { %>
+    <div class="cg-section">
+      <h2>Volunteering</h2>
+      <div class="cg-section-divider"></div>
+      <p><%= data.volunteering %></p>
+    </div>
+    <% } %>
+
+    <% const _cg_pubLines = (data.publications || "").split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, "")).filter(Boolean); %>
+    <% if (_cg_pubLines.length) { %>
+    <div class="cg-section">
+      <h2>Publications</h2>
+      <div class="cg-section-divider"></div>
+      <ul class="cg-exp-bullets">
+        <% _cg_pubLines.forEach(function(p) { %><li><%= p %></li><% }); %>
+      </ul>
     </div>
     <% } %>
 

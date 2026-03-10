@@ -21,9 +21,10 @@
       <p class="bs-role"><%= data.roleTitle || "" %></p>
 
       <div class="bs-contact-grid">
-        <% if (data.phone)    { %><span class="bs-contact-item">📞 <%= data.phone %></span><% } %>
-        <% if (data.email)    { %><span class="bs-contact-item">✉️ <%= data.email %></span><% } %>
-        <% if (data.location) { %><span class="bs-contact-item">📍 <%= data.location %></span><% } %>
+        <% if (data.phone)       { %><span class="bs-contact-item">📞 <%= data.phone %></span><% } %>
+        <% if (data.email)       { %><span class="bs-contact-item">✉️ <%= data.email %></span><% } %>
+        <% if (data.location)    { %><span class="bs-contact-item">📍 <%= data.location %></span><% } %>
+        <% if (data.linkedinUrl) { %><span class="bs-contact-item">🔗 <%= data.linkedinUrl.replace(/^https?:\/\//, '') %></span><% } %>
       </div>
     </div>
   </div>
@@ -62,6 +63,36 @@
         <% } %>
       </div>
 
+      <% const _bs_certLines = (data.certifications || "").split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, "")).filter(Boolean); %>
+      <% if (_bs_certLines.length) { %>
+      <div class="bs-section">
+        <h3>Certifications</h3>
+        <ul class="bs-skill-list">
+          <% _bs_certLines.forEach(function(c) { %><li><%= c %></li><% }); %>
+        </ul>
+      </div>
+      <% } %>
+
+      <% const _bs_achLines = (data.achievements || "").split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, "")).filter(Boolean); %>
+      <% if (_bs_achLines.length) { %>
+      <div class="bs-section">
+        <h3>Achievements</h3>
+        <ul class="bs-skill-list">
+          <% _bs_achLines.forEach(function(a) { %><li><%= a %></li><% }); %>
+        </ul>
+      </div>
+      <% } %>
+
+      <% const _bs_awdLines = (data.awards || "").split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, "")).filter(Boolean); %>
+      <% if (_bs_awdLines.length) { %>
+      <div class="bs-section">
+        <h3>Awards</h3>
+        <ul class="bs-skill-list">
+          <% _bs_awdLines.forEach(function(a) { %><li><%= a %></li><% }); %>
+        </ul>
+      </div>
+      <% } %>
+
     </div>
 
     <!-- Right: Work Experience — dates-left column per entry -->
@@ -88,6 +119,35 @@
           <p class="bs-fallback"><%= data.experience || "" %></p>
         <% } %>
       </div>
+
+      <% if (projectItems && projectItems.length) { %>
+      <div class="bs-content-section">
+        <h3>Projects</h3>
+        <% projectItems.forEach(function(proj) { %>
+          <div class="bs-exp-item">
+            <div class="bs-exp-dates"><%= proj.tech || "" %></div>
+            <div class="bs-exp-detail">
+              <div class="bs-exp-title"><%= proj.name %><% if (proj.link) { %> · <em><%= proj.link.replace(/^https?:\/\//, '') %></em><% } %></div>
+              <% if (proj.description && proj.description.length) { %><div class="bs-exp-desc"><%= proj.description.join(' ') %></div><% } %>
+            </div>
+          </div>
+        <% }); %>
+      </div>
+      <% } %>
+
+      <% if (data.training) { %>
+      <div class="bs-content-section">
+        <h3>Training</h3>
+        <p class="bs-fallback"><%= data.training %></p>
+      </div>
+      <% } %>
+
+      <% if (data.volunteering) { %>
+      <div class="bs-content-section">
+        <h3>Volunteering</h3>
+        <p class="bs-fallback"><%= data.volunteering %></p>
+      </div>
+      <% } %>
     </div>
 
   </div>
@@ -114,6 +174,23 @@
       <p class="bs-footer-text"><%= data.languages || "" %></p>
     <% } %>
   </div>
+
+  <!-- Hobbies & Publications (middle) -->
+  <% if (data.hobbies || data.publications) { %>
+  <div class="bs-footer-col">
+    <% if (data.hobbies) { %>
+      <h3>Hobbies</h3>
+      <p class="bs-footer-text"><%= data.hobbies %></p>
+    <% } %>
+    <% const _bs_pubLines = (data.publications || "").split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, "")).filter(Boolean); %>
+    <% if (_bs_pubLines.length) { %>
+      <h3>Publications</h3>
+      <ul class="bs-lang-list">
+        <% _bs_pubLines.forEach(function(p) { %><li><%= p %></li><% }); %>
+      </ul>
+    <% } %>
+  </div>
+  <% } %>
 
   <!-- References (right) — hidden gracefully when empty -->
   <div class="bs-footer-col">
