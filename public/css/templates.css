@@ -1603,6 +1603,48 @@
   margin: 0;
 }
 
+/* ── Tech-Focused: References Footer Bar ── */
+.tf-footer-bar {
+  background: #0f172a;
+  border-top: 4px solid #3b82f6;
+  padding: 0.9rem 1.6rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+.tf-footer-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #3b82f6;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin: 0 0 0.6rem;
+}
+.tf-footer-ref-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 2rem;
+}
+.tf-footer-ref-card {
+  flex: 1;
+  min-width: 150px;
+}
+.tf-footer-ref-name {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  margin: 0 0 0.2rem;
+}
+.tf-footer-ref-detail {
+  font-size: 0.66rem;
+  color: #94a3b8;
+  margin: 0 0 0.1rem;
+}
+.tf-footer-ref-plain {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  margin: 0;
+}
+
 /* Project description bullets: visible dot (overrides tiny star) */
 .tf-project-card .tf-achievement-list {
   margin-top: 0.3rem;
