@@ -583,23 +583,23 @@
             </div>
             <% } %>
 
-            <% if (template !== 'photo-resume' && isSectionEnabled('custom_1')) { %>
+            <% if (templateSections && template !== 'photo-resume' && isSectionEnabled('custom_1')) { %>
             <div class="rb-field">
-              <label for="custom_1"><%= (templateSections && templateSections.find(s => s.section_key === 'custom_1') && templateSections.find(s => s.section_key === 'custom_1').label_override) || 'Custom Section 1' %></label>
+              <label for="custom_1"><%= (templateSections.find(s => s.section_key === 'custom_1') && templateSections.find(s => s.section_key === 'custom_1').label_override) || 'Custom Section 1' %></label>
               <textarea id="custom_1" name="custom_1" rows="4"><%= (draft && draft.custom_1) || '' %></textarea>
             </div>
             <% } %>
 
-            <% if (template !== 'photo-resume' && isSectionEnabled('custom_2')) { %>
+            <% if (templateSections && template !== 'photo-resume' && isSectionEnabled('custom_2')) { %>
             <div class="rb-field">
-              <label for="custom_2"><%= (templateSections && templateSections.find(s => s.section_key === 'custom_2') && templateSections.find(s => s.section_key === 'custom_2').label_override) || 'Custom Section 2' %></label>
+              <label for="custom_2"><%= (templateSections.find(s => s.section_key === 'custom_2') && templateSections.find(s => s.section_key === 'custom_2').label_override) || 'Custom Section 2' %></label>
               <textarea id="custom_2" name="custom_2" rows="4"><%= (draft && draft.custom_2) || '' %></textarea>
             </div>
             <% } %>
 
-            <% if (template !== 'photo-resume' && isSectionEnabled('custom_3')) { %>
+            <% if (templateSections && template !== 'photo-resume' && isSectionEnabled('custom_3')) { %>
             <div class="rb-field">
-              <label for="custom_3"><%= (templateSections && templateSections.find(s => s.section_key === 'custom_3') && templateSections.find(s => s.section_key === 'custom_3').label_override) || 'Custom Section 3' %></label>
+              <label for="custom_3"><%= (templateSections.find(s => s.section_key === 'custom_3') && templateSections.find(s => s.section_key === 'custom_3').label_override) || 'Custom Section 3' %></label>
               <textarea id="custom_3" name="custom_3" rows="4"><%= (draft && draft.custom_3) || '' %></textarea>
             </div>
             <% } %>

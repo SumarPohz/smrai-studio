@@ -6,9 +6,8 @@
     <div class="cb-contact">
       <span>📞 <%= data.phone || "" %></span>
       <span>✉️ <%= data.email || "" %></span>
-      <% if (data.location) { %>
-        <span>📍 <%= data.location %></span>
-      <% } %>
+      <% if (data.location)    { %><span>📍 <%= data.location %></span><% } %>
+      <% if (data.linkedinUrl) { %><span>🔗 <%= data.linkedinUrl.replace(/^https?:\/\//, '') %></span><% } %>
     </div>
   </div>
 
@@ -66,4 +65,96 @@
       <p><%= data.skills || "" %></p>
     <% } %>
   </div>
+
+  <% const _cb_certLines = (data.certifications || "").split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, "")).filter(Boolean); %>
+  <% if (_cb_certLines.length) { %>
+  <div class="cb-divider"></div>
+  <div class="cb-section">
+    <h3>Certifications</h3>
+    <div class="cb-skills">
+      <% _cb_certLines.forEach(function(c) { %><span class="cb-skill-tag"><%= c %></span><% }); %>
+    </div>
+  </div>
+  <% } %>
+
+  <% if (projectItems && projectItems.length) { %>
+  <div class="cb-divider"></div>
+  <div class="cb-section">
+    <h3>Projects</h3>
+    <% projectItems.forEach(function(proj) { %>
+      <div class="exp-entry">
+        <div class="cb-exp-header">
+          <strong><%= proj.name %></strong><% if (proj.link) { %> <em class="exp-company"> · <%= proj.link.replace(/^https?:\/\//, '') %></em><% } %>
+          <% if (proj.tech) { %><span class="exp-dates"><%= proj.tech %></span><% } %>
+        </div>
+        <% if (proj.description && proj.description.length) { %><div class="exp-body"><%= proj.description.join(' ') %></div><% } %>
+      </div>
+    <% }); %>
+  </div>
+  <% } %>
+
+  <% const _cb_achLines = (data.achievements || "").split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, "")).filter(Boolean); %>
+  <% if (_cb_achLines.length) { %>
+  <div class="cb-divider"></div>
+  <div class="cb-section">
+    <h3>Achievements</h3>
+    <ul>
+      <% _cb_achLines.forEach(function(a) { %><li><%= a %></li><% }); %>
+    </ul>
+  </div>
+  <% } %>
+
+  <% const _cb_awdLines = (data.awards || "").split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, "")).filter(Boolean); %>
+  <% if (_cb_awdLines.length) { %>
+  <div class="cb-divider"></div>
+  <div class="cb-section">
+    <h3>Awards</h3>
+    <ul>
+      <% _cb_awdLines.forEach(function(a) { %><li><%= a %></li><% }); %>
+    </ul>
+  </div>
+  <% } %>
+
+  <% if (data.training) { %>
+  <div class="cb-divider"></div>
+  <div class="cb-section">
+    <h3>Training</h3>
+    <p><%= data.training %></p>
+  </div>
+  <% } %>
+
+  <% if (data.volunteering) { %>
+  <div class="cb-divider"></div>
+  <div class="cb-section">
+    <h3>Volunteering</h3>
+    <p><%= data.volunteering %></p>
+  </div>
+  <% } %>
+
+  <% if (data.hobbies) { %>
+  <div class="cb-divider"></div>
+  <div class="cb-section">
+    <h3>Hobbies &amp; Interests</h3>
+    <p><%= data.hobbies %></p>
+  </div>
+  <% } %>
+
+  <% const _cb_pubLines = (data.publications || "").split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, "")).filter(Boolean); %>
+  <% if (_cb_pubLines.length) { %>
+  <div class="cb-divider"></div>
+  <div class="cb-section">
+    <h3>Publications</h3>
+    <ul>
+      <% _cb_pubLines.forEach(function(p) { %><li><%= p %></li><% }); %>
+    </ul>
+  </div>
+  <% } %>
+
+  <% if (data.references) { %>
+  <div class="cb-divider"></div>
+  <div class="cb-section">
+    <h3>References</h3>
+    <p><%= data.references %></p>
+  </div>
+  <% } %>
 </div>
