@@ -145,6 +145,25 @@ main {
   box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
 }
 
+.btn-google {
+  display: flex; align-items: center; justify-content: center; gap: 0.6rem;
+  width: 100%; padding: 0.65rem 1rem;
+  background: #fff; color: #3c4043;
+  border: 1px solid #dadce0; border-radius: 10px;
+  font-size: 0.9rem; font-weight: 500; text-decoration: none;
+  transition: background 0.15s, box-shadow 0.15s;
+  cursor: pointer; box-sizing: border-box;
+}
+.btn-google:hover { background: #f8f9fa; box-shadow: 0 1px 4px rgba(0,0,0,0.12); }
+
+.auth-divider {
+  display: flex; align-items: center; gap: 0.75rem;
+  margin: 0.9rem 0; color: #9ca3af; font-size: 0.8rem;
+}
+.auth-divider::before, .auth-divider::after {
+  content: ''; flex: 1; height: 1px; background: #e5e7eb;
+}
+
 .btn-ghost {
   display: inline-block;
   padding: 0.6rem 1.2rem;
@@ -2269,11 +2288,17 @@ main section {
   flex-direction: column;
   gap: 0.65rem;
 }
+.gc-pre-chat[hidden] { display: none !important; }
+.gc-pre-chat form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
 .gc-pre-desc {
   font-size: 0.83rem; color: #6b7280; text-align: center; margin-bottom: 0.25rem;
 }
 .gc-field {
-  width: 100%; padding: 0.55rem 0.75rem;
+  width: 100%; padding: 0.75rem 1rem;
   border: 1px solid #e2e8f0; border-radius: 8px;
   font-size: 0.875rem; color: #111827; background: #f8fafc;
   transition: border-color 0.15s, box-shadow 0.15s;
@@ -2293,6 +2318,7 @@ main section {
 
 /* Chat area */
 .gc-chat { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+.gc-chat[hidden] { display: none !important; }
 .gc-messages {
   flex: 1; overflow-y: auto; padding: 1rem;
   display: flex; flex-direction: column; gap: 0.55rem;
@@ -2310,6 +2336,18 @@ main section {
 .gc-bubble.theirs { background: #fff; border: 1px solid #e2e8f0; color: #111827; border-bottom-left-radius: 4px; }
 .gc-bubble-meta   { font-size: 0.65rem; color: #9ca3af; margin-top: 0.15rem; padding: 0 0.15rem; }
 .gc-sender-name   { font-size: 0.68rem; color: #6b7280; font-weight: 600; margin-bottom: 0.12rem; }
+/* Typing indicator */
+.gc-typing-bubble { display: flex; align-items: center; gap: 4px; padding: 0.5rem 0.75rem; min-width: 44px; }
+.gc-typing-bubble span {
+  display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+  background: #9ca3af; animation: gcTypingDot 1.2s infinite ease-in-out;
+}
+.gc-typing-bubble span:nth-child(2) { animation-delay: 0.2s; }
+.gc-typing-bubble span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes gcTypingDot {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+  30% { transform: translateY(-5px); opacity: 1; }
+}
 
 .gc-input-bar {
   display: flex; align-items: flex-end; gap: 0.5rem;
@@ -2330,8 +2368,46 @@ main section {
 }
 .gc-send:hover { background: #4f46e5; }
 
-@media (max-width: 480px) {
-  .gc-float  { width: 50px; height: 50px; bottom: 18px; right: 16px; }
-  .gc-float i { font-size: 1.35rem; }
-  .gc-box    { width: calc(100vw - 2rem); right: 1rem; bottom: 78px; max-height: 72svh; }
+/* ── Guest Chat — Mobile ────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  /* Float button — bigger tap target + safe area */
+  .gc-float   { width: 52px; height: 52px; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); right: 16px; }
+  .gc-float i { font-size: 1.4rem; }
+
+  /* Chat box — full-width, clear of float button, respects dynamic viewport */
+  .gc-box {
+    width: calc(100vw - 1.5rem);
+    right: 0.75rem;
+    left: 0.75rem;
+    bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+    max-height: min(76dvh, 560px);
+    border-radius: 16px;
+  }
+
+  /* Header — slightly compact */
+  .gc-header  { padding: 0.85rem 1rem; }
+  .gc-avatar  { width: 34px; height: 34px; font-size: 0.9rem; }
+  .gc-title   { font-size: 0.875rem; }
+  .gc-sub     { font-size: 0.68rem; }
+
+  /* Pre-chat form */
+  .gc-pre-chat { padding: 1.25rem 1rem; gap: 0.45rem; }
+
+  /* Bubbles — allow slightly wider */
+  .gc-bubble  { max-width: 90%; }
+
+  /* Input bar — 44px min touch targets */
+  .gc-input-bar { padding: 0.6rem 0.75rem; gap: 0.4rem; }
+  .gc-input     { padding: 0.6rem 0.75rem; font-size: 0.9rem; }
+  .gc-send      { width: 44px; height: 44px; font-size: 1rem; }
+}
+
+@media (max-width: 380px) {
+  .gc-box     { width: calc(100vw - 1rem); right: 0.5rem; left: 0.5rem; }
+  .gc-pre-chat { padding: 1rem 0.85rem; }
+  .gc-title   { font-size: 0.83rem; }
+  .gc-field   { padding: 0.65rem 0.85rem; font-size: 0.83rem; }
+  .gc-start-btn { font-size: 0.85rem; padding: 0.6rem; }
+  .gc-bubble  { max-width: 94%; font-size: 0.83rem; }
+  .gc-input   { font-size: 0.85rem; }
 }
