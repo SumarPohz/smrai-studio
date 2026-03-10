@@ -52,6 +52,12 @@ function tfIcon(skill) {
 /* Parse certifications text into list items */
 const certLines = (data.certifications || "")
   .split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, "")).filter(Boolean);
+
+/* Parse references into cards (up to 3) */
+const rawRefs = (data.references || "").trim();
+const refEntries = rawRefs
+  ? rawRefs.split(/\n?---\n?|\n{2,}/).map(s => s.trim()).filter(Boolean).slice(0, 3)
+  : [];
 %>
 
 <div class="tf-wrap">
@@ -206,45 +212,12 @@ const certLines = (data.certifications || "")
       </div>
       <% } %>
 
-      <!-- Achievements -->
-      <% const _achLines = (data.achievements || "").split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, "")).filter(Boolean); %>
-      <% if (_achLines.length) { %>
-      <div class="tf-divider"></div>
-      <div class="tf-left-section">
-        <div class="tf-section-title">Achievements</div>
-        <ul class="tf-cert-list">
-          <% _achLines.forEach(function(line) { %><li><%= line %></li><% }); %>
-        </ul>
-      </div>
-      <% } %>
-
-      <!-- Awards -->
-      <% const _awdLines = (data.awards || "").split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, "")).filter(Boolean); %>
-      <% if (_awdLines.length) { %>
-      <div class="tf-divider"></div>
-      <div class="tf-left-section">
-        <div class="tf-section-title">Awards</div>
-        <ul class="tf-cert-list">
-          <% _awdLines.forEach(function(line) { %><li><%= line %></li><% }); %>
-        </ul>
-      </div>
-      <% } %>
-
       <!-- Training -->
       <% if (data.training) { %>
       <div class="tf-divider"></div>
       <div class="tf-left-section">
         <div class="tf-section-title">Training</div>
         <p class="tf-left-text"><%= data.training %></p>
-      </div>
-      <% } %>
-
-      <!-- Volunteering -->
-      <% if (data.volunteering) { %>
-      <div class="tf-divider"></div>
-      <div class="tf-left-section">
-        <div class="tf-section-title">Volunteering</div>
-        <p class="tf-left-text"><%= data.volunteering %></p>
       </div>
       <% } %>
 
@@ -266,15 +239,6 @@ const certLines = (data.certifications || "")
         <ul class="tf-cert-list">
           <% _pubLines.forEach(function(line) { %><li><%= line %></li><% }); %>
         </ul>
-      </div>
-      <% } %>
-
-      <!-- References -->
-      <% if (data.references) { %>
-      <div class="tf-divider"></div>
-      <div class="tf-left-section">
-        <div class="tf-section-title">References</div>
-        <p class="tf-left-text"><%= data.references %></p>
       </div>
       <% } %>
 
@@ -338,7 +302,61 @@ const certLines = (data.certifications || "")
       </div>
       <% } %>
 
+      <!-- Achievements -->
+      <% const _achLines = (data.achievements || "").split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, "")).filter(Boolean); %>
+      <% if (_achLines.length) { %>
+      <div class="tf-right-section">
+        <div class="tf-section-title">Achievements</div>
+        <ul class="tf-cert-list">
+          <% _achLines.forEach(function(line) { %><li><%= line %></li><% }); %>
+        </ul>
+      </div>
+      <% } %>
+
+      <!-- Awards -->
+      <% const _awdLines = (data.awards || "").split(/\r?\n+/).map(l => l.trim().replace(/^[-•*]\s*/, "")).filter(Boolean); %>
+      <% if (_awdLines.length) { %>
+      <div class="tf-right-section">
+        <div class="tf-section-title">Awards</div>
+        <ul class="tf-cert-list">
+          <% _awdLines.forEach(function(line) { %><li><%= line %></li><% }); %>
+        </ul>
+      </div>
+      <% } %>
+
+      <!-- Volunteering -->
+      <% if (data.volunteering) { %>
+      <div class="tf-right-section">
+        <div class="tf-section-title">Volunteering</div>
+        <p class="tf-exp-body"><%= data.volunteering %></p>
+      </div>
+      <% } %>
+
     </div><!-- /tf-right -->
   </div><!-- /tf-body -->
+
+  <!-- ═══════════════ REFERENCES FOOTER ═══════════════ -->
+  <% if (refEntries.length) { %>
+  <div class="tf-footer-bar">
+    <div class="tf-footer-title">References</div>
+    <div class="tf-footer-ref-grid">
+      <% refEntries.forEach(function(ref) {
+           var rLines = ref.split('\n').filter(function(l){ return l.trim(); });
+      %>
+        <div class="tf-footer-ref-card">
+          <p class="tf-footer-ref-name"><%= rLines[0] || "" %></p>
+          <% if (rLines[1]) { %><p class="tf-footer-ref-detail"><%= rLines[1] %></p><% } %>
+          <% if (rLines[2]) { %><p class="tf-footer-ref-detail">📞 <%= rLines[2] %></p><% } %>
+          <% if (rLines[3]) { %><p class="tf-footer-ref-detail">✉ <%= rLines[3] %></p><% } %>
+        </div>
+      <% }); %>
+    </div>
+  </div>
+  <% } else if (data.references) { %>
+  <div class="tf-footer-bar">
+    <div class="tf-footer-title">References</div>
+    <p class="tf-footer-ref-plain"><%= data.references %></p>
+  </div>
+  <% } %>
 
 </div><!-- /tf-wrap -->
