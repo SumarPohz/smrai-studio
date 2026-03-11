@@ -1041,6 +1041,48 @@ export default function adminRouter(db) {
   });
 
   // ── Ads master on/off setting ─────────────────────────────────────────────
+  // ── Env / API key management ──────────────────────────────────────────────
+  const ENV_WHITELIST = [
+    'RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET',
+    'BASE_URL', 'OPENAI_API_KEY',
+    'EMAIL_HOST', 'EMAIL_PORT', 'EMAIL_USER', 'EMAIL_PASS',
+  ];
+
+  router.get("/api/env-settings", async (req, res) => {
+    try {
+      const rows = await db.query(
+        "SELECT key, value FROM admin_settings WHERE key = ANY($1)",
+        [ENV_WHITELIST.map(k => `env_${k.toLowerCase()}`)]
+      );
+      const saved = {};
+      for (const r of rows.rows) saved[r.key] = r.value;
+      const result = ENV_WHITELIST.reduce((acc, k) => {
+        acc[k] = saved[`env_${k.toLowerCase()}`] ?? process.env[k] ?? '';
+        return acc;
+      }, {});
+      res.json({ success: true, settings: result });
+    } catch { res.status(500).json({ success: false }); }
+  });
+
+  router.patch("/api/env-settings", async (req, res) => {
+    try {
+      const updates = req.body || {};
+      for (const [rawKey, val] of Object.entries(updates)) {
+        const key = rawKey.toUpperCase();
+        if (!ENV_WHITELIST.includes(key)) continue;
+        const dbKey = `env_${key.toLowerCase()}`;
+        const strVal = String(val ?? '').trim();
+        await db.query(
+          `INSERT INTO admin_settings (key, value, updated_at) VALUES ($1,$2,NOW())
+           ON CONFLICT (key) DO UPDATE SET value=$2, updated_at=NOW()`,
+          [dbKey, strVal]
+        );
+        if (strVal) process.env[key] = strVal;
+      }
+      res.json({ success: true });
+    } catch { res.status(500).json({ success: false }); }
+  });
+
   router.get("/api/ads/settings", async (req, res) => {
     try {
       const r = await db.query("SELECT value FROM admin_settings WHERE key='ads_enabled'");

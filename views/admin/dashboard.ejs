@@ -44,6 +44,9 @@
       <a href="#coupons" class="adm-nav-link" data-section="coupons">
         <i class="fas fa-ticket"></i> Coupons
       </a>
+      <a href="#apikeys" class="adm-nav-link" data-section="apikeys">
+        <i class="fas fa-key"></i> API Keys
+      </a>
       <a href="/dashboard" class="adm-nav-link adm-nav-back">
         <i class="fas fa-arrow-left"></i> Back to App
       </a>
@@ -543,6 +546,30 @@
         <p class="adm-section-desc">Upload custom banners for the sidebar and before-footer slots. When no custom ad is active, Google AdSense fills the slot automatically.</p>
       </div>
 
+      <!-- Tracking Scripts -->
+      <div class="adm-ads-form-card" style="margin-bottom:1.25rem">
+        <h3 class="adm-ads-form-title"><i class="fas fa-code" style="margin-right:0.4rem"></i>Tracking & Ad Networks</h3>
+        <p style="font-size:0.8rem;color:#6b7280;margin:0 0 1rem">Enter your IDs — scripts are injected automatically on all pages. Leave blank to disable.</p>
+        <div class="adm-ads-form" id="trackingScriptsForm">
+          <div class="adm-ads-form-row">
+            <div class="adm-ads-field">
+              <label>Google AdSense Publisher ID</label>
+              <input type="text" id="adsensePublisherId" placeholder="ca-pub-XXXXXXXXXXXXXXXX" maxlength="30" style="font-family:monospace" />
+            </div>
+            <div class="adm-ads-field">
+              <label>Facebook / Instagram Pixel ID</label>
+              <input type="text" id="facebookPixelId" placeholder="1234567890123456" maxlength="20" style="font-family:monospace" />
+            </div>
+          </div>
+          <div class="adm-ads-form-actions">
+            <button type="button" class="adm-btn-primary" id="saveTrackingBtn" onclick="saveTrackingScripts()">
+              <i class="fas fa-save"></i> Save
+            </button>
+            <span class="adm-ads-msg" id="trackingMsg"></span>
+          </div>
+        </div>
+      </div>
+
       <!-- Master on/off toggle -->
       <div class="adm-ads-master-card" id="adsMasterCard">
         <div class="adm-ads-master-info">
@@ -676,6 +703,93 @@
         </div>
       </div>
     </div><!-- /coupons -->
+
+    <!-- ── Section: API Keys ──────────────────────────────────────────────── -->
+    <div id="apikeys" class="adm-section-page" hidden>
+      <div class="adm-section-header">
+        <h2><i class="fas fa-key"></i> API Keys &amp; Environment</h2>
+        <p class="adm-section-desc">Manage API keys and service credentials. Changes take effect immediately without redeploying. Secrets are stored encrypted in the database.</p>
+      </div>
+      <div class="adm-ads-form-card">
+        <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:0.6rem 0.9rem;margin-bottom:1rem;font-size:0.8rem;color:#92400e">
+          <i class="fas fa-triangle-exclamation"></i> <strong>Security:</strong> Only share this page with trusted admins. Never share API keys publicly.
+        </div>
+        <div id="apiKeysForm">
+          <!-- Site / Referral Domain — most important setting -->
+          <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:0.85rem 1rem;margin-bottom:1rem">
+            <div style="font-size:0.78rem;font-weight:700;color:#1d4ed8;margin-bottom:0.5rem"><i class="fas fa-link"></i> Referral &amp; Site Domain</div>
+            <div style="display:flex;gap:0.5rem;align-items:center">
+              <input type="text" id="envBaseUrl" placeholder="https://smrai.studio" style="font-family:monospace;flex:1;padding:0.45rem 0.65rem;border:1px solid #d1d5db;border-radius:6px;font-size:0.85rem" />
+              <button type="button" onclick="saveEnvField('BASE_URL','envBaseUrl',this)" style="padding:0.45rem 0.9rem;background:#2563eb;color:#fff;border:none;border-radius:6px;font-size:0.8rem;font-weight:600;cursor:pointer;white-space:nowrap">Save Domain</button>
+            </div>
+            <p style="font-size:0.72rem;color:#3b82f6;margin:0.35rem 0 0">Used for QR codes, referral links, and OG meta tags. Example: <code>https://smrai.studio</code></p>
+          </div>
+
+          <div class="adm-ads-form-row">
+            <div class="adm-ads-field">
+              <label>Razorpay Key ID</label>
+              <input type="text" id="envRazorpayKeyId" placeholder="rzp_live_..." style="font-family:monospace" />
+            </div>
+            <div class="adm-ads-field">
+              <label>Razorpay Key Secret <span style="font-size:0.7rem;color:#6b7280">(masked)</span></label>
+              <div style="display:flex;gap:0.4rem">
+                <input type="password" id="envRazorpayKeySecret" placeholder="••••••••" style="font-family:monospace;flex:1" />
+                <button type="button" onclick="toggleEnvReveal('envRazorpayKeySecret',this)" style="padding:0 0.6rem;border:1px solid #d1d5db;border-radius:6px;background:#f9fafb;cursor:pointer"><i class="fas fa-eye"></i></button>
+              </div>
+            </div>
+          </div>
+          <div class="adm-ads-form-row">
+            <div class="adm-ads-field">
+              <label>Razorpay Webhook Secret <span style="font-size:0.7rem;color:#6b7280">(masked)</span></label>
+              <div style="display:flex;gap:0.4rem">
+                <input type="password" id="envRazorpayWebhookSecret" placeholder="••••••••" style="font-family:monospace;flex:1" />
+                <button type="button" onclick="toggleEnvReveal('envRazorpayWebhookSecret',this)" style="padding:0 0.6rem;border:1px solid #d1d5db;border-radius:6px;background:#f9fafb;cursor:pointer"><i class="fas fa-eye"></i></button>
+              </div>
+            </div>
+            <div class="adm-ads-field">
+              <label>OpenAI API Key <span style="font-size:0.7rem;color:#6b7280">(masked)</span></label>
+              <div style="display:flex;gap:0.4rem">
+                <input type="password" id="envOpenaiApiKey" placeholder="sk-..." style="font-family:monospace;flex:1" />
+                <button type="button" onclick="toggleEnvReveal('envOpenaiApiKey',this)" style="padding:0 0.6rem;border:1px solid #d1d5db;border-radius:6px;background:#f9fafb;cursor:pointer"><i class="fas fa-eye"></i></button>
+              </div>
+            </div>
+          </div>
+          <div class="adm-ads-form-row">
+            <div class="adm-ads-field">
+              <label>Base URL</label>
+              <input type="text" id="envBaseUrl" placeholder="https://smrai.studio" style="font-family:monospace" />
+            </div>
+            <div class="adm-ads-field">
+              <label>Email Host (SMTP)</label>
+              <input type="text" id="envEmailHost" placeholder="smtp.gmail.com" style="font-family:monospace" />
+            </div>
+          </div>
+          <div class="adm-ads-form-row">
+            <div class="adm-ads-field">
+              <label>Email Port</label>
+              <input type="text" id="envEmailPort" placeholder="587" style="font-family:monospace;max-width:120px" />
+            </div>
+            <div class="adm-ads-field">
+              <label>Email User</label>
+              <input type="text" id="envEmailUser" placeholder="your@gmail.com" style="font-family:monospace" />
+            </div>
+            <div class="adm-ads-field">
+              <label>Email Password <span style="font-size:0.7rem;color:#6b7280">(masked)</span></label>
+              <div style="display:flex;gap:0.4rem">
+                <input type="password" id="envEmailPass" placeholder="••••••••" style="font-family:monospace;flex:1" />
+                <button type="button" onclick="toggleEnvReveal('envEmailPass',this)" style="padding:0 0.6rem;border:1px solid #d1d5db;border-radius:6px;background:#f9fafb;cursor:pointer"><i class="fas fa-eye"></i></button>
+              </div>
+            </div>
+          </div>
+          <div class="adm-ads-form-actions">
+            <button type="button" class="adm-btn-primary" onclick="saveEnvSettings()">
+              <i class="fas fa-save"></i> Save API Keys
+            </button>
+            <span class="adm-ads-msg" id="envSaveMsg"></span>
+          </div>
+        </div>
+      </div>
+    </div><!-- /apikeys -->
 
     <!-- ── Static Template Edit Dialog (centered) ────────────────────────────── -->
     <div id="staticTplModal" class="adm-stpl-backdrop" hidden>
@@ -1271,6 +1385,7 @@ function showSection(id) {
     if (id === "homepage"  && !hpLoaded)     { loadHomepage(); }
     if (id === "ads"       && !adsLoaded)    { loadAds(); }
     if (id === "coupons"   && !couponsLoaded){ loadCoupons(); }
+    if (id === "apikeys")                    { loadEnvSettings(); }
   }, 120);
 }
 
@@ -3464,9 +3579,123 @@ function wireImgUpload(el, fileSelector, btnSelector, urlSelector, previewSelect
   });
 }
 
+// ── API Keys / Env settings ──────────────────────────────────────────────────
+const ENV_FIELD_MAP = {
+  RAZORPAY_KEY_ID:         'envRazorpayKeyId',
+  RAZORPAY_KEY_SECRET:     'envRazorpayKeySecret',
+  RAZORPAY_WEBHOOK_SECRET: 'envRazorpayWebhookSecret',
+  OPENAI_API_KEY:          'envOpenaiApiKey',
+  BASE_URL:                'envBaseUrl',
+  EMAIL_HOST:              'envEmailHost',
+  EMAIL_PORT:              'envEmailPort',
+  EMAIL_USER:              'envEmailUser',
+  EMAIL_PASS:              'envEmailPass',
+};
+
+async function saveEnvField(key, inputId, btn) {
+  const val = document.getElementById(inputId)?.value.trim();
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const r = await fetch("/admin/api/env-settings", {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ [key]: val }),
+    });
+    const d = await r.json();
+    btn.textContent = d.success ? 'Saved ✓' : 'Failed';
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2000);
+  } catch (_) { btn.textContent = 'Error'; btn.disabled = false; }
+}
+
+async function loadEnvSettings() {
+  try {
+    const r = await fetch("/admin/api/env-settings");
+    const d = await r.json();
+    if (!d.success) return;
+    for (const [key, elId] of Object.entries(ENV_FIELD_MAP)) {
+      const el = document.getElementById(elId);
+      if (el) el.value = d.settings[key] || '';
+    }
+  } catch (_) {}
+}
+
+async function saveEnvSettings() {
+  const msg = document.getElementById("envSaveMsg");
+  const payload = {};
+  for (const [key, elId] of Object.entries(ENV_FIELD_MAP)) {
+    const el = document.getElementById(elId);
+    if (el) payload[key] = el.value.trim();
+  }
+  try {
+    const r = await fetch("/admin/api/env-settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const d = await r.json();
+    if (d.success) {
+      msg.textContent = "Saved! Changes are now live.";
+      msg.className = "adm-ads-msg adm-msg-ok";
+    } else {
+      msg.textContent = "Failed to save.";
+      msg.className = "adm-ads-msg adm-msg-error";
+    }
+  } catch (_) {
+    msg.textContent = "Error saving.";
+    msg.className = "adm-ads-msg adm-msg-error";
+  }
+  setTimeout(() => { msg.textContent = ""; }, 4000);
+}
+
+function toggleEnvReveal(inputId, btn) {
+  const el = document.getElementById(inputId);
+  if (!el) return;
+  const isHidden = el.type === 'password';
+  el.type = isHidden ? 'text' : 'password';
+  btn.innerHTML = isHidden ? '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-eye"></i>';
+}
+
+// ── Tracking scripts ─────────────────────────────────────────────────────────
+async function loadTrackingScripts() {
+  try {
+    const r = await fetch("/admin/api/settings");
+    const d = await r.json();
+    if (d.settings) {
+      document.getElementById("adsensePublisherId").value = d.settings.adsense_publisher_id || "";
+      document.getElementById("facebookPixelId").value    = d.settings.facebook_pixel_id    || "";
+    }
+  } catch (_) {}
+}
+
+async function saveTrackingScripts() {
+  const btn = document.getElementById("saveTrackingBtn");
+  const msg = document.getElementById("trackingMsg");
+  const adsenseId = document.getElementById("adsensePublisherId").value.trim();
+  const pixelId   = document.getElementById("facebookPixelId").value.trim();
+  btn.disabled = true;
+  try {
+    const r = await fetch("/admin/api/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ adsense_publisher_id: adsenseId, facebook_pixel_id: pixelId }),
+    });
+    const d = await r.json();
+    if (d.success) {
+      msg.textContent = "Saved!"; msg.className = "adm-ads-msg adm-msg-ok";
+    } else {
+      msg.textContent = "Failed to save."; msg.className = "adm-ads-msg adm-msg-error";
+    }
+  } catch (_) {
+    msg.textContent = "Error saving."; msg.className = "adm-ads-msg adm-msg-error";
+  }
+  btn.disabled = false;
+  setTimeout(() => { msg.textContent = ""; }, 3000);
+}
+
 // ── Ads section ─────────────────────────────────────────────────────────────
 async function loadAds() {
   adsLoaded = true;
+  loadTrackingScripts();
   try {
     const sr = await fetch("/admin/api/ads/settings");
     const sd = await sr.json();
