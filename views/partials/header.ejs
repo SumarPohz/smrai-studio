@@ -278,5 +278,17 @@
     });
   </script>
 
+  <script>
+    (function() {
+      const wrap = document.querySelector('.header-fixed-wrap');
+      if (!wrap) return;
+      function onScroll() {
+        wrap.classList.toggle('scrolled', window.scrollY > 10);
+      }
+      window.addEventListener('scroll', onScroll, { passive: true });
+      onScroll();
+    })();
+  </script>
+
   <main>
 
