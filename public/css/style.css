@@ -959,7 +959,14 @@ main section {
   position: fixed;
   top: 0; left: 0; right: 0;
   z-index: 1100;
-  background: #f3f4f6;
+  background: transparent;
+  box-shadow: none;
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+.header-fixed-wrap.scrolled {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   box-shadow: 0 1px 10px rgba(0,0,0,0.1);
 }
 
