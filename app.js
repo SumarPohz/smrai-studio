@@ -55,17 +55,14 @@ try {
     };
   } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
   } else {
-    console.warn("⚠️ Vertex AI: no credentials found — AI Suggest will be disabled");
   }
 
   const vertexAI = new VertexAI(vertexOpts);
   geminiModel = vertexAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 } catch (err) {
-  console.error("❌ Vertex AI initialisation failed — AI Suggest disabled:", err.message);
 }
 // Optional: helpful warning in dev
 if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
-  console.warn("⚠️ RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET missing in .env. Payment routes will fail.");
 }
 
 const app = express();
@@ -352,9 +349,42 @@ await db.query(`
       );
     `).catch(() => {});
 
-    console.log("✅ Tables ready: service_requests, resumes, resume_events, payments, activity_logs, request_messages, admin_settings, admin_templates, template_overrides, ads");
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS coupons (
+        id               SERIAL PRIMARY KEY,
+        code             VARCHAR(50) UNIQUE NOT NULL,
+        description      VARCHAR(200),
+        discount_type    VARCHAR(10) NOT NULL CHECK (discount_type IN ('percent','fixed')),
+        discount_value   NUMERIC(10,2) NOT NULL,
+        min_amount       NUMERIC(10,2) DEFAULT 0,
+        max_uses         INTEGER DEFAULT 0,
+        uses_count       INTEGER DEFAULT 0,
+        first_time_only  BOOLEAN DEFAULT false,
+        is_active        BOOLEAN DEFAULT true,
+        expires_at       TIMESTAMP,
+        created_at       TIMESTAMP DEFAULT NOW()
+      );
+    `).catch(() => {});
+
+    await db.query(`ALTER TABLE payments ADD COLUMN IF NOT EXISTS coupon_code TEXT`).catch(() => {});
+
+    // ── Referral system columns ──────────────────────────────────────────────
+    await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code VARCHAR(20) UNIQUE`).catch(() => {});
+    await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by INTEGER REFERENCES users(id) ON DELETE SET NULL`).catch(() => {});
+    await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS wallet_balance NUMERIC(10,2) NOT NULL DEFAULT 0`).catch(() => {});
+    await db.query(`ALTER TABLE payments ADD COLUMN IF NOT EXISTS referral_reward_issued BOOLEAN NOT NULL DEFAULT false`).catch(() => {});
+
+    // Backfill referral codes for existing users who don't have one
+    const noCodeUsers = await db.query("SELECT id, name FROM users WHERE referral_code IS NULL");
+    for (const u of noCodeUsers.rows) {
+      let code, tries = 0;
+      do {
+        code = generateReferralCode(u.name, u.id, tries++);
+      } while (tries < 5);
+      await db.query("UPDATE users SET referral_code=$1 WHERE id=$2 AND referral_code IS NULL", [code, u.id]).catch(() => {});
+    }
+
   } catch (err) {
-    console.error("❌ Error initializing DB:", err);
   }
 }
 
@@ -377,7 +407,6 @@ app.post(
         .digest("hex");
 
       if (expectedSignature !== signature) {
-        console.error("❌ Razorpay webhook signature mismatch");
         return res.status(400).send("Invalid signature");
       }
 
@@ -412,7 +441,6 @@ app.post(
 
       return res.json({ received: true });
     } catch (err) {
-      console.error("Webhook error:", err);
       return res.status(500).send("Webhook error");
     }
   }
@@ -611,7 +639,6 @@ app.use(async (req, res, next) => {
         res.locals.userProfile = profileResult.rows[0];
       }
     } catch (err) {
-      console.error("Error loading user profile:", err);
     }
   }
 
@@ -696,25 +723,40 @@ app.get("/", async (_req, res) => {
       hp_testimonials: map.homepage_testimonials || {},
     });
   } catch (err) {
-    console.error("Home page error:", err);
     res.render("home", { hp_hero:{}, hp_services:{}, hp_features:{}, hp_testimonials:{} });
   }
 });
 
 // Register
-app.get("/register", (req, res) => {
-  res.render("register");
+app.get("/register", async (req, res) => {
+  const refCode = req.query.ref || '';
+  const baseUrl = process.env.BASE_URL || 'https://smrai.studio';
+  let ogTitle, ogDescription, ogUrl, ogImage;
+  ogImage = `${baseUrl}/images/refer.png`;
+  if (refCode) {
+    try {
+      const row = await db.query(
+        "SELECT name FROM users WHERE referral_code=$1 AND is_active=true",
+        [refCode.trim().toUpperCase()]
+      );
+      const firstName = row.rows[0]?.name?.split(' ')[0] || 'Someone';
+      ogTitle       = `${firstName} invites you to SmrAI Studio`;
+      ogDescription = `Use code ${refCode.toUpperCase()} to get 30% off your first resume download! 🎉`;
+      ogUrl         = `${baseUrl}/register?ref=${refCode.toUpperCase()}`;
+    } catch (_) {}
+  }
+  res.render("register", { refCode, ogTitle, ogDescription, ogUrl, ogImage });
 });
 
 app.post("/register", async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, referralCode } = req.body;
 
   try {
     const check = await db.query("SELECT * FROM users WHERE email = $1", [email]);
 
     if (check.rows.length > 0) {
-  return res.render("already-registered");
-}
+      return res.render("already-registered");
+    }
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
     const result = await db.query(
@@ -723,14 +765,33 @@ app.post("/register", async (req, res) => {
     );
 
     const user = result.rows[0];
-    req.login(user, (err) => {
-      if (err) {
-        return res.redirect("/login");
+
+    // Generate unique referral code for new user
+    let newCode, tries = 0;
+    do {
+      newCode = generateReferralCode(name, user.id, tries++);
+      const conflict = await db.query("SELECT id FROM users WHERE referral_code=$1", [newCode]);
+      if (!conflict.rows.length) break;
+    } while (tries < 10);
+    await db.query("UPDATE users SET referral_code=$1 WHERE id=$2", [newCode, user.id]).catch(() => {});
+
+    // Link referrer if a valid referral code was provided
+    if (referralCode && referralCode.trim()) {
+      const upper = referralCode.trim().toUpperCase();
+      const refUser = await db.query(
+        "SELECT id FROM users WHERE referral_code=$1 AND is_active=true AND id<>$2",
+        [upper, user.id]
+      );
+      if (refUser.rows.length) {
+        await db.query("UPDATE users SET referred_by=$1 WHERE id=$2", [refUser.rows[0].id, user.id]).catch(() => {});
       }
+    }
+
+    req.login(user, (err) => {
+      if (err) return res.redirect("/login");
       res.redirect("/dashboard");
     });
   } catch (err) {
-    console.error(err);
     res.send("Error while registering");
   }
 });
@@ -746,7 +807,6 @@ app.get("/login", (req, res) => {
 app.post("/login", (req, res, next) => {
   passport.authenticate("local", (err, user, info) => {
     if (err) {
-      console.error("Login error:", err);
       return next(err);
     }
 
@@ -761,7 +821,6 @@ app.post("/login", (req, res, next) => {
 
     req.logIn(user, (err) => {
       if (err) {
-        console.error("Error in req.logIn:", err);
         return next(err);
       }
       logActivity({ userId: user.id, actionType: "login", ip: req.ip });
@@ -813,7 +872,6 @@ app.post("/forgot-password", async (req, res) => {
     //   error: null,
     // });
   } catch (err) {
-    console.error("Error in /forgot-password:", err);
     return res.render("forgot-password", {
       message: null,
       error: "Something went wrong. Please try again.",
@@ -902,7 +960,6 @@ app.post("/reset-password", async (req, res) => {
       emailPrefill: "",
     });
   } catch (err) {
-    console.error("Error in /reset-password:", err);
     return res.render("reset-password", {
       error: "Something went wrong. Please try again.",
       message: null,
@@ -1035,7 +1092,6 @@ app.post("/resume/save", ensureAuthenticated, async (req, res) => {
 
     return res.json({ success: true, resumeId: savedId });
   } catch (err) {
-    console.error("Error saving resume:", err);
     return res
       .status(500)
       .json({ success: false, error: "Failed to save resume." });
@@ -1057,7 +1113,6 @@ app.post("/resume/delete", ensureAuthenticated, async (req, res) => {
       delete req.session.resumeDraft;
     }
   } catch (err) {
-    console.error("Error deleting resume:", err);
   }
   res.redirect("/resumes");
 });
@@ -1084,7 +1139,6 @@ app.get("/resume-builder", ensureAuthenticated, async (req, res) => {
         req.session.lastTemplate = template;
       }
     } catch (err) {
-      console.error("Error loading resume for edit:", err);
     }
   } else if (req.query.template) {
     const reqTpl = req.query.template;
@@ -1169,7 +1223,6 @@ app.get("/resumes", ensureAuthenticated, async (req, res, next) => {
       resumes: result.rows,
     });
   } catch (err) {
-    console.error("Error loading resumes list:", err);
     next(err);
   }
 });
@@ -1204,7 +1257,6 @@ app.get("/payments", ensureAuthenticated, async (req, res, next) => {
       payments: result.rows,
     });
   } catch (err) {
-    console.error("Error loading payments list:", err);
     next(err);
   }
 });
@@ -1251,7 +1303,6 @@ app.get("/resume-templates", ensureAuthenticated, async (_req, res) => {
 
     res.render("resume-templates", { RESUME_TEMPLATES: [...staticTpls, ...adminTpls] });
   } catch (err) {
-    console.error("resume-templates error:", err);
     res.render("resume-templates", { RESUME_TEMPLATES: TEMPLATES });
   }
 });
@@ -1385,7 +1436,6 @@ app.post("/resume-builder/preview", ensureAuthenticated, async (req, res) => {
 
     res.render("resume-preview", { data, template, qrCodeDataUrl, displayPrice, adminTemplateConfig, templateSections, bgImageUrl });
   } catch (err) {
-    console.error("Error saving profile:", err);
     res.send("Error while saving profile.");
   }
 });
@@ -1576,6 +1626,14 @@ app.get(
   }
 );
 
+// ── Referral code generator ──────────────────────────────────────────────────
+function generateReferralCode(name, userId, attempt = 0) {
+  const prefix = (name || 'SMR').replace(/[^A-Za-z]/g, '').toUpperCase().slice(0, 3).padEnd(3, 'X');
+  const seed = (userId * 7919 + attempt * 1031 + Math.floor(Math.random() * 9999));
+  const suffix = seed.toString(36).toUpperCase().slice(-5).padStart(5, '0');
+  return prefix + suffix; // e.g. "JOH3K9XM" — always 8 chars
+}
+
 // ── Auth guards ─────────────────────────────────────────────────────────────
 function ensureAuthenticated(req, res, next) {
   if (req.isAuthenticated()) return next();
@@ -1664,7 +1722,6 @@ app.post("/resume/event", ensureAuthenticated, async (req, res) => {
 
     return res.json({ success: true });
   } catch (err) {
-    console.error("Error logging resume event:", err);
     return res.status(500).json({ success: false });
   }
 });
@@ -1708,7 +1765,6 @@ Return ONLY a valid JSON array — no markdown, no prose, no code fences:
         }).join("\n\n");
         return res.json({ success: true, text: readableText, structured });
       } catch (err) {
-        console.error("AI suggest error (experience/empty):", err);
         const errMsg = err.message || "";
         if (errMsg.includes("RESOURCE_EXHAUSTED") || errMsg.includes("429") || errMsg.includes("quota")) {
           return res.json({ success: false, error: "insufficient_quota" });
@@ -1788,7 +1844,6 @@ Return ONLY a valid JSON array \u2014 no markdown, no prose, no code fences:
 
       return res.json({ success: true, text: readableText, structured });
     } catch (err) {
-      console.error("AI suggest error (experience):", err);
       const errMsg = err.message || "";
       if (errMsg.includes("RESOURCE_EXHAUSTED") || errMsg.includes("429") || errMsg.includes("quota")) {
         return res.json({ success: false, error: "insufficient_quota" });
@@ -2008,7 +2063,6 @@ Return ONLY a valid JSON array \u2014 no markdown, no prose, no code fences:
     logActivity({ userId: req.user.id, actionType: "ai_use", route: req.path });
     return res.json({ success: true, text: suggestion.trim() });
   } catch (err) {
-    console.error("AI suggest error:", err);
 
     const errMsg = err.message || "";
     if (
@@ -2130,7 +2184,6 @@ RULES:
     logActivity({ userId: req.user.id, actionType: "ai_use", route: req.path });
     return res.json({ success: true, text: text.trim() });
   } catch (err) {
-    console.error("AI suggest-application error:", err);
     const errMsg = err.message || "";
     if (errMsg.includes("RESOURCE_EXHAUSTED") || errMsg.includes("429") || errMsg.includes("quota")) {
       return res.json({ success: false, error: "AI quota limit reached. Please try again in a moment." });
@@ -2167,13 +2220,11 @@ app.post("/api/ai/interview-generate", ensureAuthenticated, async (req, res) => 
       const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
       resumeData = JSON.parse(cleaned);
     } catch (_) {
-      console.error("Failed to parse Gemini JSON:", raw);
       return res.status(500).json({ success: false, error: "Failed to parse AI response as JSON" });
     }
 
     return res.json({ success: true, data: resumeData });
   } catch (err) {
-    console.error("AI interview-generate error:", err);
     const errMsg = err.message || "";
     if (errMsg.includes("RESOURCE_EXHAUSTED") || errMsg.includes("429") || errMsg.includes("quota")) {
       return res.json({ success: false, error: "insufficient_quota" });
@@ -2217,7 +2268,6 @@ app.get("/api/request/:id/messages", ensureAuthenticated, async (req, res) => {
     );
     return res.json({ success: true, messages: msgs.rows });
   } catch (err) {
-    console.error(err);
     return res.status(500).json({ success: false });
   }
 });
@@ -2237,7 +2287,6 @@ app.post("/api/guest/start-chat", express.json(), async (req, res) => {
     );
     return res.json({ success: true, requestId: result.rows[0].id, token });
   } catch (err) {
-    console.error(err);
     return res.status(500).json({ success: false });
   }
 });
@@ -2262,7 +2311,6 @@ app.post("/api/guest/chat/message", express.json(), async (req, res) => {
     io.to(`request-${requestId}`).emit("message", row);
     return res.json({ success: true, id: msgResult.rows[0].id });
   } catch (err) {
-    console.error(err);
     return res.status(500).json({ success: false });
   }
 });
@@ -2312,7 +2360,6 @@ app.get("/api/guest/chat/:requestId/messages", async (req, res) => {
     const adminTyping = (Date.now() - lastTyping) < 3000;
     return res.json({ success: true, messages: msgs.rows, adminTyping });
   } catch (err) {
-    console.error(err);
     return res.status(500).json({ success: false });
   }
 });
@@ -2385,13 +2432,11 @@ io.on("connection", (socket) => {
       const row = { ...result.rows[0], request_id: rid, sender_name: user.name };
       io.to(`request-${rid}`).emit("message", row);
     } catch (err) {
-      console.error("socket send-message error:", err);
     }
   });
 });
 
 server.listen(port, () => {
-  console.log(`Server running on port ${port}`);
 });
 
 // ========== Service Request Routes ==========
@@ -2444,7 +2489,6 @@ app.post("/request", async (req, res) => {
 
     res.render("request-success");
   } catch (err) {
-    console.error("Error saving request:", err);
     res.send("Something went wrong while saving your request. Please try again.");
   }
 });
@@ -2477,7 +2521,6 @@ app.post("/profile/update", ensureAuthenticated, async (req, res) => {
     const referer = req.get("referer") || "/dashboard";
     res.redirect(referer);
   } catch (err) {
-    console.error("Error updating profile:", err);
     res.redirect("/dashboard");
   }
 });
@@ -2501,7 +2544,6 @@ app.post(
         [req.user.id, imagePath]
       );
     } catch (err) {
-      console.error("Error saving builder photo:", err);
     }
     res.json({ success: true, imagePath });
   }
@@ -2528,7 +2570,6 @@ app.post(
         [req.user.id, imagePath]
       );
     } catch (err) {
-      console.error("Error saving profile photo:", err);
     }
 
     // 👇 go back to the page the user was on (dashboard or resume-builder)
@@ -2537,28 +2578,177 @@ app.post(
   }
 );
 
+// ── Refer & Earn page ────────────────────────────────────────────────────────
+app.get("/refer", ensureAuthenticated, async (req, res) => {
+  try {
+    const uRow = await db.query(
+      "SELECT name, email, referral_code, wallet_balance FROM users WHERE id=$1",
+      [req.user.id]
+    );
+    const u = uRow.rows[0];
+    const baseUrl = process.env.BASE_URL || "https://smrai.studio";
+    const referralUrl = `${baseUrl}/register?ref=${u.referral_code}`;
+
+    const qrDataUrl = await QRCode.toDataURL(referralUrl, {
+      width: 260, margin: 2, color: { dark: "#0f172a", light: "#ffffff" },
+    });
+
+    const stats = await db.query(
+      `SELECT COUNT(u2.id) AS invited
+       FROM users u2
+       WHERE u2.referred_by = $1`,
+      [req.user.id]
+    );
+
+    const invitedCount = parseInt(stats.rows[0].invited) || 0;
+
+    res.render("refer", {
+      user: u,
+      referralUrl,
+      qrDataUrl,
+      walletBalance: parseFloat(u.wallet_balance) || 0,
+      invitedCount,
+      totalEarned: invitedCount * 20, // fixed ₹20 per referral
+    });
+  } catch (err) {
+    res.redirect("/dashboard");
+  }
+});
+
+// ── Shared helper: look up original price for a template ────────────────────
+async function getTemplatePrice(template) {
+  let priceRupees = 100;
+  if (template && template.startsWith("adm-")) {
+    const tplRow = await db.query(
+      "SELECT price_inr, is_paid FROM admin_templates WHERE slug=$1", [template]
+    );
+    if (tplRow.rows[0]) {
+      priceRupees = tplRow.rows[0].is_paid ? (tplRow.rows[0].price_inr || 49) : 0;
+    }
+  } else {
+    const category = getTemplateById(template || "modern-1").category || "experienced";
+    const priceRes = await db.query(
+      "SELECT value FROM admin_settings WHERE key = $1", [`price_${category}`]
+    );
+    if (priceRes.rows.length) priceRupees = parseInt(priceRes.rows[0].value, 10);
+  }
+  return priceRupees;
+}
+
+// ── Coupon validation (public, authenticated) ────────────────────────────────
+app.post("/api/coupons/validate", ensureAuthenticated, async (req, res) => {
+  try {
+    const { code, template } = req.body || {};
+    if (!code) return res.status(400).json({ valid: false, message: "No coupon code provided." });
+
+    const upper = String(code).trim().toUpperCase();
+    const row = await db.query(
+      `SELECT * FROM coupons WHERE code=$1 AND is_active=true`, [upper]
+    );
+    if (!row.rows[0]) return res.json({ valid: false, message: "Invalid coupon code." });
+
+    const c = row.rows[0];
+
+    // Expiry check
+    if (c.expires_at && new Date(c.expires_at) < new Date()) {
+      return res.json({ valid: false, message: "This coupon has expired." });
+    }
+    // Usage limit check
+    if (c.max_uses > 0 && c.uses_count >= c.max_uses) {
+      return res.json({ valid: false, message: "This coupon has reached its usage limit." });
+    }
+    // First-time only check
+    if (c.first_time_only) {
+      const prior = await db.query(
+        "SELECT id FROM payments WHERE user_id=$1 AND status='captured' LIMIT 1",
+        [req.user.id]
+      );
+      if (prior.rows.length > 0) {
+        return res.json({ valid: false, message: "This coupon is for first-time users only." });
+      }
+    }
+
+    const originalAmount = await getTemplatePrice(template);
+
+    // Min amount check
+    if (c.min_amount > 0 && originalAmount < Number(c.min_amount)) {
+      return res.json({ valid: false, message: `This coupon requires a minimum order of ₹${c.min_amount}.` });
+    }
+
+    let discountAmount = 0;
+    if (c.discount_type === "percent") {
+      discountAmount = Math.floor(originalAmount * Number(c.discount_value) / 100);
+    } else {
+      discountAmount = Math.min(Number(c.discount_value), originalAmount);
+    }
+    const finalAmount = Math.max(0, originalAmount - discountAmount);
+
+    return res.json({
+      valid: true,
+      code: upper,
+      discountType: c.discount_type,
+      discountValue: Number(c.discount_value),
+      originalAmount,
+      discountAmount,
+      finalAmount,
+      message: `${c.discount_type === "percent" ? c.discount_value + "%" : "₹" + c.discount_value} off applied!`,
+    });
+  } catch (err) {
+    res.status(500).json({ valid: false, message: "Server error. Please try again." });
+  }
+});
+
 // Create Razorpay order — price read dynamically from admin_settings
 app.post("/api/razorpay/create-order", ensureAuthenticated, async (req, res) => {
   try {
-    const { template } = req.body || {};
-    let priceRupees = 100;
+    const { template, couponCode, useWallet } = req.body || {};
+    const originalPriceRupees = await getTemplatePrice(template);
+    let priceRupees = originalPriceRupees;
 
-    if (template && template.startsWith("adm-")) {
-      // Admin-created template: use its own price_inr
-      const tplRow = await db.query(
-        "SELECT price_inr, is_paid FROM admin_templates WHERE slug=$1", [template]
+    // Apply coupon discount if provided
+    if (couponCode) {
+      const upper = String(couponCode).trim().toUpperCase();
+      const row = await db.query(
+        `SELECT * FROM coupons WHERE code=$1 AND is_active=true`, [upper]
       );
-      if (tplRow.rows[0]) {
-        priceRupees = tplRow.rows[0].is_paid ? (tplRow.rows[0].price_inr || 49) : 0;
+      const c = row.rows[0];
+      if (c && !(c.expires_at && new Date(c.expires_at) < new Date()) &&
+          !(c.max_uses > 0 && c.uses_count >= c.max_uses)) {
+        let discount = 0;
+        if (c.discount_type === "percent") {
+          discount = Math.floor(priceRupees * Number(c.discount_value) / 100);
+        } else {
+          discount = Math.min(Number(c.discount_value), priceRupees);
+        }
+        priceRupees = Math.max(0, priceRupees - discount);
       }
-    } else {
-      // Static template: read from admin_settings by category
-      const category = getTemplateById(template || "modern-1").category || "experienced";
-      const priceKey = `price_${category}`;
-      const priceRes = await db.query(
-        "SELECT value FROM admin_settings WHERE key = $1", [priceKey]
+    }
+
+    // Auto-apply referral discount (30%) if: user was referred AND has never paid before
+    let referralDiscountRupees = 0;
+    const userRefRow = await db.query(
+      "SELECT referred_by FROM users WHERE id=$1", [req.user.id]
+    );
+    if (userRefRow.rows[0]?.referred_by) {
+      const priorPay = await db.query(
+        "SELECT id FROM payments WHERE user_id=$1 AND status='captured' LIMIT 1",
+        [req.user.id]
       );
-      if (priceRes.rows.length) priceRupees = parseInt(priceRes.rows[0].value, 10);
+      if (!priorPay.rows.length) {
+        referralDiscountRupees = Math.floor(originalPriceRupees * 0.30);
+        priceRupees = Math.max(1, priceRupees - referralDiscountRupees);
+      }
+    }
+
+    // Apply wallet balance if requested
+    let walletDeduction = 0;
+    if (useWallet) {
+      const walletRow = await db.query("SELECT wallet_balance FROM users WHERE id=$1", [req.user.id]);
+      const walletRs = parseFloat(walletRow.rows[0]?.wallet_balance) || 0;
+      walletDeduction = Math.min(walletRs, priceRupees - 1); // keep min ₹1
+      if (walletDeduction > 0) {
+        priceRupees = Math.max(1, priceRupees - walletDeduction);
+      }
     }
 
     const priceInPaise = priceRupees * 100;
@@ -2567,6 +2757,11 @@ app.post("/api/razorpay/create-order", ensureAuthenticated, async (req, res) => 
       amount: priceInPaise,
       currency: "INR",
       receipt: "resume_" + Date.now(),
+      notes: {
+        referralDiscount: referralDiscountRupees.toString(),
+        walletDeduction: walletDeduction.toString(),
+        originalPrice: originalPriceRupees.toString(),
+      },
     };
 
     const order = await razorpay.orders.create(options);
@@ -2577,9 +2772,10 @@ app.post("/api/razorpay/create-order", ensureAuthenticated, async (req, res) => 
       amount: order.amount,
       currency: order.currency,
       key: process.env.RAZORPAY_KEY_ID,
+      referralDiscount: referralDiscountRupees,
+      walletDeduction,
     });
   } catch (err) {
-    console.error("Razorpay order error:", err);
     res.status(500).json({ success: false, message: "Unable to create order" });
   }
 });
@@ -2597,8 +2793,9 @@ app.post("/api/razorpay/verify", async (req, res) => {
       razorpay_order_id,
       razorpay_payment_id,
       razorpay_signature,
-      purpose,    // 'download' or 'print'
-      resumeId,   // can be null/empty
+      purpose,     // 'download' or 'print'
+      resumeId,    // can be null/empty
+      couponCode,  // optional discount coupon
     } = req.body;
 
     if (
@@ -2617,7 +2814,6 @@ app.post("/api/razorpay/verify", async (req, res) => {
     const generatedSignature = hmac.digest("hex");
 
     if (generatedSignature !== razorpay_signature) {
-      console.error("Razorpay signature mismatch");
       return res
         .status(400)
         .json({ success: false, message: "Invalid payment signature" });
@@ -2646,11 +2842,14 @@ if (existing.rows.length > 0) {
 
 
     // Store payment
-    await db.query(
+    const appliedCoupon = couponCode ? String(couponCode).trim().toUpperCase() : null;
+    const walletUsed = parseFloat(req.body.walletDeduction) || 0;
+    const paymentInsert = await db.query(
       `INSERT INTO payments
        (user_id, resume_id, amount, currency, purpose,
-        razorpay_order_id, razorpay_payment_id, razorpay_signature, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'captured')`,
+        razorpay_order_id, razorpay_payment_id, razorpay_signature, status, coupon_code)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'captured', $9)
+       RETURNING id`,
       [
         userId,
         resumeId || null,
@@ -2660,8 +2859,47 @@ if (existing.rows.length > 0) {
         razorpay_order_id,
         razorpay_payment_id,
         razorpay_signature,
+        appliedCoupon,
       ]
     );
+    const newPaymentId = paymentInsert.rows[0].id;
+
+    // Increment coupon uses_count if a coupon was applied
+    if (appliedCoupon) {
+      await db.query(
+        "UPDATE coupons SET uses_count = uses_count + 1 WHERE code = $1",
+        [appliedCoupon]
+      ).catch(() => {});
+    }
+
+    // Deduct wallet balance if it was used
+    if (walletUsed > 0) {
+      await db.query(
+        "UPDATE users SET wallet_balance = GREATEST(0, wallet_balance - $1) WHERE id=$2",
+        [walletUsed, userId]
+      ).catch(() => {});
+    }
+
+    // Issue referral reward to referrer on referee's first payment
+    const refRow = await db.query("SELECT referred_by FROM users WHERE id=$1", [userId]);
+    const referrerId = refRow.rows[0]?.referred_by;
+    if (referrerId) {
+      const payCount = await db.query(
+        "SELECT COUNT(*) FROM payments WHERE user_id=$1 AND status='captured'",
+        [userId]
+      );
+      if (parseInt(payCount.rows[0].count) === 1) {
+        const reward = 20; // fixed ₹20 per successful referral
+        await db.query(
+          "UPDATE users SET wallet_balance = wallet_balance + $1 WHERE id=$2",
+          [reward, referrerId]
+        ).catch(() => {});
+        await db.query(
+          "UPDATE payments SET referral_reward_issued=true WHERE id=$1",
+          [newPaymentId]
+        ).catch(() => {});
+      }
+    }
 
     // Also log an event (for counter stats)
     await db.query(
@@ -2674,7 +2912,6 @@ if (existing.rows.length > 0) {
 
     return res.json({ success: true });
   } catch (err) {
-    console.error("Razorpay verify error:", err);
     return res
       .status(500)
       .json({ success: false, message: "Payment verification failed" });
@@ -2682,5 +2919,4 @@ if (existing.rows.length > 0) {
 });
 
 db.on("connect", () => {
-  console.log("✅ PostgreSQL connected");
 });

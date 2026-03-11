@@ -27,7 +27,11 @@ body {
 }
 
 main {
-  margin-top: 0.5rem;
+  margin-top: 0;
+  padding-top: 68px;
+}
+@media (max-width: 768px) {
+  main { padding-top: 60px; }
 }
 @media (max-width: 768px) {
   .resume-page {
@@ -700,6 +704,11 @@ ul li {
   opacity: 0.9;
 }
 
+.ref-field { display: flex; flex-direction: column; gap: 0.25rem; margin-top: 0.25rem; }
+.ref-optional { font-size: 0.75rem; color: #9ca3af; font-weight: 400; }
+.ref-hint { font-size: 0.78rem; color: #6b7280; margin: 0; }
+.ref-hint--active { color: #059669; font-weight: 500; }
+
 .alert-error {
   background: #fee2e2;
   border: 1px solid #fecaca;
@@ -946,7 +955,14 @@ main section {
   .brand-logo { height: 32px; }
 }
 
-/* Make sure header is flex (you probably already have this) */
+.header-fixed-wrap {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 1100;
+  background: #f3f4f6;
+  box-shadow: 0 1px 10px rgba(0,0,0,0.1);
+}
+
 .top-header {
   display: flex;
   align-items: center;
@@ -2174,6 +2190,44 @@ main section {
 }
 
 /* ====== FLOATING WHATSAPP BUTTON ====== */
+.refer-float {
+  position: fixed;
+  bottom: 90px; /* sits just above the 55px WhatsApp button + 24px bottom + 11px gap */
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0 1rem 0 0.75rem;
+  height: 42px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  text-decoration: none;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.45);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.refer-float:hover {
+  transform: scale(1.06);
+  box-shadow: 0 6px 22px rgba(99, 102, 241, 0.65);
+  color: #fff;
+}
+.refer-float svg { flex-shrink: 0; }
+.refer-float-label { letter-spacing: 0.01em; }
+
+@media (max-width: 768px) {
+  .refer-float {
+    bottom: 82px;
+    right: 14px;
+    height: 38px;
+    padding: 0 0.85rem 0 0.65rem;
+    font-size: 0.73rem;
+  }
+}
+
 .whatsapp-float {
   position: fixed;
   bottom: 24px;
@@ -2478,4 +2532,136 @@ body.page-resume-builder .ad-top-banner { display: none; }
   max-width: 728px;
   width: 100%;
   border-radius: 8px;
+}
+
+/* ── Coupon Modal ─────────────────────────────────────────────────────────── */
+.coupon-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.coupon-modal {
+  background: #fff;
+  border-radius: 18px;
+  padding: 2rem;
+  max-width: 440px;
+  width: 100%;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.18);
+  animation: couponSlideIn 0.22s ease;
+}
+@keyframes couponSlideIn {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.coupon-modal-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  margin-bottom: 1.25rem;
+}
+.coupon-modal-icon { font-size: 2rem; line-height: 1; flex-shrink: 0; }
+.coupon-modal-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 0.2rem;
+}
+.coupon-modal-sub {
+  font-size: 0.82rem;
+  color: #64748b;
+  margin: 0;
+}
+.coupon-input-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+.coupon-input {
+  flex: 1;
+  padding: 0.65rem 0.9rem;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: #1e293b;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.coupon-input:focus { border-color: #6366f1; }
+.coupon-apply-btn {
+  padding: 0.65rem 1.1rem;
+  background: #6366f1;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.coupon-apply-btn:hover:not(:disabled) { background: #4f46e5; }
+.coupon-apply-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.coupon-msg {
+  font-size: 0.82rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+}
+.coupon-msg-success { background: #d1fae5; color: #065f46; }
+.coupon-msg-error   { background: #fee2e2; color: #991b1b; }
+
+.coupon-savings-badge {
+  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+  border: 1px solid #6ee7b7;
+  color: #065f46;
+  border-radius: 10px;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.coupon-modal-actions {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+.coupon-skip-btn {
+  flex: 1;
+  padding: 0.7rem;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.coupon-skip-btn:hover { border-color: #94a3b8; }
+.coupon-pay-btn {
+  flex: 1;
+  padding: 0.7rem;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: box-shadow 0.15s, transform 0.1s;
+}
+.coupon-pay-btn:hover { box-shadow: 0 4px 14px rgba(37,99,235,0.35); transform: translateY(-1px); }
+
+@media (max-width: 480px) {
+  .coupon-modal { padding: 1.5rem 1.25rem; }
+  .coupon-modal-actions { flex-direction: column; }
 }

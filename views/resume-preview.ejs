@@ -1340,7 +1340,7 @@
       const res  = await fetch("/api/razorpay/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ template: templateName, couponCode: couponCode || null }),
+        body: JSON.stringify({ template: templateName, couponCode: couponCode || null, useWallet: true }),
       });
       const json = await res.json();
       if (!json.success) throw new Error("Order creation failed");
@@ -1350,6 +1350,13 @@
     async function startPayment(action, couponCode) {
       try {
         const orderData = await createOrder(couponCode);
+
+        // Show referral / wallet savings on the pay button
+        const finalRs = Math.round(orderData.amount / 100);
+        const savings = (orderData.referralDiscount || 0) + (orderData.walletDeduction || 0);
+        if (savings > 0 && payBtn) {
+          payBtn.innerHTML = `Pay &#8377;${finalRs} &amp; Unlock Downloads <span style="font-size:0.75em;opacity:0.85">(₹${savings} saved)</span>`;
+        }
 
         const options = {
           key:         orderData.key,
@@ -1371,6 +1378,8 @@
                   purpose:             "download",
                   resumeId:            resumeId || null,
                   couponCode:          couponCode || null,
+                  walletDeduction:     orderData.walletDeduction || 0,
+                  originalPrice:       orderData.amount / 100 + (orderData.referralDiscount || 0) + (orderData.walletDeduction || 0),
                 }),
               });
 
@@ -1497,6 +1506,7 @@
     // New single-button + modal UI
     // ================================================================
     const unlockBtn      = document.getElementById("dl-unlock-btn");
+    const payBtn         = document.getElementById("dl-unlock-btn"); // alias for savings display
     const modalOverlay   = document.getElementById("dl-modal-overlay");
     const modalJpgBtn    = document.getElementById("dl-jpg-btn");
     const modalPdfBtn    = document.getElementById("dl-pdf-btn");

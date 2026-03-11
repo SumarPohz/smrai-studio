@@ -37,6 +37,22 @@
       <p>Use the SmrAI-Studio resume builder to generate a professional resume and download it as PDF or JPG.</p>
       <a href="/resume-templates" class="btn-primary">Start Building Resume</a>
     </div>
+    <div class="card refer-earn-card">
+      <div class="ref-card-top">
+        <div class="ref-card-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+        </div>
+        <div>
+          <h2 style="margin:0 0 0.15rem">Refer &amp; Earn</h2>
+          <p style="margin:0;font-size:0.82rem;color:#6b7280">Earn ₹20 for every friend you invite</p>
+        </div>
+      </div>
+      <div class="ref-card-perks">
+        <span class="ref-perk ref-perk--green">Your friend gets 30% off</span>
+        <span class="ref-perk ref-perk--purple">You earn ₹20 wallet credit</span>
+      </div>
+      <a href="/refer" class="btn-primary ref-card-btn">Share Your Code</a>
+    </div>
     <div class="card">
       <h2>Service Request</h2>
       <p style="font-size:0.9rem;color:#6b7280;margin-bottom:1rem">Need something custom? Tell us what you need.</p>
@@ -116,6 +132,16 @@
   @media (max-width: 420px) {
     .dash-stat-grid { grid-template-columns: 1fr; }
   }
+
+  /* ── Refer & Earn card ── */
+  .refer-earn-card { background: linear-gradient(145deg, #faf5ff 0%, #eff6ff 100%); border: 1px solid #e9d5ff; }
+  .ref-card-top { display: flex; align-items: center; gap: 0.85rem; margin-bottom: 1rem; }
+  .ref-card-icon { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #6366f1, #8b5cf6); display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0; }
+  .ref-card-perks { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 1rem; }
+  .ref-perk { font-size: 0.75rem; font-weight: 600; padding: 0.3rem 0.7rem; border-radius: 999px; }
+  .ref-perk--green { background: #d1fae5; color: #065f46; }
+  .ref-perk--purple { background: #ede9fe; color: #5b21b6; }
+  .ref-card-btn { display: inline-block; text-decoration: none; }
 
   /* ── Service request form ── */
   .sr-field  { margin-bottom: 0.75rem; }

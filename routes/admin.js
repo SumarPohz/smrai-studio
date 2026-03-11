@@ -57,7 +57,6 @@ export default function adminRouter(db) {
         },
       });
     } catch (err) {
-      console.error("Admin dashboard error:", err);
       res.status(500).send("Dashboard error");
     }
   });
@@ -100,7 +99,6 @@ export default function adminRouter(db) {
         limit,
       });
     } catch (err) {
-      console.error("Admin users error:", err);
       res.status(500).json({ success: false });
     }
   });
@@ -153,7 +151,6 @@ export default function adminRouter(db) {
         },
       });
     } catch (err) {
-      console.error("Admin user detail error:", err);
       res.status(500).json({ success: false });
     }
   });
@@ -174,7 +171,6 @@ export default function adminRouter(db) {
       await db.query("UPDATE users SET role = $1 WHERE id = $2", [role, id]);
       res.json({ success: true });
     } catch (err) {
-      console.error("Admin role update error:", err);
       res.status(500).json({ success: false });
     }
   });
@@ -194,7 +190,6 @@ export default function adminRouter(db) {
       if (!result.rows.length) return res.status(404).json({ success: false });
       res.json({ success: true, is_active: result.rows[0].is_active });
     } catch (err) {
-      console.error("Toggle active error:", err);
       res.status(500).json({ success: false });
     }
   });
@@ -210,7 +205,6 @@ export default function adminRouter(db) {
       await db.query("DELETE FROM users WHERE id = $1", [id]);
       res.json({ success: true });
     } catch (err) {
-      console.error("Delete user error:", err);
       res.status(500).json({ success: false });
     }
   });
@@ -239,7 +233,6 @@ export default function adminRouter(db) {
       }
       res.json({ success: true, deleted: result.rowCount });
     } catch (err) {
-      console.error("Activity delete error:", err);
       res.status(500).json({ success: false });
     }
   });
@@ -262,7 +255,6 @@ export default function adminRouter(db) {
       );
       res.json({ success: true, activities: rows.rows });
     } catch (err) {
-      console.error("Admin activity error:", err);
       res.status(500).json({ success: false });
     }
   });
@@ -328,7 +320,6 @@ export default function adminRouter(db) {
 
       res.json({ success: true, users });
     } catch (err) {
-      console.error("Activity grouped error:", err);
       res.status(500).json({ success: false });
     }
   });
@@ -355,7 +346,6 @@ export default function adminRouter(db) {
       ]);
       res.json({ success: true, routes: routeRows.rows, recent: recentRows.rows });
     } catch (err) {
-      console.error("Guest activity error:", err);
       res.status(500).json({ success: false });
     }
   });
@@ -373,7 +363,6 @@ export default function adminRouter(db) {
       );
       res.json({ success: true, activities: rows.rows });
     } catch (err) {
-      console.error("User activity error:", err);
       res.status(500).json({ success: false });
     }
   });
@@ -426,7 +415,6 @@ export default function adminRouter(db) {
       }
       res.json({ success: true, rows: result.rows });
     } catch (err) {
-      console.error("Stat detail error:", err);
       res.status(500).json({ success: false });
     }
   });
@@ -467,7 +455,6 @@ export default function adminRouter(db) {
         dailyAI:           dailyAI.rows,
       });
     } catch (err) {
-      console.error("Admin charts error:", err);
       res.status(500).json({ success: false });
     }
   });
@@ -500,7 +487,6 @@ export default function adminRouter(db) {
 
       res.json({ success: true, requests: rows.rows, total: countRes.rows[0].count, page, limit });
     } catch (err) {
-      console.error("Service requests error:", err);
       res.status(500).json({ success: false });
     }
   });
@@ -516,7 +502,6 @@ export default function adminRouter(db) {
       await db.query("UPDATE service_requests SET status = $1 WHERE id = $2", [status, id]);
       res.json({ success: true });
     } catch (err) {
-      console.error("Service request status error:", err);
       res.status(500).json({ success: false });
     }
   });
@@ -529,7 +514,6 @@ export default function adminRouter(db) {
       await db.query("DELETE FROM service_requests WHERE id = $1", [id]);
       res.json({ success: true });
     } catch (err) {
-      console.error("Service request delete error:", err);
       res.status(500).json({ success: false });
     }
   });
@@ -542,7 +526,6 @@ export default function adminRouter(db) {
       for (const row of result.rows) settings[row.key] = row.value;
       res.json({ success: true, settings });
     } catch (err) {
-      console.error("Admin settings GET error:", err);
       res.status(500).json({ success: false });
     }
   });
@@ -568,7 +551,6 @@ export default function adminRouter(db) {
 
       res.json({ success: true });
     } catch (err) {
-      console.error("Admin settings PATCH error:", err);
       res.status(500).json({ success: false });
     }
   });
@@ -585,7 +567,6 @@ export default function adminRouter(db) {
       `);
       res.json({ success: true, templates: rows.rows });
     } catch (err) {
-      console.error("Admin templates list error:", err);
       res.status(500).json({ success: false });
     }
   });
@@ -647,7 +628,6 @@ export default function adminRouter(db) {
       const tpl = await db.query("SELECT * FROM admin_templates WHERE id=$1", [newId]);
       res.json({ success: true, template: tpl.rows[0] });
     } catch (err) {
-      console.error("Admin template create error:", err);
       res.status(500).json({ success: false, error: err.message });
     }
   });
@@ -677,7 +657,6 @@ export default function adminRouter(db) {
       const tpl = await db.query("SELECT * FROM admin_templates WHERE id=$1", [id]);
       res.json({ success: true, template: tpl.rows[0] });
     } catch (err) {
-      console.error("Admin template update error:", err);
       res.status(500).json({ success: false, error: err.message });
     }
   });
@@ -690,7 +669,6 @@ export default function adminRouter(db) {
       await db.query("DELETE FROM admin_templates WHERE id=$1", [id]);
       res.json({ success: true });
     } catch (err) {
-      console.error("Admin template delete error:", err);
       res.status(500).json({ success: false });
     }
   });
@@ -706,7 +684,6 @@ export default function adminRouter(db) {
       await db.query("UPDATE admin_templates SET is_published=$1, updated_at=NOW() WHERE id=$2", [newState, id]);
       res.json({ success: true, is_published: newState });
     } catch (err) {
-      console.error("Admin template publish error:", err);
       res.status(500).json({ success: false });
     }
   });
@@ -723,7 +700,6 @@ export default function adminRouter(db) {
       );
       res.json({ success: true });
     } catch (err) {
-      console.error("Admin template thumbnail error:", err);
       res.status(500).json({ success: false });
     }
   });
@@ -740,7 +716,6 @@ export default function adminRouter(db) {
       );
       res.json({ success: true, imageUrl });
     } catch (err) {
-      console.error("Admin template image upload error:", err);
       res.status(500).json({ success: false });
     }
   });
@@ -757,7 +732,6 @@ export default function adminRouter(db) {
       );
       res.json({ success: true, imageUrl });
     } catch (err) {
-      console.error("Admin template background upload error:", err);
       res.status(500).json({ success: false });
     }
   });
@@ -770,7 +744,6 @@ export default function adminRouter(db) {
       await db.query("UPDATE admin_templates SET background_image_url=NULL, updated_at=NOW() WHERE id=$1", [id]);
       res.json({ success: true });
     } catch (err) {
-      console.error("Admin template background remove error:", err);
       res.status(500).json({ success: false });
     }
   });
@@ -786,7 +759,6 @@ export default function adminRouter(db) {
       );
       res.json({ success: true, sections: rows.rows });
     } catch (err) {
-      console.error("Admin sections get error:", err);
       res.status(500).json({ success: false });
     }
   });
@@ -813,7 +785,6 @@ export default function adminRouter(db) {
       await db.query("UPDATE admin_templates SET updated_at=NOW() WHERE id=$1", [id]);
       res.json({ success: true });
     } catch (err) {
-      console.error("Admin sections save error:", err);
       res.status(500).json({ success: false });
     }
   });
@@ -830,7 +801,6 @@ export default function adminRouter(db) {
       const data = Object.fromEntries(rows.map(r => [r.key.replace("homepage_",""), JSON.parse(r.value)]));
       res.json({ success: true, data });
     } catch (err) {
-      console.error("Homepage get error:", err);
       res.status(500).json({ success: false });
     }
   });
@@ -850,7 +820,6 @@ export default function adminRouter(db) {
       );
       res.json({ success: true });
     } catch (err) {
-      console.error("Homepage put error:", err);
       res.status(500).json({ success: false });
     }
   });
@@ -882,7 +851,6 @@ export default function adminRouter(db) {
       });
       res.json({ success: true, templates: merged });
     } catch (err) {
-      console.error("Admin static-templates list error:", err);
       res.status(500).json({ success: false });
     }
   });
@@ -904,7 +872,6 @@ export default function adminRouter(db) {
       `, [id, title || null, description || null, badge || null, isAvailable != null ? isAvailable : null]);
       res.json({ success: true });
     } catch (err) {
-      console.error("Admin static-templates update error:", err);
       res.status(500).json({ success: false });
     }
   });
@@ -924,7 +891,6 @@ export default function adminRouter(db) {
       `, [id, imageUrl]);
       res.json({ success: true, imageUrl });
     } catch (err) {
-      console.error("Admin static-templates image upload error:", err);
       res.status(500).json({ success: false });
     }
   });
@@ -944,7 +910,6 @@ export default function adminRouter(db) {
       `, [id, imageUrl]);
       res.json({ success: true, imageUrl });
     } catch (err) {
-      console.error("Admin static-templates background upload error:", err);
       res.status(500).json({ success: false });
     }
   });
@@ -959,7 +924,6 @@ export default function adminRouter(db) {
       `, [id]);
       res.json({ success: true });
     } catch (err) {
-      console.error("Admin static-templates background remove error:", err);
       res.status(500).json({ success: false });
     }
   });
@@ -1019,9 +983,61 @@ export default function adminRouter(db) {
         bgImageUrl:         adminTemplateConfig.background_image_url || null,
       });
     } catch (err) {
-      console.error("Admin preview error:", err);
       res.status(500).send("Preview error: " + err.message);
     }
+  });
+
+  // ── Coupons CRUD ──────────────────────────────────────────────────────────
+  router.get("/api/coupons", async (req, res) => {
+    try {
+      const result = await db.query("SELECT * FROM coupons ORDER BY created_at DESC");
+      res.json({ success: true, coupons: result.rows });
+    } catch { res.status(500).json({ success: false }); }
+  });
+
+  router.post("/api/coupons", async (req, res) => {
+    try {
+      const { code, description, discount_type, discount_value, min_amount, max_uses, first_time_only, expires_at } = req.body;
+      if (!code || !discount_type || discount_value == null) {
+        return res.status(400).json({ success: false, error: "code, discount_type and discount_value are required." });
+      }
+      const upper = String(code).trim().toUpperCase();
+      const result = await db.query(
+        `INSERT INTO coupons (code, description, discount_type, discount_value, min_amount, max_uses, first_time_only, expires_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+        [
+          upper,
+          description || null,
+          discount_type,
+          Number(discount_value),
+          Number(min_amount) || 0,
+          Number(max_uses) || 0,
+          first_time_only === true || first_time_only === "true",
+          expires_at || null,
+        ]
+      );
+      res.json({ success: true, coupon: result.rows[0] });
+    } catch (err) {
+      if (err.code === "23505") return res.status(400).json({ success: false, error: "A coupon with that code already exists." });
+      res.status(500).json({ success: false, error: "Server error." });
+    }
+  });
+
+  router.put("/api/coupons/:id/toggle", async (req, res) => {
+    try {
+      const result = await db.query(
+        "UPDATE coupons SET is_active = NOT is_active WHERE id=$1 RETURNING *",
+        [parseInt(req.params.id, 10)]
+      );
+      res.json({ success: true, coupon: result.rows[0] });
+    } catch { res.status(500).json({ success: false }); }
+  });
+
+  router.delete("/api/coupons/:id", async (req, res) => {
+    try {
+      await db.query("DELETE FROM coupons WHERE id=$1", [parseInt(req.params.id, 10)]);
+      res.json({ success: true });
+    } catch { res.status(500).json({ success: false }); }
   });
 
   // ── Ads master on/off setting ─────────────────────────────────────────────
