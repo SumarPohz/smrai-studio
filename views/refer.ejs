@@ -1,0 +1,272 @@
+<%- include("partials/header") %>
+
+<style>
+  .refer-page { max-width: 420px; margin: 1rem auto; padding: 0 0.875rem 1.5rem; }
+
+  /* ── Share card (dark) ── */
+  .refer-card {
+    background: linear-gradient(145deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+    border-radius: 20px;
+    padding: 1.25rem 1.25rem 1.1rem;
+    text-align: center;
+    color: #fff;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+    position: relative;
+    overflow: hidden;
+  }
+  .refer-card::before {
+    content: '';
+    position: absolute;
+    top: -60px; left: 50%; transform: translateX(-50%);
+    width: 220px; height: 220px;
+    background: radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .refer-brand { display: flex; align-items: center; justify-content: center; margin-bottom: 0.75rem; }
+  .refer-brand-logo {
+    width: 140px; height: auto; border-radius: 0;
+    overflow: hidden; display: flex; align-items: center; justify-content: center;
+  }
+  .refer-brand-logo img { width: 100%; height: auto; object-fit: contain; }
+
+  .refer-qr-wrap {
+    background: #fff;
+    border-radius: 12px;
+    padding: 0.65rem;
+    display: inline-block;
+    margin-bottom: 0.6rem;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+  }
+  .refer-qr-wrap img { display: block; border-radius: 6px; width: 148px; height: 148px; }
+
+  .refer-or { font-size: 0.62rem; color: #64748b; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.45rem; }
+
+  .refer-code-row { display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 0.65rem; }
+  .refer-code-pill {
+    background: rgba(255,255,255,0.08);
+    border: 1.5px solid rgba(255,255,255,0.15);
+    border-radius: 10px;
+    padding: 0.4rem 0.9rem;
+    font-family: 'Courier New', monospace;
+    font-size: 1.05rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    color: #e2e8f0;
+  }
+  .refer-copy-btn {
+    background: rgba(99,102,241,0.2);
+    border: 1.5px solid rgba(99,102,241,0.4);
+    border-radius: 8px;
+    color: #a5b4fc;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.4rem 0.7rem;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    white-space: nowrap;
+  }
+  .refer-copy-btn:hover { background: rgba(99,102,241,0.35); border-color: #6366f1; color: #c7d2fe; }
+  .refer-copy-btn.copied { background: rgba(16,185,129,0.25); border-color: #34d399; color: #6ee7b7; }
+
+  .refer-invite-text { font-size: 0.8rem; color: #94a3b8; margin-bottom: 0.35rem; }
+  .refer-invite-text strong { color: #e2e8f0; }
+  .refer-discount-badge {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    background: linear-gradient(135deg, #059669, #10b981);
+    color: #fff; font-weight: 800; font-size: 0.875rem;
+    padding: 0.4rem 1rem; border-radius: 999px;
+    margin-bottom: 0.85rem;
+    box-shadow: 0 3px 12px rgba(16,185,129,0.3);
+  }
+
+  /* ── Share buttons ── */
+  .refer-share-row { display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; }
+  .refer-share-btn {
+    display: flex; align-items: center; gap: 0.35rem;
+    padding: 0.45rem 0.85rem; border-radius: 10px;
+    font-size: 0.77rem; font-weight: 700; cursor: pointer;
+    border: none; transition: opacity 0.15s, transform 0.1s;
+    text-decoration: none;
+  }
+  .refer-share-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+  .refer-share-btn--wa { background: #25d366; color: #fff; }
+  .refer-share-btn--link { background: rgba(255,255,255,0.1); color: #cbd5e1; border: 1.5px solid rgba(255,255,255,0.15); }
+  .refer-share-btn--share { background: #6366f1; color: #fff; }
+
+  /* ── Stats strip (inside card) ── */
+  .refer-stats-strip {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 0.85rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(255,255,255,0.08);
+  }
+  .refer-stat-item { text-align: center; }
+  .refer-stat-val { font-size: 1.15rem; font-weight: 900; color: #f1f5f9; line-height: 1; }
+  .refer-stat-lbl { font-size: 0.6rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.07em; margin-top: 0.15rem; }
+  .refer-stat-item--wallet .refer-stat-val { color: #34d399; }
+  .refer-stat-item--earned .refer-stat-val { color: #a78bfa; }
+
+  /* ── Stats card (below, desktop) ── */
+  .refer-stats {
+    margin-top: 1rem;
+    background: #fff;
+    border-radius: 16px;
+    padding: 1rem 1.25rem;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    border: 1px solid #f1f5f9;
+  }
+  .refer-stats-title { font-size: 0.65rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.75rem; }
+  .refer-stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+
+  /* ── How it works ── */
+  .refer-how { margin-top: 1rem; background: #fff; border-radius: 16px; padding: 1rem 1.25rem; box-shadow: 0 2px 12px rgba(0,0,0,0.07); border: 1px solid #f1f5f9; }
+  .refer-how-title { font-size: 0.65rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.65rem; }
+  .refer-how-list { display: flex; flex-direction: column; gap: 0.6rem; }
+  .refer-how-item { display: flex; align-items: flex-start; gap: 0.65rem; }
+  .refer-how-num {
+    width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff; font-size: 0.68rem; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .refer-how-text { font-size: 0.78rem; color: #374151; line-height: 1.4; }
+  .refer-how-text strong { color: #111827; }
+
+  /* ── Wallet banner ── */
+  .refer-wallet-banner { margin-top:0.75rem;font-size:0.75rem;color:#059669;background:#d1fae5;border-radius:8px;padding:0.4rem 0.65rem;text-align:center; }
+</style>
+
+<div class="refer-page">
+
+  <!-- ── Dark share card ── -->
+  <div class="refer-card">
+    <div class="refer-brand">
+      <div class="refer-brand-logo"><img src="/images/logo.png" alt="SmrAI Studio" /></div>
+    </div>
+
+    <div class="refer-qr-wrap">
+      <img src="<%= qrDataUrl %>" alt="Referral QR Code" width="200" height="200" />
+    </div>
+
+    <p class="refer-or">OR USE CODE</p>
+
+    <div class="refer-code-row">
+      <span class="refer-code-pill" id="referCodeText"><%= user.referral_code %></span>
+      <button class="refer-copy-btn" id="copyCodeBtn" onclick="copyCode()">Copy</button>
+    </div>
+
+    <p class="refer-invite-text"><strong><%= user.name.split(' ')[0] %></strong> invites you to get</p>
+    <div class="refer-discount-badge">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+      30% OFF on any resume
+    </div>
+
+    <div class="refer-share-row">
+      <a class="refer-share-btn refer-share-btn--wa"
+         href="https://wa.me/?text=<%= encodeURIComponent('Hey! I use SmrAI-Studio to build professional resumes. Use my code ' + user.referral_code + ' to get 30% off your first download 🎉 ' + referralUrl) %>"
+         target="_blank" rel="noopener">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
+        WhatsApp
+      </a>
+      <button class="refer-share-btn refer-share-btn--link" onclick="copyLink()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        <span id="copyLinkText">Copy Link</span>
+      </button>
+      <button class="refer-share-btn refer-share-btn--share" id="nativeShareBtn" style="display:none" onclick="nativeShare()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        Share
+      </button>
+    </div>
+
+    <!-- Stats strip inside card -->
+    <div class="refer-stats-strip">
+      <div class="refer-stat-item">
+        <div class="refer-stat-val"><%= invitedCount %></div>
+        <div class="refer-stat-lbl">Joined</div>
+      </div>
+      <div class="refer-stat-item refer-stat-item--wallet">
+        <div class="refer-stat-val">₹<%= walletBalance.toFixed(0) %></div>
+        <div class="refer-stat-lbl">Wallet</div>
+      </div>
+      <div class="refer-stat-item refer-stat-item--earned">
+        <div class="refer-stat-val">₹<%= totalEarned %></div>
+        <div class="refer-stat-lbl">Earned</div>
+      </div>
+    </div>
+    <% if (walletBalance > 0) { %>
+    <p class="refer-wallet-banner"><strong>₹<%= walletBalance.toFixed(0) %> wallet credit</strong> auto-applies on your next purchase!</p>
+    <% } %>
+  </div>
+
+  <!-- ── How it works ── -->
+  <div class="refer-how">
+    <div class="refer-how-title">How it works</div>
+    <div class="refer-how-list">
+      <div class="refer-how-item">
+        <div class="refer-how-num">1</div>
+        <div class="refer-how-text"><strong>Share your code</strong> — Send your referral link or QR code to a friend.</div>
+      </div>
+      <div class="refer-how-item">
+        <div class="refer-how-num">2</div>
+        <div class="refer-how-text"><strong>Friend registers & pays</strong> — They get <strong>30% off</strong> their first resume download automatically.</div>
+      </div>
+      <div class="refer-how-item">
+        <div class="refer-how-num">3</div>
+        <div class="refer-how-text"><strong>You earn ₹20 wallet credit</strong> — Redeemed on your next purchase. No limit on referrals!</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const referralUrl = '<%= referralUrl %>';
+  const referralCode = '<%= user.referral_code %>';
+
+  // Show native share button if supported
+  if (navigator.share) {
+    document.getElementById('nativeShareBtn').style.display = 'flex';
+  }
+
+  function copyCode() {
+    navigator.clipboard.writeText(referralCode).then(() => {
+      const btn = document.getElementById('copyCodeBtn');
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+    }).catch(() => {
+      fallbackCopy(referralCode);
+    });
+  }
+
+  function copyLink() {
+    navigator.clipboard.writeText(referralUrl).then(() => {
+      const el = document.getElementById('copyLinkText');
+      el.textContent = 'Copied!';
+      setTimeout(() => el.textContent = 'Copy Link', 2000);
+    }).catch(() => {
+      fallbackCopy(referralUrl);
+    });
+  }
+
+  function nativeShare() {
+    navigator.share({
+      title: 'Build your resume with SmrAI Studio',
+      text: 'Use my referral code ' + referralCode + ' to get 30% off your first resume download!',
+      url: referralUrl,
+    }).catch(() => {});
+  }
+
+  function fallbackCopy(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;top:-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+</script>
+
+<%- include("partials/footer") %>

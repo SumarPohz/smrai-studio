@@ -21,19 +21,19 @@
   <link rel="apple-touch-icon" sizes="180x180"                href="/images/apple-touch-icon.png">
 
   <!-- ── Open Graph (Facebook, WhatsApp, LinkedIn) ── -->
-  <meta property="og:title"        content="SmrAI-Studio – AI Resume Builder">
-  <meta property="og:description"  content="Create professional resumes with AI voice input and smart suggestions. Download A4 JPG or PDF instantly.">
-  <meta property="og:image"        content="https://smrai-studio.onrender.com/images/social-preview.png">
+  <meta property="og:title"        content="<%= locals.ogTitle       || 'SmrAI-Studio – AI Resume Builder' %>">
+  <meta property="og:description"  content="<%= locals.ogDescription || 'Create professional resumes with AI voice input and smart suggestions. Download A4 JPG or PDF instantly.' %>">
+  <meta property="og:image"        content="<%= locals.ogImage       || 'https://smrai.studio/images/refer.png' %>">
   <meta property="og:image:width"  content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:url"          content="https://smrai-studio.onrender.com/">
+  <meta property="og:url"          content="<%= locals.ogUrl         || 'https://smrai.studio/' %>">
   <meta property="og:type"         content="website">
 
   <!-- ── Twitter Card ── -->
   <meta name="twitter:card"        content="summary_large_image">
-  <meta name="twitter:title"       content="SmrAI-Studio – AI Resume Builder">
-  <meta name="twitter:description" content="AI-powered resume builder with voice input and smart content enhancement.">
-  <meta name="twitter:image"       content="https://smrai-studio.onrender.com/images/social-preview.png">
+  <meta name="twitter:title"       content="<%= locals.ogTitle       || 'SmrAI-Studio – AI Resume Builder' %>">
+  <meta name="twitter:description" content="<%= locals.ogDescription || 'AI-powered resume builder with voice input and smart content enhancement.' %>">
+  <meta name="twitter:image"       content="<%= locals.ogImage       || 'https://smrai.studio/images/refer.png' %>">
 
   <!-- ── Structured Data (JSON-LD) ── -->
   <script type="application/ld+json">
@@ -55,6 +55,7 @@
           crossorigin="anonymous"></script>
 </head>
 <body>
+<div class="header-fixed-wrap">
   <header class="top-header">
   <div class="header-left">
     <!-- NEW: mobile hamburger -->
@@ -126,6 +127,7 @@
     <% } %>
   </div>
 </header>
+</div>
 
 
   <% if (currentUser) { %>

@@ -2951,3 +2951,61 @@
   .adm-ads-master-card { flex-direction: column; align-items: flex-start; }
   .adm-ads-master-btn  { width: 100%; justify-content: center; }
 }
+
+/* ── Coupons section ─────────────────────────────────────────────────────── */
+.adm-cp-table th,
+.adm-cp-table td { font-size: 0.82rem; }
+
+.adm-cp-code-badge {
+  display: inline-block;
+  background: #ede9fe;
+  color: #5b21b6;
+  font-family: monospace;
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 0.2rem 0.6rem;
+  border-radius: 6px;
+}
+.adm-cp-desc { color: #94a3b8; font-size: 0.75rem; }
+
+.adm-cp-discount-badge {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.adm-cp-disc-percent { background: #fef3c7; color: #92400e; }
+.adm-cp-disc-fixed   { background: #dbeafe; color: #1e40af; }
+
+.adm-cp-expired { color: #ef4444; font-size: 0.78rem; }
+
+.adm-cp-ft-badge {
+  display: inline-block;
+  background: #fce7f3;
+  color: #9d174d;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 20px;
+}
+
+.adm-cp-toggle { font-size: 0.75rem; padding: 0.25rem 0.6rem; }
+
+.adm-cp-checkbox {
+  width: 16px; height: 16px;
+  accent-color: #6366f1;
+  cursor: pointer;
+  margin-right: 0.4rem;
+  vertical-align: middle;
+}
+.adm-cp-toggle-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+  margin-top: 0.5rem;
+}

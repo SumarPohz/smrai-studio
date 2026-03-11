@@ -12,6 +12,21 @@
         <label for="password">Password</label>
         <input type="password" id="password" name="password" required />
 
+        <div class="ref-field">
+          <label for="referralCode">Referral Code <span class="ref-optional">(optional)</span></label>
+          <input type="text" id="referralCode" name="referralCode"
+                 value="<%= refCode || '' %>"
+                 placeholder="e.g. JOHN3K9XM"
+                 maxlength="20"
+                 autocomplete="off"
+                 style="text-transform:uppercase;letter-spacing:0.06em" />
+          <% if (refCode) { %>
+          <p class="ref-hint ref-hint--active">You'll get <strong>30% off</strong> your first resume download!</p>
+          <% } else { %>
+          <p class="ref-hint">Have a friend's referral code? Enter it to get 30% off your first purchase.</p>
+          <% } %>
+        </div>
+
         <button type="submit">Sign Up</button>
       </form>
 

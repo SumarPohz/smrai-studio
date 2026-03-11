@@ -41,6 +41,9 @@
       <a href="#ads" class="adm-nav-link" data-section="ads">
         <i class="fas fa-rectangle-ad"></i> Ads
       </a>
+      <a href="#coupons" class="adm-nav-link" data-section="coupons">
+        <i class="fas fa-ticket"></i> Coupons
+      </a>
       <a href="/dashboard" class="adm-nav-link adm-nav-back">
         <i class="fas fa-arrow-left"></i> Back to App
       </a>
@@ -597,6 +600,82 @@
         </div>
       </div>
     </div><!-- /ads -->
+
+    <!-- ── Section: Coupons ───────────────────────────────────────────────── -->
+    <div id="coupons" class="adm-section-page" hidden>
+      <div class="adm-section-header">
+        <h2><i class="fas fa-ticket"></i> Discount Coupons</h2>
+        <p class="adm-section-desc">Create coupon codes for percentage or fixed-amount discounts. Users can enter them before payment on the resume preview page.</p>
+      </div>
+
+      <!-- Create coupon form -->
+      <div class="adm-ads-form-card">
+        <h3 class="adm-ads-form-title">Create New Coupon</h3>
+        <form id="couponCreateForm" class="adm-ads-form" autocomplete="off">
+          <div class="adm-ads-form-row">
+            <div class="adm-ads-field">
+              <label>Coupon Code <span class="adm-req">*</span></label>
+              <input type="text" name="code" id="cpCode" placeholder="e.g. SAVE50" maxlength="50" required
+                     style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
+            </div>
+            <div class="adm-ads-field">
+              <label>Description <span class="adm-optional">(optional)</span></label>
+              <input type="text" name="description" id="cpDesc" placeholder="e.g. Summer sale" maxlength="200">
+            </div>
+          </div>
+          <div class="adm-ads-form-row">
+            <div class="adm-ads-field">
+              <label>Discount Type <span class="adm-req">*</span></label>
+              <select name="discount_type" id="cpType" required>
+                <option value="percent">Percentage (e.g. 20%)</option>
+                <option value="fixed">Fixed Amount (e.g. ₹50)</option>
+              </select>
+            </div>
+            <div class="adm-ads-field">
+              <label>Discount Value <span class="adm-req">*</span></label>
+              <input type="number" name="discount_value" id="cpValue" placeholder="e.g. 20" min="1" step="0.01" required>
+            </div>
+          </div>
+          <div class="adm-ads-form-row">
+            <div class="adm-ads-field">
+              <label>Max Uses <span class="adm-optional">(0 = unlimited)</span></label>
+              <input type="number" name="max_uses" id="cpMaxUses" placeholder="0" min="0" value="0">
+            </div>
+            <div class="adm-ads-field">
+              <label>Min Order Amount ₹ <span class="adm-optional">(0 = any)</span></label>
+              <input type="number" name="min_amount" id="cpMinAmount" placeholder="0" min="0" value="0">
+            </div>
+          </div>
+          <div class="adm-ads-form-row">
+            <div class="adm-ads-field">
+              <label>Expiry Date <span class="adm-optional">(leave blank = no expiry)</span></label>
+              <input type="datetime-local" name="expires_at" id="cpExpiry">
+            </div>
+            <div class="adm-ads-field" style="justify-content:flex-end">
+              <label class="adm-cp-toggle-label">
+                <input type="checkbox" name="first_time_only" id="cpFirstTime" class="adm-cp-checkbox">
+                <span>First-time users only</span>
+              </label>
+              <p style="font-size:0.75rem;color:#94a3b8;margin:0.25rem 0 0;">Only users with no prior payments can use this coupon.</p>
+            </div>
+          </div>
+          <div class="adm-ads-form-actions">
+            <button type="submit" class="adm-btn-primary" id="cpSubmitBtn">
+              <i class="fas fa-plus"></i> Create Coupon
+            </button>
+            <span class="adm-ads-msg" id="cpMsgCreate"></span>
+          </div>
+        </form>
+      </div>
+
+      <!-- Coupons table -->
+      <div class="adm-ads-table-card">
+        <h3 class="adm-ads-form-title">Active & Past Coupons</h3>
+        <div id="couponsTableWrap">
+          <p class="adm-loading-text"><i class="fas fa-spinner fa-spin"></i> Loading…</p>
+        </div>
+      </div>
+    </div><!-- /coupons -->
 
     <!-- ── Static Template Edit Dialog (centered) ────────────────────────────── -->
     <div id="staticTplModal" class="adm-stpl-backdrop" hidden>
@@ -1191,6 +1270,7 @@ function showSection(id) {
     if (id === "templates" && !tplLoaded)    { loadTemplates(); loadStaticTemplates(); }
     if (id === "homepage"  && !hpLoaded)     { loadHomepage(); }
     if (id === "ads"       && !adsLoaded)    { loadAds(); }
+    if (id === "coupons"   && !couponsLoaded){ loadCoupons(); }
   }, 120);
 }
 
@@ -3073,7 +3153,8 @@ document.getElementById("staticTplSaveBtn").addEventListener("click", async () =
 // ════════════════════════════════════════════════════════════════════════════
 let hpData  = {};
 let hpLoaded  = false;
-let adsLoaded = false;
+let adsLoaded     = false;
+let couponsLoaded = false;
 
 // Sub-tab switching
 document.querySelectorAll(".adm-hp-tab").forEach(btn => {
@@ -3542,6 +3623,120 @@ document.getElementById("adsAddForm").addEventListener("submit", async function(
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-plus"></i> Add Ad';
+  }
+});
+
+// ── Coupons section ──────────────────────────────────────────────────────────
+async function loadCoupons() {
+  couponsLoaded = true;
+  await renderCouponsTable();
+}
+
+async function renderCouponsTable() {
+  const wrap = document.getElementById("couponsTableWrap");
+  try {
+    const r = await fetch("/admin/api/coupons");
+    const d = await r.json();
+    if (!d.success || !d.coupons.length) {
+      wrap.innerHTML = '<p class="adm-empty-msg">No coupons yet. Create one above.</p>';
+      return;
+    }
+    wrap.innerHTML = `
+      <table class="adm-ads-table adm-cp-table">
+        <thead>
+          <tr>
+            <th>Code</th><th>Discount</th><th>Uses</th><th>Min ₹</th><th>Expiry</th><th>First-time</th><th>Status</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${d.coupons.map(c => {
+            const usesLabel = c.max_uses > 0 ? `${c.uses_count}/${c.max_uses}` : `${c.uses_count} / ∞`;
+            const expLabel = c.expires_at ? new Date(c.expires_at).toLocaleDateString("en-IN") : "No expiry";
+            const expired = c.expires_at && new Date(c.expires_at) < new Date();
+            const discLabel = c.discount_type === "percent" ? `${c.discount_value}%` : `₹${c.discount_value}`;
+            return `<tr data-id="${c.id}">
+              <td><span class="adm-cp-code-badge">${escHtml(c.code)}</span>
+                  ${c.description ? `<br><small class="adm-cp-desc">${escHtml(c.description)}</small>` : ''}
+              </td>
+              <td><span class="adm-cp-discount-badge adm-cp-disc-${c.discount_type}">${discLabel} off</span></td>
+              <td>${usesLabel}</td>
+              <td>${c.min_amount > 0 ? "₹" + c.min_amount : "—"}</td>
+              <td class="${expired ? 'adm-cp-expired' : ''}">${expLabel}</td>
+              <td>${c.first_time_only ? '<span class="adm-cp-ft-badge">Yes</span>' : '—'}</td>
+              <td>
+                <button class="adm-ads-toggle adm-ads-toggle-${c.is_active ? 'on' : 'off'} adm-cp-toggle" data-id="${c.id}" title="${c.is_active ? 'Deactivate' : 'Activate'}">
+                  ${c.is_active ? '<i class="fas fa-toggle-on"></i> Active' : '<i class="fas fa-toggle-off"></i> Inactive'}
+                </button>
+              </td>
+              <td>
+                <button class="adm-btn-danger adm-cp-delete" data-id="${c.id}"><i class="fas fa-trash"></i></button>
+              </td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>`;
+
+    wrap.querySelectorAll(".adm-cp-toggle").forEach(btn => {
+      btn.addEventListener("click", async function() {
+        try {
+          await fetch(`/admin/api/coupons/${this.dataset.id}/toggle`, { method: "PUT" });
+          await renderCouponsTable();
+        } catch(_) { showAdmToast("Toggle failed", "error"); }
+      });
+    });
+    wrap.querySelectorAll(".adm-cp-delete").forEach(btn => {
+      btn.addEventListener("click", async function() {
+        if (!confirm("Delete this coupon permanently?")) return;
+        try {
+          await fetch(`/admin/api/coupons/${this.dataset.id}`, { method: "DELETE" });
+          await renderCouponsTable();
+          showAdmToast("Coupon deleted");
+        } catch(_) { showAdmToast("Delete failed", "error"); }
+      });
+    });
+  } catch(_) {
+    wrap.innerHTML = '<p class="adm-empty-msg adm-error-text">Failed to load coupons.</p>';
+  }
+}
+
+document.getElementById("couponCreateForm").addEventListener("submit", async function(e) {
+  e.preventDefault();
+  const btn = document.getElementById("cpSubmitBtn");
+  const msg = document.getElementById("cpMsgCreate");
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating…';
+  msg.textContent = "";
+  const body = {
+    code:           document.getElementById("cpCode").value.trim().toUpperCase(),
+    description:    document.getElementById("cpDesc").value.trim(),
+    discount_type:  document.getElementById("cpType").value,
+    discount_value: document.getElementById("cpValue").value,
+    max_uses:       document.getElementById("cpMaxUses").value || "0",
+    min_amount:     document.getElementById("cpMinAmount").value || "0",
+    expires_at:     document.getElementById("cpExpiry").value || null,
+    first_time_only:document.getElementById("cpFirstTime").checked,
+  };
+  try {
+    const r = await fetch("/admin/api/coupons", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const d = await r.json();
+    if (d.success) {
+      showAdmToast("Coupon created!");
+      this.reset();
+      await renderCouponsTable();
+    } else {
+      msg.textContent = d.error || "Failed to create coupon.";
+      msg.className = "adm-ads-msg adm-msg-error";
+    }
+  } catch(_) {
+    msg.textContent = "Network error.";
+    msg.className = "adm-ads-msg adm-msg-error";
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-plus"></i> Create Coupon';
   }
 });
 </script>
