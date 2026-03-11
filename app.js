@@ -31,11 +31,13 @@ if (process.env.NODE_ENV !== "production") {
   dotenv.config();
 }
 
-// ----- Razorpay setup (needed for payments) -----
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
+// ----- Razorpay setup (lazy — re-reads process.env on each call) -----
+function getRazorpay() {
+  return new Razorpay({
+    key_id:     process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET,
+  });
+}
 // ----- Gemini (Vertex AI) setup -----
 let geminiModel = null;
 try {
@@ -384,6 +386,15 @@ await db.query(`
       await db.query("UPDATE users SET referral_code=$1 WHERE id=$2 AND referral_code IS NULL", [code, u.id]).catch(() => {});
     }
 
+    // Load env overrides from admin_settings (env_* keys)
+    try {
+      const envRows = await db.query("SELECT key, value FROM admin_settings WHERE key LIKE 'env_%'");
+      for (const row of envRows.rows) {
+        const envKey = row.key.replace(/^env_/, '').toUpperCase();
+        if (row.value) process.env[envKey] = row.value;
+      }
+    } catch (_) {}
+
   } catch (err) {
   }
 }
@@ -610,15 +621,17 @@ passport.deserializeUser(async (id, done) => {
   }
 });
 
-const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST,
-  port: process.env.EMAIL_PORT,
-  secure: false, // true for 465, false for 587
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+function getTransporter() {
+  return nodemailer.createTransport({
+    host:   process.env.EMAIL_HOST,
+    port:   process.env.EMAIL_PORT,
+    secure: false,
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+}
 
 function generateOTP() {
   // 6-digit numeric OTP
@@ -642,17 +655,25 @@ app.use(async (req, res, next) => {
     }
   }
 
-  // Active ads for ad slots + master on/off
+  // Active ads for ad slots + master on/off + tracking scripts
   try {
-    const [sbAd, ftAd, aeRow] = await Promise.all([
+    const [sbAd, ftAd, aeRow, trackingRows] = await Promise.all([
       db.query("SELECT * FROM ads WHERE slot='sidebar' AND is_active=true ORDER BY id DESC LIMIT 1"),
       db.query("SELECT * FROM ads WHERE slot='footer'  AND is_active=true ORDER BY id DESC LIMIT 1"),
       db.query("SELECT value FROM admin_settings WHERE key='ads_enabled'"),
+      db.query("SELECT key, value FROM admin_settings WHERE key = ANY($1)", [['adsense_publisher_id', 'facebook_pixel_id']]),
     ]);
     res.locals.sidebarAd  = sbAd.rows[0] || null;
     res.locals.footerAd   = ftAd.rows[0] || null;
     res.locals.adsEnabled = (aeRow.rows[0]?.value ?? 'true') === 'true';
-  } catch (_) { res.locals.sidebarAd = null; res.locals.footerAd = null; res.locals.adsEnabled = true; }
+    const tm = {};
+    for (const r of trackingRows.rows) tm[r.key] = r.value;
+    res.locals.adsensePublisherId = tm['adsense_publisher_id'] || null;
+    res.locals.facebookPixelId    = tm['facebook_pixel_id']    || null;
+  } catch (_) {
+    res.locals.sidebarAd = null; res.locals.footerAd = null; res.locals.adsEnabled = true;
+    res.locals.adsensePublisherId = null; res.locals.facebookPixelId = null;
+  }
 
   next();
 });
@@ -730,7 +751,7 @@ app.get("/", async (_req, res) => {
 // Register
 app.get("/register", async (req, res) => {
   const refCode = req.query.ref || '';
-  const baseUrl = process.env.BASE_URL || 'https://smrai.studio';
+  const baseUrl = await getSiteUrl();
   let ogTitle, ogDescription, ogUrl, ogImage;
   ogImage = `${baseUrl}/images/refer.png`;
   if (refCode) {
@@ -860,7 +881,7 @@ app.post("/forgot-password", async (req, res) => {
     );
 
     // Send OTP email
-    await transporter.sendMail({
+    await getTransporter().sendMail({
       from: `"SmrAI-Studio" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: "Your SmrAI-Studio Password Reset OTP",
@@ -1625,6 +1646,15 @@ app.get(
     res.redirect(redirectTo);
   }
 );
+
+// ── Site URL helper — reads from admin_settings first, then process.env ──────
+async function getSiteUrl() {
+  try {
+    const r = await db.query("SELECT value FROM admin_settings WHERE key='env_base_url'");
+    if (r.rows[0]?.value) return r.rows[0].value.replace(/\/$/, '');
+  } catch (_) {}
+  return (process.env.BASE_URL || 'https://smrai.studio').replace(/\/$/, '');
+}
 
 // ── Referral code generator ──────────────────────────────────────────────────
 function generateReferralCode(name, userId, attempt = 0) {
@@ -2586,7 +2616,7 @@ app.get("/refer", ensureAuthenticated, async (req, res) => {
       [req.user.id]
     );
     const u = uRow.rows[0];
-    const baseUrl = process.env.BASE_URL || "https://smrai.studio";
+    const baseUrl = await getSiteUrl();
     const referralUrl = `${baseUrl}/register?ref=${u.referral_code}`;
 
     const qrDataUrl = await QRCode.toDataURL(referralUrl, {
@@ -2764,7 +2794,7 @@ app.post("/api/razorpay/create-order", ensureAuthenticated, async (req, res) => 
       },
     };
 
-    const order = await razorpay.orders.create(options);
+    const order = await getRazorpay().orders.create(options);
 
     res.json({
       success: true,
