@@ -50,6 +50,9 @@
 
   <link rel="stylesheet" href="/css/style.css" />
   <link rel="stylesheet" href="/css/templates.css" />
+  <% if (locals.adsensePublisherId) { %>
+  <meta name="google-adsense-account" content="<%= locals.adsensePublisherId %>">
+  <% } %>
   <% if (locals.adsEnabled && locals.adsensePublisherId) { %>
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=<%= locals.adsensePublisherId %>"
           crossorigin="anonymous"></script>

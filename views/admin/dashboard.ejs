@@ -561,6 +561,16 @@
               <input type="text" id="facebookPixelId" placeholder="1234567890123456" maxlength="20" style="font-family:monospace" />
             </div>
           </div>
+          <div class="adm-ads-form-row">
+            <div class="adm-ads-field">
+              <label>Homepage Ad Slot ID <span style="font-size:0.7rem;color:#6b7280">(below "What you can do")</span></label>
+              <input type="text" id="homepageAdSlot" placeholder="1234567890" maxlength="15" style="font-family:monospace" />
+            </div>
+            <div class="adm-ads-field">
+              <label>Footer Ad Slot ID <span style="font-size:0.7rem;color:#6b7280">(above footer)</span></label>
+              <input type="text" id="footerAdSlot" placeholder="0987654321" maxlength="15" style="font-family:monospace" />
+            </div>
+          </div>
           <div class="adm-ads-form-actions">
             <button type="button" class="adm-btn-primary" id="saveTrackingBtn" onclick="saveTrackingScripts()">
               <i class="fas fa-save"></i> Save
@@ -725,6 +735,8 @@
             <p style="font-size:0.72rem;color:#3b82f6;margin:0.35rem 0 0">Used for QR codes, referral links, and OG meta tags. Example: <code>https://smrai.studio</code></p>
           </div>
 
+          <p style="font-size:0.75rem;color:#6b7280;margin:0 0 0.75rem;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:0.5rem 0.75rem"><i class="fas fa-shield-halved"></i> Leave any field blank to keep the existing value. Only filled fields will be updated.</p>
+
           <div class="adm-ads-form-row">
             <div class="adm-ads-field">
               <label>Razorpay Key ID</label>
@@ -755,10 +767,6 @@
             </div>
           </div>
           <div class="adm-ads-form-row">
-            <div class="adm-ads-field">
-              <label>Base URL</label>
-              <input type="text" id="envBaseUrl" placeholder="https://smrai.studio" style="font-family:monospace" />
-            </div>
             <div class="adm-ads-field">
               <label>Email Host (SMTP)</label>
               <input type="text" id="envEmailHost" placeholder="smtp.gmail.com" style="font-family:monospace" />
@@ -1385,7 +1393,7 @@ function showSection(id) {
     if (id === "homepage"  && !hpLoaded)     { loadHomepage(); }
     if (id === "ads"       && !adsLoaded)    { loadAds(); }
     if (id === "coupons"   && !couponsLoaded){ loadCoupons(); }
-    if (id === "apikeys")                    { loadEnvSettings(); }
+    if (id === "apikeys")                    { /* values never pre-loaded for security */ }
   }, 120);
 }
 
@@ -3608,15 +3616,7 @@ async function saveEnvField(key, inputId, btn) {
 }
 
 async function loadEnvSettings() {
-  try {
-    const r = await fetch("/admin/api/env-settings");
-    const d = await r.json();
-    if (!d.success) return;
-    for (const [key, elId] of Object.entries(ENV_FIELD_MAP)) {
-      const el = document.getElementById(elId);
-      if (el) el.value = d.settings[key] || '';
-    }
-  } catch (_) {}
+  // Values are never pre-displayed for security
 }
 
 async function saveEnvSettings() {
@@ -3624,7 +3624,7 @@ async function saveEnvSettings() {
   const payload = {};
   for (const [key, elId] of Object.entries(ENV_FIELD_MAP)) {
     const el = document.getElementById(elId);
-    if (el) payload[key] = el.value.trim();
+    if (el && el.value.trim()) payload[key] = el.value.trim();
   }
   try {
     const r = await fetch("/admin/api/env-settings", {
@@ -3663,6 +3663,8 @@ async function loadTrackingScripts() {
     if (d.settings) {
       document.getElementById("adsensePublisherId").value = d.settings.adsense_publisher_id || "";
       document.getElementById("facebookPixelId").value    = d.settings.facebook_pixel_id    || "";
+      document.getElementById("homepageAdSlot").value     = d.settings.homepage_ad_slot     || "";
+      document.getElementById("footerAdSlot").value       = d.settings.footer_ad_slot       || "";
     }
   } catch (_) {}
 }
@@ -3670,14 +3672,16 @@ async function loadTrackingScripts() {
 async function saveTrackingScripts() {
   const btn = document.getElementById("saveTrackingBtn");
   const msg = document.getElementById("trackingMsg");
-  const adsenseId = document.getElementById("adsensePublisherId").value.trim();
-  const pixelId   = document.getElementById("facebookPixelId").value.trim();
+  const adsenseId      = document.getElementById("adsensePublisherId").value.trim();
+  const pixelId        = document.getElementById("facebookPixelId").value.trim();
+  const homepageSlot   = document.getElementById("homepageAdSlot").value.trim();
+  const footerSlot     = document.getElementById("footerAdSlot").value.trim();
   btn.disabled = true;
   try {
     const r = await fetch("/admin/api/settings", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ adsense_publisher_id: adsenseId, facebook_pixel_id: pixelId }),
+      body: JSON.stringify({ adsense_publisher_id: adsenseId, facebook_pixel_id: pixelId, homepage_ad_slot: homepageSlot, footer_ad_slot: footerSlot }),
     });
     const d = await r.json();
     if (d.success) {
