@@ -533,20 +533,31 @@ export default function adminRouter(db) {
   // ── PATCH /admin/api/settings — update one or more settings ──────────────
   router.patch("/api/settings", async (req, res) => {
     try {
-      const ALLOWED_KEYS = ["price_fresher", "price_experienced", "price_developer", "price_ats-friendly"];
+      const PRICE_KEYS   = ["price_fresher", "price_experienced", "price_developer", "price_ats-friendly"];
+      const GENERAL_KEYS = ["adsense_publisher_id", "facebook_pixel_id", "homepage_ad_slot", "footer_ad_slot", "ads_enabled"];
+      const ALLOWED_KEYS = [...PRICE_KEYS, ...GENERAL_KEYS];
       const updates = req.body || {};
       const entries = Object.entries(updates).filter(([k]) => ALLOWED_KEYS.includes(k));
 
       if (!entries.length) return res.status(400).json({ success: false, message: "No valid keys" });
 
       for (const [key, value] of entries) {
-        const num = parseInt(value, 10);
-        if (isNaN(num) || num < 0) return res.status(400).json({ success: false, message: `Invalid value for ${key}` });
-        await db.query(
-          `INSERT INTO admin_settings (key, value, updated_at) VALUES ($1, $2, NOW())
-           ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`,
-          [key, String(num)]
-        );
+        if (PRICE_KEYS.includes(key)) {
+          const num = parseInt(value, 10);
+          if (isNaN(num) || num < 0) return res.status(400).json({ success: false, message: `Invalid value for ${key}` });
+          await db.query(
+            `INSERT INTO admin_settings (key, value, updated_at) VALUES ($1, $2, NOW())
+             ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`,
+            [key, String(num)]
+          );
+        } else {
+          const strVal = String(value ?? '').trim();
+          await db.query(
+            `INSERT INTO admin_settings (key, value, updated_at) VALUES ($1, $2, NOW())
+             ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`,
+            [key, strVal]
+          );
+        }
       }
 
       res.json({ success: true });
