@@ -10,11 +10,13 @@
       <img src="<%= footerAd.image_url %>" alt="<%= footerAd.title || 'Advertisement' %>">
     </a>
   <% } else { %>
+    <% if (locals.adsEnabled && locals.adsensePublisherId && locals.footerAdSlot) { %>
     <ins class="adsbygoogle" style="display:block"
-         data-ad-client="ca-pub-PLACEHOLDER"
-         data-ad-slot="FOOTER_SLOT_ID"
+         data-ad-client="<%= locals.adsensePublisherId %>"
+         data-ad-slot="<%= locals.footerAdSlot %>"
          data-ad-format="auto" data-full-width-responsive="true"></ins>
     <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    <% } %>
   <% } %>
 </div>
 <% } %>

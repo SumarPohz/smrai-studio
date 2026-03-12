@@ -112,11 +112,13 @@
         <img src="<%= sidebarAd.image_url %>" alt="<%= sidebarAd.title || 'Advertisement' %>">
       </a>
     <% } else { %>
+      <% if (locals.adsEnabled && locals.adsensePublisherId && locals.homepageAdSlot) { %>
       <ins class="adsbygoogle" style="display:block"
-           data-ad-client="ca-pub-PLACEHOLDER"
-           data-ad-slot="TOP_SLOT_ID"
+           data-ad-client="<%= locals.adsensePublisherId %>"
+           data-ad-slot="<%= locals.homepageAdSlot %>"
            data-ad-format="auto" data-full-width-responsive="true"></ins>
       <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+      <% } %>
     <% } %>
   </div>
   <% } %>
