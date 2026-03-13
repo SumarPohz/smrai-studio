@@ -80,12 +80,30 @@
     .goog-te-banner-frame { display:none !important; }
     body { top: 0 !important; }
     @media (max-width: 768px) {
-      .top-header { flex-wrap: nowrap !important; }
-      .header-left { flex-shrink: 0; white-space: nowrap; }
-      .gt-desktop-wrap { max-width: 140px; overflow: hidden; }
-      .goog-te-gadget { font-size: 12px !important; }
-      .goog-te-gadget-simple { padding: 0.1rem 0.25rem !important; }
-      .goog-te-gadget-simple a.goog-te-menu-value span { font-size: 0.65rem !important; }
+      .gt-desktop-wrap {
+        position: fixed !important;
+        right: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 9999;
+        background: #fff;
+        border-radius: 8px 0 0 8px;
+        box-shadow: -2px 2px 8px rgba(0,0,0,0.15);
+        padding: 0.2rem 0.3rem;
+        max-width: 44px;
+        overflow: hidden;
+        transition: max-width 0.3s ease;
+      }
+      .gt-desktop-wrap:hover, .gt-desktop-wrap:focus-within {
+        max-width: 180px;
+      }
+      .goog-te-gadget { font-size: 0 !important; }
+      .goog-te-gadget-simple {
+        border: none !important;
+        background: transparent !important;
+        padding: 0 !important;
+      }
+      .goog-te-gadget-simple a.goog-te-menu-value span { font-size: 0.7rem !important; }
     }
   </style>
   <% } %>

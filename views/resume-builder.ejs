@@ -114,6 +114,7 @@
           novalidate
         >
         <input type="hidden" name="template" value="<%= template %>">
+        <% const isModern1 = (template === 'modern-1'); %>
           <input
             type="hidden"
             name="resumeId"
@@ -349,7 +350,7 @@
               ><%= (draft && draft.languages) || '' %></textarea>
             </div>
 
-            <% if (template === 'bold-sidebar' || template === 'creative-gradient' || (template !== 'photo-resume' && isSectionEnabled('references'))) { %>
+            <% if (!isModern1 && (template === 'bold-sidebar' || template === 'creative-gradient' || (template !== 'photo-resume' && isSectionEnabled('references')))) { %>
             <div class="rb-field ai-field-wrap">
               <div class="ai-field-label">
                 <label for="references">References <span style="font-weight:400;color:#6b7280;font-size:0.85em;">(optional)</span></label>
@@ -390,7 +391,7 @@
               ><%= (draft && draft.skills) || '' %></textarea>
             </div>
 
-            <% if (template === 'tech-focused' || template === 'ats-friendly' || isSectionEnabled('technologies') || isSectionEnabled('projects') || isSectionEnabled('certifications')) { %>
+            <% if (!isModern1 && (template === 'tech-focused' || template === 'ats-friendly' || isSectionEnabled('technologies') || isSectionEnabled('projects') || isSectionEnabled('certifications'))) { %>
 
             <% if (template !== 'photo-resume') { %>
             <div class="rb-field ai-field-wrap">
@@ -564,7 +565,7 @@
 
             <% } %>
 
-            <% if (template !== 'photo-resume' && isSectionEnabled('hobbies')) { %>
+            <% if (!isModern1 && template !== 'photo-resume' && isSectionEnabled('hobbies')) { %>
             <div class="rb-field">
               <label for="hobbies">Hobbies &amp; Interests <span style="font-weight:400;color:#6b7280;font-size:0.85em;">(optional)</span></label>
               <textarea id="hobbies" name="hobbies" rows="3"
@@ -573,7 +574,7 @@
             </div>
             <% } %>
 
-            <% if (template !== 'photo-resume' && isSectionEnabled('publications')) { %>
+            <% if (!isModern1 && template !== 'photo-resume' && isSectionEnabled('publications')) { %>
             <div class="rb-field">
               <label for="publications">Publications <span style="font-weight:400;color:#6b7280;font-size:0.85em;">(optional)</span></label>
               <p class="rb-field-hint">One per line — e.g. <em>Title, Journal/Platform, Year</em></p>
