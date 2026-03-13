@@ -1782,7 +1782,6 @@ app.use((req, res, next) => {
 });
 
 app.get("/dashboard", ensureAuthenticated, async (req, res) => {
-  if (req.user.role === "admin") return res.redirect("/admin");
   let subadminInvestment = null;
   let subadminProfile = null;
   if (req.user.role === "subadmin") {
