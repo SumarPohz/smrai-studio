@@ -235,6 +235,7 @@ await db.query(`
       ON CONFLICT (key) DO NOTHING;
     `);
     await db.query(`INSERT INTO admin_settings (key, value) VALUES ('ads_enabled', 'true') ON CONFLICT (key) DO NOTHING`);
+    await db.query(`INSERT INTO admin_settings (key, value) VALUES ('google_translate_enabled', 'false') ON CONFLICT (key) DO NOTHING`);
 
     // ── Homepage editable content defaults ───────────────────────────────────
     const homepageDefaults = [
@@ -661,7 +662,7 @@ app.use(async (req, res, next) => {
       db.query("SELECT * FROM ads WHERE slot='sidebar' AND is_active=true ORDER BY id DESC LIMIT 1"),
       db.query("SELECT * FROM ads WHERE slot='footer'  AND is_active=true ORDER BY id DESC LIMIT 1"),
       db.query("SELECT value FROM admin_settings WHERE key='ads_enabled'"),
-      db.query("SELECT key, value FROM admin_settings WHERE key = ANY($1)", [['adsense_publisher_id', 'facebook_pixel_id', 'homepage_ad_slot', 'footer_ad_slot']]),
+      db.query("SELECT key, value FROM admin_settings WHERE key = ANY($1)", [['adsense_publisher_id', 'facebook_pixel_id', 'homepage_ad_slot', 'footer_ad_slot', 'google_translate_enabled']]),
     ]);
     res.locals.sidebarAd  = sbAd.rows[0] || null;
     res.locals.footerAd   = ftAd.rows[0] || null;
@@ -670,12 +671,14 @@ app.use(async (req, res, next) => {
     for (const r of trackingRows.rows) tm[r.key] = r.value;
     res.locals.adsensePublisherId = tm['adsense_publisher_id'] || null;
     res.locals.facebookPixelId    = tm['facebook_pixel_id']    || null;
-    res.locals.homepageAdSlot     = tm['homepage_ad_slot']     || null;
-    res.locals.footerAdSlot       = tm['footer_ad_slot']       || null;
+    res.locals.homepageAdSlot       = tm['homepage_ad_slot']          || null;
+    res.locals.footerAdSlot         = tm['footer_ad_slot']            || null;
+    res.locals.googleTranslateEnabled = tm['google_translate_enabled'] === 'true';
   } catch (_) {
     res.locals.sidebarAd = null; res.locals.footerAd = null; res.locals.adsEnabled = true;
     res.locals.adsensePublisherId = null; res.locals.facebookPixelId = null;
     res.locals.homepageAdSlot = null; res.locals.footerAdSlot = null;
+    res.locals.googleTranslateEnabled = false;
   }
 
   next();

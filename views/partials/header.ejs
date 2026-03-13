@@ -70,6 +70,25 @@
   <noscript><img height="1" width="1" style="display:none"
     src="https://www.facebook.com/tr?id=<%= locals.facebookPixelId %>&ev=PageView&noscript=1"/></noscript>
   <% } %>
+  <% if (locals.googleTranslateEnabled) { %>
+  <style>
+    .gt-desktop-wrap { display:inline-flex; align-items:center; }
+    .goog-te-gadget { font-size:0 !important; }
+    .goog-te-gadget-simple { border:1px solid #d1d5db !important; border-radius:6px !important; padding:0.2rem 0.4rem !important; background:#fff !important; white-space:nowrap; }
+    .goog-te-gadget-simple a.goog-te-menu-value { font-size:0.75rem !important; color:#374151 !important; text-decoration:none !important; }
+    .goog-te-gadget-simple a.goog-te-menu-value span { font-size:0.75rem !important; }
+    .goog-te-banner-frame { display:none !important; }
+    body { top: 0 !important; }
+    @media (max-width: 768px) {
+      .top-header { flex-wrap: nowrap !important; }
+      .header-left { flex-shrink: 0; white-space: nowrap; }
+      .gt-desktop-wrap { max-width: 140px; overflow: hidden; }
+      .goog-te-gadget { font-size: 12px !important; }
+      .goog-te-gadget-simple { padding: 0.1rem 0.25rem !important; }
+      .goog-te-gadget-simple a.goog-te-menu-value span { font-size: 0.65rem !important; }
+    }
+  </style>
+  <% } %>
 </head>
 <body>
 <div class="header-fixed-wrap">
@@ -109,6 +128,9 @@
   </nav>
 
   <div class="header-right">
+    <% if (locals.googleTranslateEnabled) { %>
+    <div id="google_translate_element" class="gt-desktop-wrap"></div>
+    <% } %>
     <a href="https://play.google.com/store/apps/details?id=com.smrai.studio&pli=1"
        class="header-play-btn" target="_blank" rel="noopener noreferrer" title="Get it on Google Play">
       <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="flex-shrink:0">
@@ -306,6 +328,20 @@
       onScroll();
     })();
   </script>
+
+  <% if (locals.googleTranslateEnabled) { %>
+  <script>
+    function googleTranslateElementInit() {
+      new google.translate.TranslateElement({
+        pageLanguage: 'en',
+        includedLanguages: 'hi,ta,te,kn,ml,mr,bn,gu,pa,ur,ar,es,fr,de,zh-CN,ja,ko,pt,ru,id,ms',
+        layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+        autoDisplay: false
+      }, 'google_translate_element');
+    }
+  </script>
+  <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" async></script>
+  <% } %>
 
   <main>
 
