@@ -408,9 +408,37 @@
   text-transform: capitalize;
 }
 
-.adm-badge-admin { background: #dcfce7; color: #15803d; }
-.adm-badge-user  { background: #f1f5f9; color: #64748b; }
+.adm-badge-admin    { background: #dcfce7; color: #15803d; }
+.adm-badge-subadmin { background: #fef3c7; color: #92400e; }
+.adm-badge-user     { background: #f1f5f9; color: #64748b; }
 .adm-badge-green { background: #dcfce7; color: #15803d; font-size: 0.8rem; padding: 3px 10px; }
+
+/* ── View-only section lock (subadmin) ─────────────────────────────────────── */
+.adm-view-only { position: relative; }
+.adm-view-only input,
+.adm-view-only select,
+.adm-view-only textarea {
+  pointer-events: none !important;
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+  user-select: none !important;
+}
+.adm-view-only button,
+.adm-view-only [role="button"],
+.adm-view-only .adm-btn,
+.adm-view-only .adm-save-btn,
+.adm-view-only form [type="submit"] {
+  pointer-events: none !important;
+  opacity: 0.45 !important;
+  cursor: not-allowed !important;
+}
+.adm-view-only::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  cursor: not-allowed;
+}
 
 .adm-pulse {
   display: inline-block;

@@ -1,0 +1,226 @@
+<%- include("partials/header") %>
+
+<style>
+  .inv-page { max-width: 480px; margin: 2rem auto; padding: 0 1rem 3rem; }
+  .inv-hero {
+    background: linear-gradient(135deg, #0f0c29 0%, #1a1a4e 50%, #0d1b2a 100%);
+    border-radius: 20px;
+    padding: 2.5rem 2rem;
+    color: #fff;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+  }
+  .inv-badge {
+    display: inline-block;
+    background: linear-gradient(90deg, #f59e0b, #ef4444);
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 0.3rem 0.9rem;
+    border-radius: 99px;
+    margin-bottom: 1rem;
+  }
+  .inv-hero h1 { font-size: 1.6rem; font-weight: 800; margin: 0 0 0.4rem; }
+  .inv-hero p { color: #94a3b8; font-size: 0.9rem; margin: 0 0 2rem; }
+  .inv-terms {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .inv-term {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 12px;
+    padding: 1rem 0.5rem;
+  }
+  .inv-term-val { font-size: 1.2rem; font-weight: 800; color: #fbbf24; }
+  .inv-term-lbl { font-size: 0.68rem; color: #94a3b8; margin-top: 0.2rem; text-transform: uppercase; letter-spacing: 0.06em; }
+  .inv-equity-bar-wrap { margin-bottom: 1.5rem; text-align: left; }
+  .inv-equity-bar-label { display: flex; justify-content: space-between; font-size: 0.75rem; color: #94a3b8; margin-bottom: 0.4rem; }
+  .inv-equity-bar-track { background: rgba(255,255,255,0.1); border-radius: 99px; height: 8px; overflow: hidden; }
+  .inv-equity-bar-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, #4ade80, #16a34a); transition: width 0.3s; }
+  .inv-amount-wrap { margin-bottom: 1.25rem; text-align: left; }
+  .inv-amount-wrap label { font-size: 0.78rem; color: #94a3b8; display: block; margin-bottom: 0.4rem; }
+  .inv-amount-input-row { display: flex; align-items: center; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); border-radius: 10px; overflow: hidden; }
+  .inv-amount-prefix { padding: 0 0.75rem; font-size: 1rem; font-weight: 700; color: #fbbf24; flex-shrink: 0; }
+  .inv-amount-input { background: transparent; border: none; color: #fff; font-size: 1.1rem; font-weight: 700; padding: 0.75rem 0.5rem 0.75rem 0; flex: 1; outline: none; }
+  .inv-amount-input::placeholder { color: rgba(255,255,255,0.3); }
+  .inv-equity-preview {
+    background: rgba(74,222,128,0.1);
+    border: 1px solid rgba(74,222,128,0.25);
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+    margin-bottom: 1.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .inv-equity-preview-lbl { font-size: 0.78rem; color: #94a3b8; }
+  .inv-equity-preview-val { font-size: 1.3rem; font-weight: 800; color: #4ade80; }
+  .inv-btn {
+    width: 100%;
+    padding: 0.9rem;
+    background: linear-gradient(90deg, #16a34a, #15803d);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .inv-btn:hover { opacity: 0.9; }
+  .inv-btn:disabled { background: #374151; cursor: not-allowed; opacity: 0.6; }
+  .inv-err { font-size: 0.78rem; color: #f87171; margin-top: 0.5rem; min-height: 1.1em; }
+  .inv-closed {
+    background: rgba(239,68,68,0.15);
+    border: 1px solid rgba(239,68,68,0.3);
+    border-radius: 12px;
+    padding: 1.2rem;
+    color: #fca5a5;
+    font-size: 0.9rem;
+  }
+  .inv-legal { font-size: 0.72rem; color: #475569; margin-top: 1rem; text-align: center; }
+  .inv-back { display: block; text-align: center; margin-top: 1.5rem; color: #6b7280; font-size: 0.85rem; text-decoration: none; }
+  .inv-back:hover { color: #374151; }
+</style>
+
+<main>
+<div class="inv-page">
+  <div class="inv-hero">
+    <div class="inv-badge">Exclusive Opportunity</div>
+    <h1>Invest in SmrAI Studio</h1>
+    <p>Choose how much you want to invest — equity is proportional</p>
+
+    <div class="inv-terms">
+      <div class="inv-term">
+        <div class="inv-term-val"><%= cfg.equity %>%</div>
+        <div class="inv-term-lbl">Total Equity Offered</div>
+      </div>
+      <div class="inv-term">
+        <div class="inv-term-val">₹<%= Number(cfg.valuation).toLocaleString('en-IN') %></div>
+        <div class="inv-term-lbl">Company Valuation</div>
+      </div>
+    </div>
+
+    <!-- Equity pool bar -->
+    <div class="inv-equity-bar-wrap">
+      <div class="inv-equity-bar-label">
+        <span>Equity sold: <strong><%= soldEquity.toFixed(2) %>%</strong></span>
+        <span>Remaining: <strong id="remainingLabel"><%= remainingEquity.toFixed(2) %>%</strong></span>
+      </div>
+      <div class="inv-equity-bar-track">
+        <div class="inv-equity-bar-fill" style="width:<%= Math.min(100,(soldEquity/cfg.equity)*100) %>%"></div>
+      </div>
+    </div>
+
+    <% if (isFull) { %>
+      <div class="inv-closed">
+        <strong>Fully Subscribed</strong><br>
+        All <%= cfg.equity %>% equity has been claimed. No more investment slots available.
+      </div>
+    <% } else { %>
+      <!-- Amount input -->
+      <div class="inv-amount-wrap">
+        <label>Enter your investment amount</label>
+        <div class="inv-amount-input-row">
+          <span class="inv-amount-prefix">₹</span>
+          <input type="number" id="invAmount" class="inv-amount-input" placeholder="e.g. 25000" min="1250" oninput="calcEquity(this.value)" onchange="calcEquity(this.value)" />
+        </div>
+      </div>
+
+      <!-- Live equity preview -->
+      <div class="inv-equity-preview">
+        <span class="inv-equity-preview-lbl">You will receive</span>
+        <span class="inv-equity-preview-val" id="equityPreview">— %</span>
+      </div>
+      <div class="inv-err" id="invErr"></div>
+
+      <button class="inv-btn" id="investBtn" onclick="startInvestment()" disabled>
+        Enter amount to continue
+      </button>
+      <p style="font-size:0.72rem;color:#64748b;margin-top:0.5rem">Min ₹1,250 · Max ₹<%= Math.floor(remainingEquity / 100 * cfg.valuation).toLocaleString('en-IN') %> (<%= remainingEquity.toFixed(2) %>% equity)</p>
+    <% } %>
+
+    <p class="inv-legal">By investing you agree to the terms and conditions. This is a private investment offer.</p>
+  </div>
+  <a href="/dashboard" class="inv-back">← Back to Dashboard</a>
+</div>
+</main>
+
+<% if (!isFull) { %>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+const VALUATION = Number(<%= cfg.valuation %>);
+const REMAINING = Number(<%= remainingEquity %>);
+let currentEquity = 0;
+
+function calcEquity(val) {
+  val = val === '' ? document.getElementById('invAmount').value : val;
+  const amt = parseFloat(val) || 0;
+  const errEl = document.getElementById('invErr');
+  const btn = document.getElementById('investBtn');
+  const preview = document.getElementById('equityPreview');
+  if (!amt) { preview.textContent = '— %'; btn.disabled = true; btn.textContent = 'Enter amount to continue'; errEl.textContent = ''; return; }
+  const eq = parseFloat(((amt / VALUATION) * 100).toFixed(2));
+  currentEquity = eq;
+  preview.textContent = eq.toFixed(2) + '%';
+  if (amt < 1250) { errEl.textContent = 'Minimum investment is ₹1,250'; btn.disabled = true; btn.textContent = 'Enter amount to continue'; return; }
+  if (eq > REMAINING) { errEl.textContent = `Max available equity is ${REMAINING.toFixed(2)}% (₹${Math.floor(REMAINING/100*VALUATION).toLocaleString('en-IN')})`; btn.disabled = true; btn.textContent = 'Exceeds available equity'; return; }
+  errEl.textContent = '';
+  btn.disabled = false;
+  btn.textContent = `Invest ₹${Math.round(amt).toLocaleString('en-IN')} → Get ${eq.toFixed(2)}% Equity`;
+}
+
+// Ensure event fires reliably
+document.getElementById('invAmount').addEventListener('input', function() { calcEquity(this.value); });
+document.getElementById('invAmount').addEventListener('change', function() { calcEquity(this.value); });
+
+async function startInvestment() {
+  const amt = parseFloat(document.getElementById('invAmount').value);
+  if (!amt || amt < 1250) return;
+  const btn = document.getElementById('investBtn');
+  btn.disabled = true; btn.textContent = 'Creating order…';
+  try {
+    const r = await fetch('/api/investor/create-order', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount: amt }),
+    });
+    const d = await r.json();
+    if (!d.success) { document.getElementById('invErr').textContent = d.message || 'Failed.'; btn.disabled = false; calcEquity(amt); return; }
+    const options = {
+      key: d.key, amount: d.amount, currency: d.currency,
+      name: 'SmrAI Studio', description: `${d.equityPercent}% Equity Investment`,
+      order_id: d.orderId,
+      handler: async function(response) {
+        btn.textContent = 'Verifying…';
+        const vr = await fetch('/api/investor/verify', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature,
+            amount: amt, equityPercent: d.equityPercent,
+          }),
+        });
+        const vd = await vr.json();
+        if (vd.success) { window.location.href = '/investor/dashboard'; }
+        else { document.getElementById('invErr').textContent = 'Verification failed. Contact support.'; btn.disabled = false; calcEquity(amt); }
+      },
+      prefill: { name: '<%= currentUser ? currentUser.name : "" %>', email: '<%= currentUser ? currentUser.email : "" %>' },
+      theme: { color: '#16a34a' },
+      modal: { ondismiss: function() { btn.disabled = false; calcEquity(amt); } }
+    };
+    new Razorpay(options).open();
+  } catch (e) {
+    document.getElementById('invErr').textContent = 'Something went wrong. Please try again.';
+    btn.disabled = false; calcEquity(parseFloat(document.getElementById('invAmount').value));
+  }
+}
+</script>
+<% } %>
+
+<%- include("partials/footer") %>

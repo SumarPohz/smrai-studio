@@ -2,8 +2,59 @@
 <script src="/socket.io/socket.io.js"></script>
 
 <section class="dash-section">
-  <h1 class="dash-welcome">Welcome back, <%= currentUser ? currentUser.name.split(" ")[0] : "" %>! 👋</h1>
-  <p class="dash-subtitle">Here’s what’s happening on SmrAI-Studio today.</p>
+  <div class="dash-welcome-row">
+    <div>
+      <h1 class="dash-welcome">Welcome back, <%= currentUser ? currentUser.name.split(" ")[0] : "" %>! 👋</h1>
+      <p class="dash-subtitle">Here's what's happening on SmrAI-Studio today.</p>
+    </div>
+    <% if (currentUser && currentUser.role === 'subadmin') { %>
+    <% var _saName = (subadminProfile && subadminProfile.full_name) ? subadminProfile.full_name : currentUser.name; %>
+    <div class="dash-subadmin-card">
+      <div style="position:absolute;top:-30px;right:-30px;width:100px;height:100px;background:rgba(99,102,241,0.12);border-radius:50%;pointer-events:none"></div>
+      <!-- Top: avatar + name + badge -->
+      <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.9rem;position:relative;z-index:1">
+        <% if (subadminProfile && subadminProfile.profile_image_url) { %>
+          <img src="<%= subadminProfile.profile_image_url %>" alt="<%= _saName %>" style="width:46px;height:46px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,0.25);flex-shrink:0">
+        <% } else { %>
+          <div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:800;color:#fff;flex-shrink:0;border:2px solid rgba(255,255,255,0.15)"><%= _saName.charAt(0).toUpperCase() %></div>
+        <% } %>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:0.9rem;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><%= _saName %></div>
+          <div style="font-size:0.62rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;margin-top:0.05rem"><%= subadminInvestment ? 'Investor' : 'Sub-Admin' %> · SmrAI Studio</div>
+        </div>
+        <% if (subadminInvestment) { %>
+          <span style="flex-shrink:0;background:rgba(22,163,74,0.18);border:1px solid rgba(22,163,74,0.35);color:#4ade80;font-size:0.55rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:0.18rem 0.5rem;border-radius:99px">● Investor</span>
+        <% } else { %>
+          <span style="flex-shrink:0;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;font-size:0.55rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:0.18rem 0.5rem;border-radius:99px">● Sub-Admin</span>
+        <% } %>
+      </div>
+      <!-- Stats (investor only) -->
+      <% if (subadminInvestment) { %>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.4rem;margin-bottom:0.75rem;position:relative;z-index:1">
+        <div style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:0.5rem 0.4rem;text-align:center">
+          <div style="font-size:0.82rem;font-weight:800;color:#fbbf24">₹<%= Number(subadminInvestment.amount).toLocaleString('en-IN') %></div>
+          <div style="font-size:0.52rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.04em;margin-top:0.1rem">Invested</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:0.5rem 0.4rem;text-align:center">
+          <div style="font-size:0.82rem;font-weight:800;color:#4ade80"><%= Number(subadminInvestment.equity_percent).toFixed(2) %>%</div>
+          <div style="font-size:0.52rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.04em;margin-top:0.1rem">Equity</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:0.5rem 0.4rem;text-align:center">
+          <div style="font-size:0.82rem;font-weight:800;color:#e2e8f0">₹<%= Number(subadminInvestment.valuation).toLocaleString('en-IN') %></div>
+          <div style="font-size:0.52rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.04em;margin-top:0.1rem">Valuation</div>
+        </div>
+      </div>
+      <% } %>
+      <!-- Button -->
+      <div style="display:flex;gap:0.5rem;position:relative;z-index:1">
+        <% if (subadminInvestment) { %>
+          <a href="/investor/dashboard" style="flex:1;padding:0.45rem 0.5rem;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#e2e8f0;font-size:0.72rem;font-weight:600;border-radius:7px;text-align:center;text-decoration:none">View Card</a>
+        <% } %>
+        <a href="/admin" style="flex:2;padding:0.45rem 0.5rem;background:#6366f1;color:#fff;font-size:0.72rem;font-weight:700;border-radius:7px;text-align:center;text-decoration:none">Admin Dashboard</a>
+      </div>
+    </div>
+    <% } %>
+  </div>
 
   <!-- Platform stats -->
   <div class="dash-stat-grid">
@@ -53,6 +104,26 @@
       </div>
       <a href="/refer" class="btn-primary ref-card-btn">Share Your Code</a>
     </div>
+
+    <%# ── Investor Card (only shown to active investors) ── %>
+    <% if (currentUser && currentUser.role === 'investor') { %>
+    <div class="card investor-card-active">
+      <div class="ref-card-top">
+        <div class="ref-card-icon" style="background:linear-gradient(135deg,#f59e0b,#ef4444)">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        </div>
+        <div>
+          <h2 style="margin:0 0 0.15rem">Investor Dashboard</h2>
+          <p style="margin:0;font-size:0.82rem">View your equity stake and investment details</p>
+        </div>
+      </div>
+      <div class="investor-badge-row">
+        <span class="investor-badge inv-badge-dark-gold">Active Investor</span>
+      </div>
+      <a href="/investor/dashboard" class="btn-primary" style="display:inline-block;text-decoration:none">View Investor Card</a>
+    </div>
+    <% } %>
+
     <div class="card">
       <h2>Service Request</h2>
       <p style="font-size:0.9rem;color:#6b7280;margin-bottom:1rem">Need something custom? Tell us what you need.</p>
@@ -60,7 +131,7 @@
       <div id="srSuccess" hidden style="text-align:center;padding:1.5rem 0">
         <div style="font-size:2rem;margin-bottom:0.5rem">✅</div>
         <p style="font-weight:600;color:#111827">Request submitted!</p>
-        <p style="font-size:0.85rem;color:#6b7280">We’ll get back to you soon.</p>
+        <p style="font-size:0.85rem;color:#6b7280">We'll get back to you soon.</p>
         <button class="btn-ghost" style="margin-top:0.75rem;font-size:0.85rem" onclick="resetSrForm()">Submit another</button>
       </div>
 
@@ -85,13 +156,40 @@
       <!-- Past requests list -->
       <div id="myRequestsList" style="margin-top:1.25rem"></div>
     </div>
+
+
   </div>
 </section>
 
 <style>
   .dash-section    { max-width: 900px; margin: 0 auto; padding: 2rem 1.25rem; }
   .dash-welcome    { font-size: 1.6rem; font-weight: 800; color: #111827; margin-bottom: 0.25rem; }
-  .dash-subtitle   { color: #6b7280; margin-bottom: 1.5rem; font-size: 0.95rem; }
+  .dash-subtitle   { color: #6b7280; margin-bottom: 0; font-size: 0.95rem; }
+
+  .dash-welcome-row {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .dash-welcome-row > div:first-child { flex: 1; min-width: 0; }
+
+  .dash-subadmin-card {
+    background: linear-gradient(160deg,#0f0c29 0%,#1a1a4e 55%,#0d1b2a 100%);
+    border-radius: 14px;
+    padding: 1rem 1.1rem;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+    width: 300px;
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 640px) {
+    .dash-welcome-row { flex-direction: column; align-items: flex-start; gap: 1rem; }
+    .dash-subadmin-card { width: 100%; }
+    .dash-subtitle { margin-bottom: 0; }
+  }
 
   .dash-stat-grid  {
     display: grid;
@@ -142,6 +240,18 @@
   .ref-perk--green { background: #d1fae5; color: #065f46; }
   .ref-perk--purple { background: #ede9fe; color: #5b21b6; }
   .ref-card-btn { display: inline-block; text-decoration: none; }
+
+  /* ── Investor card ── */
+  .investor-card { background: linear-gradient(145deg, #f0fdf4 0%, #dcfce7 100%); border: 1px solid #bbf7d0; }
+  .investor-card-active { background: linear-gradient(145deg, #0f0c29 0%, #1a1a4e 100%); border: none; color: #fff; }
+  .investor-card-active h2 { color: #fff; }
+  .investor-card-active p { color: #94a3b8; }
+  .investor-badge-row { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 1rem; }
+  .investor-badge { font-size: 0.72rem; font-weight: 700; padding: 0.25rem 0.65rem; border-radius: 99px; }
+  .inv-badge-gold { background: #fef3c7; color: #92400e; }
+  .inv-badge-green { background: #d1fae5; color: #065f46; }
+  .inv-badge-dark-gold { background: rgba(251,191,36,0.2); color: #fbbf24; }
+  .inv-badge-dark-green { background: rgba(74,222,128,0.2); color: #4ade80; }
 
   /* ── Service request form ── */
   .sr-field  { margin-bottom: 0.75rem; }
