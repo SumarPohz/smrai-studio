@@ -1,0 +1,85 @@
+<%- include("partials/header") %>
+
+<style>
+  .invh-page { max-width: 560px; margin: 2rem auto; padding: 0 1rem 3rem; }
+  .invh-page h1 { font-size: 1.4rem; font-weight: 800; margin-bottom: 0.25rem; color: #111; }
+  .invh-sub { color: #6b7280; font-size: 0.85rem; margin-bottom: 1.5rem; }
+  .invh-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+  }
+  .invh-row {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid #f3f4f6;
+  }
+  .invh-row:last-child { border-bottom: none; }
+  .invh-row-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+  }
+  .invh-amount { font-size: 1.2rem; font-weight: 800; color: #16a34a; }
+  .invh-date { font-size: 0.78rem; color: #9ca3af; }
+  .invh-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.75rem; }
+  .invh-item-lbl { font-size: 0.7rem; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.1rem; }
+  .invh-item-val { font-size: 0.9rem; font-weight: 600; color: #374151; }
+  .invh-pid {
+    font-size: 0.72rem;
+    color: #6b7280;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 0.35rem 0.6rem;
+    font-family: monospace;
+    word-break: break-all;
+  }
+  .invh-empty { text-align: center; padding: 3rem 1rem; color: #9ca3af; }
+  .invh-back { display: block; text-align: center; margin-top: 1.5rem; color: #6b7280; font-size: 0.85rem; text-decoration: none; }
+  .invh-back:hover { color: #374151; }
+</style>
+
+<main>
+<div class="invh-page">
+  <h1>Investment History</h1>
+  <p class="invh-sub">Your complete investment record with SmrAI Studio</p>
+
+  <div class="invh-card">
+    <% if (investments.length === 0) { %>
+      <div class="invh-empty">No investments found.</div>
+    <% } else { %>
+      <% for (const inv of investments) { %>
+      <div class="invh-row">
+        <div class="invh-row-header">
+          <span class="invh-amount">₹<%= Number(inv.amount).toLocaleString('en-IN') %></span>
+          <span class="invh-date">
+            <%= new Date(inv.created_at).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) %>
+            &nbsp;·&nbsp;
+            <%= new Date(inv.created_at).toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit',hour12:true}) %>
+          </span>
+        </div>
+        <div class="invh-grid">
+          <div>
+            <div class="invh-item-lbl">Equity</div>
+            <div class="invh-item-val"><%= inv.equity_percent %>%</div>
+          </div>
+          <div>
+            <div class="invh-item-lbl">Valuation</div>
+            <div class="invh-item-val">₹<%= Number(inv.valuation).toLocaleString('en-IN') %></div>
+          </div>
+        </div>
+        <div class="invh-item-lbl" style="margin-bottom:0.3rem">Payment ID</div>
+        <div class="invh-pid"><%= inv.payment_id %></div>
+      </div>
+      <% } %>
+    <% } %>
+  </div>
+
+  <a href="/investor/dashboard" class="invh-back">← Back to Investor Dashboard</a>
+</div>
+</main>
+
+<%- include("partials/footer") %>

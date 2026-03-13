@@ -16,37 +16,64 @@
       <span>Admin</span>
     </div>
     <nav class="adm-sidebar-nav">
+      <% var _p = function(sec){ return !isSubAdmin || (myPerms && myPerms[sec] && myPerms[sec] !== 'none'); }; %>
+      <% if (_p('overview')) { %>
       <a href="#overview"  class="adm-nav-link adm-nav-active" data-section="overview">
         <i class="fas fa-chart-line"></i> Overview
       </a>
+      <% } %>
+      <% if (_p('users')) { %>
       <a href="#users"     class="adm-nav-link" data-section="users">
         <i class="fas fa-users"></i> Users
       </a>
+      <% } %>
+      <% if (_p('activity')) { %>
       <a href="#activity"  class="adm-nav-link" data-section="activity">
         <i class="fas fa-stream"></i> Activity
       </a>
+      <% } %>
+      <% if (_p('requests')) { %>
       <a href="#requests"  class="adm-nav-link" data-section="requests">
         <i class="fas fa-inbox"></i> Requests
         <span class="adm-nav-badge" id="navRequestsBadge" hidden></span>
       </a>
+      <% } %>
+      <% if (_p('pricing')) { %>
       <a href="#pricing"   class="adm-nav-link" data-section="pricing">
         <i class="fas fa-tags"></i> Pricing
       </a>
+      <% } %>
+      <% if (_p('templates')) { %>
       <a href="#templates" class="adm-nav-link" data-section="templates">
         <i class="fas fa-layer-group"></i> Templates
       </a>
+      <% } %>
+      <% if (_p('homepage')) { %>
       <a href="#homepage" class="adm-nav-link" data-section="homepage">
         <i class="fas fa-home"></i> Home Page
       </a>
+      <% } %>
+      <% if (_p('ads')) { %>
       <a href="#ads" class="adm-nav-link" data-section="ads">
         <i class="fas fa-rectangle-ad"></i> Ads
       </a>
+      <% } %>
+      <% if (_p('coupons')) { %>
       <a href="#coupons" class="adm-nav-link" data-section="coupons">
         <i class="fas fa-ticket"></i> Coupons
       </a>
+      <% } %>
+      <% if (_p('apikeys')) { %>
       <a href="#apikeys" class="adm-nav-link" data-section="apikeys">
         <i class="fas fa-key"></i> API Keys
       </a>
+      <% } %>
+      <% if (_p('investors')) { %>
+      <a href="#investors" class="adm-nav-link" data-section="investors" id="investorsNavLink">
+        <i class="fas fa-handshake"></i> Investors
+        <span class="adm-nav-badge" id="investorPendingBadge" style="display:none">0</span>
+      </a>
+      <% } %>
       <a href="/dashboard" class="adm-nav-link adm-nav-back">
         <i class="fas fa-arrow-left"></i> Back to App
       </a>
@@ -74,6 +101,101 @@
 
     <!-- ── Section: Overview ──────────────────────────────────────────────── -->
     <div id="overview" class="adm-section-page">
+
+      <% if (myInvestment) { %>
+      <% const _invName = (myProfile && myProfile.full_name) ? myProfile.full_name : currentUser.name; %>
+      <style>
+        .inv-card {
+          background: linear-gradient(135deg,#0f0c29 0%,#1a1a4e 55%,#0d1b2a 100%);
+          border-radius: 18px;
+          padding: 2.5rem 2.5rem;
+          color: #fff;
+          margin-bottom: 1.75rem;
+          box-shadow: 0 16px 48px rgba(0,0,0,0.45);
+          position: relative;
+        }
+        .inv-card-blobs { position:absolute;inset:0;border-radius:18px;overflow:hidden;pointer-events:none; }
+        .inv-card-blob1 { position:absolute;top:-70px;right:-70px;width:220px;height:220px;background:rgba(99,102,241,0.1);border-radius:50%; }
+        .inv-card-blob2 { position:absolute;bottom:-50px;left:220px;width:140px;height:140px;background:rgba(139,92,246,0.07);border-radius:50%; }
+        .inv-card-inner { display:flex;align-items:center;gap:2rem;position:relative;z-index:1; }
+        .inv-card-avatar { width:88px;height:88px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,0.25);flex-shrink:0; }
+        .inv-card-avatar-letter { width:88px;height:88px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:800;color:#fff;flex-shrink:0;border:3px solid rgba(255,255,255,0.15); }
+        .inv-card-info { flex:1;min-width:0; }
+        .inv-card-badge { display:inline-flex;align-items:center;gap:0.3rem;background:rgba(22,163,74,0.18);border:1px solid rgba(22,163,74,0.35);color:#4ade80;font-size:0.64rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:0.22rem 0.7rem;border-radius:99px;margin-bottom:0.5rem; }
+        .inv-card-name { font-size:1.45rem;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+        .inv-card-sub  { font-size:0.78rem;color:#94a3b8;letter-spacing:0.06em;text-transform:uppercase;margin-top:0.15rem; }
+        .inv-card-divider { width:1px;height:64px;background:rgba(255,255,255,0.12);flex-shrink:0; }
+        .inv-card-stats { display:flex;gap:0;flex-shrink:0; }
+        .inv-card-stat { padding:0 1.75rem;text-align:center;border-right:1px solid rgba(255,255,255,0.1); }
+        .inv-card-stat:last-child { border-right:none; }
+        .inv-card-stat-val { font-size:1.3rem;font-weight:800;white-space:nowrap; }
+        .inv-card-stat-lbl { font-size:0.6rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.07em;margin-top:0.25rem; }
+        .inv-card-cta { flex-shrink:0;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.45);color:#a5b4fc;font-size:0.78rem;font-weight:700;padding:0.6rem 1.2rem;border-radius:9px;text-decoration:none;white-space:nowrap;transition:background 0.2s; }
+        .inv-card-cta:hover { background:rgba(99,102,241,0.38); }
+
+        @media (max-width: 768px) {
+          .inv-card { padding: 1rem 1.1rem; }
+          .inv-card-inner { flex-wrap:wrap;gap:0.75rem;align-items:center; }
+          .inv-card-avatar,
+          .inv-card-avatar-letter { width:52px;height:52px;font-size:1.2rem; }
+          .inv-card-info { flex:1;min-width:0; }
+          .inv-card-badge { font-size:0.55rem;padding:0.15rem 0.5rem;margin-bottom:0.25rem; }
+          .inv-card-name { font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+          .inv-card-sub  { font-size:0.65rem; }
+          .inv-card-divider { display:none; }
+          .inv-card-stats { width:100%;justify-content:space-between;gap:0; }
+          .inv-card-stat { padding:0.3rem 0;flex:1;border-right:none;border-left:none;text-align:center; }
+          .inv-card-stat + .inv-card-stat { border-left:1px solid rgba(255,255,255,0.1); }
+          .inv-card-stat-val { font-size:0.95rem; }
+          .inv-card-stat-lbl { font-size:0.55rem; }
+          .inv-card-cta { display:none; }
+        }
+      </style>
+
+      <div class="inv-card">
+        <div class="inv-card-blobs">
+          <div class="inv-card-blob1"></div>
+          <div class="inv-card-blob2"></div>
+        </div>
+        <div class="inv-card-inner">
+          <!-- Avatar -->
+          <% if (myProfile && myProfile.profile_image_url) { %>
+            <img src="<%= myProfile.profile_image_url %>" alt="<%= _invName %>" class="inv-card-avatar">
+          <% } else { %>
+            <div class="inv-card-avatar-letter"><%= _invName.charAt(0).toUpperCase() %></div>
+          <% } %>
+
+          <!-- Name + badge -->
+          <div class="inv-card-info">
+            <div class="inv-card-badge">● Active Investor</div>
+            <div class="inv-card-name"><%= _invName %></div>
+            <div class="inv-card-sub">Investor · <%= companyName %></div>
+          </div>
+
+          <!-- Vertical divider (desktop only) -->
+          <div class="inv-card-divider"></div>
+
+          <!-- Stats -->
+          <div class="inv-card-stats">
+            <div class="inv-card-stat">
+              <div class="inv-card-stat-val" style="color:#fbbf24">₹<%= Number(myInvestment.amount).toLocaleString('en-IN') %></div>
+              <div class="inv-card-stat-lbl">Total Investment</div>
+            </div>
+            <div class="inv-card-stat">
+              <div class="inv-card-stat-val" style="color:#4ade80"><%= Number(myInvestment.equity_percent).toFixed(2) %>%</div>
+              <div class="inv-card-stat-lbl">Equity Received</div>
+            </div>
+            <div class="inv-card-stat">
+              <div class="inv-card-stat-val" style="color:#e2e8f0">₹<%= Number(myInvestment.valuation).toLocaleString('en-IN') %></div>
+              <div class="inv-card-stat-lbl">Valuation</div>
+            </div>
+          </div>
+
+          <!-- CTA -->
+          <a href="/investor/dashboard" class="inv-card-cta">View Card →</a>
+        </div>
+      </div>
+      <% } %>
 
       <!-- Stat cards -->
       <div class="adm-stat-grid">
@@ -1231,8 +1353,94 @@
       </div>
     </div><!-- /admTplBuilder -->
 
+    <!-- ── Investors Section ──────────────────────────────────────────────── -->
+    <div id="investors" class="adm-section-page" hidden>
+      <div class="adm-section-header">
+        <h2><i class="fas fa-handshake"></i> Investors</h2>
+        <p class="adm-section-desc">Manage investor access requests, view investments, and configure investment terms.</p>
+      </div>
+
+      <!-- Stats row -->
+      <div class="adm-stats-row" style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.5rem">
+        <div class="adm-stat-card" style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:1rem 1.25rem">
+          <div style="font-size:1.6rem;font-weight:800;color:#16a34a" id="invStatTotal">—</div>
+          <div style="font-size:0.78rem;color:#6b7280;margin-top:0.2rem">Total Investors</div>
+        </div>
+        <div class="adm-stat-card" style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:1rem 1.25rem">
+          <div style="font-size:1.6rem;font-weight:800;color:#f59e0b" id="invStatPending">—</div>
+          <div style="font-size:0.78rem;color:#6b7280;margin-top:0.2rem">Pending Requests</div>
+        </div>
+        <div class="adm-stat-card" style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:1rem 1.25rem">
+          <div style="font-size:1.6rem;font-weight:800;color:#6366f1" id="invStatAmount">—</div>
+          <div style="font-size:0.78rem;color:#6b7280;margin-top:0.2rem">Total Invested</div>
+        </div>
+      </div>
+
+      <!-- Investment Config -->
+      <div class="adm-ads-form-card" style="margin-bottom:1.5rem">
+        <div style="font-size:0.85rem;font-weight:700;color:#374151;margin-bottom:0.85rem"><i class="fas fa-sliders"></i> Investment Terms</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.75rem;align-items:flex-end">
+          <div>
+            <label style="font-size:0.75rem;color:#6b7280;display:block;margin-bottom:0.3rem">Amount (₹)</label>
+            <input type="number" id="invCfgAmount" placeholder="50000" style="width:100%;padding:0.45rem 0.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:0.85rem">
+          </div>
+          <div>
+            <label style="font-size:0.75rem;color:#6b7280;display:block;margin-bottom:0.3rem">Equity (%)</label>
+            <input type="number" id="invCfgEquity" placeholder="40" style="width:100%;padding:0.45rem 0.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:0.85rem">
+          </div>
+          <div>
+            <label style="font-size:0.75rem;color:#6b7280;display:block;margin-bottom:0.3rem">Valuation (₹)</label>
+            <input type="number" id="invCfgValuation" placeholder="125000" style="width:100%;padding:0.45rem 0.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:0.85rem">
+          </div>
+        </div>
+        <button onclick="saveInvConfig(this)" style="margin-top:0.75rem;padding:0.45rem 1.1rem;background:#6366f1;color:#fff;border:none;border-radius:6px;font-size:0.82rem;font-weight:600;cursor:pointer">Save Terms</button>
+      </div>
+
+      <!-- Pending Requests -->
+      <div class="adm-ads-form-card" style="margin-bottom:1.5rem">
+        <div style="font-size:0.85rem;font-weight:700;color:#374151;margin-bottom:0.85rem"><i class="fas fa-clock"></i> Investor Requests</div>
+        <div id="invRequestsTable" style="font-size:0.85rem;color:#6b7280">Loading…</div>
+      </div>
+
+      <!-- Investments -->
+      <div class="adm-ads-form-card">
+        <div style="font-size:0.85rem;font-weight:700;color:#374151;margin-bottom:0.85rem"><i class="fas fa-chart-line"></i> Investment Records</div>
+        <div id="invRecordsTable" style="font-size:0.85rem;color:#6b7280">Loading…</div>
+      </div>
+    </div><!-- /investors -->
+
   </div><!-- /adm-main -->
 </div><!-- /adm-shell -->
+
+<!-- Record / Edit Investment Modal -->
+<div id="invModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:16px;padding:2rem;width:100%;max-width:420px;margin:1rem;box-shadow:0 24px 64px rgba(0,0,0,0.3)">
+    <h3 id="invModalTitle" style="margin:0 0 1.25rem;font-size:1.1rem;font-weight:800;color:#111">Record Investment</h3>
+    <input type="hidden" id="invModalUserId" value="">
+    <input type="hidden" id="invModalInvId" value="">
+    <div style="margin-bottom:1rem">
+      <label style="font-size:0.75rem;font-weight:600;color:#374151;display:block;margin-bottom:0.3rem">Investor</label>
+      <div id="invModalName" style="font-size:0.9rem;font-weight:700;color:#6366f1;padding:0.5rem 0.75rem;background:#f5f3ff;border-radius:8px"></div>
+    </div>
+    <div style="margin-bottom:1rem">
+      <label style="font-size:0.75rem;font-weight:600;color:#374151;display:block;margin-bottom:0.3rem">Investment Amount (₹) <span style="color:#dc2626">*</span></label>
+      <input type="number" id="invModalAmount" min="1" placeholder="e.g. 25000"
+        style="width:100%;border:1.5px solid #d1d5db;border-radius:8px;padding:0.6rem 0.75rem;font-size:0.95rem;font-weight:700;outline:none;box-sizing:border-box"
+        oninput="invModalCalc()" />
+      <div id="invModalEquityPreview" style="font-size:0.78rem;color:#16a34a;font-weight:600;margin-top:0.3rem;min-height:1em"></div>
+    </div>
+    <div style="margin-bottom:1.25rem">
+      <label style="font-size:0.75rem;font-weight:600;color:#374151;display:block;margin-bottom:0.3rem">Payment Reference / Note (optional)</label>
+      <input type="text" id="invModalRef" placeholder="e.g. Bank transfer, UPI ref, Cash"
+        style="width:100%;border:1.5px solid #d1d5db;border-radius:8px;padding:0.6rem 0.75rem;font-size:0.88rem;outline:none;box-sizing:border-box" />
+    </div>
+    <div id="invModalErr" style="font-size:0.78rem;color:#dc2626;margin-bottom:0.75rem;min-height:1em"></div>
+    <div style="display:flex;gap:0.75rem">
+      <button onclick="closeInvModal()" style="flex:1;padding:0.65rem;background:#f3f4f6;color:#374151;border:none;border-radius:8px;font-size:0.88rem;font-weight:600;cursor:pointer">Cancel</button>
+      <button id="invModalSaveBtn" onclick="saveInvModal()" style="flex:2;padding:0.65rem;background:#6366f1;color:#fff;border:none;border-radius:8px;font-size:0.88rem;font-weight:700;cursor:pointer">Save Investment</button>
+    </div>
+  </div>
+</div>
 
 <!-- ── Service request detail modal ─────────────────────────────────────── -->
 <div id="srDetailModal" class="adm-modal-backdrop" hidden>
@@ -1356,13 +1564,15 @@
   </div>
 </div>
 
-<!-- ── User detail modal ─────────────────────────────────────────────────── -->
+<!-- ── User detail modal (admin only) ────────────────────────────────────── -->
+<% if (!isSubAdmin) { %>
 <div id="userModal" class="adm-modal-backdrop" hidden>
   <div class="adm-modal" role="dialog" aria-modal="true">
     <button class="adm-modal-close" id="modalClose" type="button" aria-label="Close">&times;</button>
     <div id="userModalBody"></div>
   </div>
 </div>
+<% } %>
 
 <!-- Socket.io + Chart.js -->
 <script src="/socket.io/socket.io.js"></script>
@@ -1407,6 +1617,7 @@ function showSection(id) {
     if (id === "ads"       && !adsLoaded)    { loadAds(); }
     if (id === "coupons"   && !couponsLoaded){ loadCoupons(); }
     if (id === "apikeys")                    { /* values never pre-loaded for security */ }
+    if (id === "investors")                  { loadInvestors(); }
   }, 120);
 }
 
@@ -1571,13 +1782,17 @@ async function loadUsers(page, q) {
           </div>
         </td>
         <td class="adm-muted">${u.email}</td>
-        <td><span class="adm-badge ${u.role === "admin" ? "adm-badge-admin" : "adm-badge-user"}">${u.role}</span></td>
+        <td><span class="adm-badge ${u.role === "admin" ? "adm-badge-admin" : u.role === "subadmin" ? "adm-badge-subadmin" : "adm-badge-user"}">${u.role === "subadmin" ? (u.has_investment ? "Investor" : "Sub-Admin") : u.role}</span></td>
         <td>${u.resume_count}</td>
         <td>${u.download_count}</td>
         <td>₹${Math.round(u.total_paid / 100)}</td>
         <td class="adm-muted">${fmtDate(u.last_active)}</td>
       `;
+      <% if (!isSubAdmin) { %>
       tr.addEventListener("click", () => openUserModal(u.id));
+      <% } else { %>
+      tr.style.cursor = "default";
+      <% } %>
       tbody.appendChild(tr);
     });
 
@@ -1633,7 +1848,7 @@ async function openUserModal(uid) {
           <h3 class="adm-modal-name">${u.full_name || u.name || "—"}</h3>
           <p class="adm-modal-email">${u.email}</p>
           <div style="display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap;margin-top:0.3rem">
-            <span class="adm-badge ${u.role === "admin" ? "adm-badge-admin" : "adm-badge-user"}" id="modalRoleBadge">${u.role}</span>
+            <span class="adm-badge ${u.role === "admin" ? "adm-badge-admin" : u.role === "subadmin" ? "adm-badge-subadmin" : "adm-badge-user"}" id="modalRoleBadge">${u.role === "subadmin" ? (u.has_investment ? "Investor" : "Sub-Admin") : u.role}</span>
             <span class="adm-badge ${u.is_active ? "adm-badge-active" : "adm-badge-inactive"}" id="modalActiveBadge">
               ${u.is_active ? "Active" : "Inactive"}
             </span>
@@ -1656,11 +1871,11 @@ async function openUserModal(uid) {
       </div>
 
       <div class="adm-modal-actions">
-        <button class="adm-role-btn ${u.role === "admin" ? "adm-role-btn-demote" : "adm-role-btn-promote"}"
+        <button class="adm-role-btn ${u.role === "admin" || u.role === "subadmin" ? "adm-role-btn-demote" : "adm-role-btn-promote"}"
                 id="roleToggleBtn"
                 data-uid="${u.id}"
                 data-current="${u.role}">
-          ${u.role === "admin" ? "⬇ Demote to User" : "⬆ Promote to Admin"}
+          ${u.role === "admin" || u.role === "subadmin" ? "⬇ Demote to User" : "⬆ Promote to Sub-Admin"}
         </button>
         <button class="adm-toggle-active-btn ${u.is_active ? "adm-toggle-active-btn-deactivate" : "adm-toggle-active-btn-activate"}"
                 id="toggleActiveBtn"
@@ -1673,40 +1888,97 @@ async function openUserModal(uid) {
           <i class="fas fa-trash-alt"></i> Delete
         </button>
       </div>
+
+      <!-- Investor sub-form (shown only when promoting) -->
+      <div id="promoteInvForm" style="display:none;margin-top:1rem;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:12px;padding:1.1rem 1.25rem">
+        <div style="font-size:0.88rem;font-weight:800;color:#374151;margin-bottom:0.2rem">Promote to Sub-Admin</div>
+        <div style="font-size:0.78rem;color:#6b7280;margin-bottom:0.75rem">Should this user also be recorded as an investor?</div>
+        <div style="display:flex;gap:0.6rem;margin-bottom:0.85rem">
+          <button id="promoteInvYes" style="flex:1;padding:0.5rem;border:1.5px solid #6366f1;border-radius:8px;background:#fff;color:#6366f1;font-size:0.82rem;font-weight:700;cursor:pointer">Yes, also investor</button>
+          <button id="promoteInvNo"  style="flex:1;padding:0.5rem;border:1.5px solid #d1d5db;border-radius:8px;background:#fff;color:#374151;font-size:0.82rem;font-weight:600;cursor:pointer">No, sub-admin only</button>
+        </div>
+        <div id="promoteInvFields" style="display:none">
+          <div style="margin-bottom:0.65rem">
+            <label style="font-size:0.72rem;font-weight:600;color:#6b7280;display:block;margin-bottom:0.25rem">Investment Amount (₹)</label>
+            <input type="number" id="promoteInvAmount" min="1" placeholder="e.g. 25000"
+              style="width:100%;border:1.5px solid #d1d5db;border-radius:7px;padding:0.5rem 0.65rem;font-size:0.9rem;font-weight:700;outline:none;box-sizing:border-box"
+              oninput="promoteInvCalc()" />
+          </div>
+          <div style="margin-bottom:0.65rem">
+            <label style="font-size:0.72rem;font-weight:600;color:#6b7280;display:block;margin-bottom:0.25rem">Company Valuation (₹)</label>
+            <input type="number" id="promoteInvValuation" min="1" placeholder="e.g. 125000"
+              style="width:100%;border:1.5px solid #d1d5db;border-radius:7px;padding:0.5rem 0.65rem;font-size:0.9rem;font-weight:700;outline:none;box-sizing:border-box"
+              oninput="promoteInvCalc()" />
+          </div>
+          <div id="promoteInvEquity" style="font-size:0.78rem;color:#16a34a;font-weight:700;margin-bottom:0.65rem;min-height:1em"></div>
+          <div id="promoteInvErr" style="font-size:0.75rem;color:#dc2626;margin-bottom:0.5rem;min-height:1em"></div>
+          <div style="display:flex;gap:0.6rem">
+            <button data-cancel style="flex:1;padding:0.5rem;border:1.5px solid #d1d5db;border-radius:8px;background:#fff;color:#6b7280;font-size:0.82rem;cursor:pointer">Cancel</button>
+            <button id="promoteInvConfirmBtn" style="flex:2;padding:0.5rem;background:#6366f1;color:#fff;border:none;border-radius:8px;font-size:0.82rem;font-weight:700;cursor:pointer">Confirm &amp; Promote</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Permissions grid (shown for subadmin users) -->
+      <div id="permsGridWrap" style="margin-top:1rem"></div>
     `;
 
-    document.getElementById("roleToggleBtn").addEventListener("click", async function () {
-      const newRole = this.dataset.current === "admin" ? "user" : "admin";
-      this.disabled = true;
+    document.getElementById("roleToggleBtn").addEventListener("click", function () {
+      const cur = this.dataset.current;
+      const isElevated = cur === "admin" || cur === "subadmin";
+      if (!isElevated) {
+        // Promoting to subadmin — show investor sub-form
+        this.style.display = "none";
+        document.getElementById("promoteInvForm").style.display = "block";
+        document.getElementById("promoteInvFields").style.display = "none";
+        document.getElementById("promoteInvEquity").textContent = "";
+        document.getElementById("promoteInvErr").textContent = "";
+        document.getElementById("promoteInvAmount").value = "";
+        document.getElementById("promoteInvValuation").value = _invModalValuation || 125000;
+      } else {
+        // Demoting — instant
+        _doRoleChange(this, "user");
+      }
+    });
+
+    // Load permissions grid if this is a subadmin
+    if (u.role === "subadmin") {
+      _loadPermsGrid(u.id);
+    }
+
+    async function _doRoleChange(btn, newRole) {
+      if (btn) btn.disabled = true;
+      const uid = document.getElementById("roleToggleBtn").dataset.uid;
       try {
-        const r = await fetch(`/admin/api/user/${this.dataset.uid}/role`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+        const r = await fetch(`/admin/api/user/${uid}/role`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ role: newRole }),
         });
         const d = await r.json();
         if (d.success) {
-          this.dataset.current = newRole;
-          this.textContent = newRole === "admin" ? "⬇ Demote to User" : "⬆ Promote to Admin";
-          this.className = "adm-role-btn " + (newRole === "admin" ? "adm-role-btn-demote" : "adm-role-btn-promote");
-          document.getElementById("modalRoleBadge").textContent = newRole;
-          document.getElementById("modalRoleBadge").className =
-            "adm-badge " + (newRole === "admin" ? "adm-badge-admin" : "adm-badge-user");
-          // Refresh the table row badge
-          const row = document.querySelector(`tr[data-uid="${this.dataset.uid}"]`);
-          if (row) {
-            const badge = row.querySelector(".adm-badge");
-            if (badge) { badge.textContent = newRole; badge.className = "adm-badge " + (newRole === "admin" ? "adm-badge-admin" : "adm-badge-user"); }
-          }
+          _applyRoleUI(uid, newRole);
+          if (newRole === "subadmin") _loadPermsGrid(uid);
         } else {
           alert(d.message || "Failed to update role.");
+          document.getElementById("roleToggleBtn").style.display = "";
+          document.getElementById("promoteInvForm").style.display = "none";
         }
       } catch (_) {
         alert("Network error.");
+        document.getElementById("roleToggleBtn").style.display = "";
+        document.getElementById("promoteInvForm").style.display = "none";
       } finally {
-        this.disabled = false;
+        if (btn) btn.disabled = false;
       }
-    });
+    }
+
+    // Wire promote investor sub-form buttons via addEventListener (not onclick)
+    document.getElementById("promoteInvYes").addEventListener("click", _showPromoteInvFields);
+    document.getElementById("promoteInvNo").addEventListener("click", () => _confirmPromote(false));
+    document.getElementById("promoteInvAmount").addEventListener("input", _promoteInvCalc);
+    document.getElementById("promoteInvValuation").addEventListener("input", _promoteInvCalc);
+    document.getElementById("promoteInvConfirmBtn").addEventListener("click", () => _confirmPromote(true));
+    document.querySelector("#promoteInvForm button[data-cancel]")?.addEventListener("click", _hidePromoteInvForm);
 
     // ── Toggle active handler ────────────────────────────────────────────
     document.getElementById("toggleActiveBtn").addEventListener("click", async function () {
@@ -1750,12 +2022,125 @@ async function openUserModal(uid) {
 }
 
 function closeModal() {
-  document.getElementById("userModal").hidden = true;
+  const m = document.getElementById("userModal");
+  if (m) m.hidden = true;
   document.body.style.overflow = "";
 }
 
-document.getElementById("modalClose").addEventListener("click", closeModal);
-document.getElementById("userModal").addEventListener("click", e => {
+// ── Promote-to-admin investor sub-form helpers (global scope) ───────────────
+function _showPromoteInvFields() {
+  document.getElementById("promoteInvFields").style.display = "block";
+  document.getElementById("promoteInvYes").style.background = "#ede9fe";
+}
+function _hidePromoteInvForm() {
+  document.getElementById("promoteInvForm").style.display = "none";
+  document.getElementById("roleToggleBtn").style.display = "";
+}
+function _promoteInvCalc() {
+  const amt = parseFloat(document.getElementById("promoteInvAmount").value) || 0;
+  const val = parseFloat(document.getElementById("promoteInvValuation").value) || 0;
+  const el = document.getElementById("promoteInvEquity");
+  el.textContent = (amt && val) ? "→ Equity: " + ((amt / val) * 100).toFixed(2) + "%" : "";
+}
+async function _confirmPromote(withInvestment) {
+  const confirmBtn = document.getElementById("promoteInvConfirmBtn");
+  const errEl = document.getElementById("promoteInvErr");
+  if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.textContent = "Saving…"; }
+  const uid = document.getElementById("roleToggleBtn").dataset.uid;
+  if (withInvestment) {
+    const amount = parseFloat(document.getElementById("promoteInvAmount").value);
+    const valuation = parseFloat(document.getElementById("promoteInvValuation").value);
+    if (!amount || amount < 1) { if (errEl) errEl.textContent = "Enter a valid amount"; if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = "Confirm & Promote"; } return; }
+    if (!valuation || valuation < 1) { if (errEl) errEl.textContent = "Enter a valid valuation"; if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = "Confirm & Promote"; } return; }
+    if (errEl) errEl.textContent = "";
+    const r1 = await fetch(`/admin/api/user/${uid}/role`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role: "subadmin" }),
+    }).then(r => r.json()).catch(() => ({}));
+    if (!r1.success) { if (errEl) errEl.textContent = r1.message || "Failed to set role"; if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = "Confirm & Promote"; } return; }
+    const r2 = await fetch("/admin/api/investments/manual", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: parseInt(uid), amount, payment_ref: "Admin recorded", valuation }),
+    }).then(r => r.json()).catch(() => ({}));
+    if (!r2.success) { if (errEl) errEl.textContent = r2.message || "Role set but investment failed"; if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = "Confirm & Promote"; } return; }
+    _applyRoleUI(uid, "subadmin", true);
+    _loadPermsGrid(uid);
+  } else {
+    await _doRoleChange(null, "subadmin");
+  }
+  if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = "Confirm & Promote"; }
+}
+function _applyRoleUI(uid, newRole, hasInvestment) {
+  const isElevated = newRole === "admin" || newRole === "subadmin";
+  const badgeClass = newRole === "admin" ? "adm-badge-admin" : newRole === "subadmin" ? "adm-badge-subadmin" : "adm-badge-user";
+  const displayLabel = newRole === "subadmin" ? (hasInvestment ? "Investor" : "Sub-Admin") : newRole;
+  const toggleBtn = document.getElementById("roleToggleBtn");
+  toggleBtn.dataset.current = newRole;
+  toggleBtn.textContent = isElevated ? "⬇ Demote to User" : "⬆ Promote to Sub-Admin";
+  toggleBtn.className = "adm-role-btn " + (isElevated ? "adm-role-btn-demote" : "adm-role-btn-promote");
+  toggleBtn.style.display = "";
+  document.getElementById("modalRoleBadge").textContent = displayLabel;
+  document.getElementById("modalRoleBadge").className = "adm-badge " + badgeClass;
+  const row = document.querySelector(`tr[data-uid="${uid}"]`);
+  if (row) {
+    const badge = row.querySelector(".adm-badge");
+    if (badge) { badge.textContent = displayLabel; badge.className = "adm-badge " + badgeClass; }
+  }
+  document.getElementById("promoteInvForm").style.display = "none";
+}
+
+// ── Permissions grid (shown in user modal for subadmins) ────────────────────
+const _SECTIONS = ["overview","users","activity","requests","pricing","templates","homepage","ads","coupons","apikeys","investors"];
+const _SECTION_LABELS = { overview:"Overview", users:"Users", activity:"Activity", requests:"Requests", pricing:"Pricing", templates:"Templates", homepage:"Home Page", ads:"Ads", coupons:"Coupons", apikeys:"API Keys", investors:"Investors" };
+
+async function _loadPermsGrid(uid) {
+  let permsWrap = document.getElementById("permsGridWrap");
+  if (!permsWrap) return;
+  permsWrap.innerHTML = '<p style="color:#9ca3af;font-size:0.8rem">Loading permissions…</p>';
+  const d = await fetch(`/admin/api/user/${uid}/permissions`).then(r => r.json()).catch(() => ({}));
+  if (!d.success) { permsWrap.innerHTML = '<p style="color:#dc2626;font-size:0.8rem">Failed to load permissions</p>'; return; }
+  const perms = d.permissions || {};
+  permsWrap.innerHTML = `
+    <div style="font-size:0.8rem;font-weight:700;color:#374151;margin-bottom:0.6rem">Section Permissions</div>
+    <table style="width:100%;border-collapse:collapse;font-size:0.78rem">
+      <thead><tr>
+        <th style="text-align:left;padding:0.3rem 0.5rem;color:#6b7280">Section</th>
+        <th style="text-align:center;padding:0.3rem 0.5rem;color:#6b7280">None</th>
+        <th style="text-align:center;padding:0.3rem 0.5rem;color:#6b7280">View</th>
+        <th style="text-align:center;padding:0.3rem 0.5rem;color:#6b7280">Edit</th>
+      </tr></thead>
+      <tbody>${_SECTIONS.map(s => `<tr style="border-top:1px solid #f3f4f6">
+        <td style="padding:0.35rem 0.5rem;font-weight:600;color:#374151">${_SECTION_LABELS[s]}</td>
+        ${["none","view","edit"].map(lvl => `<td style="text-align:center;padding:0.35rem 0.5rem">
+          <input type="radio" name="perm_${s}" value="${lvl}" ${perms[s]===lvl||(!perms[s]&&lvl==='none')?'checked':''} style="cursor:pointer;accent-color:#6366f1">
+        </td>`).join('')}
+      </tr>`).join('')}</tbody>
+    </table>
+    <button id="savePermsBtn" style="margin-top:0.75rem;padding:0.45rem 1.1rem;background:#6366f1;color:#fff;border:none;border-radius:6px;font-size:0.82rem;font-weight:600;cursor:pointer">Save Permissions</button>
+    <span id="permsSaveMsg" style="font-size:0.75rem;color:#16a34a;margin-left:0.5rem"></span>
+  `;
+  document.getElementById("savePermsBtn").addEventListener("click", async function() {
+    this.disabled = true; this.textContent = "Saving…";
+    const sections = {};
+    _SECTIONS.forEach(s => {
+      const checked = permsWrap.querySelector(`input[name="perm_${s}"]:checked`);
+      if (checked) sections[s] = checked.value;
+    });
+    const r = await fetch(`/admin/api/user/${uid}/permissions`, {
+      method: "PATCH", headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ sections }),
+    }).then(r => r.json()).catch(() => ({}));
+    const msg = document.getElementById("permsSaveMsg");
+    if (r.success) { msg.textContent = "Saved!"; } else { msg.style.color="#dc2626"; msg.textContent = "Failed"; }
+    this.textContent = "Save Permissions"; this.disabled = false;
+    setTimeout(() => { if (msg) msg.textContent = ""; }, 2500);
+  });
+}
+
+const _modalClose = document.getElementById("modalClose");
+const _userModal  = document.getElementById("userModal");
+if (_modalClose) _modalClose.addEventListener("click", closeModal);
+if (_userModal)  _userModal.addEventListener("click", e => {
   if (e.target === e.currentTarget) closeModal();
 });
 document.addEventListener("keydown", e => {
@@ -3613,6 +3998,189 @@ const ENV_FIELD_MAP = {
   EMAIL_PASS:              'envEmailPass',
 };
 
+// ── Investor admin functions ────────────────────────────────────────────────
+async function loadInvestors() {
+  const [reqRes, invRes, cfgRes] = await Promise.all([
+    fetch('/admin/api/investor-requests').then(r => r.json()).catch(() => ({ requests: [] })),
+    fetch('/admin/api/investments').then(r => r.json()).catch(() => ({ investments: [] })),
+    fetch('/admin/api/investment-config').then(r => r.json()).catch(() => ({})),
+  ]);
+  if (cfgRes.valuation) {
+    _invModalValuation = parseFloat(cfgRes.valuation) || 125000;
+    document.getElementById('invCfgAmount').value = cfgRes.amount || '';
+    document.getElementById('invCfgEquity').value = cfgRes.equity || '';
+    document.getElementById('invCfgValuation').value = cfgRes.valuation || '';
+  }
+  const requests = reqRes.requests || [];
+  const investments = invRes.investments || [];
+  const pending = requests.filter(r => r.status === 'pending');
+  document.getElementById('invStatTotal').textContent = investments.length;
+  document.getElementById('invStatPending').textContent = pending.length;
+  const totalAmt = investments.reduce((s, i) => s + parseFloat(i.amount || 0), 0);
+  document.getElementById('invStatAmount').textContent = totalAmt > 0 ? '₹' + totalAmt.toLocaleString('en-IN') : '₹0';
+  const badge = document.getElementById('investorPendingBadge');
+  if (pending.length > 0) { badge.textContent = pending.length; badge.style.display = ''; }
+  else badge.style.display = 'none';
+
+  // Requests table
+  const rt = document.getElementById('invRequestsTable');
+  if (!requests.length) { rt.innerHTML = '<p style="color:#9ca3af;font-size:0.82rem">No requests yet.</p>'; }
+  else {
+    rt.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:0.82rem">
+      <thead><tr style="border-bottom:1px solid #e5e7eb">
+        <th style="text-align:left;padding:0.5rem 0.75rem;color:#6b7280;font-weight:600">User</th>
+        <th style="text-align:left;padding:0.5rem 0.75rem;color:#6b7280;font-weight:600">Desired Investment</th>
+        <th style="text-align:left;padding:0.5rem 0.75rem;color:#6b7280;font-weight:600">Status</th>
+        <th style="text-align:left;padding:0.5rem 0.75rem;color:#6b7280;font-weight:600">Date</th>
+        <th style="padding:0.5rem 0.75rem"></th>
+      </tr></thead>
+      <tbody>${requests.map(r => `<tr style="border-bottom:1px solid #f3f4f6">
+        <td style="padding:0.6rem 0.75rem"><strong>${r.name}</strong><br><span style="color:#9ca3af;font-size:0.75rem">${r.email}</span>${r.phone ? `<br><span style="color:#6366f1;font-size:0.75rem;font-weight:600">📞 +91 ${r.phone}</span>` : ''}</td>
+        <td style="padding:0.6rem 0.75rem">
+          ${r.desired_amount ? `<span style="color:#16a34a;font-weight:700">₹${Number(r.desired_amount).toLocaleString('en-IN')}</span><br><span style="color:#9ca3af;font-size:0.75rem">${r.desired_equity ? r.desired_equity + '% equity' : ''}</span>` : '<span style="color:#9ca3af">—</span>'}
+        </td>
+        <td style="padding:0.6rem 0.75rem">
+          <span style="padding:0.2rem 0.6rem;border-radius:99px;font-size:0.72rem;font-weight:700;background:${r.status==='approved'?'#dcfce7':r.status==='rejected'?'#fee2e2':'#fef3c7'};color:${r.status==='approved'?'#16a34a':r.status==='rejected'?'#dc2626':'#d97706'}">${r.status}</span>
+        </td>
+        <td style="padding:0.6rem 0.75rem;color:#6b7280">${new Date(r.created_at).toLocaleDateString('en-IN')}</td>
+        <td style="padding:0.6rem 0.75rem;white-space:nowrap">
+          ${r.status==='pending' ? `<button onclick="approveInvReq(${r.id},this)" style="padding:0.25rem 0.65rem;background:#16a34a;color:#fff;border:none;border-radius:5px;font-size:0.75rem;font-weight:600;cursor:pointer;margin-right:0.35rem">Approve</button>
+          <button onclick="rejectInvReq(${r.id},this)" style="padding:0.25rem 0.65rem;background:#dc2626;color:#fff;border:none;border-radius:5px;font-size:0.75rem;font-weight:600;cursor:pointer;margin-right:0.35rem">Reject</button>` : ''}
+          ${r.status==='approved' ? `<button onclick="openRecordInv(${r.user_id},'${r.name}',${r.desired_amount||0})" style="padding:0.25rem 0.65rem;background:#6366f1;color:#fff;border:none;border-radius:5px;font-size:0.75rem;font-weight:600;cursor:pointer;margin-right:0.35rem">Record Investment</button>` : ''}
+          <button onclick="clearInvReq(${r.id},this)" style="padding:0.25rem 0.65rem;background:#f3f4f6;color:#6b7280;border:1px solid #e5e7eb;border-radius:5px;font-size:0.75rem;font-weight:600;cursor:pointer">Clear</button>
+        </td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+  }
+
+  // Investments table
+  const it = document.getElementById('invRecordsTable');
+  if (!investments.length) { it.innerHTML = '<p style="color:#9ca3af;font-size:0.82rem">No investments yet.</p>'; }
+  else {
+    it.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:0.82rem">
+      <thead><tr style="border-bottom:1px solid #e5e7eb">
+        <th style="text-align:left;padding:0.5rem 0.75rem;color:#6b7280;font-weight:600">Investor</th>
+        <th style="text-align:left;padding:0.5rem 0.75rem;color:#6b7280;font-weight:600">Amount</th>
+        <th style="text-align:left;padding:0.5rem 0.75rem;color:#6b7280;font-weight:600">Equity</th>
+        <th style="text-align:left;padding:0.5rem 0.75rem;color:#6b7280;font-weight:600">Ref</th>
+        <th style="text-align:left;padding:0.5rem 0.75rem;color:#6b7280;font-weight:600">Date</th>
+        <th style="padding:0.5rem 0.75rem"></th>
+      </tr></thead>
+      <tbody>${investments.map(i => `<tr style="border-bottom:1px solid #f3f4f6">
+        <td style="padding:0.6rem 0.75rem"><strong>${i.name}</strong><br><span style="color:#9ca3af;font-size:0.75rem">${i.email}</span></td>
+        <td style="padding:0.6rem 0.75rem;color:#16a34a;font-weight:700">₹${Number(i.amount).toLocaleString('en-IN')}</td>
+        <td style="padding:0.6rem 0.75rem">${i.equity_percent}%</td>
+        <td style="padding:0.6rem 0.75rem;color:#6b7280;font-size:0.72rem;font-family:monospace;max-width:120px;overflow:hidden;text-overflow:ellipsis">${i.payment_id}</td>
+        <td style="padding:0.6rem 0.75rem;color:#6b7280">${new Date(i.created_at).toLocaleDateString('en-IN')}</td>
+        <td style="padding:0.6rem 0.75rem;white-space:nowrap">
+          <button onclick="openEditInv(${i.id},'${i.name}',${i.amount},'${i.payment_id}')" style="padding:0.25rem 0.65rem;background:#f59e0b;color:#fff;border:none;border-radius:5px;font-size:0.75rem;font-weight:600;cursor:pointer">Edit</button>
+        </td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+  }
+}
+
+async function approveInvReq(id, btn) {
+  btn.disabled = true; btn.textContent = '…';
+  const r = await fetch(`/admin/api/investor-requests/${id}/approve`, { method: 'PATCH' }).then(r => r.json()).catch(() => ({}));
+  if (r.success) loadInvestors(); else { alert('Failed'); btn.disabled = false; btn.textContent = 'Approve'; }
+}
+async function rejectInvReq(id, btn) {
+  if (!confirm('Reject this request?')) return;
+  btn.disabled = true; btn.textContent = '…';
+  const r = await fetch(`/admin/api/investor-requests/${id}/reject`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: '{}' }).then(r => r.json()).catch(() => ({}));
+  if (r.success) loadInvestors(); else { alert('Failed'); btn.disabled = false; btn.textContent = 'Reject'; }
+}
+async function clearInvReq(id, btn) {
+  if (!confirm('Remove this request permanently?')) return;
+  btn.disabled = true; btn.textContent = '…';
+  const r = await fetch(`/admin/api/investor-requests/${id}`, { method: 'DELETE' }).then(r => r.json()).catch(() => ({}));
+  if (r.success) loadInvestors(); else { alert('Failed'); btn.disabled = false; btn.textContent = 'Clear'; }
+}
+async function saveInvConfig(btn) {
+  const amount = document.getElementById('invCfgAmount').value;
+  const equity = document.getElementById('invCfgEquity').value;
+  const valuation = document.getElementById('invCfgValuation').value;
+  btn.disabled = true; const orig = btn.textContent; btn.textContent = 'Saving…';
+  const r = await fetch('/admin/api/investment-config', { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ amount, equity, valuation }) }).then(r => r.json()).catch(() => ({}));
+  btn.textContent = r.success ? 'Saved ✓' : 'Failed';
+  setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2000);
+}
+
+// ── Investment modal (record / edit) ───────────────────────────────────────
+let _invModalValuation = 125000;
+
+function openRecordInv(userId, name, defaultAmt) {
+  document.getElementById('invModalTitle').textContent = 'Record Investment';
+  document.getElementById('invModalUserId').value = userId;
+  document.getElementById('invModalInvId').value = '';
+  document.getElementById('invModalName').textContent = name;
+  document.getElementById('invModalAmount').value = defaultAmt || '';
+  document.getElementById('invModalRef').value = '';
+  document.getElementById('invModalErr').textContent = '';
+  document.getElementById('invModalEquityPreview').textContent = '';
+  if (defaultAmt) invModalCalc();
+  document.getElementById('invModal').style.display = 'flex';
+}
+
+function openEditInv(invId, name, amount, paymentId) {
+  document.getElementById('invModalTitle').textContent = 'Edit Investment';
+  document.getElementById('invModalUserId').value = '';
+  document.getElementById('invModalInvId').value = invId;
+  document.getElementById('invModalName').textContent = name;
+  document.getElementById('invModalAmount').value = amount;
+  document.getElementById('invModalRef').value = paymentId || '';
+  document.getElementById('invModalErr').textContent = '';
+  invModalCalc();
+  document.getElementById('invModal').style.display = 'flex';
+}
+
+function closeInvModal() {
+  document.getElementById('invModal').style.display = 'none';
+}
+
+function invModalCalc() {
+  const amt = parseFloat(document.getElementById('invModalAmount').value) || 0;
+  const preview = document.getElementById('invModalEquityPreview');
+  if (!amt) { preview.textContent = ''; return; }
+  const eq = ((amt / _invModalValuation) * 100).toFixed(2);
+  preview.textContent = `→ ${eq}% equity at ₹${_invModalValuation.toLocaleString('en-IN')} valuation`;
+}
+
+async function saveInvModal() {
+  const userId = document.getElementById('invModalUserId').value;
+  const invId  = document.getElementById('invModalInvId').value;
+  const amount = document.getElementById('invModalAmount').value;
+  const ref    = document.getElementById('invModalRef').value.trim();
+  const errEl  = document.getElementById('invModalErr');
+  const btn    = document.getElementById('invModalSaveBtn');
+  if (!amount || parseFloat(amount) < 1) { errEl.textContent = 'Please enter a valid amount'; return; }
+  btn.disabled = true; btn.textContent = 'Saving…';
+  errEl.textContent = '';
+  try {
+    let r;
+    if (invId) {
+      r = await fetch(`/admin/api/investments/${invId}`, {
+        method: 'PATCH', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ amount: parseFloat(amount), payment_ref: ref || undefined }),
+      }).then(r => r.json());
+    } else {
+      r = await fetch('/admin/api/investments/manual', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ user_id: parseInt(userId), amount: parseFloat(amount), payment_ref: ref || undefined }),
+      }).then(r => r.json());
+    }
+    if (r.success) { closeInvModal(); loadInvestors(); }
+    else { errEl.textContent = r.message || 'Failed to save'; }
+  } catch (_) { errEl.textContent = 'Something went wrong'; }
+  btn.disabled = false; btn.textContent = 'Save Investment';
+}
+
+// Close modal on backdrop click
+document.getElementById('invModal').addEventListener('click', function(e) {
+  if (e.target === this) closeInvModal();
+});
+
 async function saveEnvField(key, inputId, btn) {
   const val = document.getElementById(inputId)?.value.trim();
   const orig = btn.textContent;
@@ -4007,6 +4575,62 @@ document.getElementById("couponCreateForm").addEventListener("submit", async fun
     btn.innerHTML = '<i class="fas fa-plus"></i> Create Coupon';
   }
 });
+
+// ── Sub-admin page-load enforcement ─────────────────────────────────────────
+<% if (isSubAdmin && myPerms) { %>
+(function() {
+  const perms = <%- JSON.stringify(myPerms) %>;
+  const sections = ["overview","users","activity","requests","pricing","templates","homepage","ads","coupons","apikeys","investors"];
+
+  sections.forEach(function(sec) {
+    const level = perms[sec] || "none";
+
+    // Hide nav link + section panel if no access
+    if (level === "none") {
+      const navLink = document.querySelector(`.adm-nav-link[data-section="${sec}"]`);
+      if (navLink) navLink.style.display = "none";
+      const panel = document.getElementById(sec);
+      if (panel) panel.style.display = "none";
+      return;
+    }
+
+    // View-only: lock all inputs/buttons now and watch for dynamically loaded content
+    if (level === "view") {
+      const panel = document.getElementById(sec);
+      if (!panel) return;
+      panel.classList.add("adm-view-only");
+
+      function _lockPanel() {
+        panel.querySelectorAll("input, select, textarea").forEach(function(el) {
+          el.disabled = true;
+          el.setAttribute("readonly", "");
+        });
+        panel.querySelectorAll("button, [type='submit']").forEach(function(el) {
+          el.disabled = true;
+        });
+      }
+
+      // Lock immediately and re-lock whenever new content is injected
+      _lockPanel();
+      new MutationObserver(_lockPanel).observe(panel, { childList: true, subtree: true });
+
+      // Block all form submissions in this panel (capture phase so it runs before handlers)
+      panel.addEventListener("submit", function(e) { e.preventDefault(); e.stopImmediatePropagation(); }, true);
+      // Block all button/click events
+      panel.addEventListener("click", function(e) {
+        const t = e.target.closest("button, [type='submit'], [role='button']");
+        if (t) { e.preventDefault(); e.stopImmediatePropagation(); }
+      }, true);
+    }
+  });
+
+  // Navigate to first allowed section if overview is not accessible
+  const firstAllowed = sections.find(function(s) { return (perms[s] || "none") !== "none"; });
+  if (firstAllowed && (perms["overview"] || "none") === "none") {
+    showSection(firstAllowed);
+  }
+})();
+<% } %>
 </script>
 
 <%- include("../partials/footer") %>

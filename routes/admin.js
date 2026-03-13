@@ -29,22 +29,64 @@ const adImgStorage = multer.diskStorage({
 });
 const adUpload = multer({ storage: adImgStorage, limits: { fileSize: 5 * 1024 * 1024 } });
 
+const ADMIN_SECTIONS = ["overview","users","activity","requests","pricing","templates","homepage","ads","coupons","apikeys","investors"];
+
+// Map API path prefixes → section key (for write-guard)
+const SECTION_API_MAP = [
+  { prefix: "/api/user",             section: "users"     },
+  { prefix: "/api/pricing",          section: "pricing"   },
+  { prefix: "/api/templates",        section: "templates" },
+  { prefix: "/api/template",         section: "templates" },
+  { prefix: "/api/homepage",         section: "homepage"  },
+  { prefix: "/api/ads",              section: "ads"       },
+  { prefix: "/api/coupon",           section: "coupons"   },
+  { prefix: "/api/investor",         section: "investors" },
+  { prefix: "/api/investment",       section: "investors" },
+  { prefix: "/api/env-settings",     section: "apikeys"   },
+];
+
 export default function adminRouter(db) {
   const router = Router();
+
+  // ── Sub-admin permissions middleware ───────────────────────────────────────
+  router.use(async (req, res, next) => {
+    if (req.user?.role === "subadmin") {
+      try {
+        const rows = await db.query("SELECT section, level FROM subadmin_permissions WHERE user_id=$1", [req.user.id]);
+        req.subadminPerms = Object.fromEntries(rows.rows.map(r => [r.section, r.level]));
+      } catch (_) { req.subadminPerms = {}; }
+      // Block write requests for sections without edit permission
+      if (req.method !== "GET") {
+        const path = req.path;
+        const match = SECTION_API_MAP.find(m => path.startsWith(m.prefix));
+        if (match && req.subadminPerms[match.section] !== "edit") {
+          return res.status(403).json({ success: false, message: "No edit permission for this section" });
+        }
+      }
+    } else {
+      req.subadminPerms = null; // full admin — unrestricted
+    }
+    next();
+  });
 
   // ── GET /admin — server-rendered dashboard with stats ──────────────────────
   router.get("/", async (req, res) => {
     try {
-      const [users, resumes, downloads, revenue, aiUse, active24h] = await Promise.all([
+      const [users, resumes, downloads, revenue, aiUse, active24h, myInv, myProfile, companyRow] = await Promise.all([
         db.query("SELECT COUNT(*) FROM users"),
         db.query("SELECT COUNT(*) FROM resumes"),
         db.query("SELECT COUNT(*) FROM resume_events WHERE kind = 'download'"),
         db.query("SELECT COALESCE(SUM(amount),0) AS total FROM payments WHERE status = 'captured'"),
         db.query("SELECT COUNT(*) FROM activity_logs WHERE action_type LIKE 'ai_%'"),
-        db.query(
-          "SELECT COUNT(DISTINCT user_id) FROM activity_logs WHERE created_at > NOW() - INTERVAL '24 hours'"
-        ),
+        db.query("SELECT COUNT(DISTINCT user_id) FROM activity_logs WHERE created_at > NOW() - INTERVAL '24 hours'"),
+        db.query("SELECT * FROM investments WHERE user_id=$1 ORDER BY created_at DESC LIMIT 1", [req.user.id]),
+        db.query("SELECT full_name, profile_image_url FROM user_profiles WHERE user_id=$1", [req.user.id]),
+        db.query("SELECT value FROM admin_settings WHERE key='company_name'"),
       ]);
+
+      const isSubAdmin = req.user.role === "subadmin";
+      // req.subadminPerms already populated by middleware
+      const myPerms = isSubAdmin ? (req.subadminPerms || {}) : null;
 
       res.render("admin/dashboard", {
         stats: {
@@ -55,6 +97,11 @@ export default function adminRouter(db) {
           totalRevenue:   Math.round(+revenue.rows[0].total / 100), // paise → rupees
           aiRequests:     +aiUse.rows[0].count,
         },
+        myInvestment: myInv.rows[0] || null,
+        myProfile:    myProfile.rows[0] || null,
+        companyName:  companyRow.rows[0]?.value || 'SmrAI Studio',
+        isSubAdmin,
+        myPerms,
       });
     } catch (err) {
       res.status(500).send("Dashboard error");
@@ -76,7 +123,8 @@ export default function adminRouter(db) {
           (SELECT COUNT(*)::int FROM resumes        WHERE user_id = u.id)                           AS resume_count,
           (SELECT COUNT(*)::int FROM resume_events  WHERE user_id = u.id AND kind = 'download')     AS download_count,
           (SELECT COALESCE(SUM(p.amount),0) FROM payments p WHERE p.user_id = u.id AND p.status = 'captured') AS total_paid,
-          (SELECT MAX(al.created_at) FROM activity_logs al WHERE al.user_id = u.id)                AS last_active
+          (SELECT MAX(al.created_at) FROM activity_logs al WHERE al.user_id = u.id)                AS last_active,
+          EXISTS(SELECT 1 FROM investments WHERE user_id = u.id)                                    AS has_investment
         FROM users u
         LEFT JOIN user_profiles up ON up.user_id = u.id
         ${q ? "WHERE u.name ILIKE $3 OR u.email ILIKE $3" : ""}
@@ -103,15 +151,16 @@ export default function adminRouter(db) {
     }
   });
 
-  // ── GET /admin/api/user/:id — full user detail for modal ──────────────────
+  // ── GET /admin/api/user/:id — full user detail for modal (admin only) ───────
   router.get("/api/user/:id", async (req, res) => {
+    if (req.user.role !== "admin") return res.status(403).json({ success: false, message: "Admin only" });
     try {
       const id = parseInt(req.params.id);
       if (!id) return res.status(400).json({ success: false });
 
       const [userRes, profileRes, countsRes] = await Promise.all([
         db.query(
-          "SELECT id, name, email, role, is_active FROM users WHERE id = $1",
+          "SELECT id, name, email, role, is_active, EXISTS(SELECT 1 FROM investments WHERE user_id=$1) AS has_investment FROM users WHERE id = $1",
           [id]
         ),
         db.query("SELECT * FROM user_profiles WHERE user_id = $1", [id]),
@@ -161,18 +210,63 @@ export default function adminRouter(db) {
       const id   = parseInt(req.params.id);
       const role = req.body.role;
 
-      if (!id || !["admin", "user"].includes(role)) {
+      if (!id || !["admin", "subadmin", "user"].includes(role)) {
         return res.status(400).json({ success: false, message: "Invalid request" });
       }
       if (id === req.user.id && role === "user") {
         return res.status(403).json({ success: false, message: "Cannot demote yourself" });
       }
+      // Only main admin can set admin/subadmin roles
+      if (req.user.role !== "admin") {
+        return res.status(403).json({ success: false, message: "Only main admin can change roles" });
+      }
 
       await db.query("UPDATE users SET role = $1 WHERE id = $2", [role, id]);
+
+      // Seed default permissions when promoting to subadmin
+      if (role === "subadmin") {
+        const SECTIONS = ["overview","users","activity","requests","pricing","templates","homepage","ads","coupons","apikeys","investors"];
+        for (const section of SECTIONS) {
+          await db.query(
+            `INSERT INTO subadmin_permissions (user_id, section, level) VALUES ($1, $2, 'none') ON CONFLICT (user_id, section) DO NOTHING`,
+            [id, section]
+          );
+        }
+      }
       res.json({ success: true });
     } catch (err) {
       res.status(500).json({ success: false });
     }
+  });
+
+  // ── GET /admin/api/user/:id/permissions — get subadmin permissions ─────────
+  router.get("/api/user/:id/permissions", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const rows = await db.query("SELECT section, level FROM subadmin_permissions WHERE user_id=$1", [id]);
+      const perms = Object.fromEntries(ADMIN_SECTIONS.map(s => [s, "none"]));
+      for (const r of rows.rows) perms[r.section] = r.level;
+      res.json({ success: true, permissions: perms });
+    } catch (err) { res.status(500).json({ success: false }); }
+  });
+
+  // ── PATCH /admin/api/user/:id/permissions — update subadmin permissions ────
+  router.patch("/api/user/:id/permissions", async (req, res) => {
+    try {
+      if (req.user.role !== "admin") return res.status(403).json({ success: false, message: "Only main admin can edit permissions" });
+      const id = parseInt(req.params.id);
+      const sections = req.body.sections || {};
+      for (const [section, level] of Object.entries(sections)) {
+        if (!ADMIN_SECTIONS.includes(section)) continue;
+        if (!["none","view","edit"].includes(level)) continue;
+        await db.query(
+          `INSERT INTO subadmin_permissions (user_id, section, level) VALUES ($1,$2,$3)
+           ON CONFLICT (user_id, section) DO UPDATE SET level=$3`,
+          [id, section, level]
+        );
+      }
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ success: false }); }
   });
 
   // ── PATCH /admin/api/user/:id/toggle-active — activate / deactivate ──────
@@ -1147,6 +1241,147 @@ export default function adminRouter(db) {
         const filePath = path.join(__dirname, "..", "public", row.rows[0].image_url);
         fs.unlink(filePath, () => {});
       }
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ success: false }); }
+  });
+
+  // ── Investor Management ─────────────────────────────────────────────────────
+
+  // GET /admin/api/investor-requests — list all requests
+  router.get("/api/investor-requests", async (req, res) => {
+    try {
+      const rows = await db.query(
+        `SELECT ir.*, u.name, u.email
+         FROM investor_requests ir JOIN users u ON u.id = ir.user_id
+         ORDER BY ir.created_at DESC`
+      );
+      res.json({ success: true, requests: rows.rows });
+    } catch (err) { res.status(500).json({ success: false }); }
+  });
+
+  // PATCH /admin/api/investor-requests/:id/approve
+  router.patch("/api/investor-requests/:id/approve", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const r = await db.query(
+        "UPDATE investor_requests SET status='approved', updated_at=NOW() WHERE id=$1 RETURNING user_id",
+        [id]
+      );
+      if (!r.rows[0]) return res.status(404).json({ success: false });
+      await db.query("UPDATE users SET investor_approved=true WHERE id=$1", [r.rows[0].user_id]);
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ success: false }); }
+  });
+
+  // PATCH /admin/api/investor-requests/:id/reject
+  router.patch("/api/investor-requests/:id/reject", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { admin_note } = req.body;
+      await db.query(
+        "UPDATE investor_requests SET status='rejected', admin_note=$1, updated_at=NOW() WHERE id=$2",
+        [admin_note || null, id]
+      );
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ success: false }); }
+  });
+
+  // DELETE /admin/api/investor-requests/:id — remove a request entirely
+  router.delete("/api/investor-requests/:id", async (req, res) => {
+    try {
+      await db.query("DELETE FROM investor_requests WHERE id=$1", [req.params.id]);
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ success: false }); }
+  });
+
+  // GET /admin/api/investments — list all investments
+  router.get("/api/investments", async (req, res) => {
+    try {
+      const rows = await db.query(
+        `SELECT i.*, u.name, u.email
+         FROM investments i JOIN users u ON u.id = i.user_id
+         ORDER BY i.created_at DESC`
+      );
+      res.json({ success: true, investments: rows.rows });
+    } catch (err) { res.status(500).json({ success: false }); }
+  });
+
+  // POST /admin/api/investments/manual — admin manually records an investment
+  router.post("/api/investments/manual", async (req, res) => {
+    try {
+      const { user_id, amount, payment_ref, valuation: valuationOverride } = req.body;
+      if (!user_id || !amount) return res.status(400).json({ success: false, message: 'user_id and amount required' });
+      const cfgRows = await db.query(
+        "SELECT key, value FROM admin_settings WHERE key IN ('investment_equity','investment_valuation')"
+      );
+      const cfg = {};
+      for (const r of cfgRows.rows) cfg[r.key] = parseFloat(r.value);
+      const valuation = valuationOverride ? parseFloat(valuationOverride) : (cfg.investment_valuation || 125000);
+      const totalEquity = cfg.investment_equity || 40;
+      const soldRes = await db.query("SELECT COALESCE(SUM(equity_percent),0) AS sold FROM investments WHERE user_id!=$1", [user_id]);
+      const sold = parseFloat(soldRes.rows[0].sold) || 0;
+      const remaining = parseFloat((totalEquity - sold).toFixed(2));
+      const equityPercent = parseFloat(((parseFloat(amount) / valuation) * 100).toFixed(2));
+      if (equityPercent > remaining) {
+        return res.json({ success: false, message: `Only ${remaining.toFixed(2)}% equity remaining` });
+      }
+      const paymentId = payment_ref || `MANUAL-${Date.now()}`;
+      await db.query(
+        `INSERT INTO investments (user_id, amount, equity_percent, valuation, payment_id)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (payment_id) DO NOTHING`,
+        [user_id, parseFloat(amount), equityPercent, valuation, paymentId]
+      );
+      // Only set role='investor' if not already admin or subadmin
+      await db.query("UPDATE users SET role='investor' WHERE id=$1 AND role NOT IN ('admin','subadmin')", [user_id]);
+      res.json({ success: true, equityPercent });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+  });
+
+  // PATCH /admin/api/investments/:id — admin updates an existing investment amount
+  router.patch("/api/investments/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { amount, payment_ref } = req.body;
+      if (!amount) return res.status(400).json({ success: false, message: 'amount required' });
+      const inv = await db.query("SELECT * FROM investments WHERE id=$1", [id]);
+      if (!inv.rows[0]) return res.status(404).json({ success: false });
+      const valuation = parseFloat(inv.rows[0].valuation);
+      const equityPercent = parseFloat(((parseFloat(amount) / valuation) * 100).toFixed(2));
+      const updates = ["amount=$1", "equity_percent=$2"];
+      const params = [parseFloat(amount), equityPercent];
+      if (payment_ref) { updates.push(`payment_id=$${params.length + 1}`); params.push(payment_ref); }
+      params.push(id);
+      await db.query(`UPDATE investments SET ${updates.join(', ')} WHERE id=$${params.length}`, params);
+      res.json({ success: true, equityPercent });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+  });
+
+  // GET /admin/api/investment-config — read current config
+  router.get("/api/investment-config", async (req, res) => {
+    try {
+      const rows = await db.query(
+        "SELECT key, value FROM admin_settings WHERE key IN ('investment_amount','investment_equity','investment_valuation')"
+      );
+      const cfg = {};
+      for (const r of rows.rows) cfg[r.key] = parseFloat(r.value);
+      res.json({
+        amount:    cfg.investment_amount    || 50000,
+        equity:    cfg.investment_equity    || 40,
+        valuation: cfg.investment_valuation || 125000,
+      });
+    } catch (err) { res.status(500).json({ success: false }); }
+  });
+
+  // PATCH /admin/api/investment-config — update investment amount/equity/valuation
+  router.patch("/api/investment-config", async (req, res) => {
+    try {
+      const { amount, equity, valuation } = req.body;
+      const updates = [];
+      if (amount   != null) updates.push(db.query("INSERT INTO admin_settings(key,value) VALUES('investment_amount',$1) ON CONFLICT(key) DO UPDATE SET value=$1", [String(amount)]));
+      if (equity   != null) updates.push(db.query("INSERT INTO admin_settings(key,value) VALUES('investment_equity',$1) ON CONFLICT(key) DO UPDATE SET value=$1", [String(equity)]));
+      if (valuation!= null) updates.push(db.query("INSERT INTO admin_settings(key,value) VALUES('investment_valuation',$1) ON CONFLICT(key) DO UPDATE SET value=$1", [String(valuation)]));
+      await Promise.all(updates);
       res.json({ success: true });
     } catch (err) { res.status(500).json({ success: false }); }
   });

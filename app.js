@@ -387,6 +387,53 @@ await db.query(`
       await db.query("UPDATE users SET referral_code=$1 WHERE id=$2 AND referral_code IS NULL", [code, u.id]).catch(() => {});
     }
 
+    // ── Investor system ───────────────────────────────────────────────────────
+    await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS investor_approved BOOLEAN NOT NULL DEFAULT false`).catch(() => {});
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS investor_requests (
+        id         SERIAL PRIMARY KEY,
+        user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        status     VARCHAR(20) NOT NULL DEFAULT 'pending',
+        admin_note TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id)
+      )
+    `).catch(() => {});
+    await db.query(`ALTER TABLE investor_requests ADD COLUMN IF NOT EXISTS desired_amount NUMERIC(12,2)`).catch(() => {});
+    await db.query(`ALTER TABLE investor_requests ADD COLUMN IF NOT EXISTS desired_equity NUMERIC(5,2)`).catch(() => {});
+    await db.query(`ALTER TABLE investor_requests ADD COLUMN IF NOT EXISTS phone VARCHAR(20)`).catch(() => {});
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS subadmin_permissions (
+        id       SERIAL PRIMARY KEY,
+        user_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        section  VARCHAR(50) NOT NULL,
+        level    VARCHAR(10) NOT NULL DEFAULT 'none',
+        UNIQUE(user_id, section)
+      )
+    `).catch(() => {});
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS investments (
+        id                SERIAL PRIMARY KEY,
+        user_id           INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        amount            NUMERIC(12,2) NOT NULL,
+        equity_percent    NUMERIC(5,2) NOT NULL,
+        valuation         NUMERIC(14,2) NOT NULL,
+        payment_id        TEXT NOT NULL UNIQUE,
+        razorpay_order_id TEXT,
+        created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `).catch(() => {});
+    // Seed default investment config
+    await db.query(`
+      INSERT INTO admin_settings (key, value) VALUES
+        ('investment_amount', '50000'),
+        ('investment_equity', '40'),
+        ('investment_valuation', '125000'),
+        ('company_name', 'SmrAI Studio')
+      ON CONFLICT (key) DO NOTHING
+    `).catch(() => {});
+
     // Load env overrides from admin_settings (env_* keys)
     try {
       const envRows = await db.query("SELECT key, value FROM admin_settings WHERE key LIKE 'env_%'");
@@ -1679,8 +1726,20 @@ function ensureAuthenticated(req, res, next) {
 
 function ensureAdmin(req, res, next) {
   if (!req.isAuthenticated()) return res.redirect("/login");
-  if (req.user.role === "admin") return next();
+  if (req.user.role === "admin" || req.user.role === "subadmin") return next();
   res.status(403).render("403");
+}
+
+function ensureInvestorApproved(req, res, next) {
+  if (!req.isAuthenticated()) return res.redirect("/login");
+  if (req.user.investor_approved) return next();
+  return res.redirect("/dashboard");
+}
+
+function ensureInvestor(req, res, next) {
+  if (!req.isAuthenticated()) return res.redirect("/login");
+  if (req.user.role === "investor" || req.user.role === "admin") return next();
+  return res.redirect("/dashboard");
 }
 
 // ── Activity logger (non-critical — never crashes a request) ─────────────────
@@ -1722,8 +1781,19 @@ app.use((req, res, next) => {
   next();
 });
 
-app.get("/dashboard", ensureAuthenticated, (req, res) => {
-  res.render("dashboard");
+app.get("/dashboard", ensureAuthenticated, async (req, res) => {
+  if (req.user.role === "admin") return res.redirect("/admin");
+  let subadminInvestment = null;
+  let subadminProfile = null;
+  if (req.user.role === "subadmin") {
+    const [inv, profile] = await Promise.all([
+      db.query("SELECT * FROM investments WHERE user_id=$1 ORDER BY created_at DESC LIMIT 1", [req.user.id]),
+      db.query("SELECT full_name, profile_image_url FROM user_profiles WHERE user_id=$1", [req.user.id]),
+    ]);
+    subadminInvestment = inv.rows[0] || null;
+    subadminProfile = profile.rows[0] || null;
+  }
+  res.render("dashboard", { subadminInvestment, subadminProfile });
 });
 
 // Logout
@@ -2269,6 +2339,160 @@ app.post("/api/ai/interview-generate", ensureAuthenticated, async (req, res) => 
   }
 });
 
+
+// ── Investor System ───────────────────────────────────────────────────────────
+
+// Helper: load investment config from admin_settings
+async function getInvestmentConfig() {
+  const rows = await db.query(
+    "SELECT key, value FROM admin_settings WHERE key IN ('investment_amount','investment_equity','investment_valuation')"
+  );
+  const cfg = {};
+  for (const r of rows.rows) cfg[r.key] = parseFloat(r.value);
+  return {
+    amount:   cfg.investment_amount   || 50000,
+    equity:   cfg.investment_equity   || 40,
+    valuation: cfg.investment_valuation || 125000,
+  };
+}
+
+// POST /investor/request — logged-in user requests investor access
+app.post("/investor/request", ensureAuthenticated, async (req, res) => {
+  try {
+    const desiredAmount = parseFloat(req.body.desired_amount) || null;
+    const cfg = await getInvestmentConfig();
+    const desiredEquity = desiredAmount ? parseFloat(((desiredAmount / cfg.valuation) * 100).toFixed(2)) : null;
+    const phone = (req.body.phone || '').trim().replace(/\D/g, '').slice(0, 20) || null;
+    await db.query(
+      `INSERT INTO investor_requests (user_id, status, desired_amount, desired_equity, phone)
+       VALUES ($1, 'pending', $2, $3, $4)
+       ON CONFLICT (user_id) DO UPDATE SET status='pending', desired_amount=$2, desired_equity=$3, phone=$4, updated_at=NOW()`,
+      [req.user.id, desiredAmount, desiredEquity, phone]
+    );
+    res.redirect("/dashboard?investor_requested=1");
+  } catch (_) {
+    res.redirect("/dashboard");
+  }
+});
+
+// Helper: get sold equity from investments table
+async function getSoldEquity() {
+  const r = await db.query("SELECT COALESCE(SUM(equity_percent),0) AS sold FROM investments");
+  return parseFloat(r.rows[0].sold) || 0;
+}
+
+// GET /investor/offer — approved users view the investment offer
+app.get("/investor/offer", ensureInvestorApproved, async (req, res) => {
+  try {
+    const cfg = await getInvestmentConfig();
+    const soldEquity = await getSoldEquity();
+    const remainingEquity = parseFloat((cfg.equity - soldEquity).toFixed(2));
+    const isFull = remainingEquity <= 0;
+    res.render("investor-offer", { cfg, soldEquity, remainingEquity, isFull });
+  } catch (_) {
+    res.redirect("/dashboard");
+  }
+});
+
+// POST /api/investor/create-order — create Razorpay order for investment
+app.post("/api/investor/create-order", ensureInvestorApproved, async (req, res) => {
+  try {
+    const cfg = await getInvestmentConfig();
+    const soldEquity = await getSoldEquity();
+    const remainingEquity = parseFloat((cfg.equity - soldEquity).toFixed(2));
+    if (remainingEquity <= 0) return res.json({ success: false, message: "All equity has been sold." });
+
+    const amount = parseFloat(req.body.amount);
+    if (!amount || amount < 1250) return res.json({ success: false, message: "Minimum investment is ₹1,250." });
+
+    const equityPercent = parseFloat(((amount / cfg.valuation) * 100).toFixed(2));
+    if (equityPercent > remainingEquity) {
+      return res.json({ success: false, message: `Only ${remainingEquity.toFixed(2)}% equity remaining (max ₹${Math.floor(remainingEquity / 100 * cfg.valuation).toLocaleString('en-IN')}).` });
+    }
+
+    const rzp = getRazorpay();
+    const order = await rzp.orders.create({
+      amount:   Math.round(amount * 100),
+      currency: "INR",
+      receipt:  "invest_" + Date.now(),
+      notes:    { user_id: req.user.id, type: "investment", equity: equityPercent, valuation: cfg.valuation },
+    });
+    res.json({ success: true, orderId: order.id, amount: order.amount, currency: "INR", key: process.env.RAZORPAY_KEY_ID, equityPercent, cfg });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Could not create order." });
+  }
+});
+
+// POST /api/investor/verify — verify payment & record investment
+app.post("/api/investor/verify", ensureAuthenticated, async (req, res) => {
+  if (!req.user) return res.status(401).json({ success: false });
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature, amount, equityPercent } = req.body;
+  try {
+    // Verify signature
+    const hmac = crypto.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET);
+    hmac.update(razorpay_order_id + "|" + razorpay_payment_id);
+    if (hmac.digest("hex") !== razorpay_signature) {
+      return res.status(400).json({ success: false, message: "Invalid payment signature." });
+    }
+    // Idempotency check
+    const existing = await db.query("SELECT id FROM investments WHERE payment_id=$1", [razorpay_payment_id]);
+    if (existing.rows.length > 0) return res.json({ success: true });
+    // Re-check remaining equity
+    const cfg = await getInvestmentConfig();
+    const soldEquity = await getSoldEquity();
+    const remainingEquity = parseFloat((cfg.equity - soldEquity).toFixed(2));
+    const eq = parseFloat(equityPercent) || parseFloat(((parseFloat(amount) / cfg.valuation) * 100).toFixed(2));
+    if (eq > remainingEquity + 0.01) {
+      return res.status(409).json({ success: false, message: "Not enough equity remaining." });
+    }
+    // Record investment with actual amount and calculated equity
+    const investAmount = parseFloat(amount) || parseFloat(((eq / 100) * cfg.valuation).toFixed(2));
+    await db.query(
+      `INSERT INTO investments (user_id, amount, equity_percent, valuation, payment_id, razorpay_order_id)
+       VALUES ($1,$2,$3,$4,$5,$6)`,
+      [req.user.id, investAmount, eq, cfg.valuation, razorpay_payment_id, razorpay_order_id]
+    );
+    // Update user role
+    await db.query("UPDATE users SET role='investor' WHERE id=$1", [req.user.id]);
+    // Refresh session user
+    req.user.role = "investor";
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Verification failed." });
+  }
+});
+
+// GET /investor/dashboard — investor profile card
+app.get("/investor/dashboard", ensureInvestor, async (req, res) => {
+  try {
+    const inv = await db.query(
+      `SELECT i.*, u.name, u.email FROM investments i JOIN users u ON u.id=i.user_id WHERE i.user_id=$1 ORDER BY i.created_at DESC LIMIT 1`,
+      [req.user.id]
+    );
+    const profile = await db.query("SELECT profile_image_url FROM user_profiles WHERE user_id=$1", [req.user.id]);
+    const investment = inv.rows[0];
+    if (!investment) return res.redirect("/investor/offer");
+    res.render("investor-dashboard", {
+      investment,
+      profileImageUrl: profile.rows[0]?.profile_image_url || null,
+    });
+  } catch (_) {
+    res.redirect("/dashboard");
+  }
+});
+
+// GET /investor/history — investment history
+app.get("/investor/history", ensureInvestor, async (req, res) => {
+  try {
+    const rows = await db.query(
+      "SELECT * FROM investments WHERE user_id=$1 ORDER BY created_at DESC",
+      [req.user.id]
+    );
+    res.render("investor-history", { investments: rows.rows });
+  } catch (_) {
+    res.redirect("/dashboard");
+  }
+});
 
 // ── Admin panel ──────────────────────────────────────────────────────────────
 app.use("/admin", ensureAdmin, adminRouter(db));
