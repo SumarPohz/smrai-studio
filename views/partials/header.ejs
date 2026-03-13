@@ -72,38 +72,84 @@
   <% } %>
   <% if (locals.googleTranslateEnabled) { %>
   <style>
-    .gt-desktop-wrap { display:inline-flex; align-items:center; }
-    .goog-te-gadget { font-size:0 !important; }
-    .goog-te-gadget-simple { border:1px solid #d1d5db !important; border-radius:6px !important; padding:0.2rem 0.4rem !important; background:#fff !important; white-space:nowrap; }
-    .goog-te-gadget-simple a.goog-te-menu-value { font-size:0.75rem !important; color:#374151 !important; text-decoration:none !important; }
-    .goog-te-gadget-simple a.goog-te-menu-value span { font-size:0.75rem !important; }
+    /* Hide default Google widget chrome, keep only our custom select */
+    #google_translate_element { display:none !important; }
     .goog-te-banner-frame { display:none !important; }
+    .skiptranslate iframe { display:none !important; }
     body { top: 0 !important; }
+    /* Custom translate select — desktop only */
+    #gt-custom-select {
+      appearance: none;
+      -webkit-appearance: none;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      padding: 0.25rem 1.6rem 0.25rem 0.5rem;
+      font-size: 0.75rem;
+      color: #374151;
+      background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236b7280'/%3E%3C/svg%3E") no-repeat right 0.45rem center;
+      cursor: pointer;
+      outline: none;
+      height: 30px;
+      max-width: 120px;
+    }
+    #gt-custom-select:focus { border-color: #6366f1; }
     @media (max-width: 768px) {
-      .gt-desktop-wrap {
-        position: fixed !important;
+      #gt-custom-select { display: none; }
+    }
+    /* Mobile fixed translate button */
+    #gt-mobile-btn {
+      display: none;
+    }
+    @media (max-width: 768px) {
+      #gt-mobile-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: fixed;
         right: 0;
         top: 50%;
         transform: translateY(-50%);
         z-index: 9999;
+        width: 36px;
+        height: 36px;
         background: #fff;
         border-radius: 8px 0 0 8px;
-        box-shadow: -2px 2px 8px rgba(0,0,0,0.15);
-        padding: 0.2rem 0.3rem;
-        max-width: 44px;
-        overflow: hidden;
-        transition: max-width 0.3s ease;
+        box-shadow: -2px 2px 8px rgba(0,0,0,0.18);
+        cursor: pointer;
+        border: none;
+        padding: 0;
       }
-      .gt-desktop-wrap:hover, .gt-desktop-wrap:focus-within {
-        max-width: 180px;
+      #gt-mobile-btn svg { width: 20px; height: 20px; }
+      /* Mobile dropdown panel */
+      #gt-mobile-panel {
+        display: none;
+        position: fixed;
+        right: 36px;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 9998;
+        background: #fff;
+        border-radius: 8px 0 0 8px;
+        box-shadow: -3px 2px 12px rgba(0,0,0,0.18);
+        padding: 0.4rem 0;
+        min-width: 150px;
+        max-height: 60vh;
+        overflow-y: auto;
       }
-      .goog-te-gadget { font-size: 0 !important; }
-      .goog-te-gadget-simple {
-        border: none !important;
-        background: transparent !important;
-        padding: 0 !important;
+      #gt-mobile-panel.open { display: block; }
+      #gt-mobile-panel button {
+        display: block;
+        width: 100%;
+        padding: 0.5rem 1rem;
+        background: none;
+        border: none;
+        text-align: left;
+        font-size: 0.82rem;
+        color: #374151;
+        cursor: pointer;
+        white-space: nowrap;
       }
-      .goog-te-gadget-simple a.goog-te-menu-value span { font-size: 0.7rem !important; }
+      #gt-mobile-panel button:hover { background: #f3f4f6; }
     }
   </style>
   <% } %>
@@ -147,7 +193,30 @@
 
   <div class="header-right">
     <% if (locals.googleTranslateEnabled) { %>
-    <div id="google_translate_element" class="gt-desktop-wrap"></div>
+    <div id="google_translate_element"></div>
+    <select id="gt-custom-select" title="Translate page" onchange="gtTranslateTo(this.value)">
+      <option value="">🌐 Language</option>
+      <option value="hi">हिंदी</option>
+      <option value="ta">தமிழ்</option>
+      <option value="te">తెలుగు</option>
+      <option value="kn">ಕನ್ನಡ</option>
+      <option value="ml">മലയാളം</option>
+      <option value="mr">मराठी</option>
+      <option value="bn">বাংলা</option>
+      <option value="gu">ગુજરાતી</option>
+      <option value="pa">ਪੰਜਾਬੀ</option>
+      <option value="ur">اردو</option>
+      <option value="ar">العربية</option>
+      <option value="es">Español</option>
+      <option value="fr">Français</option>
+      <option value="de">Deutsch</option>
+      <option value="zh-CN">中文</option>
+      <option value="ja">日本語</option>
+      <option value="ko">한국어</option>
+      <option value="pt">Português</option>
+      <option value="ru">Русский</option>
+      <option value="en">English</option>
+    </select>
     <% } %>
     <a href="https://play.google.com/store/apps/details?id=com.smrai.studio&pli=1"
        class="header-play-btn" target="_blank" rel="noopener noreferrer" title="Get it on Google Play">
@@ -185,6 +254,46 @@
   </div>
 </header>
 </div>
+
+<% if (locals.googleTranslateEnabled) { %>
+<button id="gt-mobile-btn" title="Translate page" onclick="document.getElementById('gt-mobile-panel').classList.toggle('open')">
+  <img src="https://translate.google.com/favicon.ico" width="22" height="22" alt="Translate" style="display:block;border-radius:3px">
+</button>
+<div id="gt-mobile-panel">
+  <button onclick="gtTranslateTo('hi');closeMobilePanel()">हिंदी</button>
+  <button onclick="gtTranslateTo('ta');closeMobilePanel()">தமிழ்</button>
+  <button onclick="gtTranslateTo('te');closeMobilePanel()">తెలుగు</button>
+  <button onclick="gtTranslateTo('kn');closeMobilePanel()">ಕನ್ನಡ</button>
+  <button onclick="gtTranslateTo('ml');closeMobilePanel()">മലയാളം</button>
+  <button onclick="gtTranslateTo('mr');closeMobilePanel()">मराठी</button>
+  <button onclick="gtTranslateTo('bn');closeMobilePanel()">বাংলা</button>
+  <button onclick="gtTranslateTo('gu');closeMobilePanel()">ગુજરાતી</button>
+  <button onclick="gtTranslateTo('pa');closeMobilePanel()">ਪੰਜਾਬੀ</button>
+  <button onclick="gtTranslateTo('ur');closeMobilePanel()">اردو</button>
+  <button onclick="gtTranslateTo('ar');closeMobilePanel()">العربية</button>
+  <button onclick="gtTranslateTo('es');closeMobilePanel()">Español</button>
+  <button onclick="gtTranslateTo('fr');closeMobilePanel()">Français</button>
+  <button onclick="gtTranslateTo('de');closeMobilePanel()">Deutsch</button>
+  <button onclick="gtTranslateTo('zh-CN');closeMobilePanel()">中文</button>
+  <button onclick="gtTranslateTo('ja');closeMobilePanel()">日本語</button>
+  <button onclick="gtTranslateTo('ko');closeMobilePanel()">한국어</button>
+  <button onclick="gtTranslateTo('pt');closeMobilePanel()">Português</button>
+  <button onclick="gtTranslateTo('ru');closeMobilePanel()">Русский</button>
+  <button onclick="gtTranslateTo('en');closeMobilePanel()">English</button>
+</div>
+<script>
+  function closeMobilePanel() {
+    document.getElementById('gt-mobile-panel').classList.remove('open');
+  }
+  document.addEventListener('click', function(e) {
+    var btn = document.getElementById('gt-mobile-btn');
+    var panel = document.getElementById('gt-mobile-panel');
+    if (btn && panel && !btn.contains(e.target) && !panel.contains(e.target)) {
+      panel.classList.remove('open');
+    }
+  });
+</script>
+<% } %>
 
 
   <% if (currentUser) { %>
@@ -352,10 +461,17 @@
     function googleTranslateElementInit() {
       new google.translate.TranslateElement({
         pageLanguage: 'en',
-        includedLanguages: 'hi,ta,te,kn,ml,mr,bn,gu,pa,ur,ar,es,fr,de,zh-CN,ja,ko,pt,ru,id,ms',
-        layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+        includedLanguages: 'hi,ta,te,kn,ml,mr,bn,gu,pa,ur,ar,es,fr,de,zh-CN,ja,ko,pt,ru,id,ms,en',
         autoDisplay: false
       }, 'google_translate_element');
+    }
+    function gtTranslateTo(lang) {
+      if (!lang) return;
+      var sel = document.querySelector('.goog-te-combo');
+      if (sel) {
+        sel.value = lang;
+        sel.dispatchEvent(new Event('change'));
+      }
     }
   </script>
   <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" async></script>
