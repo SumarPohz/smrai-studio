@@ -77,24 +77,58 @@
     .goog-te-banner-frame { display:none !important; }
     .skiptranslate iframe { display:none !important; }
     body { top: 0 !important; }
-    /* Custom translate select — desktop only */
-    #gt-custom-select {
-      appearance: none;
-      -webkit-appearance: none;
-      border: 1px solid #d1d5db;
-      border-radius: 6px;
-      padding: 0.25rem 1.6rem 0.25rem 0.5rem;
-      font-size: 0.75rem;
-      color: #374151;
-      background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236b7280'/%3E%3C/svg%3E") no-repeat right 0.45rem center;
-      cursor: pointer;
-      outline: none;
-      height: 30px;
-      max-width: 120px;
+    /* Desktop translate button + dropdown */
+    #gt-desktop-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
     }
-    #gt-custom-select:focus { border-color: #6366f1; }
+    #gt-desktop-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      border: 1.5px solid #e2e8f0;
+      background: #fff;
+      cursor: pointer;
+      padding: 0;
+      transition: box-shadow 0.15s, border-color 0.15s;
+    }
+    #gt-desktop-btn:hover { border-color: #6366f1; box-shadow: 0 2px 8px rgba(99,102,241,0.15); }
+    #gt-desktop-panel {
+      display: none;
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      z-index: 9999;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      box-shadow: 0 8px 28px rgba(0,0,0,0.14);
+      padding: 8px;
+      width: 200px;
+      max-height: 300px;
+      overflow-y: auto;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+    #gt-desktop-panel.open { display: flex; }
+    #gt-desktop-panel button {
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 0.78rem;
+      cursor: pointer;
+      color: #1e293b;
+      transition: background 0.12s;
+      white-space: nowrap;
+    }
+    #gt-desktop-panel button:hover { background: #dbeafe; color: #1d4ed8; }
     @media (max-width: 768px) {
-      #gt-custom-select { display: none; }
+      #gt-desktop-wrap { display: none; }
     }
     /* Mobile fixed translate button */
     #gt-mobile-btn {
@@ -194,29 +228,33 @@
   <div class="header-right">
     <% if (locals.googleTranslateEnabled) { %>
     <div id="google_translate_element"></div>
-    <select id="gt-custom-select" title="Translate page" onchange="gtTranslateTo(this.value)">
-      <option value="">🌐 Language</option>
-      <option value="hi">हिंदी</option>
-      <option value="ta">தமிழ்</option>
-      <option value="te">తెలుగు</option>
-      <option value="kn">ಕನ್ನಡ</option>
-      <option value="ml">മലയാളം</option>
-      <option value="mr">मराठी</option>
-      <option value="bn">বাংলা</option>
-      <option value="gu">ગુજરાતી</option>
-      <option value="pa">ਪੰਜਾਬੀ</option>
-      <option value="ur">اردو</option>
-      <option value="ar">العربية</option>
-      <option value="es">Español</option>
-      <option value="fr">Français</option>
-      <option value="de">Deutsch</option>
-      <option value="zh-CN">中文</option>
-      <option value="ja">日本語</option>
-      <option value="ko">한국어</option>
-      <option value="pt">Português</option>
-      <option value="ru">Русский</option>
-      <option value="en">English</option>
-    </select>
+    <div id="gt-desktop-wrap">
+      <button id="gt-desktop-btn" title="Translate page" onclick="document.getElementById('gt-desktop-panel').classList.toggle('open');event.stopPropagation()">
+        <img src="https://translate.google.com/favicon.ico" width="20" height="20" alt="Translate" style="display:block;border-radius:3px">
+      </button>
+      <div id="gt-desktop-panel">
+        <button onclick="gtTranslateTo('hi');closeDesktopPanel()">हिंदी</button>
+        <button onclick="gtTranslateTo('ta');closeDesktopPanel()">தமிழ்</button>
+        <button onclick="gtTranslateTo('te');closeDesktopPanel()">తెలుగు</button>
+        <button onclick="gtTranslateTo('kn');closeDesktopPanel()">ಕನ್ನಡ</button>
+        <button onclick="gtTranslateTo('ml');closeDesktopPanel()">മലയാളം</button>
+        <button onclick="gtTranslateTo('mr');closeDesktopPanel()">मराठी</button>
+        <button onclick="gtTranslateTo('bn');closeDesktopPanel()">বাংলা</button>
+        <button onclick="gtTranslateTo('gu');closeDesktopPanel()">ગુજરાતી</button>
+        <button onclick="gtTranslateTo('pa');closeDesktopPanel()">ਪੰਜਾਬੀ</button>
+        <button onclick="gtTranslateTo('ur');closeDesktopPanel()">اردو</button>
+        <button onclick="gtTranslateTo('ar');closeDesktopPanel()">العربية</button>
+        <button onclick="gtTranslateTo('es');closeDesktopPanel()">Español</button>
+        <button onclick="gtTranslateTo('fr');closeDesktopPanel()">Français</button>
+        <button onclick="gtTranslateTo('de');closeDesktopPanel()">Deutsch</button>
+        <button onclick="gtTranslateTo('zh-CN');closeDesktopPanel()">中文</button>
+        <button onclick="gtTranslateTo('ja');closeDesktopPanel()">日本語</button>
+        <button onclick="gtTranslateTo('ko');closeDesktopPanel()">한국어</button>
+        <button onclick="gtTranslateTo('pt');closeDesktopPanel()">Português</button>
+        <button onclick="gtTranslateTo('ru');closeDesktopPanel()">Русский</button>
+        <button onclick="gtTranslateTo('en');closeDesktopPanel()">English</button>
+      </div>
+    </div>
     <% } %>
     <a href="https://play.google.com/store/apps/details?id=com.smrai.studio&pli=1"
        class="header-play-btn" target="_blank" rel="noopener noreferrer" title="Get it on Google Play">
@@ -285,11 +323,19 @@
   function closeMobilePanel() {
     document.getElementById('gt-mobile-panel').classList.remove('open');
   }
+  function closeDesktopPanel() {
+    document.getElementById('gt-desktop-panel').classList.remove('open');
+  }
   document.addEventListener('click', function(e) {
-    var btn = document.getElementById('gt-mobile-btn');
-    var panel = document.getElementById('gt-mobile-panel');
-    if (btn && panel && !btn.contains(e.target) && !panel.contains(e.target)) {
-      panel.classList.remove('open');
+    var mBtn = document.getElementById('gt-mobile-btn');
+    var mPanel = document.getElementById('gt-mobile-panel');
+    if (mBtn && mPanel && !mBtn.contains(e.target) && !mPanel.contains(e.target)) {
+      mPanel.classList.remove('open');
+    }
+    var dBtn = document.getElementById('gt-desktop-btn');
+    var dPanel = document.getElementById('gt-desktop-panel');
+    if (dBtn && dPanel && !dBtn.contains(e.target) && !dPanel.contains(e.target)) {
+      dPanel.classList.remove('open');
     }
   });
 </script>
