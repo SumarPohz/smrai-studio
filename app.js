@@ -1617,16 +1617,23 @@ app.post("/resume-builder/pdf", ensureAuthenticated, async (req, res) => {
   }
 
   // === Profile photo (optional) ===
-  if (profileImageUrl && typeof profileImageUrl === "string" && profileImageUrl.startsWith("/uploads/")) {
-    const imgPath = path.join(__dirname, "public", profileImageUrl);
-    if (fs.existsSync(imgPath)) {
-      try {
-        const photoSize = 72;
-        const photoX = (doc.page.width - photoSize) / 2;
-        doc.image(imgPath, photoX, margin, { width: photoSize, height: photoSize });
-        doc.y = margin + photoSize + 10;
-      } catch (_) { /* skip if image unreadable */ }
-    }
+  if (profileImageUrl && typeof profileImageUrl === "string") {
+    try {
+      const photoSize = 72;
+      const photoX = (doc.page.width - photoSize) / 2;
+      if (profileImageUrl.startsWith("data:")) {
+        // base64 data URL — decode to buffer for PDFKit
+        const base64Data = profileImageUrl.split(",")[1];
+        const imgBuf = Buffer.from(base64Data, "base64");
+        doc.image(imgBuf, photoX, margin, { width: photoSize, height: photoSize });
+      } else if (profileImageUrl.startsWith("/uploads/")) {
+        const imgPath = path.join(__dirname, "public", profileImageUrl);
+        if (fs.existsSync(imgPath)) {
+          doc.image(imgPath, photoX, margin, { width: photoSize, height: photoSize });
+        }
+      }
+      doc.y = margin + photoSize + 10;
+    } catch (_) { /* skip if image unreadable */ }
   }
 
   // === Header ===
@@ -2790,6 +2797,7 @@ app.post("/profile/update", ensureAuthenticated, async (req, res) => {
 });
 
 // Resume-builder photo upload — returns JSON so the page can update without a redirect
+// Stores as base64 data URL so images survive Render's ephemeral filesystem restarts
 app.post(
   "/resume-builder/upload-photo",
   ensureAuthenticated,
@@ -2798,18 +2806,20 @@ app.post(
     if (!req.file) {
       return res.status(400).json({ success: false, error: "No file received" });
     }
-    const imagePath = "/uploads/" + req.file.filename;
+    const b64 = `data:${req.file.mimetype};base64,${fs.readFileSync(req.file.path).toString("base64")}`;
+    try { fs.unlinkSync(req.file.path); } catch(_) {}
     try {
       await db.query(
         `INSERT INTO user_profiles (user_id, profile_image_url, updated_at)
          VALUES ($1, $2, NOW())
          ON CONFLICT (user_id)
          DO UPDATE SET profile_image_url = $2, updated_at = NOW()`,
-        [req.user.id, imagePath]
+        [req.user.id, b64]
       );
     } catch (err) {
+      return res.status(500).json({ success: false, error: "DB error" });
     }
-    res.json({ success: true, imagePath });
+    res.json({ success: true, imagePath: b64 });
   }
 );
 
@@ -2821,22 +2831,17 @@ app.post(
     if (!req.file) {
       return res.redirect("/dashboard");
     }
-
-    // This is the path the browser will use (because "public" is the static root)
-    const imagePath = "/uploads/" + req.file.filename;
-
+    const b64 = `data:${req.file.mimetype};base64,${fs.readFileSync(req.file.path).toString("base64")}`;
+    try { fs.unlinkSync(req.file.path); } catch(_) {}
     try {
       await db.query(
         `INSERT INTO user_profiles (user_id, profile_image_url, updated_at)
          VALUES ($1, $2, NOW())
          ON CONFLICT (user_id)
          DO UPDATE SET profile_image_url = $2, updated_at = NOW()`,
-        [req.user.id, imagePath]
+        [req.user.id, b64]
       );
-    } catch (err) {
-    }
-
-    // 👇 go back to the page the user was on (dashboard or resume-builder)
+    } catch (err) {}
     const referer = req.get("referer") || "/dashboard";
     res.redirect(referer);
   }
