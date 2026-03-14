@@ -930,9 +930,15 @@ export default function adminRouter(db) {
   });
 
   // ── POST /admin/api/homepage/upload-image — upload avatar/service image ──────
+  // Stores as base64 data URL so images survive Render's ephemeral filesystem restarts
   router.post("/api/homepage/upload-image", tplUpload.single("image"), (req, res) => {
     if (!req.file) return res.status(400).json({ success: false, error: "No file uploaded" });
-    res.json({ success: true, imageUrl: `/images/templates/uploads/${req.file.filename}` });
+    const b64 = req.file.buffer
+      ? `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`
+      : `data:${req.file.mimetype};base64,${fs.readFileSync(req.file.path).toString("base64")}`;
+    // Clean up temp file if saved to disk
+    if (req.file.path) { try { fs.unlinkSync(req.file.path); } catch(_){} }
+    res.json({ success: true, imageUrl: b64 });
   });
 
   // ── GET /admin/api/static-templates — list all static templates with overrides ──
