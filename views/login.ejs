@@ -1,9 +1,22 @@
 <%- include("partials/header") %>
 
+<style>
+  .login-wrap {
+    display: flex;
+    justify-content: center;
+    margin-top: 1.5rem;
+    padding: 0 1rem;
+  }
+  .login-wrap .card {
+    width: 100%;
+    max-width: 420px;
+  }
+</style>
+
 <section>
   <h1>Login to SmrAI-Studio</h1>
 
-  <div class="card-grid">
+  <div class="login-wrap">
     <div class="card">
       <% if (typeof error !== "undefined" && error) { %>
         <div class="alert-error">
