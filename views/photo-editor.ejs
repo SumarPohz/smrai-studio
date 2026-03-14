@@ -1,0 +1,556 @@
+<%- include("partials/header") %>
+
+<style>
+  body { overflow: hidden; }
+
+  /* ── Outer layout ── */
+  .ped-outer {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 60px);
+    overflow: hidden;
+  }
+
+  /* ── Toolbar ── */
+  .ped-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0 1rem;
+    height: 42px;
+    background: #1e1e2e;
+    border-bottom: 1px solid #2d2d3f;
+    flex-shrink: 0;
+    z-index: 20;
+    position: relative;
+  }
+  .ped-brand {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: #a5b4fc;
+    margin-right: 0.5rem;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .ped-divider { width: 1px; height: 20px; background: #3d3d55; margin: 0 0.2rem; flex-shrink: 0; }
+  .ped-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.3rem 0.65rem;
+    border-radius: 6px;
+    border: 1px solid #3d3d55;
+    background: #2a2a3d;
+    color: #cbd5e1;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .ped-btn:hover { background: #3b3b55; border-color: #6366f1; color: #fff; }
+  .ped-btn svg { flex-shrink: 0; }
+  .ped-btn-primary { background: #4f46e5; border-color: #4f46e5; color: #fff; }
+  .ped-btn-primary:hover { background: #4338ca; border-color: #4338ca; }
+  .ped-status { margin-left: auto; font-size: 0.72rem; color: #64748b; white-space: nowrap; flex-shrink: 0; }
+
+  /* Desktop: individual save buttons visible, mobile dropdown hidden */
+  .ped-save-wrap { position: relative; display: none; }
+  .ped-save-desktop { display: contents; }
+
+  /* Save dropdown */
+  .ped-save-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    background: #1e1e2e;
+    border: 1px solid #3d3d55;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    z-index: 999;
+    min-width: 110px;
+    overflow: hidden;
+  }
+  .ped-save-menu.open { display: block; }
+  .ped-save-menu button {
+    display: block; width: 100%; padding: 0.55rem 1rem;
+    background: none; border: none; color: #cbd5e1;
+    font-size: 0.82rem; font-weight: 600; text-align: left; cursor: pointer;
+    transition: background 0.1s;
+  }
+  .ped-save-menu button:hover { background: #2a2a3d; color: #fff; }
+
+  /* ── Iframe clip ── */
+  .ped-clip {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+  }
+  .ped-iframe {
+    width: 100%;
+    height: calc(100% + 38px);
+    margin-top: -38px;
+    border: none;
+    display: block;
+  }
+
+  /* ── Custom Splash Screen (covers iframe area, hides Photopea branding/ads) ── */
+  /* Placed OUTSIDE .ped-clip so iframe stacking context can't go above it */
+  .ped-outer { position: relative; }
+  .ped-splash {
+    position: absolute;
+    top: 42px; /* below toolbar */
+    left: 0; right: 0; bottom: 0;
+    z-index: 200;
+    background: #0f0f1a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+  }
+  .ped-splash-inner {
+    text-align: center;
+    max-width: 520px;
+    width: 100%;
+  }
+  .ped-splash-logo {
+    width: 56px; height: 56px;
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    border-radius: 16px;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 1.25rem;
+  }
+  .ped-splash-title {
+    font-size: 1.8rem; font-weight: 800; color: #f1f5f9;
+    margin: 0 0 0.4rem; letter-spacing: -0.01em;
+  }
+  .ped-splash-sub {
+    font-size: 0.9rem; color: #64748b; margin: 0 0 2rem;
+  }
+  .ped-splash-btns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin-bottom: 1.75rem;
+  }
+  .ped-splash-btn {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 0.5rem; padding: 1.1rem 0.75rem;
+    border-radius: 12px; border: 1px solid #2d2d4a;
+    background: #1a1a2e; color: #cbd5e1;
+    font-size: 0.88rem; font-weight: 600; cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  }
+  .ped-splash-btn:hover { background: #252540; border-color: #4f46e5; color: #fff; transform: translateY(-2px); }
+  .ped-splash-btn svg { color: #6366f1; }
+  .ped-splash-btn span { font-size: 0.75rem; color: #475569; font-weight: 400; }
+  .ped-splash-formats {
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 0.4rem;
+  }
+  .ped-fmt-tag {
+    background: #1e1e30; border: 1px solid #2d2d45;
+    border-radius: 5px; padding: 0.2rem 0.5rem;
+    font-size: 0.72rem; font-weight: 700; color: #64748b;
+    letter-spacing: 0.04em;
+  }
+
+  /* ── Right-panel ad cover ── */
+  .ped-ad-cover {
+    position: absolute;
+    top: 0; right: 0; bottom: 0;
+    width: 220px;
+    background: #1e1e2e;
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  #ped-file-input { display: none; }
+
+  /* ── New Project Modal ── */
+  .ped-modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    z-index: 999;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+  .ped-modal-backdrop.open { display: flex; }
+  .ped-modal {
+    background: #161625;
+    border: 1px solid #2d2d4a;
+    border-radius: 16px;
+    padding: 1.75rem 1.5rem 1.5rem;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+    position: relative;
+  }
+  .ped-modal-title {
+    font-size: 1.1rem; font-weight: 800; color: #f1f5f9;
+    margin: 0 0 0.25rem; display: flex; align-items: center; gap: 0.5rem;
+  }
+  .ped-modal-title svg { color: #6366f1; flex-shrink: 0; }
+  .ped-modal-sub { font-size: 0.8rem; color: #475569; margin: 0 0 1.25rem; }
+  .ped-modal-close {
+    position: absolute; top: 1rem; right: 1rem;
+    background: none; border: none; color: #475569;
+    font-size: 1.2rem; cursor: pointer; line-height: 1; padding: 0.2rem 0.4rem;
+    border-radius: 6px; transition: background 0.1s, color 0.1s;
+  }
+  .ped-modal-close:hover { background: #2a2a3d; color: #fff; }
+
+  /* Presets */
+  .ped-presets {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+  }
+  .ped-preset-btn {
+    background: #1e1e2e; border: 1px solid #2d2d45;
+    border-radius: 10px; padding: 0.6rem 0.4rem;
+    cursor: pointer; text-align: center; transition: border-color 0.15s, background 0.15s;
+  }
+  .ped-preset-btn:hover, .ped-preset-btn.active {
+    border-color: #6366f1; background: #1f1f38;
+  }
+  .ped-preset-btn .pre-name { font-size: 0.72rem; font-weight: 700; color: #cbd5e1; display: block; }
+  .ped-preset-btn .pre-size { font-size: 0.65rem; color: #475569; display: block; margin-top: 2px; }
+
+  /* Size inputs */
+  .ped-size-row {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 0.75rem; margin-bottom: 1.25rem;
+  }
+  .ped-size-group label {
+    display: block; font-size: 0.72rem; font-weight: 600;
+    color: #64748b; margin-bottom: 0.35rem; letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .ped-size-group input {
+    width: 100%; box-sizing: border-box;
+    background: #0f0f1a; border: 1px solid #2d2d45;
+    border-radius: 8px; padding: 0.55rem 0.75rem;
+    color: #f1f5f9; font-size: 0.95rem; font-weight: 600;
+    outline: none; transition: border-color 0.15s;
+  }
+  .ped-size-group input:focus { border-color: #6366f1; }
+
+  .ped-modal-actions {
+    display: flex; gap: 0.6rem; justify-content: flex-end;
+  }
+  .ped-modal-cancel {
+    background: #1e1e2e; border: 1px solid #2d2d45; color: #94a3b8;
+    border-radius: 8px; padding: 0.55rem 1.1rem;
+    font-size: 0.85rem; font-weight: 600; cursor: pointer;
+    transition: background 0.1s, color 0.1s;
+  }
+  .ped-modal-cancel:hover { background: #2a2a3d; color: #fff; }
+  .ped-modal-create {
+    background: #4f46e5; border: 1px solid #4f46e5; color: #fff;
+    border-radius: 8px; padding: 0.55rem 1.4rem;
+    font-size: 0.85rem; font-weight: 700; cursor: pointer;
+    transition: background 0.1s, transform 0.1s;
+  }
+  .ped-modal-create:hover { background: #4338ca; transform: translateY(-1px); }
+
+  @media (max-width: 480px) {
+    .ped-presets { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  /* ── Mobile ── */
+  @media (max-width: 640px) {
+    .ped-outer { height: calc(100vh - 72px); }
+    .ped-toolbar { padding: 0 0.6rem; gap: 0.3rem; height: 46px; }
+    .ped-splash { top: 46px; }
+    .ped-label { display: none; }
+    .ped-btn { padding: 0.35rem 0.5rem; }
+    .ped-status { display: none; }
+    .ped-divider { margin: 0 0.1rem; }
+    .ped-save-wrap { display: block; }
+    .ped-save-desktop { display: none; }
+    .ped-iframe { height: calc(100% + 38px); margin-top: -38px; }
+    .ped-ad-cover { width: 0; }
+    .ped-brand span { display: none; }
+    .ped-splash-btns { grid-template-columns: 1fr; }
+    .ped-splash-title { font-size: 1.4rem; }
+  }
+</style>
+
+<div class="ped-outer">
+
+  <!-- Toolbar -->
+  <div class="ped-toolbar">
+    <span class="ped-brand">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 9h6M9 13h4"/></svg>
+      <span>Design Editor</span>
+    </span>
+    <div class="ped-divider"></div>
+
+    <!-- Home: shows splash again -->
+    <button class="ped-btn" onclick="pedShowSplash()" title="Home">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span class="ped-label">Home</span>
+    </button>
+
+    <button class="ped-btn ped-btn-primary" onclick="pedNew()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <span class="ped-label">New</span>
+    </button>
+
+    <button class="ped-btn" onclick="pedOpen()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+      <span class="ped-label">Open</span>
+    </button>
+
+    <div class="ped-divider"></div>
+
+    <!-- Desktop save buttons -->
+    <span class="ped-save-desktop">
+      <button class="ped-btn" onclick="pedSavePNG()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Save PNG
+      </button>
+      <button class="ped-btn" onclick="pedSaveJPG()" style="margin-left:0.3rem">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Save JPG
+      </button>
+      <button class="ped-btn" onclick="pedSavePSD()" style="margin-left:0.3rem">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Save PSD
+      </button>
+    </span>
+
+    <!-- Mobile save dropdown -->
+    <div class="ped-save-wrap">
+      <button class="ped-btn" onclick="pedToggleSave(event)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        ▾
+      </button>
+      <div class="ped-save-menu" id="ped-save-menu">
+        <button onclick="pedSavePNG();pedCloseSave()">⬇ PNG</button>
+        <button onclick="pedSaveJPG();pedCloseSave()">⬇ JPG</button>
+        <button onclick="pedSavePSD();pedCloseSave()">⬇ PSD</button>
+      </div>
+    </div>
+
+    <span class="ped-status" id="ped-status">Ready</span>
+  </div>
+
+  <!-- iframe -->
+  <div class="ped-clip">
+    <iframe
+      id="photopea-frame"
+      class="ped-iframe"
+      src="https://www.photopea.com#%7B%22environment%22%3A%7B%22theme%22%3A1%2C%22intro%22%3Afalse%7D%7D"
+      allow="clipboard-read; clipboard-write"
+      title="Design Editor">
+    </iframe>
+    <!-- Covers Photopea's right ad panel -->
+    <div class="ped-ad-cover"></div>
+  </div>
+
+  <!-- Splash sits OUTSIDE .ped-clip so it's above the iframe stacking context -->
+  <div class="ped-splash" id="ped-splash">
+      <div class="ped-splash-inner">
+        <div class="ped-splash-logo">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 9h6M9 13h4"/></svg>
+        </div>
+        <h1 class="ped-splash-title">Design Editor</h1>
+        <p class="ped-splash-sub">Create, edit and export professional designs</p>
+
+        <div class="ped-splash-btns">
+          <button class="ped-splash-btn" onclick="pedSplashNew()">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+            New Project
+            <span>Start with a blank canvas</span>
+          </button>
+          <button class="ped-splash-btn" onclick="pedSplashOpen()">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            Open File
+            <span>From your device</span>
+          </button>
+        </div>
+
+        <div class="ped-splash-formats">
+          <span class="ped-fmt-tag">PSD</span>
+          <span class="ped-fmt-tag">AI</span>
+          <span class="ped-fmt-tag">XD</span>
+          <span class="ped-fmt-tag">FIG</span>
+          <span class="ped-fmt-tag">SVG</span>
+          <span class="ped-fmt-tag">PDF</span>
+          <span class="ped-fmt-tag">PNG</span>
+          <span class="ped-fmt-tag">JPG</span>
+          <span class="ped-fmt-tag">RAW</span>
+        </div>
+      </div>
+    </div>
+</div>
+
+<!-- New Project Modal -->
+<div class="ped-modal-backdrop" id="ped-modal">
+  <div class="ped-modal">
+    <button class="ped-modal-close" onclick="pedCloseModal()" title="Close">✕</button>
+    <div class="ped-modal-title">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+      New Project
+    </div>
+    <p class="ped-modal-sub">Choose a preset or enter custom dimensions</p>
+
+    <div class="ped-presets">
+      <button class="ped-preset-btn" onclick="pedSetPreset(1080,1080,this)">
+        <span class="pre-name">Instagram</span>
+        <span class="pre-size">1080 × 1080</span>
+      </button>
+      <button class="ped-preset-btn" onclick="pedSetPreset(1080,1920,this)">
+        <span class="pre-name">Story</span>
+        <span class="pre-size">1080 × 1920</span>
+      </button>
+      <button class="ped-preset-btn" onclick="pedSetPreset(1200,630,this)">
+        <span class="pre-name">Facebook</span>
+        <span class="pre-size">1200 × 630</span>
+      </button>
+      <button class="ped-preset-btn" onclick="pedSetPreset(1920,1080,this)">
+        <span class="pre-name">HD</span>
+        <span class="pre-size">1920 × 1080</span>
+      </button>
+      <button class="ped-preset-btn" onclick="pedSetPreset(3840,2160,this)">
+        <span class="pre-name">4K</span>
+        <span class="pre-size">3840 × 2160</span>
+      </button>
+      <button class="ped-preset-btn" onclick="pedSetPreset(2480,3508,this)">
+        <span class="pre-name">A4 Print</span>
+        <span class="pre-size">2480 × 3508</span>
+      </button>
+    </div>
+
+    <div class="ped-size-row">
+      <div class="ped-size-group">
+        <label>Width (px)</label>
+        <input type="number" id="ped-w-input" value="1080" min="1" max="9999">
+      </div>
+      <div class="ped-size-group">
+        <label>Height (px)</label>
+        <input type="number" id="ped-h-input" value="1080" min="1" max="9999">
+      </div>
+    </div>
+
+    <div class="ped-modal-actions">
+      <button class="ped-modal-cancel" onclick="pedCloseModal()">Cancel</button>
+      <button class="ped-modal-create" onclick="pedConfirmNew()">Create Canvas</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="ped-file-input" accept="image/*,.psd,.ai,.xd,.fig,.sketch,.pdf,.svg">
+
+<script>
+  var pp = document.getElementById('photopea-frame');
+  var statusEl = document.getElementById('ped-status');
+  var fileInp = document.getElementById('ped-file-input');
+  var _pendingFmt = null;
+  var _pendingNew = null;
+  var _ppReady = false;
+
+  window.addEventListener('message', function(e) {
+    if (e.data === 'done') {
+      _ppReady = true;
+      statusEl.textContent = 'Ready';
+      if (_pendingNew) {
+        var d = _pendingNew; _pendingNew = null;
+        pp.contentWindow.postMessage(
+          'app.documents.add('+d.w+','+d.h+',72,"Design",NewDocumentMode.RGB,DocumentFill.WHITE,1)', '*'
+        );
+      }
+      return;
+    }
+    if (e.data instanceof ArrayBuffer && _pendingFmt) {
+      var blob = new Blob([e.data]);
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = 'design.' + _pendingFmt; a.click();
+      URL.revokeObjectURL(url);
+      _pendingFmt = null;
+    }
+  });
+
+  function sendScript(s) { pp.contentWindow.postMessage(s, '*'); }
+
+  function pedHideSplash() { document.getElementById('ped-splash').style.display = 'none'; }
+  function pedShowSplash() { document.getElementById('ped-splash').style.display = 'flex'; }
+
+  // Modal helpers
+  function pedOpenModal() {
+    document.getElementById('ped-modal').classList.add('open');
+    document.querySelectorAll('.ped-preset-btn').forEach(function(b){ b.classList.remove('active'); });
+  }
+  function pedCloseModal() {
+    document.getElementById('ped-modal').classList.remove('open');
+  }
+  function pedSetPreset(w, h, btn) {
+    document.getElementById('ped-w-input').value = w;
+    document.getElementById('ped-h-input').value = h;
+    document.querySelectorAll('.ped-preset-btn').forEach(function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+  }
+  function pedConfirmNew() {
+    var w = parseInt(document.getElementById('ped-w-input').value);
+    var h = parseInt(document.getElementById('ped-h-input').value);
+    if (!w || !h || w < 1 || h < 1) return;
+    pedCloseModal();
+    pedHideSplash();
+    statusEl.textContent = 'Creating…';
+    if (_ppReady) {
+      sendScript('app.documents.add('+w+','+h+',72,"Design",NewDocumentMode.RGB,DocumentFill.WHITE,1)');
+    } else {
+      _pendingNew = { w: w, h: h };
+    }
+  }
+  // Close modal on backdrop click
+  document.getElementById('ped-modal').addEventListener('click', function(e) {
+    if (e.target === this) pedCloseModal();
+  });
+  // Enter key submits modal
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && document.getElementById('ped-modal').classList.contains('open')) pedConfirmNew();
+    if (e.key === 'Escape') pedCloseModal();
+  });
+
+  function pedSplashNew() { pedOpenModal(); }
+
+  function pedSplashOpen() {
+    pedHideSplash();
+    fileInp.click();
+  }
+
+  function pedNew() { pedOpenModal(); }
+
+  function pedOpen() { fileInp.click(); }
+
+  fileInp.addEventListener('change', function() {
+    var file = this.files[0]; if (!file) return;
+    pedHideSplash();
+    statusEl.textContent = 'Opening…';
+    var r = new FileReader();
+    r.onload = function(e) { pp.contentWindow.postMessage(e.target.result, '*'); };
+    r.readAsArrayBuffer(file);
+    this.value = '';
+  });
+
+  function pedSavePNG() { statusEl.textContent = 'Saving PNG…'; _pendingFmt = 'png'; sendScript('app.activeDocument.saveToOE("png");'); }
+  function pedSaveJPG() { statusEl.textContent = 'Saving JPG…'; _pendingFmt = 'jpg'; sendScript('app.activeDocument.saveToOE("jpg");'); }
+  function pedSavePSD() { statusEl.textContent = 'Saving PSD…'; _pendingFmt = 'psd'; sendScript('app.activeDocument.saveToOE("psd");'); }
+
+  function pedToggleSave(e) { e.stopPropagation(); document.getElementById('ped-save-menu').classList.toggle('open'); }
+  function pedCloseSave() { document.getElementById('ped-save-menu').classList.remove('open'); }
+  document.addEventListener('click', pedCloseSave);
+</script>
+
+<%- include("partials/footer") %>

@@ -1381,6 +1381,11 @@ app.get("/resume-templates", ensureAuthenticated, async (_req, res) => {
   }
 });
 
+// ---------- Photo Editor ----------
+app.get("/photo-editor", ensureAuthenticated, (req, res) => {
+  res.render("photo-editor");
+});
+
 // ---------- Application Builder ----------
 app.get("/application-builder", ensureAuthenticated, (req, res) => {
   const profile = res.locals.userProfile || {};

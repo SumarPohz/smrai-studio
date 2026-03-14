@@ -12,6 +12,12 @@
 <div class="page-container">
 
   <!-- ── Hero ─────────────────────────────────────────────────────────────── -->
+  <%
+  var _heroImgs = (hp_hero.heroImages && hp_hero.heroImages.length)
+    ? hp_hero.heroImages
+    : (hp_hero.heroImage ? [hp_hero.heroImage] : ['/images/hero-photo.png']);
+  var _heroJson = JSON.stringify(_heroImgs).replace(/"/g, '&quot;');
+  %>
   <section class="hero">
     <div class="hero-content">
       <p class="hero-tag"><%= hp_hero.tag || 'AI-Powered Resume Studio' %></p>
@@ -25,9 +31,15 @@
             <span class="dot-group"><span></span><span></span><span></span></span>
           </div>
           <div class="hero-card-body">
-            <img class="hero-avatar" src="/images/hero-photo.png" alt="Profile"
-                 onerror="this.style.background='linear-gradient(135deg,#3b82f6,#22c55e)';this.src='';this.onerror=null;">
-            <div class="hero-lines"><span></span><span></span><span class="short"></span></div>
+            <div class="hero-gallery" data-images="<%= _heroJson %>">
+              <div class="hcg-track">
+                <% var _mn = _heroImgs.length > 3 ? 4 : _heroImgs.length; %>
+                <% for (var _mi = 0; _mi < _mn; _mi++) { %>
+                <div class="hcg-item"><img src="<%= _heroImgs[_mi] %>" alt="Profile"
+                     onerror="this.style.background='linear-gradient(135deg,#3b82f6,#22c55e)';this.src='';this.onerror=null;"></div>
+                <% } %>
+              </div>
+            </div>
           </div>
           <div class="hero-card-footer">
             <span class="pill">PDF</span>
@@ -42,6 +54,10 @@
       <div class="hero-actions">
         <% if (currentUser) { %>
           <a href="/resume-templates" class="btn-primary hero-btn-lg">Start Building Resume</a>
+          <a href="/photo-editor" class="hero-btn-photo">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            SmrPhoto Editor
+          </a>
         <% } else { %>
           <a href="/register" class="btn-primary hero-btn-lg">Get Started Free</a>
           <a href="/login" class="btn-ghost hero-btn">Log in</a>
@@ -59,9 +75,15 @@
           <span class="dot-group"><span></span><span></span><span></span></span>
         </div>
         <div class="hero-card-body">
-          <img class="hero-avatar" src="/images/hero-photo.png" alt="Profile"
-               onerror="this.style.background='linear-gradient(135deg,#3b82f6,#22c55e)';this.src='';this.onerror=null;">
-          <div class="hero-lines"><span></span><span></span><span class="short"></span></div>
+          <div class="hero-gallery" data-images="<%= _heroJson %>">
+            <div class="hcg-track">
+              <% var _dn = _heroImgs.length > 3 ? 4 : _heroImgs.length; %>
+              <% for (var _di = 0; _di < _dn; _di++) { %>
+              <div class="hcg-item"><img src="<%= _heroImgs[_di] %>" alt="Profile"
+                   onerror="this.style.background='linear-gradient(135deg,#3b82f6,#22c55e)';this.src='';this.onerror=null;"></div>
+              <% } %>
+            </div>
+          </div>
         </div>
         <div class="hero-card-footer">
           <span class="pill">PDF</span>
@@ -204,4 +226,31 @@
   }
 </style>
 
+<script>
+document.querySelectorAll('.hero-gallery').forEach(function(gallery) {
+  var images = JSON.parse(gallery.getAttribute('data-images') || '[]');
+  if (images.length <= 3) return;
+  var track = gallery.querySelector('.hcg-track');
+  if (!track) return;
+  var cur = 3;
+
+  setInterval(function() {
+    var firstItem = track.firstElementChild;
+    if (!firstItem || !firstItem.offsetWidth) return; // skip if hidden
+    var shift = firstItem.offsetWidth + 5; // item width + gap
+
+    track.style.transition = 'transform 0.4s cubic-bezier(0.4,0,0.2,1)';
+    track.style.transform  = 'translateX(-' + shift + 'px)';
+
+    setTimeout(function() {
+      track.style.transition = 'none';
+      track.style.transform  = 'translateX(0)';
+      track.appendChild(track.firstElementChild);
+      cur = (cur + 1) % images.length;
+      track.lastElementChild.querySelector('img').src = images[cur];
+      void track.offsetWidth; // force reflow so transition:none registers
+    }, 440);
+  }, 2500);
+});
+</script>
 <%- include("partials/footer") %>

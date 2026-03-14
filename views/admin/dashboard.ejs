@@ -576,6 +576,14 @@
               <label>Trust Bar Text</label>
               <input type="text" id="hp_hero_trust" placeholder="No design skills needed · 8 templates · AI-powered" maxlength="200" />
             </div>
+            <div class="adm-stpl-field">
+              <label>Hero Card Photos <span style="font-size:0.7rem;color:#6b7280">(slides every 2 sec)</span></label>
+              <div id="hp_hero_images_list" style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.5rem;min-height:20px;"></div>
+              <label class="adm-btn-secondary" style="cursor:pointer;margin:0;">
+                <i class="fas fa-plus"></i> Add Photo
+                <input type="file" id="hp_hero_img_input" accept="image/*" style="display:none">
+              </label>
+            </div>
             <div class="adm-hp-form-footer">
               <button class="adm-btn-primary" onclick="saveHpSection('hero')"><i class="fas fa-check"></i> Save Hero</button>
               <span class="adm-hp-msg" id="hp_hero_msg"></span>
@@ -3701,11 +3709,50 @@ async function loadHomepage() {
 }
 
 // ── Hero ───────────────────────────────────────────────────────────────────
+let heroImagesList = [];
+
+document.addEventListener("DOMContentLoaded", function() {
+  document.getElementById("hp_hero_img_input").addEventListener("change", async function() {
+    const file = this.files[0];
+    if (!file) return;
+    const fd = new FormData(); fd.append("image", file);
+    const r = await fetch("/admin/api/homepage/upload-image", { method: "POST", body: fd });
+    const d = await r.json();
+    if (!d.success) { alert("Upload failed"); return; }
+    heroImagesList.push(d.imageUrl);
+    renderHeroImages(heroImagesList);
+    this.value = "";
+  });
+});
+
+function renderHeroImages(images) {
+  const list = document.getElementById("hp_hero_images_list");
+  list.innerHTML = "";
+  images.forEach(function(url, i) {
+    const wrap = document.createElement("div");
+    wrap.style.cssText = "position:relative;width:56px;height:72px;border-radius:8px;overflow:hidden;border:1px solid #374151;flex-shrink:0;";
+    wrap.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;">
+      <button type="button" onclick="removeHeroImage(${i})"
+        style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.72);border:none;border-radius:50%;width:18px;height:18px;color:#fff;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">
+        <i class="fas fa-times"></i></button>`;
+    list.appendChild(wrap);
+  });
+}
+
+function removeHeroImage(idx) {
+  heroImagesList.splice(idx, 1);
+  renderHeroImages(heroImagesList);
+}
+
 function populateHeroForm(h) {
   document.getElementById("hp_hero_tag").value      = h.tag      || "";
   document.getElementById("hp_hero_headline").value = h.headline || "";
   document.getElementById("hp_hero_subtitle").value = h.subtitle || "";
   document.getElementById("hp_hero_trust").value    = h.trustText|| "";
+  heroImagesList = h.heroImages && h.heroImages.length
+    ? h.heroImages
+    : (h.heroImage ? [h.heroImage] : []);
+  renderHeroImages(heroImagesList);
 }
 
 async function saveHpSection(section) {
@@ -3715,10 +3762,11 @@ async function saveHpSection(section) {
   if (section === "hero") {
     msgEl   = document.getElementById("hp_hero_msg");
     payload = {
-      tag:       document.getElementById("hp_hero_tag").value.trim(),
-      headline:  document.getElementById("hp_hero_headline").value.trim(),
-      subtitle:  document.getElementById("hp_hero_subtitle").value.trim(),
-      trustText: document.getElementById("hp_hero_trust").value.trim(),
+      tag:        document.getElementById("hp_hero_tag").value.trim(),
+      headline:   document.getElementById("hp_hero_headline").value.trim(),
+      subtitle:   document.getElementById("hp_hero_subtitle").value.trim(),
+      trustText:  document.getElementById("hp_hero_trust").value.trim(),
+      heroImages: heroImagesList.length ? [...heroImagesList] : null,
     };
     if (!payload.headline) { showHpMsg(msgEl,"Headline is required.","error"); return; }
   } else if (section === "services") {
