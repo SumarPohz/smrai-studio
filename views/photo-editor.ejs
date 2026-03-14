@@ -2,6 +2,9 @@
 
 <style>
   body { overflow: hidden; }
+  /* Hide Google Translate on photo editor page */
+  #gt-desktop-btn, #gt-desktop-panel,
+  #gt-mobile-btn,  #gt-mobile-panel { display: none !important; }
 
   /* ── Outer layout ── */
   .ped-outer {
@@ -93,8 +96,7 @@
   }
   .ped-iframe {
     width: 100%;
-    height: calc(100% + 38px);
-    margin-top: -38px;
+    height: 100%;
     border: none;
     display: block;
   }
@@ -159,15 +161,27 @@
     letter-spacing: 0.04em;
   }
 
-  /* ── Right-panel ad cover ── */
+  /* ── Right-panel ad cover (below menu bar) ── */
   .ped-ad-cover {
     position: absolute;
-    top: 0; right: 0; bottom: 0;
-    width: 220px;
+    top: 30px; right: 0; bottom: 0;
+    width: 0;
     background: #1e1e2e;
     z-index: 10;
     pointer-events: none;
   }
+
+  /* ── Menu bar right cover: hides About/links on the far right of menu row ── */
+  .ped-menubar-cover {
+    position: absolute;
+    top: 0; right: 0;
+    height: 30px;
+    width: 70%;
+    background: #1e1e2e;
+    z-index: 10;
+    pointer-events: none;
+  }
+
 
   #ped-file-input { display: none; }
 
@@ -276,11 +290,13 @@
     .ped-divider { margin: 0 0.1rem; }
     .ped-save-wrap { display: block; }
     .ped-save-desktop { display: none; }
-    .ped-iframe { height: calc(100% + 38px); margin-top: -38px; }
+    .ped-iframe { height: 100%; margin-top: 0; }
     .ped-ad-cover { width: 0; }
+    .ped-menubar-cover { display: none; }
     .ped-brand span { display: none; }
-    .ped-splash-btns { grid-template-columns: 1fr; }
     .ped-splash-title { font-size: 1.4rem; }
+    .refer-float,
+    .whatsapp-float { display: none !important; }
   }
 </style>
 
@@ -353,8 +369,10 @@
       allow="clipboard-read; clipboard-write"
       title="Design Editor">
     </iframe>
-    <!-- Covers Photopea's right ad panel -->
+    <!-- Covers Photopea's right ad panel (below menu bar) -->
     <div class="ped-ad-cover"></div>
+    <!-- Covers About/links on the right half of Photopea's menu bar -->
+    <div class="ped-menubar-cover"></div>
   </div>
 
   <!-- Splash sits OUTSIDE .ped-clip so it's above the iframe stacking context -->
