@@ -1,0 +1,756 @@
+<%- include("partials/header") %>
+
+<style>
+  .bgr-page {
+    min-height: calc(100vh - 60px);
+    background: linear-gradient(135deg, #0a0a1a 0%, #0d1b2a 50%, #0a2a3a 100%);
+    padding: 2.5rem 1rem 4rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* ── Hero header ── */
+  .bgr-header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+    max-width: 600px;
+  }
+  .bgr-header .bgr-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: rgba(6, 182, 212, 0.12);
+    border: 1px solid rgba(6, 182, 212, 0.3);
+    color: #22d3ee;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.3rem 0.9rem;
+    border-radius: 999px;
+    margin-bottom: 1rem;
+  }
+  .bgr-header h1 {
+    font-size: clamp(1.8rem, 5vw, 2.6rem);
+    font-weight: 800;
+    color: #f1f5f9;
+    line-height: 1.2;
+    margin-bottom: 0.75rem;
+  }
+  .bgr-header h1 span {
+    background: linear-gradient(90deg, #06b6d4, #3b82f6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .bgr-header p {
+    color: #94a3b8;
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+
+  /* ── Main card ── */
+  .bgr-card {
+    width: 100%;
+    max-width: 860px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 24px;
+    backdrop-filter: blur(12px);
+    overflow: hidden;
+  }
+
+  /* ── Upload zone ── */
+  .bgr-upload-zone {
+    padding: 3rem 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    border: 2px dashed rgba(6, 182, 212, 0.3);
+    border-radius: 20px;
+    margin: 1.5rem;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    min-height: 260px;
+    position: relative;
+  }
+  .bgr-upload-zone:hover,
+  .bgr-upload-zone.drag-over {
+    border-color: #06b6d4;
+    background: rgba(6, 182, 212, 0.05);
+  }
+  .bgr-upload-icon {
+    width: 72px;
+    height: 72px;
+    background: linear-gradient(135deg, rgba(6,182,212,0.15), rgba(59,130,246,0.15));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(6,182,212,0.25);
+  }
+  .bgr-upload-icon svg {
+    width: 32px;
+    height: 32px;
+    color: #22d3ee;
+  }
+  .bgr-upload-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #e2e8f0;
+    text-align: center;
+  }
+  .bgr-upload-sub {
+    font-size: 0.85rem;
+    color: #64748b;
+    text-align: center;
+  }
+  .bgr-upload-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.8rem;
+    background: linear-gradient(135deg, #0891b2, #2563eb);
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.9rem;
+    border-radius: 999px;
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.15s;
+    box-shadow: 0 4px 16px rgba(8, 145, 178, 0.35);
+  }
+  .bgr-upload-btn:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+  }
+  .bgr-formats {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .bgr-format-tag {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #94a3b8;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.2rem 0.6rem;
+    border-radius: 6px;
+    letter-spacing: 0.04em;
+  }
+  #bgr-file-input { display: none; }
+
+  /* ── Processing state ── */
+  .bgr-processing {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.25rem;
+    padding: 4rem 2rem;
+    min-height: 260px;
+  }
+  .bgr-spinner {
+    width: 60px;
+    height: 60px;
+    border: 3px solid rgba(6,182,212,0.15);
+    border-top-color: #06b6d4;
+    border-radius: 50%;
+    animation: bgr-spin 0.8s linear infinite;
+  }
+  @keyframes bgr-spin { to { transform: rotate(360deg); } }
+  .bgr-processing-text {
+    color: #e2e8f0;
+    font-size: 1rem;
+    font-weight: 500;
+  }
+  .bgr-processing-sub {
+    color: #64748b;
+    font-size: 0.85rem;
+  }
+
+  /* ── Error banner ── */
+  .bgr-error {
+    margin: 0 1.5rem 1rem;
+    padding: 0.85rem 1.25rem;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 12px;
+    color: #fca5a5;
+    font-size: 0.875rem;
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  /* ── Result section ── */
+  .bgr-result {
+    display: none;
+    flex-direction: column;
+    gap: 1.25rem;
+    padding: 1.5rem;
+  }
+  .bgr-result-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+  .bgr-result-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #e2e8f0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .bgr-result-title .dot {
+    width: 8px; height: 8px;
+    background: #22c55e;
+    border-radius: 50%;
+    box-shadow: 0 0 6px #22c55e;
+  }
+  .bgr-result-actions {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+  .bgr-btn-download {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.55rem 1.4rem;
+    background: linear-gradient(135deg, #0891b2, #2563eb);
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.85rem;
+    border-radius: 999px;
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.15s;
+    text-decoration: none;
+    box-shadow: 0 4px 12px rgba(8,145,178,0.3);
+  }
+  .bgr-btn-download:hover { opacity: 0.88; transform: translateY(-1px); }
+  .bgr-btn-again {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.55rem 1.4rem;
+    background: transparent;
+    color: #94a3b8;
+    font-weight: 600;
+    font-size: 0.85rem;
+    border-radius: 999px;
+    border: 1.5px solid rgba(148,163,184,0.3);
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .bgr-btn-again:hover { border-color: #94a3b8; color: #e2e8f0; }
+
+  /* ── Image comparison ── */
+  .bgr-images {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+  .bgr-img-wrap {
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.08);
+    position: relative;
+  }
+  .bgr-img-label {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(0,0,0,0.55);
+    color: #e2e8f0;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.2rem 0.6rem;
+    border-radius: 6px;
+    letter-spacing: 0.04em;
+    z-index: 1;
+  }
+  .bgr-img-wrap img {
+    width: 100%;
+    display: block;
+    max-height: 380px;
+    object-fit: contain;
+    background: #1e293b;
+  }
+  /* Checkerboard for transparent result */
+  .bgr-img-wrap.result-wrap img {
+    background:
+      repeating-conic-gradient(#2d3748 0% 25%, #1a202c 0% 50%)
+      0 0 / 20px 20px;
+  }
+
+  /* ── Background color picker ── */
+  .bgr-bg-picker {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 16px;
+    padding: 1rem 1.25rem;
+  }
+  .bgr-bg-picker-label {
+    color: #64748b;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-bottom: 0.75rem;
+  }
+  .bgr-swatches {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .bgr-swatch {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+    padding: 0;
+    flex-shrink: 0;
+  }
+  .bgr-swatch:hover { transform: scale(1.14); }
+  .bgr-swatch.active {
+    border-color: #06b6d4;
+    box-shadow: 0 0 0 3px rgba(6,182,212,0.25);
+  }
+  .bgr-swatch-transparent {
+    background:
+      repeating-conic-gradient(#374151 0% 25%, #1f2937 0% 50%)
+      0 0 / 10px 10px;
+  }
+  .bgr-swatch-custom {
+    position: relative;
+    background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .bgr-swatch-custom input[type="color"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+    border: none;
+    padding: 0;
+  }
+  .bgr-swatch-custom svg {
+    pointer-events: none;
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.7));
+  }
+  .bgr-swatch-divider {
+    width: 1px;
+    height: 28px;
+    background: rgba(255,255,255,0.1);
+    margin: 0 0.15rem;
+    flex-shrink: 0;
+  }
+
+  /* ── Image thumbnails ── */
+  .bgr-img-thumbnails { display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:0.4rem; }
+  .bgr-img-thumb {
+    width: 56px; height: 40px; border-radius: 8px; overflow: hidden;
+    border: 2px solid transparent; cursor: pointer; padding: 0;
+    transition: transform 0.15s, border-color 0.15s;
+    flex-shrink: 0;
+  }
+  .bgr-img-thumb:hover { transform: scale(1.1); }
+  .bgr-img-thumb.active { border-color: #06b6d4; box-shadow: 0 0 0 3px rgba(6,182,212,0.25); }
+  .bgr-img-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+
+  /* ── Tips row ── */
+  .bgr-tips {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+  .bgr-tip {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    flex: 1;
+    min-width: 200px;
+  }
+  .bgr-tip-icon {
+    width: 32px;
+    height: 32px;
+    background: rgba(6,182,212,0.1);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 0.9rem;
+  }
+  .bgr-tip-text strong {
+    display: block;
+    color: #e2e8f0;
+    font-size: 0.82rem;
+    font-weight: 600;
+    margin-bottom: 0.15rem;
+  }
+  .bgr-tip-text span {
+    color: #64748b;
+    font-size: 0.78rem;
+    line-height: 1.4;
+  }
+
+  @media (max-width: 640px) {
+    .bgr-images { grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+    .bgr-img-wrap img { max-height: 200px; }
+    .bgr-upload-zone { padding: 2rem 1rem; }
+    .bgr-result-header { flex-direction: column; align-items: flex-start; }
+    .bgr-result-actions { flex-direction: row; flex-wrap: nowrap; }
+    .bgr-btn-download, .bgr-btn-again { font-size: 0.78rem; padding: 0.5rem 0.85rem; }
+  }
+</style>
+
+<div class="bgr-page">
+
+  <!-- Header -->
+  <div class="bgr-header">
+    <div class="bgr-badge">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
+      AI Powered
+    </div>
+    <h1>Remove <span>Background</span> Instantly</h1>
+    <p>Upload any image and our AI removes the background in seconds — perfect for resumes, portfolios, product photos, and more.</p>
+  </div>
+
+  <!-- Main card -->
+  <div class="bgr-card">
+
+    <!-- Error banner -->
+    <div class="bgr-error" id="bgr-error">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <span id="bgr-error-msg">Something went wrong. Please try again.</span>
+    </div>
+
+    <!-- Upload zone -->
+    <div class="bgr-upload-zone" id="bgr-drop-zone">
+      <input type="file" id="bgr-file-input" accept="image/*">
+      <div class="bgr-upload-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+      </div>
+      <div class="bgr-upload-title">Drop your image here</div>
+      <div class="bgr-upload-sub">or click to browse from your device</div>
+      <button class="bgr-upload-btn" type="button" onclick="document.getElementById('bgr-file-input').click()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Choose Image
+      </button>
+      <div class="bgr-formats">
+        <span class="bgr-format-tag">PNG</span>
+        <span class="bgr-format-tag">JPG</span>
+        <span class="bgr-format-tag">WEBP</span>
+        <span class="bgr-format-tag">Max 10MB</span>
+      </div>
+    </div>
+
+    <!-- Processing -->
+    <div class="bgr-processing" id="bgr-processing">
+      <div class="bgr-spinner"></div>
+      <div class="bgr-processing-text">Removing background…</div>
+      <div class="bgr-processing-sub">AI is analysing your image</div>
+    </div>
+
+    <!-- Result -->
+    <div class="bgr-result" id="bgr-result">
+      <div class="bgr-result-header">
+        <div class="bgr-result-title">
+          <span class="dot"></span>
+          Background removed successfully
+        </div>
+        <div class="bgr-result-actions">
+          <a id="bgr-download-btn" download="background-removed.png" class="bgr-btn-download">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download PNG
+          </a>
+          <button class="bgr-btn-again" id="bgr-try-again">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.17"/></svg>
+            Remove Another
+          </button>
+        </div>
+      </div>
+
+      <div class="bgr-images">
+        <div class="bgr-img-wrap">
+          <span class="bgr-img-label">ORIGINAL</span>
+          <img id="bgr-original-img" src="" alt="Original">
+        </div>
+        <div class="bgr-img-wrap result-wrap">
+          <span class="bgr-img-label">RESULT</span>
+          <img id="bgr-result-img" src="" alt="Background removed">
+        </div>
+      </div>
+
+      <!-- Background color picker -->
+      <div class="bgr-bg-picker">
+        <div class="bgr-bg-picker-label">Apply Background Color</div>
+        <div class="bgr-swatches">
+          <button class="bgr-swatch bgr-swatch-transparent active" data-color="transparent" title="Transparent (keep)"></button>
+          <div class="bgr-swatch-divider"></div>
+          <button class="bgr-swatch" data-color="#ffffff" style="background:#ffffff;" title="White"></button>
+          <button class="bgr-swatch" data-color="#f1f5f9" style="background:#f1f5f9;" title="Light Grey"></button>
+          <button class="bgr-swatch" data-color="#e2e8f0" style="background:#e2e8f0;" title="Silver"></button>
+          <button class="bgr-swatch" data-color="#1e293b" style="background:#1e293b;" title="Dark Navy"></button>
+          <button class="bgr-swatch" data-color="#000000" style="background:#000000;" title="Black"></button>
+          <div class="bgr-swatch-divider"></div>
+          <button class="bgr-swatch" data-color="#2563eb" style="background:#2563eb;" title="Blue"></button>
+          <button class="bgr-swatch" data-color="#06b6d4" style="background:#06b6d4;" title="Cyan"></button>
+          <button class="bgr-swatch" data-color="#16a34a" style="background:#16a34a;" title="Green"></button>
+          <button class="bgr-swatch" data-color="#dc2626" style="background:#dc2626;" title="Red"></button>
+          <button class="bgr-swatch" data-color="#7c3aed" style="background:#7c3aed;" title="Purple"></button>
+          <div class="bgr-swatch-divider"></div>
+          <label class="bgr-swatch bgr-swatch-custom" title="Custom color">
+            <input type="color" id="bgr-custom-color" value="#8b5cf6">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+          </label>
+        </div>
+        <% if (bgImages && bgImages.length > 0) { %>
+        <div class="bgr-bg-picker-label" style="margin-top:1rem;">Background Images</div>
+        <div class="bgr-img-thumbnails" id="bgr-img-thumbnails">
+          <% bgImages.forEach(function(url, i) { %>
+          <button class="bgr-img-thumb" data-img="<%= url %>" title="Background image <%= i+1 %>">
+            <img src="<%= url %>" alt="BG <%= i+1 %>">
+          </button>
+          <% }); %>
+        </div>
+        <% } %>
+      </div>
+
+      <!-- Tips -->
+      <div class="bgr-tips">
+        <div class="bgr-tip">
+          <div class="bgr-tip-icon">✨</div>
+          <div class="bgr-tip-text">
+            <strong>Best results</strong>
+            <span>Use images with clear subject contrast against the background.</span>
+          </div>
+        </div>
+        <div class="bgr-tip">
+          <div class="bgr-tip-icon">📸</div>
+          <div class="bgr-tip-text">
+            <strong>Portrait photos</strong>
+            <span>Works great for resume profile photos — clean transparent cutout.</span>
+          </div>
+        </div>
+        <div class="bgr-tip">
+          <div class="bgr-tip-icon">🖼️</div>
+          <div class="bgr-tip-text">
+            <strong>PNG output</strong>
+            <span>Downloaded file preserves your chosen background color.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /bgr-card -->
+</div>
+
+<script>
+(function() {
+  var dropZone    = document.getElementById('bgr-drop-zone');
+  var fileInput   = document.getElementById('bgr-file-input');
+  var processing  = document.getElementById('bgr-processing');
+  var resultSec   = document.getElementById('bgr-result');
+  var errorBanner = document.getElementById('bgr-error');
+  var errorMsg    = document.getElementById('bgr-error-msg');
+  var origImg     = document.getElementById('bgr-original-img');
+  var resultImg   = document.getElementById('bgr-result-img');
+  var dlBtn       = document.getElementById('bgr-download-btn');
+  var tryAgain    = document.getElementById('bgr-try-again');
+  var customColor = document.getElementById('bgr-custom-color');
+
+  var removedBgDataUrl = null; // stores the original transparent PNG
+
+  function showState(state) {
+    dropZone.style.display    = (state === 'upload')     ? 'flex' : 'none';
+    processing.style.display  = (state === 'processing') ? 'flex' : 'none';
+    resultSec.style.display   = (state === 'result')     ? 'flex' : 'none';
+    errorBanner.style.display = (state === 'error')      ? 'flex' : 'none';
+  }
+  showState('upload');
+
+  // ── Drag & drop ──
+  dropZone.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    dropZone.classList.add('drag-over');
+  });
+  dropZone.addEventListener('dragleave', function() {
+    dropZone.classList.remove('drag-over');
+  });
+  dropZone.addEventListener('drop', function(e) {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) processFile(e.dataTransfer.files[0]);
+  });
+
+  // ── File picker ──
+  fileInput.addEventListener('change', function() {
+    if (fileInput.files[0]) processFile(fileInput.files[0]);
+  });
+
+  // ── Try again ──
+  tryAgain.addEventListener('click', function() {
+    fileInput.value = '';
+    removedBgDataUrl = null;
+    resetSwatches();
+    showState('upload');
+  });
+
+  // ── Swatch clicks ──
+  document.querySelectorAll('.bgr-swatch[data-color]').forEach(function(sw) {
+    sw.addEventListener('click', function() {
+      setActiveSwatch(sw);
+      applyBackground(sw.dataset.color);
+    });
+  });
+
+  // ── Custom color picker ──
+  customColor.addEventListener('input', function() {
+    setActiveSwatch(customColor.closest('.bgr-swatch-custom'));
+    applyBackground(customColor.value);
+  });
+
+  function setActiveSwatch(el) {
+    document.querySelectorAll('.bgr-swatch').forEach(function(s) { s.classList.remove('active'); });
+    document.querySelectorAll('.bgr-img-thumb').forEach(function(t) { t.classList.remove('active'); });
+    if (el) el.classList.add('active');
+  }
+
+  function resetSwatches() {
+    document.querySelectorAll('.bgr-swatch').forEach(function(s) { s.classList.remove('active'); });
+    document.querySelectorAll('.bgr-img-thumb').forEach(function(t) { t.classList.remove('active'); });
+    var transSwatch = document.querySelector('.bgr-swatch-transparent');
+    if (transSwatch) transSwatch.classList.add('active');
+  }
+
+  // ── Image thumbnail clicks ──
+  document.querySelectorAll('.bgr-img-thumb').forEach(function(thumb) {
+    thumb.addEventListener('click', function() {
+      setActiveSwatch(null);
+      document.querySelectorAll('.bgr-img-thumb').forEach(function(t) { t.classList.remove('active'); });
+      thumb.classList.add('active');
+      applyBackgroundImage(thumb.dataset.img);
+    });
+  });
+
+  // ── Apply background image using Canvas ──
+  function applyBackgroundImage(imageUrl) {
+    if (!removedBgDataUrl) return;
+    var bg = new Image();
+    bg.crossOrigin = 'anonymous';
+    bg.onload = function() {
+      var fg = new Image();
+      fg.onload = function() {
+        var canvas = document.createElement('canvas');
+        canvas.width  = fg.naturalWidth;
+        canvas.height = fg.naturalHeight;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
+        ctx.drawImage(fg, 0, 0);
+        var out = canvas.toDataURL('image/png');
+        resultImg.src = out;
+        dlBtn.href    = out;
+      };
+      fg.src = removedBgDataUrl;
+    };
+    bg.src = imageUrl;
+  }
+
+  // ── Apply background color using Canvas ──
+  function applyBackground(color) {
+    if (!removedBgDataUrl) return;
+    if (color === 'transparent') {
+      resultImg.src = removedBgDataUrl;
+      dlBtn.href    = removedBgDataUrl;
+      return;
+    }
+    var img = new Image();
+    img.onload = function() {
+      var canvas = document.createElement('canvas');
+      canvas.width  = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      var ctx = canvas.getContext('2d');
+      ctx.fillStyle = color;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+      var out = canvas.toDataURL('image/png');
+      resultImg.src = out;
+      dlBtn.href    = out;
+    };
+    img.src = removedBgDataUrl;
+  }
+
+  // ── Process uploaded file ──
+  function processFile(file) {
+    if (!file.type.startsWith('image/')) {
+      showError('Please upload an image file.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      showError('File is too large. Maximum size is 10MB.');
+      return;
+    }
+
+    var reader = new FileReader();
+    reader.onload = function(e) { origImg.src = e.target.result; };
+    reader.readAsDataURL(file);
+
+    showState('processing');
+
+    var fd = new FormData();
+    fd.append('image', file);
+
+    fetch('/api/background-remover', { method: 'POST', body: fd })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.success) {
+          removedBgDataUrl = data.image;
+          resultImg.src    = data.image;
+          dlBtn.href       = data.image;
+          resetSwatches();
+          showState('result');
+        } else {
+          showError(data.error || 'Background removal failed. Please try again.');
+        }
+      })
+      .catch(function() {
+        showError('Network error. Please check your connection and try again.');
+      });
+  }
+
+  function showError(msg) {
+    errorMsg.textContent = msg;
+    showState('error');
+    setTimeout(function() { showState('upload'); }, 4000);
+  }
+})();
+</script>
+
+<%- include("partials/footer") %>

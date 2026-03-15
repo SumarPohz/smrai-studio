@@ -941,6 +941,56 @@ export default function adminRouter(db) {
     res.json({ success: true, imageUrl: b64 });
   });
 
+  // ── GET /admin/api/bgremover/backgrounds — fetch admin-uploaded bg images ─────
+  router.get("/api/bgremover/backgrounds", async (_req, res) => {
+    try {
+      const r = await db.query("SELECT value FROM admin_settings WHERE key='bgremover_backgrounds'");
+      const images = r.rows.length ? JSON.parse(r.rows[0].value) : [];
+      res.json({ success: true, images });
+    } catch (err) {
+      res.status(500).json({ success: false });
+    }
+  });
+
+  // ── PUT /admin/api/bgremover/backgrounds — save admin-uploaded bg images ──────
+  router.put("/api/bgremover/backgrounds", async (req, res) => {
+    try {
+      const images = Array.isArray(req.body.images) ? req.body.images : [];
+      await db.query(
+        `INSERT INTO admin_settings (key, value, updated_at) VALUES ('bgremover_backgrounds',$1,NOW())
+         ON CONFLICT (key) DO UPDATE SET value=$1, updated_at=NOW()`,
+        [JSON.stringify(images)]
+      );
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ success: false });
+    }
+  });
+
+  // ── GET /admin/api/bgremover/provider — get current API provider ──────────────
+  router.get("/api/bgremover/provider", async (_req, res) => {
+    try {
+      const r = await db.query("SELECT value FROM admin_settings WHERE key='bgremover_provider'");
+      res.json({ success: true, provider: r.rows[0]?.value ?? 'removebg' });
+    } catch { res.status(500).json({ success: false }); }
+  });
+
+  // ── PUT /admin/api/bgremover/provider — set API provider ─────────────────────
+  router.put("/api/bgremover/provider", async (req, res) => {
+    try {
+      const provider = (req.body && req.body.provider === 'free') ? 'free' : 'removebg';
+      await db.query(
+        `INSERT INTO admin_settings (key, value) VALUES ('bgremover_provider',$1)
+         ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value`,
+        [provider]
+      );
+      res.json({ success: true, provider });
+    } catch (err) {
+      console.error('[bgremover/provider PUT]', err?.message);
+      res.status(500).json({ success: false, error: err?.message });
+    }
+  });
+
   // ── GET /admin/api/static-templates — list all static templates with overrides ──
   router.get("/api/static-templates", async (_req, res) => {
     try {

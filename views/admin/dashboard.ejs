@@ -54,6 +54,9 @@
       </a>
       <% } %>
       <% if (_p('ads')) { %>
+      <a href="#bgremover" class="adm-nav-link" data-section="bgremover">
+        <i class="fas fa-eraser"></i> BG Remover
+      </a>
       <a href="#ads" class="adm-nav-link" data-section="ads">
         <i class="fas fa-rectangle-ad"></i> Ads
       </a>
@@ -668,6 +671,45 @@
 
       </div>
     </div><!-- /homepage -->
+
+    <!-- ── Section: Background Remover ───────────────────────────────────── -->
+    <div id="bgremover" class="adm-section-page" hidden>
+      <div class="adm-section-header">
+        <h2><i class="fas fa-eraser"></i> Background Remover — Backgrounds</h2>
+        <p class="adm-section-desc">Upload background images users can apply after removing a background. Max 8 images. Stored persistently in the database.</p>
+      </div>
+      <div class="adm-card">
+        <div id="bgr_images_list" style="display:flex;flex-wrap:wrap;gap:0.6rem;margin-bottom:1rem;min-height:24px;"></div>
+        <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+          <label class="adm-btn-secondary" style="cursor:pointer;margin:0;">
+            <i class="fas fa-plus"></i> Add Image
+            <input type="file" id="bgr_img_input" accept="image/*" style="display:none">
+          </label>
+          <button class="adm-btn-primary" onclick="saveBgrBackgrounds()">
+            <i class="fas fa-save"></i> Save Backgrounds
+          </button>
+          <span id="bgr_save_msg" style="font-size:0.82rem;color:#22c55e;display:none;">Saved!</span>
+        </div>
+
+        <!-- Provider toggle -->
+        <div style="margin-top:1.25rem;border-top:1px solid #374151;padding-top:1rem;">
+          <div style="font-size:0.78rem;color:#6b7280;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:0.75rem;">
+            <i class="fas fa-plug"></i> API Provider
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;background:rgba(255,255,255,0.03);border:1px solid #374151;border-radius:10px;padding:0.85rem 1rem;">
+            <div>
+              <div id="bgrProviderLabel" style="font-weight:700;font-size:0.85rem;color:#e2e8f0;">Loading…</div>
+              <p id="bgrProviderDesc" style="font-size:0.75rem;color:#6b7280;margin:0.2rem 0 0;"></p>
+            </div>
+            <label style="position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0">
+              <input type="checkbox" id="bgrProviderToggle" style="opacity:0;width:0;height:0" onchange="saveBgrProvider(this.checked)">
+              <span id="bgrProviderSlider" style="position:absolute;inset:0;background:#374151;border-radius:24px;cursor:pointer;transition:.3s;"></span>
+              <span id="bgrProviderKnob"   style="position:absolute;width:18px;height:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s;pointer-events:none;"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div><!-- /bgremover -->
 
     <!-- ── Section: Ads ───────────────────────────────────────────────────── -->
     <div id="ads" class="adm-section-page" hidden>
@@ -2991,6 +3033,17 @@ function escHtml(s) {
   return String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
 
+function showAdmToast(msg, type) {
+  var t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;'
+    + 'padding:0.7rem 1.25rem;border-radius:10px;font-size:0.85rem;font-weight:600;'
+    + 'color:#fff;box-shadow:0 4px 16px rgba(0,0,0,0.35);pointer-events:none;transition:opacity 0.4s;'
+    + (type === 'error' ? 'background:#dc2626;' : 'background:#16a34a;');
+  document.body.appendChild(t);
+  setTimeout(function() { t.style.opacity = '0'; setTimeout(function() { t.remove(); }, 400); }, 2500);
+}
+
 // ── Builder panel open / close ───────────────────────────────────────────────
 document.getElementById("admTplCreateBtn").addEventListener("click", () => openBuilder(null));
 document.getElementById("admTplBuilderClose").addEventListener("click", closeBuilder);
@@ -4679,6 +4732,102 @@ document.getElementById("couponCreateForm").addEventListener("submit", async fun
   }
 })();
 <% } %>
+
+// ── Background Remover Backgrounds ──────────────────────────────────────────
+let bgrImagesList = [];
+
+(async function loadBgrBackgrounds() {
+  try {
+    const r = await fetch("/admin/api/bgremover/backgrounds");
+    const d = await r.json();
+    if (d.success) { bgrImagesList = d.images || []; renderBgrImages(bgrImagesList); }
+  } catch(_) {}
+})();
+
+document.getElementById("bgr_img_input") && document.getElementById("bgr_img_input").addEventListener("change", async function() {
+  if (bgrImagesList.length >= 8) { alert("Maximum 8 images allowed"); this.value = ""; return; }
+  const file = this.files[0]; if (!file) return;
+  const fd = new FormData(); fd.append("image", file);
+  const r = await fetch("/admin/api/homepage/upload-image", { method: "POST", body: fd });
+  const d = await r.json();
+  if (!d.success) { alert("Upload failed"); return; }
+  bgrImagesList.push(d.imageUrl);
+  renderBgrImages(bgrImagesList);
+  this.value = "";
+});
+
+function renderBgrImages(images) {
+  const list = document.getElementById("bgr_images_list");
+  if (!list) return;
+  list.innerHTML = "";
+  if (!images.length) {
+    list.innerHTML = '<span style="color:#6b7280;font-size:0.82rem;">No images yet. Click Add Image to upload.</span>';
+    return;
+  }
+  images.forEach(function(url, i) {
+    const wrap = document.createElement("div");
+    wrap.style.cssText = "position:relative;width:90px;height:64px;border-radius:10px;overflow:hidden;border:1px solid #374151;flex-shrink:0;";
+    wrap.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;">
+      <button type="button" onclick="removeBgrImage(${i})"
+        style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,0.75);border:none;border-radius:50%;width:20px;height:20px;color:#fff;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>`;
+    list.appendChild(wrap);
+  });
+}
+
+function removeBgrImage(idx) { bgrImagesList.splice(idx, 1); renderBgrImages(bgrImagesList); }
+
+async function saveBgrBackgrounds() {
+  const r = await fetch("/admin/api/bgremover/backgrounds", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ images: bgrImagesList })
+  });
+  const d = await r.json();
+  if (d.success) {
+    const msg = document.getElementById("bgr_save_msg");
+    if (msg) { msg.style.display = "inline"; setTimeout(function() { msg.style.display = "none"; }, 2500); }
+  } else { alert("Save failed"); }
+}
+
+// ── BG Remover provider toggle ────────────────────────────────────────────────
+(async function() {
+  try {
+    const r = await fetch("/admin/api/bgremover/provider");
+    const d = await r.json();
+    if (d.success) setBgrProviderUI(d.provider);
+  } catch(_) {}
+})();
+
+function setBgrProviderUI(provider) {
+  const isFree = provider === 'free';
+  const toggle = document.getElementById('bgrProviderToggle');
+  const slider = document.getElementById('bgrProviderSlider');
+  const knob   = document.getElementById('bgrProviderKnob');
+  const label  = document.getElementById('bgrProviderLabel');
+  const desc   = document.getElementById('bgrProviderDesc');
+  if (!toggle) return;
+  toggle.checked           = isFree;
+  slider.style.background  = isFree ? '#06b6d4' : '#374151';
+  knob.style.transform     = isFree ? 'translateX(20px)' : 'translateX(0)';
+  label.textContent = isFree ? 'AI Free (Local)' : 'remove.bg';
+  desc.textContent  = isFree
+    ? 'Free · Unlimited · AI-powered, runs on server · No API key needed'
+    : 'Paid · 50 free calls/month · remove.bg API';
+}
+
+async function saveBgrProvider(useFree) {
+  const provider = useFree ? 'free' : 'removebg';
+  try {
+    const r = await fetch("/admin/api/bgremover/provider", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ provider })
+    });
+    const d = await r.json();
+    if (d.success) { setBgrProviderUI(d.provider); showAdmToast("Provider saved"); }
+    else alert("Save failed: " + (d.error || 'unknown error'));
+  } catch(e) { alert("Save failed: " + e.message); }
+}
 </script>
 
 <%- include("../partials/footer") %>

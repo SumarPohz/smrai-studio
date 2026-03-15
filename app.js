@@ -22,6 +22,8 @@ import { TEMPLATES, getTemplateById } from "./config/templates-config.js";
 import QRCode from "qrcode";
 import { getFieldsForTemplate, isPhotoTemplate } from "./config/template-fields.js";
 import adminRouter from "./routes/admin.js";
+import { removeBackgroundFromImageBase64 } from "remove.bg";
+import { removeBackground } from "@imgly/background-removal-node";
 
 const PgSession = connectPgSimple(session);
 const __filename = fileURLToPath(import.meta.url);
@@ -253,8 +255,11 @@ await db.query(`
           { title: "AI Cover Letters",  description: "Tailored cover letters for each job description, matching your skills and experience.",                                                   link: "",                      bgClass: "cover-bg",     imageUrl: "" },
           { title: "Profile & Portfolio", description: "Keep your details saved, update once, and export resumes or profiles whenever you need.",                                               link: "",                      bgClass: "portfolio-bg", imageUrl: "" },
           { title: "Applications (A4)", description: "Write formal applications — sick leave, resignation, appreciation and more — with AI guidance and voice input.",                         link: "/application-builder",  bgClass: "app-bg",       imageUrl: "" },
+          { title: "Background Remover", description: "Remove image backgrounds instantly with AI — clean, precise cutouts in seconds. Perfect for resumes, portfolios, and more.", link: "/background-remover", bgClass: "bg-remover-bg", imageUrl: "" },
         ],
       })],
+      ['bgremover_backgrounds', JSON.stringify([])],
+      ['bgremover_provider', 'removebg'],
       ['homepage_features', JSON.stringify({
         title:    "Our Main Features",
         subtitle: "Start building your resume today and land your next role faster.",
@@ -323,6 +328,7 @@ await db.query(`
     await db.query(`ALTER TABLE admin_template_sections ADD COLUMN IF NOT EXISTS display_type VARCHAR(30) DEFAULT 'bullets'`).catch(() => {});
     await db.query(`ALTER TABLE admin_template_sections ADD COLUMN IF NOT EXISTS label_override VARCHAR(150)`).catch(() => {});
 
+    await db.query(`ALTER TABLE admin_settings ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`).catch(() => {});
     await db.query(`ALTER TABLE admin_templates ADD COLUMN IF NOT EXISTS design_settings JSONB DEFAULT '{"fontFamily":"segoe","headingWeight":"800","bodySize":"medium","borderRadius":"soft","shadow":"none","sectionTitleStyle":"underline","headerStyle":"classic","pillShape":"rounded"}'::jsonb`).catch(() => {});
     await db.query(`ALTER TABLE admin_templates ADD COLUMN IF NOT EXISTS background_image_url TEXT`).catch(() => {});
     await db.query(`ALTER TABLE template_overrides ADD COLUMN IF NOT EXISTS background_image_url TEXT`).catch(() => {});
@@ -1384,6 +1390,52 @@ app.get("/resume-templates", ensureAuthenticated, async (_req, res) => {
 // ---------- Photo Editor ----------
 app.get("/photo-editor", ensureAuthenticated, (req, res) => {
   res.render("photo-editor");
+});
+
+// ---------- Background Remover ----------
+app.get("/background-remover", ensureAuthenticated, async (req, res) => {
+  try {
+    const r = await db.query("SELECT value FROM admin_settings WHERE key='bgremover_backgrounds'");
+    const bgImages = r.rows.length ? JSON.parse(r.rows[0].value) : [];
+    res.render("background-remover", { bgImages });
+  } catch {
+    res.render("background-remover", { bgImages: [] });
+  }
+});
+
+app.post("/api/background-remover", ensureAuthenticated, upload.single("image"), async (req, res) => {
+  if (!req.file) return res.status(400).json({ success: false, error: "No image uploaded" });
+  const b64 = req.file.buffer
+    ? req.file.buffer.toString("base64")
+    : fs.readFileSync(req.file.path).toString("base64");
+  if (req.file.path) { try { fs.unlinkSync(req.file.path); } catch (_) {} }
+
+  let provider = 'removebg';
+  try {
+    const pr = await db.query("SELECT value FROM admin_settings WHERE key='bgremover_provider'");
+    if (pr.rows.length) provider = pr.rows[0].value;
+  } catch (_) {}
+
+  try {
+    if (provider === 'free') {
+      const imgBuffer = Buffer.from(b64, "base64");
+      const imgBlob = new Blob([imgBuffer], { type: req.file.mimetype || 'image/jpeg' });
+      const blob = await removeBackground(imgBlob);
+      const arrayBuffer = await blob.arrayBuffer();
+      const b64out = Buffer.from(arrayBuffer).toString("base64");
+      res.json({ success: true, image: `data:image/png;base64,${b64out}` });
+    } else {
+      const bgResult = await removeBackgroundFromImageBase64({
+        base64img: b64,
+        apiKey: process.env.REMOVEBG_API_KEY,
+        size: "regular",
+        type: "auto",
+      });
+      res.json({ success: true, image: `data:image/png;base64,${bgResult.base64img}` });
+    }
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message || "Background removal failed" });
+  }
 });
 
 // ---------- Application Builder ----------
