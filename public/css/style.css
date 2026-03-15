@@ -2078,7 +2078,7 @@ main section {
 
   .hero-card {
     width: 100%;
-    max-width: 220px;
+    max-width: 290px;
     padding: 0.55rem 0.75rem 0.65rem;
     height: fit-content;
   }
