@@ -16,7 +16,7 @@
   var _heroImgs = (hp_hero.heroImages && hp_hero.heroImages.length)
     ? hp_hero.heroImages
     : (hp_hero.heroImage ? [hp_hero.heroImage] : ['/images/hero-photo.png']);
-  var _heroJson = JSON.stringify(_heroImgs).replace(/"/g, '&quot;');
+  var _heroJson = JSON.stringify(_heroImgs);
   %>
   <section class="hero">
     <div class="hero-content">
@@ -250,7 +250,7 @@ document.querySelectorAll('.hero-gallery').forEach(function(gallery) {
       track.lastElementChild.querySelector('img').src = images[cur];
       void track.offsetWidth; // force reflow so transition:none registers
     }, 440);
-  }, 2500);
+  }, 1000);
 });
 </script>
 <%- include("partials/footer") %>
