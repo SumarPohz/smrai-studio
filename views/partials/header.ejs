@@ -371,6 +371,17 @@
           </div>
         </div>
 
+        <!-- Wallet balance strip -->
+        <a href="/wallet" class="sidebar-wallet-strip" id="sidebarWalletStrip">
+          <div class="sidebar-wallet-left">
+            <div class="sidebar-wallet-icon">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="1" y="4" width="22" height="16" rx="3"/><path d="M1 10h22"/><circle cx="17" cy="15" r="1.5" fill="currentColor"/></svg>
+            </div>
+            <span class="sidebar-wallet-label">Wallet Balance</span>
+          </div>
+          <span class="sidebar-wallet-amount" id="sidebarWalletAmt">—</span>
+        </a>
+
         <!-- Edit profile -->
         <div class="sidebar-section">
           <h3 class="sidebar-section-title">Profile</h3>
@@ -441,15 +452,24 @@
       const backdrop = document.getElementById("user-sidebar-backdrop");
       const closeBtn = document.getElementById("user-sidebar-close");
 
+      let sidebarWalletLoaded = false;
       function openSidebar() {
         sidebar.classList.add("open");
         backdrop.classList.add("open");
         if (toggleBtn) toggleBtn.classList.add("is-open");
+        if (!sidebarWalletLoaded) {
+          sidebarWalletLoaded = true;
+          fetch("/api/wallet/balance").then(function(r){ return r.json(); }).then(function(d) {
+            var el = document.getElementById("sidebarWalletAmt");
+            if (el) el.textContent = "₹" + (d.balance || 0).toFixed(0);
+          }).catch(function(){});
+        }
       }
       function closeSidebar() {
         sidebar.classList.remove("open");
         backdrop.classList.remove("open");
         if (toggleBtn) toggleBtn.classList.remove("is-open");
+        sidebarWalletLoaded = false; // refetch next time so balance is always fresh
       }
 
       if (toggleBtn) toggleBtn.addEventListener("click", openSidebar);

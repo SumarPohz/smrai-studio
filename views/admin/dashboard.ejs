@@ -77,6 +77,11 @@
         <span class="adm-nav-badge" id="investorPendingBadge" style="display:none">0</span>
       </a>
       <% } %>
+      <% if (_p('wallet')) { %>
+      <a href="#wallet" class="adm-nav-link" data-section="wallet">
+        <i class="fas fa-wallet"></i> Wallet
+      </a>
+      <% } %>
       <a href="/dashboard" class="adm-nav-link adm-nav-back">
         <i class="fas fa-arrow-left"></i> Back to App
       </a>
@@ -1459,6 +1464,83 @@
       </div>
     </div><!-- /investors -->
 
+    <!-- ── Wallet Section ─────────────────────────────────────────────────── -->
+    <div id="wallet" class="adm-section-page" hidden>
+      <div class="adm-section-header">
+        <h2><i class="fas fa-wallet"></i> Wallet</h2>
+        <p class="adm-section-desc">View user wallet balances, credit or debit wallets, and review transaction history.</p>
+      </div>
+
+      <!-- Summary stats -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.5rem">
+        <div class="adm-stat-card" style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:1rem 1.25rem">
+          <div style="font-size:1.5rem;font-weight:800;color:#0f766e" id="walStatTotal">—</div>
+          <div style="font-size:0.78rem;color:#6b7280;margin-top:0.2rem">Total Balance (₹)</div>
+        </div>
+        <div class="adm-stat-card" style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:1rem 1.25rem">
+          <div style="font-size:1.5rem;font-weight:800;color:#6366f1" id="walStatUsers">—</div>
+          <div style="font-size:0.78rem;color:#6b7280;margin-top:0.2rem">Users with Balance</div>
+        </div>
+        <div class="adm-stat-card" style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:1rem 1.25rem">
+          <div style="font-size:1.5rem;font-weight:800;color:#f59e0b" id="walStatReferrals">—</div>
+          <div style="font-size:0.78rem;color:#6b7280;margin-top:0.2rem">Total Referrals</div>
+        </div>
+      </div>
+
+      <!-- Search + table -->
+      <div class="adm-ads-form-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:0.75rem;margin-bottom:0.85rem;flex-wrap:wrap">
+          <div style="font-size:0.85rem;font-weight:700;color:#374151"><i class="fas fa-users"></i> User Wallets</div>
+          <input type="text" id="walSearchInput" placeholder="Search name or email…" style="padding:0.4rem 0.65rem;border:1px solid #d1d5db;border-radius:6px;font-size:0.82rem;width:200px" oninput="loadWalletUsers()">
+        </div>
+        <div id="walUsersTable" style="font-size:0.85rem;color:#6b7280">Loading…</div>
+        <div id="walPagination" style="display:flex;gap:0.5rem;justify-content:center;margin-top:0.75rem"></div>
+      </div>
+    </div><!-- /wallet -->
+
+    <!-- Wallet Adjust Modal -->
+    <div id="walAdjustModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">
+      <div style="background:#fff;border-radius:16px;padding:1.5rem;max-width:380px;width:90%;position:relative">
+        <h3 style="margin:0 0 0.25rem;font-size:1rem">Adjust Wallet</h3>
+        <p id="walAdjustUserLabel" style="font-size:0.8rem;color:#6b7280;margin-bottom:1rem"></p>
+        <div style="margin-bottom:0.75rem">
+          <label style="font-size:0.78rem;color:#374151;font-weight:600;display:block;margin-bottom:0.3rem">Amount (₹)</label>
+          <input type="number" id="walAdjustAmount" min="1" placeholder="20" style="width:100%;padding:0.5rem 0.65rem;border:1px solid #d1d5db;border-radius:8px;font-size:0.9rem">
+        </div>
+        <div style="margin-bottom:0.75rem">
+          <label style="font-size:0.78rem;color:#374151;font-weight:600;display:block;margin-bottom:0.3rem">Type</label>
+          <div style="display:flex;gap:0.75rem">
+            <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.85rem;cursor:pointer">
+              <input type="radio" name="walAdjustType" value="credit" checked> Credit (+)
+            </label>
+            <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.85rem;cursor:pointer">
+              <input type="radio" name="walAdjustType" value="debit"> Debit (-)
+            </label>
+          </div>
+        </div>
+        <div style="margin-bottom:1rem">
+          <label style="font-size:0.78rem;color:#374151;font-weight:600;display:block;margin-bottom:0.3rem">Reason</label>
+          <input type="text" id="walAdjustReason" placeholder="e.g. manual_credit" style="width:100%;padding:0.5rem 0.65rem;border:1px solid #d1d5db;border-radius:8px;font-size:0.85rem">
+        </div>
+        <div style="display:flex;gap:0.5rem">
+          <button onclick="submitWalletAdjust()" style="flex:1;padding:0.6rem;background:#0891b2;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer" id="walAdjustBtn">Apply</button>
+          <button onclick="closeWalletModal()" style="flex:1;padding:0.6rem;background:#f3f4f6;color:#374151;border:none;border-radius:8px;font-weight:600;cursor:pointer">Cancel</button>
+        </div>
+        <div id="walAdjustErr" style="color:#dc2626;font-size:0.78rem;margin-top:0.5rem"></div>
+      </div>
+    </div>
+
+    <!-- Wallet Txn History Modal -->
+    <div id="walTxnModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">
+      <div style="background:#fff;border-radius:16px;padding:1.5rem;max-width:420px;width:90%;max-height:80vh;overflow-y:auto;position:relative">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+          <h3 style="margin:0;font-size:1rem">Transaction History</h3>
+          <button onclick="closeWalTxnModal()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:#6b7280">&times;</button>
+        </div>
+        <div id="walTxnList" style="font-size:0.85rem;color:#6b7280">Loading…</div>
+      </div>
+    </div>
+
   </div><!-- /adm-main -->
 </div><!-- /adm-shell -->
 
@@ -1670,6 +1752,7 @@ function showSection(id) {
     if (id === "coupons"   && !couponsLoaded){ loadCoupons(); }
     if (id === "apikeys")                    { /* values never pre-loaded for security */ }
     if (id === "investors")                  { loadInvestors(); }
+    if (id === "wallet")                     { loadWalletUsers(1); }
   }, 120);
 }
 
@@ -4789,6 +4872,140 @@ async function saveBgrBackgrounds() {
     const msg = document.getElementById("bgr_save_msg");
     if (msg) { msg.style.display = "inline"; setTimeout(function() { msg.style.display = "none"; }, 2500); }
   } else { alert("Save failed"); }
+}
+
+// ── Wallet admin ─────────────────────────────────────────────────────────────
+var _walPage = 1;
+var _walAdjustUserId = null;
+
+async function loadWalletUsers(page) {
+  if (page) _walPage = page;
+  var search = (document.getElementById("walSearchInput") || {}).value || "";
+  var url = "/admin/api/wallet/users?page=" + _walPage + "&limit=20" + (search ? "&search=" + encodeURIComponent(search) : "");
+  var tbody = document.getElementById("walUsersTable");
+  if (!tbody) return;
+  try {
+    var d = await fetch(url).then(function(r){ return r.json(); });
+    if (!d.success) { tbody.innerHTML = '<p style="color:#dc2626">Failed to load</p>'; return; }
+
+    // Update stats
+    var totalBal = d.users.reduce(function(s,u){ return s + parseFloat(u.wallet_balance||0); }, 0);
+    var usersWithBal = d.users.filter(function(u){ return parseFloat(u.wallet_balance||0) > 0; }).length;
+    var totalRef = d.users.reduce(function(s,u){ return s + parseInt(u.referral_count||0); }, 0);
+    if (page === 1 || !page) {
+      var el1 = document.getElementById("walStatTotal"); if (el1) el1.textContent = "₹" + totalBal.toFixed(0);
+      var el2 = document.getElementById("walStatUsers"); if (el2) el2.textContent = usersWithBal;
+      var el3 = document.getElementById("walStatReferrals"); if (el3) el3.textContent = totalRef;
+    }
+
+    if (!d.users.length) { tbody.innerHTML = '<p style="color:#9ca3af;text-align:center;padding:1rem">No users found</p>'; return; }
+
+    var rows = d.users.map(function(u){
+      var bal = parseFloat(u.wallet_balance||0);
+      return '<tr>' +
+        '<td style="padding:0.55rem 0.5rem">' + (u.name || '—') + '<br><span style="font-size:0.72rem;color:#9ca3af">' + (u.email||'') + '</span></td>' +
+        '<td style="padding:0.55rem 0.5rem;font-weight:700;color:' + (bal > 0 ? '#0f766e' : '#9ca3af') + '">₹' + bal.toFixed(0) + '</td>' +
+        '<td style="padding:0.55rem 0.5rem;color:#6b7280">' + (u.referral_count||0) + '</td>' +
+        '<td style="padding:0.55rem 0.5rem">' +
+          '<button onclick="openWalletAdjust(' + u.id + ',\'' + (u.name||'').replace(/'/g,"\\'") + '\')" style="padding:0.3rem 0.6rem;background:#0891b2;color:#fff;border:none;border-radius:6px;font-size:0.76rem;cursor:pointer;margin-right:0.35rem">Adjust</button>' +
+          '<button onclick="openWalTxnModal(' + u.id + ')" style="padding:0.3rem 0.6rem;background:#f3f4f6;color:#374151;border:none;border-radius:6px;font-size:0.76rem;cursor:pointer">History</button>' +
+        '</td>' +
+      '</tr>';
+    }).join('');
+
+    tbody.innerHTML = '<table style="width:100%;border-collapse:collapse">' +
+      '<thead><tr style="border-bottom:1px solid #f3f4f6">' +
+      '<th style="text-align:left;padding:0.4rem 0.5rem;font-size:0.72rem;color:#9ca3af;font-weight:600">USER</th>' +
+      '<th style="text-align:left;padding:0.4rem 0.5rem;font-size:0.72rem;color:#9ca3af;font-weight:600">BALANCE</th>' +
+      '<th style="text-align:left;padding:0.4rem 0.5rem;font-size:0.72rem;color:#9ca3af;font-weight:600">REFERRALS</th>' +
+      '<th style="text-align:left;padding:0.4rem 0.5rem;font-size:0.72rem;color:#9ca3af;font-weight:600">ACTIONS</th>' +
+      '</tr></thead><tbody>' + rows + '</tbody></table>';
+
+    // Pagination
+    var totalPages = Math.ceil(d.total / d.limit);
+    var pgEl = document.getElementById("walPagination");
+    if (pgEl) {
+      pgEl.innerHTML = '';
+      for (var p = 1; p <= Math.min(totalPages, 10); p++) {
+        var btn = document.createElement("button");
+        btn.textContent = p;
+        btn.style.cssText = "padding:0.3rem 0.6rem;border:1px solid #d1d5db;border-radius:6px;cursor:pointer;font-size:0.8rem;background:" + (p === _walPage ? "#0891b2" : "#fff") + ";color:" + (p === _walPage ? "#fff" : "#374151");
+        btn.onclick = (function(pp){ return function(){ loadWalletUsers(pp); }; })(p);
+        pgEl.appendChild(btn);
+      }
+    }
+  } catch(e) { tbody.innerHTML = '<p style="color:#dc2626">Error: ' + e.message + '</p>'; }
+}
+
+function openWalletAdjust(userId, userName) {
+  _walAdjustUserId = userId;
+  var lbl = document.getElementById("walAdjustUserLabel");
+  if (lbl) lbl.textContent = "User: " + userName + " (ID: " + userId + ")";
+  var amtEl = document.getElementById("walAdjustAmount"); if (amtEl) amtEl.value = "";
+  var rsnEl = document.getElementById("walAdjustReason"); if (rsnEl) rsnEl.value = "";
+  var errEl = document.getElementById("walAdjustErr"); if (errEl) errEl.textContent = "";
+  document.querySelectorAll("input[name=walAdjustType]").forEach(function(r){ r.checked = r.value === "credit"; });
+  var modal = document.getElementById("walAdjustModal");
+  if (modal) { modal.style.display = "flex"; }
+}
+
+function closeWalletModal() {
+  var modal = document.getElementById("walAdjustModal");
+  if (modal) modal.style.display = "none";
+}
+
+async function submitWalletAdjust() {
+  var btn = document.getElementById("walAdjustBtn");
+  var errEl = document.getElementById("walAdjustErr");
+  var amount = parseFloat((document.getElementById("walAdjustAmount")||{}).value);
+  var type = (document.querySelector("input[name=walAdjustType]:checked")||{}).value;
+  var reason = ((document.getElementById("walAdjustReason")||{}).value || "").trim() || "admin_adjustment";
+  if (!amount || amount <= 0) { if (errEl) errEl.textContent = "Enter a valid amount"; return; }
+  if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
+  try {
+    var r = await fetch("/admin/api/wallet/adjust", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: _walAdjustUserId, amount, type, reason })
+    });
+    var d = await r.json();
+    if (d.success) {
+      showAdmToast("Wallet updated. New balance: ₹" + d.newBalance.toFixed(0), "success");
+      closeWalletModal();
+      loadWalletUsers(_walPage);
+    } else {
+      if (errEl) errEl.textContent = d.message || "Failed";
+    }
+  } catch(e) {
+    if (errEl) errEl.textContent = "Error: " + e.message;
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "Apply"; }
+  }
+}
+
+async function openWalTxnModal(userId) {
+  var modal = document.getElementById("walTxnModal");
+  var list = document.getElementById("walTxnList");
+  if (!modal || !list) return;
+  modal.style.display = "flex";
+  list.innerHTML = "Loading…";
+  try {
+    var d = await fetch("/admin/api/wallet/transactions/" + userId).then(function(r){ return r.json(); });
+    if (!d.success || !d.transactions.length) { list.innerHTML = '<p style="text-align:center;color:#9ca3af;padding:1rem">No transactions yet</p>'; return; }
+    list.innerHTML = d.transactions.map(function(tx){
+      var isCredit = tx.type === "credit";
+      var label = tx.reason === "referral_reward" ? "Referral Reward" : tx.reason === "used_in_payment" ? "Used at Checkout" : tx.reason;
+      var date = new Date(tx.created_at).toLocaleDateString("en-IN", {day:"numeric",month:"short",year:"numeric"});
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:0.55rem 0;border-bottom:1px solid #f3f4f6">' +
+        '<div><div style="font-weight:600;color:#111827">' + label + '</div><div style="font-size:0.72rem;color:#9ca3af">' + date + '</div></div>' +
+        '<div style="font-weight:700;color:' + (isCredit ? '#059669' : '#dc2626') + '">' + (isCredit ? '+' : '-') + '₹' + parseFloat(tx.amount).toFixed(0) + '</div>' +
+        '</div>';
+    }).join('');
+  } catch(e) { list.innerHTML = '<p style="color:#dc2626">Error: ' + e.message + '</p>'; }
+}
+
+function closeWalTxnModal() {
+  var modal = document.getElementById("walTxnModal");
+  if (modal) modal.style.display = "none";
 }
 
 // ── BG Remover provider toggle ────────────────────────────────────────────────

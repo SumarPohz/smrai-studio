@@ -410,6 +410,20 @@ await db.query(`
       await db.query("UPDATE users SET referral_code=? WHERE id=? AND referral_code IS NULL", [code, u.id]).catch(() => {});
     }
 
+    // ── Wallet transactions log ───────────────────────────────────────────────
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS wallet_transactions (
+        id         INT AUTO_INCREMENT PRIMARY KEY,
+        user_id    INT NOT NULL,
+        amount     DECIMAL(10,2) NOT NULL,
+        type       ENUM('credit','debit') NOT NULL,
+        reason     VARCHAR(100) NOT NULL,
+        ref_id     INT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX (user_id)
+      )
+    `).catch(() => {});
+
     // ── Investor system ───────────────────────────────────────────────────────
     await db.query(`ALTER TABLE users ADD COLUMN investor_approved BOOLEAN NOT NULL DEFAULT false`).catch(() => {});
     await db.query(`
@@ -1576,7 +1590,9 @@ app.post("/resume-builder/preview", ensureAuthenticated, async (req, res) => {
       } catch (_) { /* ignore */ }
     }
 
-    res.render("resume-preview", { data, template, qrCodeDataUrl, displayPrice, adminTemplateConfig, templateSections, bgImageUrl });
+    const walletRow2 = await db.query("SELECT wallet_balance FROM users WHERE id=?", [req.user.id]).catch(() => ({ rows: [] }));
+    const walletBalance = parseFloat(walletRow2.rows[0]?.wallet_balance) || 0;
+    res.render("resume-preview", { data, template, qrCodeDataUrl, displayPrice, adminTemplateConfig, templateSections, bgImageUrl, walletBalance });
   } catch (err) {
     res.send("Error while saving profile.");
   }
@@ -1867,7 +1883,26 @@ app.get("/dashboard", ensureAuthenticated, async (req, res) => {
     subadminInvestment = inv.rows[0] || null;
     subadminProfile = profile.rows[0] || null;
   }
-  res.render("dashboard", { subadminInvestment, subadminProfile });
+  const walletRow = await db.query("SELECT wallet_balance FROM users WHERE id=?", [req.user.id]).catch(() => ({ rows: [] }));
+  const walletBalance = parseFloat(walletRow.rows[0]?.wallet_balance) || 0;
+  res.render("dashboard", { subadminInvestment, subadminProfile, walletBalance });
+});
+
+app.get("/wallet", ensureAuthenticated, async (req, res) => {
+  try {
+    const [walletRow, txRows, refRow] = await Promise.all([
+      db.query("SELECT wallet_balance FROM users WHERE id=?", [req.user.id]),
+      db.query("SELECT * FROM wallet_transactions WHERE user_id=? ORDER BY created_at DESC LIMIT 50", [req.user.id]),
+      db.query("SELECT COUNT(*) AS count FROM users WHERE referred_by=?", [req.user.id]),
+    ]);
+    const walletBalance = parseFloat(walletRow.rows[0]?.wallet_balance) || 0;
+    const transactions = txRows.rows;
+    const invitedCount = parseInt(refRow.rows[0]?.count) || 0;
+    const referralUrl = `${process.env.BASE_URL || "http://localhost:3000"}/register?ref=${req.user.referral_code || ""}`;
+    res.render("wallet", { walletBalance, transactions, invitedCount, referralUrl, user: req.user });
+  } catch (err) {
+    res.render("wallet", { walletBalance: 0, transactions: [], invitedCount: 0, referralUrl: "", user: req.user });
+  }
 });
 
 // Logout
@@ -3078,7 +3113,17 @@ app.post("/api/razorpay/create-order", ensureAuthenticated, async (req, res) => 
     if (useWallet) {
       const walletRow = await db.query("SELECT wallet_balance FROM users WHERE id=?", [req.user.id]);
       const walletRs = parseFloat(walletRow.rows[0]?.wallet_balance) || 0;
-      walletDeduction = Math.min(walletRs, priceRupees - 1); // keep min ₹1
+      walletDeduction = Math.min(walletRs, priceRupees);
+      if (walletDeduction >= priceRupees) {
+        // Wallet covers full price — skip Razorpay entirely
+        return res.json({
+          success: true,
+          walletOnly: true,
+          walletDeduction,
+          originalPrice: originalPriceRupees,
+          referralDiscount: referralDiscountRupees,
+        });
+      }
       if (walletDeduction > 0) {
         priceRupees = Math.max(1, priceRupees - walletDeduction);
       }
@@ -3110,6 +3155,122 @@ app.post("/api/razorpay/create-order", ensureAuthenticated, async (req, res) => 
     });
   } catch (err) {
     res.status(500).json({ success: false, message: "Unable to create order" });
+  }
+});
+
+// Wallet balance for sidebar
+app.get("/api/wallet/balance", ensureAuthenticated, async (req, res) => {
+  try {
+    const row = await db.query("SELECT wallet_balance FROM users WHERE id=?", [req.user.id]);
+    res.json({ success: true, balance: parseFloat(row.rows[0]?.wallet_balance) || 0 });
+  } catch (_) { res.json({ success: true, balance: 0 }); }
+});
+
+// Wallet-only payment — full amount covered by wallet, no Razorpay
+app.post("/api/wallet/pay", ensureAuthenticated, async (req, res) => {
+  try {
+    const { template, couponCode, resumeId } = req.body || {};
+    const userId = req.user.id;
+
+    // Re-calculate price (same logic as create-order)
+    const originalPriceRupees = await getTemplatePrice(template);
+    let priceRupees = originalPriceRupees;
+
+    // Apply coupon discount if provided
+    const appliedCoupon = couponCode ? String(couponCode).trim().toUpperCase() : null;
+    if (appliedCoupon) {
+      const row = await db.query(`SELECT * FROM coupons WHERE code=? AND is_active=true`, [appliedCoupon]);
+      const c = row.rows[0];
+      if (c && !(c.expires_at && new Date(c.expires_at) < new Date()) &&
+          !(c.max_uses > 0 && c.uses_count >= c.max_uses)) {
+        let discount = 0;
+        if (c.discount_type === "percent") {
+          discount = Math.floor(priceRupees * Number(c.discount_value) / 100);
+        } else {
+          discount = Math.min(Number(c.discount_value), priceRupees);
+        }
+        priceRupees = Math.max(0, priceRupees - discount);
+      }
+    }
+
+    // Auto-apply referral discount (30%) on first payment
+    const userRefRow = await db.query("SELECT referred_by FROM users WHERE id=?", [userId]);
+    if (userRefRow.rows[0]?.referred_by) {
+      const priorPay = await db.query(
+        "SELECT id FROM payments WHERE user_id=? AND status='captured' LIMIT 1", [userId]
+      );
+      if (!priorPay.rows.length) {
+        priceRupees = Math.max(1, priceRupees - Math.floor(originalPriceRupees * 0.30));
+      }
+    }
+
+    // Server-side check: wallet must cover the full price
+    const walletRow = await db.query("SELECT wallet_balance FROM users WHERE id=?", [userId]);
+    const walletRs = parseFloat(walletRow.rows[0]?.wallet_balance) || 0;
+    if (walletRs < priceRupees) {
+      return res.status(400).json({ success: false, message: "Insufficient wallet balance" });
+    }
+
+    // Deduct from wallet
+    await db.query(
+      "UPDATE users SET wallet_balance = GREATEST(0, wallet_balance - ?) WHERE id=?",
+      [priceRupees, userId]
+    );
+
+    // Record payment (no Razorpay columns)
+    const paymentInsert = await db.query(
+      `INSERT INTO payments (user_id, resume_id, amount, currency, purpose, status, coupon_code)
+       VALUES (?, ?, ?, 'INR', 'download', 'captured', ?)`,
+      [userId, resumeId || null, priceRupees * 100, appliedCoupon]
+    );
+    const newPaymentId = paymentInsert.insertId;
+
+    // Record wallet transaction
+    await db.query(
+      "INSERT INTO wallet_transactions (user_id,amount,type,reason,ref_id) VALUES (?,?,'debit','used_in_payment',?)",
+      [userId, priceRupees, newPaymentId]
+    ).catch(() => {});
+
+    // Increment coupon uses_count
+    if (appliedCoupon) {
+      await db.query(
+        "UPDATE coupons SET uses_count = uses_count + 1 WHERE code = ?", [appliedCoupon]
+      ).catch(() => {});
+    }
+
+    // Issue referral reward on first captured payment
+    const refRow = await db.query("SELECT referred_by FROM users WHERE id=?", [userId]);
+    const referrerId = refRow.rows[0]?.referred_by;
+    if (referrerId) {
+      const payCount = await db.query(
+        "SELECT COUNT(*) AS count FROM payments WHERE user_id=? AND status='captured'", [userId]
+      );
+      if (parseInt(payCount.rows[0].count) === 1) {
+        const reward = 20;
+        await db.query(
+          "UPDATE users SET wallet_balance = wallet_balance + ? WHERE id=?", [reward, referrerId]
+        ).catch(() => {});
+        await db.query(
+          "INSERT INTO wallet_transactions (user_id,amount,type,reason,ref_id) VALUES (?,?,'credit','referral_reward',?)",
+          [referrerId, reward, newPaymentId]
+        ).catch(() => {});
+        await db.query(
+          "UPDATE payments SET referral_reward_issued=true WHERE id=?", [newPaymentId]
+        ).catch(() => {});
+      }
+    }
+
+    // Log event
+    await db.query(
+      "INSERT INTO resume_events (user_id, resume_id, kind) VALUES (?, ?, 'download')",
+      [userId, resumeId || null]
+    ).catch(() => {});
+
+    logActivity({ userId, actionType: "payment", metadata: { amount: priceRupees * 100, resumeId: resumeId || null }, ip: req.ip });
+
+    return res.json({ success: true });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: "Wallet payment failed" });
   }
 });
 
@@ -3210,6 +3371,10 @@ if (existing.rows.length > 0) {
         "UPDATE users SET wallet_balance = GREATEST(0, wallet_balance - ?) WHERE id=?",
         [walletUsed, userId]
       ).catch(() => {});
+      await db.query(
+        "INSERT INTO wallet_transactions (user_id,amount,type,reason,ref_id) VALUES (?,?,'debit','used_in_payment',?)",
+        [userId, walletUsed, newPaymentId]
+      ).catch(() => {});
     }
 
     // Issue referral reward to referrer on referee's first payment
@@ -3225,6 +3390,10 @@ if (existing.rows.length > 0) {
         await db.query(
           "UPDATE users SET wallet_balance = wallet_balance + ? WHERE id=?",
           [reward, referrerId]
+        ).catch(() => {});
+        await db.query(
+          "INSERT INTO wallet_transactions (user_id,amount,type,reason,ref_id) VALUES (?,?,'credit','referral_reward',?)",
+          [referrerId, reward, newPaymentId]
         ).catch(() => {});
         await db.query(
           "UPDATE payments SET referral_reward_issued=true WHERE id=?",
