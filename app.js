@@ -2,6 +2,7 @@ import express from "express";
 import { createServer } from "http";
 import { Server as SocketServer } from "socket.io";
 import mysql from "mysql2/promise";
+import mysql2Cb from "mysql2";
 import bcrypt from "bcrypt";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
@@ -23,7 +24,14 @@ import QRCode from "qrcode";
 import { getFieldsForTemplate, isPhotoTemplate } from "./config/template-fields.js";
 import adminRouter from "./routes/admin.js";
 import { removeBackgroundFromImageBase64 } from "remove.bg";
-import { removeBackground } from "@imgly/background-removal-node";
+let _removeBackground = null;
+async function getRemoveBg() {
+  if (!_removeBackground) {
+    const mod = await import("@imgly/background-removal-node");
+    _removeBackground = mod.removeBackground;
+  }
+  return _removeBackground;
+}
 
 const MysqlSession = MySQLStore(session);
 const __filename = fileURLToPath(import.meta.url);
@@ -78,9 +86,12 @@ const pool = mysql.createPool({
   decimalNumbers: true,
 });
 
+// Callback-based pool for express-mysql-session (requires non-promise pool)
+const sessionPool = mysql2Cb.createPool(process.env.DATABASE_URL);
+
 const db = {
   async query(sql, params) {
-    const [result] = await pool.execute(sql, params || []);
+    const [result] = await pool.query(sql, params || []);
     if (Array.isArray(result)) {
       return { rows: result, rowCount: result.length };
     }
@@ -126,9 +137,9 @@ await db.query(`
     education TEXT,
     languages TEXT,
     skills TEXT,
-    profile_image_url TEXT,
+    profile_image_url MEDIUMTEXT,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  );
+  )
 `);
 
 await db.query(`
@@ -156,10 +167,7 @@ await db.query(`
     `);
 
     /* experience_level column (safe to run on every startup) */
-    await db.query(`
-      ALTER TABLE resumes
-      ADD COLUMN IF NOT EXISTS experience_level TEXT DEFAULT 'experienced';
-    `);
+    await db.query(`ALTER TABLE resumes ADD COLUMN experience_level TEXT DEFAULT 'experienced'`).catch(() => {});
 
     /* download/print events (for stats) */
     await db.query(`
@@ -190,14 +198,8 @@ await db.query(`
     `);
 
     /* ── Admin: role column on users ── */
-    await db.query(`
-      ALTER TABLE users
-        ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'user';
-    `);
-    await db.query(`
-      ALTER TABLE users
-        ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true;
-    `);
+    await db.query(`ALTER TABLE users ADD COLUMN role VARCHAR(20) NOT NULL DEFAULT 'user'`).catch(() => {});
+    await db.query(`ALTER TABLE users ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT true`).catch(() => {});
 
     /* ── Activity logs table ── */
     await db.query(`
@@ -211,9 +213,9 @@ await db.query(`
         created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    await db.query(`CREATE INDEX IF NOT EXISTS idx_activity_logs_created ON activity_logs(created_at DESC);`);
-    await db.query(`CREATE INDEX IF NOT EXISTS idx_activity_logs_user ON activity_logs(user_id);`);
-    await db.query(`ALTER TABLE service_requests ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE SET NULL;`);
+    await db.query(`CREATE INDEX idx_activity_logs_created ON activity_logs(created_at)`).catch(() => {});
+    await db.query(`CREATE INDEX idx_activity_logs_user ON activity_logs(user_id)`).catch(() => {});
+    await db.query(`ALTER TABLE service_requests ADD COLUMN user_id INTEGER`).catch(() => {});
 
     /* ── Request chat messages ── */
     await db.query(`
@@ -227,14 +229,14 @@ await db.query(`
         created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    await db.query(`CREATE INDEX IF NOT EXISTS idx_req_msg_request ON request_messages(request_id);`);
-    await db.query(`ALTER TABLE service_requests ADD COLUMN IF NOT EXISTS guest_token VARCHAR(64);`);
+    await db.query(`CREATE INDEX idx_req_msg_request ON request_messages(request_id)`).catch(() => {});
+    await db.query(`ALTER TABLE service_requests ADD COLUMN guest_token VARCHAR(64)`).catch(() => {});
 
     /* ── Admin settings (key-value store for prices, etc.) ── */
     await db.query(`
       CREATE TABLE IF NOT EXISTS admin_settings (
         \`key\`      VARCHAR(255) PRIMARY KEY,
-        value      TEXT NOT NULL,
+        value      MEDIUMTEXT NOT NULL,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
@@ -264,6 +266,7 @@ await db.query(`
           { title: "AI Cover Letters",  description: "Tailored cover letters for each job description, matching your skills and experience.",                                                   link: "",                      bgClass: "cover-bg",     imageUrl: "" },
           { title: "Profile & Portfolio", description: "Keep your details saved, update once, and export resumes or profiles whenever you need.",                                               link: "",                      bgClass: "portfolio-bg", imageUrl: "" },
           { title: "Applications (A4)", description: "Write formal applications — sick leave, resignation, appreciation and more — with AI guidance and voice input.",                         link: "/application-builder",  bgClass: "app-bg",       imageUrl: "" },
+          { title: "SmrPhoto Editor",   description: "Edit, enhance and personalise your photos with powerful AI tools — crop, filters, adjustments and more in one click.",        link: "/photo-editor",       bgClass: "photo-bg",     imageUrl: "" },
           { title: "Background Remover", description: "Remove image backgrounds instantly with AI — clean, precise cutouts in seconds. Perfect for resumes, portfolios, and more.", link: "/background-remover", bgClass: "bg-remover-bg", imageUrl: "" },
         ],
       })],
@@ -332,15 +335,19 @@ await db.query(`
       )
     `).catch(() => {});
 
-    // Idempotent column additions — safe to run every startup
-    await db.query(`ALTER TABLE admin_template_sections ADD COLUMN IF NOT EXISTS placement VARCHAR(20) DEFAULT 'auto'`).catch(() => {});
-    await db.query(`ALTER TABLE admin_template_sections ADD COLUMN IF NOT EXISTS display_type VARCHAR(30) DEFAULT 'bullets'`).catch(() => {});
-    await db.query(`ALTER TABLE admin_template_sections ADD COLUMN IF NOT EXISTS label_override VARCHAR(150)`).catch(() => {});
+    // Upgrade columns to MEDIUMTEXT for base64 storage
+    await db.query(`ALTER TABLE user_profiles MODIFY COLUMN profile_image_url MEDIUMTEXT`).catch(() => {});
+    await db.query(`ALTER TABLE admin_settings MODIFY COLUMN value MEDIUMTEXT NOT NULL`).catch(() => {});
 
-    await db.query(`ALTER TABLE admin_settings ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`).catch(() => {});
-    await db.query(`ALTER TABLE admin_templates ADD COLUMN IF NOT EXISTS design_settings JSON`).catch(() => {});
-    await db.query(`ALTER TABLE admin_templates ADD COLUMN IF NOT EXISTS background_image_url TEXT`).catch(() => {});
-    await db.query(`ALTER TABLE template_overrides ADD COLUMN IF NOT EXISTS background_image_url TEXT`).catch(() => {});
+    // Idempotent column additions — safe to run every startup
+    await db.query(`ALTER TABLE admin_template_sections ADD COLUMN placement VARCHAR(20) DEFAULT 'auto'`).catch(() => {});
+    await db.query(`ALTER TABLE admin_template_sections ADD COLUMN display_type VARCHAR(30) DEFAULT 'bullets'`).catch(() => {});
+    await db.query(`ALTER TABLE admin_template_sections ADD COLUMN label_override VARCHAR(150)`).catch(() => {});
+
+    await db.query(`ALTER TABLE admin_settings ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`).catch(() => {});
+    await db.query(`ALTER TABLE admin_templates ADD COLUMN design_settings JSON`).catch(() => {});
+    await db.query(`ALTER TABLE admin_templates ADD COLUMN background_image_url TEXT`).catch(() => {});
+    await db.query(`ALTER TABLE template_overrides ADD COLUMN background_image_url TEXT`).catch(() => {});
 
     /* ── Static template overrides: admin edits to hardcoded templates ── */
     await db.query(`
@@ -384,16 +391,16 @@ await db.query(`
       )
     `).catch(() => {});
 
-    await db.query(`ALTER TABLE payments ADD COLUMN IF NOT EXISTS coupon_code TEXT`).catch(() => {});
+    await db.query(`ALTER TABLE payments ADD COLUMN coupon_code TEXT`).catch(() => {});
 
     // ── Referral system columns ──────────────────────────────────────────────
-    await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code VARCHAR(20) UNIQUE`).catch(() => {});
-    await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by INTEGER REFERENCES users(id) ON DELETE SET NULL`).catch(() => {});
-    await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS wallet_balance NUMERIC(10,2) NOT NULL DEFAULT 0`).catch(() => {});
-    await db.query(`ALTER TABLE payments ADD COLUMN IF NOT EXISTS referral_reward_issued BOOLEAN NOT NULL DEFAULT false`).catch(() => {});
+    await db.query(`ALTER TABLE users ADD COLUMN referral_code VARCHAR(20) UNIQUE`).catch(() => {});
+    await db.query(`ALTER TABLE users ADD COLUMN referred_by INTEGER`).catch(() => {});
+    await db.query(`ALTER TABLE users ADD COLUMN wallet_balance DECIMAL(10,2) NOT NULL DEFAULT 0`).catch(() => {});
+    await db.query(`ALTER TABLE payments ADD COLUMN referral_reward_issued BOOLEAN NOT NULL DEFAULT false`).catch(() => {});
 
     // Backfill referral codes for existing users who don't have one
-    const noCodeUsers = await db.query("SELECT id, name FROM users WHERE referral_code IS NULL");
+    const noCodeUsers = await db.query("SELECT id, name FROM users WHERE referral_code IS NULL").catch(() => ({ rows: [] }));
     for (const u of noCodeUsers.rows) {
       let code, tries = 0;
       do {
@@ -403,7 +410,7 @@ await db.query(`
     }
 
     // ── Investor system ───────────────────────────────────────────────────────
-    await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS investor_approved BOOLEAN NOT NULL DEFAULT false`).catch(() => {});
+    await db.query(`ALTER TABLE users ADD COLUMN investor_approved BOOLEAN NOT NULL DEFAULT false`).catch(() => {});
     await db.query(`
       CREATE TABLE IF NOT EXISTS investor_requests (
         id         INT AUTO_INCREMENT PRIMARY KEY,
@@ -415,9 +422,9 @@ await db.query(`
         UNIQUE(user_id)
       )
     `).catch(() => {});
-    await db.query(`ALTER TABLE investor_requests ADD COLUMN IF NOT EXISTS desired_amount NUMERIC(12,2)`).catch(() => {});
-    await db.query(`ALTER TABLE investor_requests ADD COLUMN IF NOT EXISTS desired_equity NUMERIC(5,2)`).catch(() => {});
-    await db.query(`ALTER TABLE investor_requests ADD COLUMN IF NOT EXISTS phone VARCHAR(20)`).catch(() => {});
+    await db.query(`ALTER TABLE investor_requests ADD COLUMN desired_amount NUMERIC(12,2)`).catch(() => {});
+    await db.query(`ALTER TABLE investor_requests ADD COLUMN desired_equity NUMERIC(5,2)`).catch(() => {});
+    await db.query(`ALTER TABLE investor_requests ADD COLUMN phone VARCHAR(20)`).catch(() => {});
     await db.query(`
       CREATE TABLE IF NOT EXISTS subadmin_permissions (
         id       INT AUTO_INCREMENT PRIMARY KEY,
@@ -434,8 +441,8 @@ await db.query(`
         amount            NUMERIC(12,2) NOT NULL,
         equity_percent    NUMERIC(5,2) NOT NULL,
         valuation         NUMERIC(14,2) NOT NULL,
-        payment_id        TEXT NOT NULL,
-        razorpay_order_id TEXT,
+        payment_id        VARCHAR(255) NOT NULL,
+        razorpay_order_id VARCHAR(255),
         created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(payment_id)
       )
@@ -451,7 +458,7 @@ await db.query(`
 
     // Load env overrides from admin_settings (env_* keys)
     try {
-      const envRows = await db.query("SELECT key, value FROM admin_settings WHERE key LIKE 'env_%'");
+      const envRows = await db.query("SELECT `key`, value FROM admin_settings WHERE `key` LIKE 'env_%'");
       for (const row of envRows.rows) {
         const envKey = row.key.replace(/^env_/, '').toUpperCase();
         if (row.value) process.env[envKey] = row.value;
@@ -459,6 +466,7 @@ await db.query(`
     } catch (_) {}
 
   } catch (err) {
+    console.error('[initDb] FAILED:', err.message);
   }
 }
 
@@ -572,7 +580,7 @@ const isProd = process.env.NODE_ENV === "production";
 app.set("trust proxy", 1);
 
 const sessionMiddleware = session({
-  store: new MysqlSession({}, pool),
+  store: new MysqlSession({}, sessionPool),
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
@@ -1397,7 +1405,7 @@ app.get("/photo-editor", ensureAuthenticated, (req, res) => {
 // ---------- Background Remover ----------
 app.get("/background-remover", ensureAuthenticated, async (req, res) => {
   try {
-    const r = await db.query("SELECT value FROM admin_settings WHERE key='bgremover_backgrounds'");
+    const r = await db.query("SELECT value FROM admin_settings WHERE `key`='bgremover_backgrounds'");
     const bgImages = r.rows.length ? JSON.parse(r.rows[0].value) : [];
     res.render("background-remover", { bgImages });
   } catch {
@@ -1414,7 +1422,7 @@ app.post("/api/background-remover", ensureAuthenticated, upload.single("image"),
 
   let provider = 'removebg';
   try {
-    const pr = await db.query("SELECT value FROM admin_settings WHERE key='bgremover_provider'");
+    const pr = await db.query("SELECT value FROM admin_settings WHERE `key`='bgremover_provider'");
     if (pr.rows.length) provider = pr.rows[0].value;
   } catch (_) {}
 
@@ -1422,6 +1430,7 @@ app.post("/api/background-remover", ensureAuthenticated, upload.single("image"),
     if (provider === 'free') {
       const imgBuffer = Buffer.from(b64, "base64");
       const imgBlob = new Blob([imgBuffer], { type: req.file.mimetype || 'image/jpeg' });
+      const removeBackground = await getRemoveBg();
       const blob = await removeBackground(imgBlob);
       const arrayBuffer = await blob.arrayBuffer();
       const b64out = Buffer.from(arrayBuffer).toString("base64");
@@ -1768,7 +1777,7 @@ app.get(
 // ── Site URL helper — reads from admin_settings first, then process.env ──────
 async function getSiteUrl() {
   try {
-    const r = await db.query("SELECT value FROM admin_settings WHERE key='env_base_url'");
+    const r = await db.query("SELECT value FROM admin_settings WHERE `key`='env_base_url'");
     if (r.rows[0]?.value) return r.rows[0].value.replace(/\/$/, '');
   } catch (_) {}
   return (process.env.BASE_URL || 'https://smrai.studio').replace(/\/$/, '');
@@ -2409,7 +2418,7 @@ app.post("/api/ai/interview-generate", ensureAuthenticated, async (req, res) => 
 // Helper: load investment config from admin_settings
 async function getInvestmentConfig() {
   const rows = await db.query(
-    "SELECT key, value FROM admin_settings WHERE key IN ('investment_amount','investment_equity','investment_valuation')"
+    "SELECT `key`, value FROM admin_settings WHERE `key` IN ('investment_amount','investment_equity','investment_valuation')"
   );
   const cfg = {};
   for (const r of rows.rows) cfg[r.key] = parseFloat(r.value);
@@ -2764,6 +2773,7 @@ io.on("connection", (socket) => {
 });
 
 server.listen(port, () => {
+  console.log(`Server running on port ${port}`);
 });
 
 // ========== Service Request Routes ==========
