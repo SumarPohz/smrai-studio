@@ -142,6 +142,31 @@
       <a href="/refer" class="btn-primary ref-card-btn">Share Your Code</a>
     </div>
 
+    <%# ── Wallet Card ── %>
+    <div class="card wallet-dash-card">
+      <div class="ref-card-top">
+        <div class="ref-card-icon" style="background:linear-gradient(135deg,#0891b2,#0f766e)">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="1" y="4" width="22" height="16" rx="3"/><path d="M1 10h22"/><circle cx="17" cy="15" r="1.5" fill="currentColor"/></svg>
+        </div>
+        <div>
+          <h2 style="margin:0 0 0.15rem">My Wallet</h2>
+          <p style="margin:0;font-size:0.82rem;color:#6b7280">Your earnings &amp; credits</p>
+        </div>
+      </div>
+      <div class="wallet-dash-balance">
+        <span class="wallet-dash-amount">₹<%= (walletBalance || 0).toFixed(0) %></span>
+        <% if ((walletBalance || 0) > 0) { %>
+        <span class="wallet-dash-badge">Ready to use</span>
+        <% } else { %>
+        <span class="wallet-dash-badge wallet-dash-badge--empty">No balance</span>
+        <% } %>
+      </div>
+      <div style="display:flex;gap:0.5rem;margin-top:0.25rem">
+        <a href="/wallet" class="btn-primary" style="flex:1;text-align:center;text-decoration:none;font-size:0.85rem;padding:0.55rem 0.75rem">View Wallet</a>
+        <a href="/refer" class="btn-ghost" style="flex:1;text-align:center;text-decoration:none;font-size:0.85rem;padding:0.55rem 0.75rem">Refer &amp; Earn</a>
+      </div>
+    </div>
+
     <%# ── Investor Card (only shown to active investors) ── %>
     <% if (currentUser && currentUser.role === 'investor') { %>
     <div class="card investor-card-active">
@@ -280,6 +305,7 @@
   /* Make Refer & Earn + Service Request span full width inside 2-col grid */
   @media (max-width: 600px) {
     .card-grid .refer-earn-card,
+    .card-grid .wallet-dash-card,
     .card-grid > .card:not(.service-card) { grid-column: 1 / -1; }
     .card-grid .service-image { height: 90px; }
     .card-grid .service-card-body { padding: 0.65rem 0.75rem; }
@@ -297,6 +323,13 @@
   .ref-perk--green { background: #d1fae5; color: #065f46; }
   .ref-perk--purple { background: #ede9fe; color: #5b21b6; }
   .ref-card-btn { display: inline-block; text-decoration: none; }
+
+  /* ── Wallet dash card ── */
+  .wallet-dash-card { background: linear-gradient(145deg, #f0fdfa 0%, #e0f2fe 100%); border: 1px solid #99f6e4; }
+  .wallet-dash-balance { display: flex; align-items: center; gap: 0.6rem; margin: 0.1rem 0 0.75rem; }
+  .wallet-dash-amount { font-size: 1.6rem; font-weight: 800; color: #0f766e; letter-spacing: -0.02em; }
+  .wallet-dash-badge { font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.55rem; border-radius: 999px; background: #d1fae5; color: #065f46; }
+  .wallet-dash-badge--empty { background: #f3f4f6; color: #6b7280; }
 
   /* ── Investor card ── */
   .investor-card { background: linear-gradient(145deg, #f0fdf4 0%, #dcfce7 100%); border: 1px solid #bbf7d0; }

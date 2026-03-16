@@ -29,7 +29,7 @@ const adImgStorage = multer.diskStorage({
 });
 const adUpload = multer({ storage: adImgStorage, limits: { fileSize: 5 * 1024 * 1024 } });
 
-const ADMIN_SECTIONS = ["overview","users","activity","requests","pricing","templates","homepage","ads","coupons","apikeys","investors"];
+const ADMIN_SECTIONS = ["overview","users","activity","requests","pricing","templates","homepage","ads","coupons","apikeys","investors","wallet"];
 
 // Map API path prefixes → section key (for write-guard)
 const SECTION_API_MAP = [
@@ -43,6 +43,7 @@ const SECTION_API_MAP = [
   { prefix: "/api/investor",         section: "investors" },
   { prefix: "/api/investment",       section: "investors" },
   { prefix: "/api/env-settings",     section: "apikeys"   },
+  { prefix: "/api/wallet",           section: "wallet"    },
 ];
 
 export default function adminRouter(db) {
@@ -1452,6 +1453,70 @@ export default function adminRouter(db) {
       await Promise.all(updates);
       res.json({ success: true });
     } catch (err) { res.status(500).json({ success: false }); }
+  });
+
+  // ── Wallet admin endpoints ─────────────────────────────────────────────────
+
+  // GET /admin/api/wallet/users — paginated users with wallet balance
+  router.get("/api/wallet/users", async (req, res) => {
+    try {
+      const page  = Math.max(1, parseInt(req.query.page)  || 1);
+      const limit = Math.min(50, parseInt(req.query.limit) || 20);
+      const offset = (page - 1) * limit;
+      const search = req.query.search ? `%${req.query.search}%` : null;
+
+      let where = "WHERE u.role NOT IN ('admin','subadmin')";
+      const params = [];
+      if (search) { where += " AND (u.name LIKE ? OR u.email LIKE ?)"; params.push(search, search); }
+
+      const countRes = await db.query(`SELECT COUNT(*) AS count FROM users u ${where}`, params);
+      const total = parseInt(countRes.rows[0]?.count) || 0;
+
+      const rows = await db.query(
+        `SELECT u.id, u.name, u.email, u.wallet_balance,
+                (SELECT COUNT(*) FROM users r WHERE r.referred_by = u.id) AS referral_count
+         FROM users u ${where}
+         ORDER BY u.wallet_balance DESC LIMIT ? OFFSET ?`,
+        [...params, limit, offset]
+      );
+      res.json({ success: true, users: rows.rows, total, page, limit });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+  });
+
+  // POST /admin/api/wallet/adjust — credit or debit a user's wallet
+  router.post("/api/wallet/adjust", async (req, res) => {
+    try {
+      const { userId, amount, type, reason } = req.body;
+      if (!userId || !amount || !['credit','debit'].includes(type)) {
+        return res.status(400).json({ success: false, message: "userId, amount, and type (credit/debit) are required" });
+      }
+      const amt = parseFloat(amount);
+      if (isNaN(amt) || amt <= 0) return res.status(400).json({ success: false, message: "Invalid amount" });
+
+      if (type === 'credit') {
+        await db.query("UPDATE users SET wallet_balance = wallet_balance + ? WHERE id=?", [amt, userId]);
+      } else {
+        await db.query("UPDATE users SET wallet_balance = GREATEST(0, wallet_balance - ?) WHERE id=?", [amt, userId]);
+      }
+      await db.query(
+        "INSERT INTO wallet_transactions (user_id, amount, type, reason) VALUES (?,?,?,?)",
+        [userId, amt, type, reason || 'admin_adjustment']
+      );
+      const updated = await db.query("SELECT wallet_balance FROM users WHERE id=?", [userId]);
+      res.json({ success: true, newBalance: parseFloat(updated.rows[0]?.wallet_balance) || 0 });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+  });
+
+  // GET /admin/api/wallet/transactions/:userId — transaction history for a user
+  router.get("/api/wallet/transactions/:userId", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const rows = await db.query(
+        "SELECT * FROM wallet_transactions WHERE user_id=? ORDER BY created_at DESC LIMIT 50",
+        [userId]
+      );
+      res.json({ success: true, transactions: rows.rows });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
   });
 
   return router;

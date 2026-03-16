@@ -1468,6 +1468,24 @@ main section {
   box-shadow: 0 6px 14px rgba(37, 99, 235, 0.35);
 }
 
+/* Wallet strip in sidebar */
+.sidebar-wallet-strip {
+  display: flex; align-items: center; justify-content: space-between;
+  background: linear-gradient(135deg, #f0fdfa, #e0f2fe);
+  border: 1px solid #99f6e4; border-radius: 10px;
+  padding: 0.6rem 0.85rem; margin: 0.75rem 0 0.25rem;
+  text-decoration: none; transition: opacity 0.15s;
+}
+.sidebar-wallet-strip:hover { opacity: 0.85; }
+.sidebar-wallet-left { display: flex; align-items: center; gap: 0.5rem; }
+.sidebar-wallet-icon {
+  width: 26px; height: 26px; border-radius: 7px; flex-shrink: 0;
+  background: linear-gradient(135deg, #0891b2, #0f766e);
+  color: #fff; display: flex; align-items: center; justify-content: center;
+}
+.sidebar-wallet-label { font-size: 0.8rem; font-weight: 600; color: #0f766e; }
+.sidebar-wallet-amount { font-size: 1rem; font-weight: 800; color: #0f766e; }
+
 /* Logout section pinned to bottom */
 .sidebar-section-footer {
   margin-top: 1.2rem;

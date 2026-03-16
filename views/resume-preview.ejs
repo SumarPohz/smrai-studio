@@ -561,11 +561,29 @@
         </div>
       </div>
 
+      <% if (typeof walletBalance !== 'undefined' && walletBalance > 0) { %>
+      <div class="dl-wallet-section" id="dlWalletSection">
+        <label class="dl-wallet-label">
+          <input type="checkbox" id="useWalletCheck" checked>
+          Use ₹<%= walletBalance.toFixed(0) %> wallet credit
+        </label>
+        <span class="dl-wallet-badge">
+          <% if (walletBalance >= displayPrice) { %>Covers full ₹<%= displayPrice %><% } else { %>Save ₹<%= walletBalance.toFixed(0) %><% } %>
+        </span>
+      </div>
+      <% } %>
+
       <button id="download-image-btn" class="dl-pay-btn" style="display:none"></button>
       <button id="download-pdf-btn"   class="dl-pay-btn" style="display:none"></button>
+      <% if (typeof walletBalance !== 'undefined' && walletBalance >= displayPrice) { %>
+      <button id="dl-unlock-btn" class="dl-unlock-btn" style="background:linear-gradient(135deg,#0891b2,#0f766e)">
+        💰 Pay with Wallet — ₹0 extra
+      </button>
+      <% } else { %>
       <button id="dl-unlock-btn" class="dl-unlock-btn">
         Pay ₹<%= displayPrice %> &amp; Unlock Downloads
       </button>
+      <% } %>
     </div>
     <a href="/resume-builder" class="dl-edit-link">← Edit details</a>
   </div>
@@ -766,6 +784,24 @@
     .dl-coupon-remove {
       background: none; border: none; color: #065f46;
       font-size: 1rem; cursor: pointer; line-height: 1; padding: 0;
+    }
+
+    /* ── Wallet section ── */
+    .dl-wallet-section {
+      display: flex; align-items: center; justify-content: space-between;
+      background: #f0fdfa; border: 1.5px solid #99f6e4; border-radius: 10px;
+      padding: 0.55rem 0.75rem; margin: 0.1rem 0;
+    }
+    .dl-wallet-label {
+      display: flex; align-items: center; gap: 0.45rem;
+      font-size: 0.82rem; font-weight: 600; color: #0f766e; cursor: pointer;
+    }
+    .dl-wallet-label input[type=checkbox] { accent-color: #0891b2; width: 15px; height: 15px; cursor: pointer; }
+    .dl-wallet-badge {
+      font-size: 0.72rem; font-weight: 700;
+      background: #d1fae5; color: #065f46;
+      border-radius: 999px; padding: 0.2rem 0.55rem;
+      white-space: nowrap;
     }
 
     @media (max-width: 560px) {
@@ -1345,7 +1381,7 @@
       const res  = await fetch("/api/razorpay/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ template: templateName, couponCode: couponCode || null, useWallet: true }),
+        body: JSON.stringify({ template: templateName, couponCode: couponCode || null, useWallet: document.getElementById('useWalletCheck')?.checked ?? false }),
       });
       const json = await res.json();
       if (!json.success) throw new Error("Order creation failed");
@@ -1354,8 +1390,44 @@
 
     async function startPayment(action, couponCode) {
       try {
+        const origUnlockText = unlockBtn ? unlockBtn.innerHTML : '';
         const orderData = await createOrder(couponCode);
 
+        // ── Wallet-only path: wallet covers full price, skip Razorpay ──
+        if (orderData.walletOnly) {
+          if (unlockBtn) unlockBtn.innerHTML = 'Paying with Wallet…';
+          try {
+            const walletRes = await fetch("/api/wallet/pay", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ template: templateName, couponCode: couponCode || null, resumeId: resumeId || null }),
+            });
+            const walletData = await walletRes.json();
+            if (!walletData.success) {
+              alert("Wallet payment failed. Please try again.");
+              if (unlockBtn) unlockBtn.innerHTML = origUnlockText;
+              return;
+            }
+            paymentVerified = true;
+            document.querySelector(".resume-watermark")?.remove();
+            downloadBtn.textContent = "Download JPG (A4)";
+            pdfBtn.textContent      = "Download PDF (A4)";
+            if (unlockBtn) {
+              unlockBtn.innerHTML = '✅ Unlocked — Choose Format';
+              unlockBtn.style.background = 'linear-gradient(135deg,#16a34a,#15803d)';
+            }
+            if (action === "jpg") await generateJpg();
+            else if (action === "pdf") await generatePdf();
+            else if (action === "_modal") showDownloadModal();
+          } catch (err) {
+            console.error("Wallet pay error:", err);
+            alert("Wallet payment failed. Please try again.");
+            if (unlockBtn) unlockBtn.innerHTML = origUnlockText;
+          }
+          return;
+        }
+
+        // ── Razorpay path (partial wallet or no wallet) ──
         // Show referral / wallet savings on the pay button
         const finalRs = Math.round(orderData.amount / 100);
         const savings = (orderData.referralDiscount || 0) + (orderData.walletDeduction || 0);

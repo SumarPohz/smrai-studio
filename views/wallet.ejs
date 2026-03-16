@@ -1,0 +1,208 @@
+<%- include("partials/header") %>
+
+<style>
+  .wallet-page { max-width: 420px; margin: 1rem auto; padding: 0 0.875rem 2rem; }
+
+  /* ── Balance hero card ── */
+  .wallet-hero {
+    background: linear-gradient(145deg, #0f0c29 0%, #1a2a4a 50%, #0f3460 100%);
+    border-radius: 20px;
+    padding: 1.35rem 1.25rem 1.15rem;
+    text-align: center;
+    color: #fff;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+    position: relative;
+    overflow: hidden;
+  }
+  .wallet-hero::before {
+    content: '';
+    position: absolute;
+    top: -60px; left: 50%; transform: translateX(-50%);
+    width: 220px; height: 220px;
+    background: radial-gradient(circle, rgba(6,182,212,0.15) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .wallet-hero-icon {
+    width: 48px; height: 48px; border-radius: 14px; margin: 0 auto 0.65rem;
+    background: rgba(6,182,212,0.2); border: 1.5px solid rgba(6,182,212,0.3);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem;
+  }
+  .wallet-hero-label { font-size: 0.68rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.25rem; }
+  .wallet-hero-amount { font-size: 2.6rem; font-weight: 900; color: #34d399; line-height: 1; margin-bottom: 0.35rem; letter-spacing: -0.03em; }
+  .wallet-hero-sub { font-size: 0.78rem; color: #64748b; margin-bottom: 0.9rem; }
+  .wallet-hero-badge {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    background: rgba(52,211,153,0.15); border: 1.5px solid rgba(52,211,153,0.3);
+    color: #34d399; font-size: 0.72rem; font-weight: 700;
+    padding: 0.3rem 0.75rem; border-radius: 999px; margin-bottom: 0.9rem;
+  }
+  .wallet-hero-stats {
+    display: flex; justify-content: space-around;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(255,255,255,0.08);
+  }
+  .wallet-stat-item { text-align: center; }
+  .wallet-stat-val { font-size: 1.05rem; font-weight: 900; color: #f1f5f9; line-height: 1; }
+  .wallet-stat-lbl { font-size: 0.58rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.07em; margin-top: 0.15rem; }
+
+  /* ── Transaction list ── */
+  .wallet-txn-card {
+    margin-top: 1rem; background: #fff;
+    border-radius: 16px; padding: 1rem 1.25rem;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    border: 1px solid #f1f5f9;
+  }
+  .wallet-section-title { font-size: 0.65rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.75rem; }
+  .wallet-txn-list { display: flex; flex-direction: column; gap: 0; }
+  .wallet-txn-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.65rem 0;
+    border-bottom: 1px solid #f3f4f6;
+  }
+  .wallet-txn-item:last-child { border-bottom: none; }
+  .wallet-txn-left { display: flex; align-items: center; gap: 0.6rem; }
+  .wallet-txn-dot {
+    width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.9rem;
+  }
+  .wallet-txn-dot--credit { background: #d1fae5; }
+  .wallet-txn-dot--debit  { background: #fee2e2; }
+  .wallet-txn-reason { font-size: 0.82rem; font-weight: 600; color: #111827; }
+  .wallet-txn-date   { font-size: 0.7rem; color: #9ca3af; margin-top: 0.05rem; }
+  .wallet-txn-amount { font-size: 0.9rem; font-weight: 800; white-space: nowrap; }
+  .wallet-txn-amount--credit { color: #059669; }
+  .wallet-txn-amount--debit  { color: #dc2626; }
+  .wallet-txn-empty { text-align: center; padding: 1.5rem 0; color: #9ca3af; font-size: 0.85rem; }
+
+  /* ── How to earn ── */
+  .wallet-how-card {
+    margin-top: 1rem; background: #fff;
+    border-radius: 16px; padding: 1rem 1.25rem;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    border: 1px solid #f1f5f9;
+  }
+  .wallet-how-list { display: flex; flex-direction: column; gap: 0.65rem; margin-top: 0.5rem; }
+  .wallet-how-item { display: flex; align-items: flex-start; gap: 0.65rem; }
+  .wallet-how-num {
+    width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+    background: linear-gradient(135deg, #0891b2, #0f766e);
+    color: #fff; font-size: 0.68rem; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .wallet-how-text { font-size: 0.78rem; color: #374151; line-height: 1.4; }
+  .wallet-how-text strong { color: #111827; }
+
+  /* ── CTA ── */
+  .wallet-cta { margin-top: 1rem; text-align: center; }
+  .wallet-cta a {
+    display: inline-block; width: 100%; max-width: 420px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff; font-weight: 700; font-size: 0.9rem;
+    padding: 0.8rem 1.25rem; border-radius: 12px;
+    text-decoration: none; box-shadow: 0 4px 16px rgba(99,102,241,0.35);
+    transition: opacity 0.15s;
+  }
+  .wallet-cta a:hover { opacity: 0.9; }
+</style>
+
+<div class="wallet-page">
+
+  <!-- Balance hero -->
+  <div class="wallet-hero">
+    <div class="wallet-hero-icon">💰</div>
+    <p class="wallet-hero-label">Available Balance</p>
+    <div class="wallet-hero-amount">₹<%= walletBalance.toFixed(0) %></div>
+    <p class="wallet-hero-sub">Applied automatically at checkout</p>
+    <% if (walletBalance > 0) { %>
+    <div class="wallet-hero-badge">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+      Ready to use
+    </div>
+    <% } else { %>
+    <div class="wallet-hero-badge" style="background:rgba(148,163,184,0.1);border-color:rgba(148,163,184,0.2);color:#64748b">
+      Invite friends to earn
+    </div>
+    <% } %>
+    <div class="wallet-hero-stats">
+      <div class="wallet-stat-item">
+        <div class="wallet-stat-val" style="color:#34d399">₹<%= walletBalance.toFixed(0) %></div>
+        <div class="wallet-stat-lbl">Balance</div>
+      </div>
+      <div class="wallet-stat-item">
+        <div class="wallet-stat-val" style="color:#a78bfa"><%= invitedCount %></div>
+        <div class="wallet-stat-lbl">Friends Invited</div>
+      </div>
+      <div class="wallet-stat-item">
+        <div class="wallet-stat-val" style="color:#f59e0b">₹<%= (invitedCount * 20).toFixed(0) %></div>
+        <div class="wallet-stat-lbl">Total Earned</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Transaction history -->
+  <div class="wallet-txn-card">
+    <p class="wallet-section-title">Transaction History</p>
+    <% if (transactions.length === 0) { %>
+    <div class="wallet-txn-empty">
+      <div style="font-size:1.8rem;margin-bottom:0.4rem">📭</div>
+      <p>No transactions yet</p>
+      <p style="font-size:0.78rem;margin-top:0.2rem">Refer a friend to earn your first ₹20</p>
+    </div>
+    <% } else { %>
+    <div class="wallet-txn-list">
+      <% transactions.forEach(function(tx) { %>
+      <div class="wallet-txn-item">
+        <div class="wallet-txn-left">
+          <div class="wallet-txn-dot wallet-txn-dot--<%= tx.type %>">
+            <%= tx.type === 'credit' ? '⬆️' : '⬇️' %>
+          </div>
+          <div>
+            <div class="wallet-txn-reason">
+              <% if (tx.reason === 'referral_reward') { %>Referral Reward
+              <% } else if (tx.reason === 'used_in_payment') { %>Used at Checkout
+              <% } else { %><%= tx.reason %>
+              <% } %>
+            </div>
+            <div class="wallet-txn-date">
+              <%= new Date(tx.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) %>
+            </div>
+          </div>
+        </div>
+        <div class="wallet-txn-amount wallet-txn-amount--<%= tx.type %>">
+          <%= tx.type === 'credit' ? '+' : '-' %>₹<%= parseFloat(tx.amount).toFixed(0) %>
+        </div>
+      </div>
+      <% }); %>
+    </div>
+    <% } %>
+  </div>
+
+  <!-- How to earn -->
+  <div class="wallet-how-card">
+    <p class="wallet-section-title">How to Earn</p>
+    <div class="wallet-how-list">
+      <div class="wallet-how-item">
+        <div class="wallet-how-num">1</div>
+        <div class="wallet-how-text"><strong>Share your referral code</strong> with friends and colleagues</div>
+      </div>
+      <div class="wallet-how-item">
+        <div class="wallet-how-num">2</div>
+        <div class="wallet-how-text">They <strong>sign up and purchase</strong> using your link — they get 30% off</div>
+      </div>
+      <div class="wallet-how-item">
+        <div class="wallet-how-num">3</div>
+        <div class="wallet-how-text"><strong>You earn ₹20</strong> wallet credit instantly, applied at your next checkout</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div class="wallet-cta">
+    <a href="/refer">Refer &amp; Earn ₹20 per Friend</a>
+  </div>
+
+</div>
+
+<%- include("partials/footer") %>
