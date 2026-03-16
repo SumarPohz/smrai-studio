@@ -1,7 +1,7 @@
 import express from "express";
 import { createServer } from "http";
 import { Server as SocketServer } from "socket.io";
-import pg from "pg";
+import mysql from "mysql2/promise";
 import bcrypt from "bcrypt";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
@@ -16,7 +16,7 @@ import { fileURLToPath } from "url";
 import Razorpay from "razorpay";
 import crypto from "crypto";
 import { VertexAI } from "@google-cloud/vertexai";
-import connectPgSimple from "connect-pg-simple"; 
+import MySQLStore from "express-mysql-session";
 import dotenv from "dotenv";
 import { TEMPLATES, getTemplateById } from "./config/templates-config.js";
 import QRCode from "qrcode";
@@ -25,7 +25,7 @@ import adminRouter from "./routes/admin.js";
 import { removeBackgroundFromImageBase64 } from "remove.bg";
 import { removeBackground } from "@imgly/background-removal-node";
 
-const PgSession = connectPgSimple(session);
+const MysqlSession = MySQLStore(session);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -70,37 +70,47 @@ if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
 }
 
 const app = express();
-// ---------- PostgreSQL ----------
-const db = new pg.Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === "production"
-    ? { rejectUnauthorized: false }
-    : false,
+// ---------- MySQL ----------
+const pool = mysql.createPool({
+  uri: process.env.DATABASE_URL,
+  waitForConnections: true,
+  connectionLimit: 10,
+  decimalNumbers: true,
 });
+
+const db = {
+  async query(sql, params) {
+    const [result] = await pool.execute(sql, params || []);
+    if (Array.isArray(result)) {
+      return { rows: result, rowCount: result.length };
+    }
+    return { rows: [], rowCount: result.affectedRows, insertId: result.insertId };
+  }
+};
 
 async function initDb() {
   try {
     await db.query(`
       CREATE TABLE IF NOT EXISTS service_requests (
-        id SERIAL PRIMARY KEY,
+        id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         email VARCHAR(255) NOT NULL,
         service_type VARCHAR(100) NOT NULL,
         details TEXT,
         status VARCHAR(50) DEFAULT 'new',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
+      )
     `);
 
     await db.query(`
   CREATE TABLE IF NOT EXISTS users (
-    id SERIAL PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255),
     email VARCHAR(255) UNIQUE NOT NULL,
     password TEXT,
     google_id TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  );
+  )
 `);
 
 await db.query(`
@@ -123,26 +133,26 @@ await db.query(`
 
 await db.query(`
   CREATE TABLE IF NOT EXISTS password_reset_tokens (
-    id SERIAL PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     otp_hash TEXT NOT NULL,
     expires_at TIMESTAMP NOT NULL,
     used BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  );
+  )
 `);
 
     /* resumes main table */
     await db.query(`
       CREATE TABLE IF NOT EXISTS resumes (
-        id SERIAL PRIMARY KEY,
+        id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         title VARCHAR(255) NOT NULL DEFAULT 'Untitled Resume',
         template VARCHAR(100) NOT NULL DEFAULT 'modern-1',
-        data JSONB NOT NULL,
+        data JSON NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
+      )
     `);
 
     /* experience_level column (safe to run on every startup) */
@@ -154,18 +164,18 @@ await db.query(`
     /* download/print events (for stats) */
     await db.query(`
       CREATE TABLE IF NOT EXISTS resume_events (
-        id SERIAL PRIMARY KEY,
+        id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         resume_id INTEGER REFERENCES resumes(id) ON DELETE CASCADE,
-        kind VARCHAR(50) NOT NULL, -- 'download' or 'print'
+        kind VARCHAR(50) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
+      )
     `);
 
     /* payment history (Razorpay) */
     await db.query(`
       CREATE TABLE IF NOT EXISTS payments (
-        id SERIAL PRIMARY KEY,
+        id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         resume_id INTEGER REFERENCES resumes(id) ON DELETE SET NULL,
         purpose VARCHAR(50),
@@ -176,7 +186,7 @@ await db.query(`
         razorpay_signature TEXT,
         status VARCHAR(30) DEFAULT 'captured',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
+      )
     `);
 
     /* ── Admin: role column on users ── */
@@ -192,14 +202,14 @@ await db.query(`
     /* ── Activity logs table ── */
     await db.query(`
       CREATE TABLE IF NOT EXISTS activity_logs (
-        id           SERIAL PRIMARY KEY,
+        id           INT AUTO_INCREMENT PRIMARY KEY,
         user_id      INTEGER REFERENCES users(id) ON DELETE SET NULL,
         action_type  VARCHAR(50) NOT NULL,
         route        VARCHAR(255),
-        metadata     JSONB,
+        metadata     JSON,
         ip_address   VARCHAR(45),
         created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
+      )
     `);
     await db.query(`CREATE INDEX IF NOT EXISTS idx_activity_logs_created ON activity_logs(created_at DESC);`);
     await db.query(`CREATE INDEX IF NOT EXISTS idx_activity_logs_user ON activity_logs(user_id);`);
@@ -208,14 +218,14 @@ await db.query(`
     /* ── Request chat messages ── */
     await db.query(`
       CREATE TABLE IF NOT EXISTS request_messages (
-        id          SERIAL PRIMARY KEY,
+        id          INT AUTO_INCREMENT PRIMARY KEY,
         request_id  INTEGER NOT NULL REFERENCES service_requests(id) ON DELETE CASCADE,
         sender_id   INTEGER REFERENCES users(id) ON DELETE SET NULL,
         sender_role VARCHAR(20) NOT NULL DEFAULT 'user',
         message     TEXT NOT NULL,
         is_read     BOOLEAN NOT NULL DEFAULT false,
         created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
+      )
     `);
     await db.query(`CREATE INDEX IF NOT EXISTS idx_req_msg_request ON request_messages(request_id);`);
     await db.query(`ALTER TABLE service_requests ADD COLUMN IF NOT EXISTS guest_token VARCHAR(64);`);
@@ -223,21 +233,20 @@ await db.query(`
     /* ── Admin settings (key-value store for prices, etc.) ── */
     await db.query(`
       CREATE TABLE IF NOT EXISTS admin_settings (
-        key        TEXT PRIMARY KEY,
+        \`key\`      VARCHAR(255) PRIMARY KEY,
         value      TEXT NOT NULL,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
+      )
     `);
     await db.query(`
-      INSERT INTO admin_settings (key, value) VALUES
+      INSERT IGNORE INTO admin_settings (\`key\`, value) VALUES
         ('price_fresher',      '100'),
         ('price_experienced',  '100'),
         ('price_developer',    '500'),
         ('price_ats-friendly', '500')
-      ON CONFLICT (key) DO NOTHING;
     `);
-    await db.query(`INSERT INTO admin_settings (key, value) VALUES ('ads_enabled', 'true') ON CONFLICT (key) DO NOTHING`);
-    await db.query(`INSERT INTO admin_settings (key, value) VALUES ('google_translate_enabled', 'false') ON CONFLICT (key) DO NOTHING`);
+    await db.query(`INSERT IGNORE INTO admin_settings (\`key\`, value) VALUES ('ads_enabled', 'true')`);
+    await db.query(`INSERT IGNORE INTO admin_settings (\`key\`, value) VALUES ('google_translate_enabled', 'false')`);
 
     // ── Homepage editable content defaults ───────────────────────────────────
     const homepageDefaults = [
@@ -284,7 +293,7 @@ await db.query(`
     ];
     for (const [key, value] of homepageDefaults) {
       await db.query(
-        `INSERT INTO admin_settings (key, value) VALUES ($1,$2) ON CONFLICT (key) DO NOTHING`,
+        `INSERT IGNORE INTO admin_settings (\`key\`, value) VALUES (?,?)`,
         [key, value]
       );
     }
@@ -292,14 +301,14 @@ await db.query(`
     /* ── Admin Template Builder: dynamic templates created via admin panel ── */
     await db.query(`
       CREATE TABLE IF NOT EXISTS admin_templates (
-        id           SERIAL PRIMARY KEY,
+        id           INT AUTO_INCREMENT PRIMARY KEY,
         slug         VARCHAR(100) UNIQUE NOT NULL,
         title        VARCHAR(255) NOT NULL,
         description  TEXT,
         category     VARCHAR(50) NOT NULL DEFAULT 'experienced',
         badge        VARCHAR(100) DEFAULT 'New',
         layout_type  VARCHAR(50) DEFAULT 'two-column-left',
-        color_scheme JSONB DEFAULT '{"primary":"#1e3a5f","secondary":"#f3f4f6","accent":"#3b82f6","text":"#1f2937"}',
+        color_scheme JSON,
         thumbnail_url TEXT,
         adobe_design_id TEXT,
         is_paid      BOOLEAN DEFAULT true,
@@ -307,20 +316,20 @@ await db.query(`
         is_published BOOLEAN DEFAULT false,
         sort_order   INTEGER DEFAULT 0,
         created_by   INTEGER REFERENCES users(id) ON DELETE SET NULL,
-        created_at   TIMESTAMPTZ DEFAULT NOW(),
-        updated_at   TIMESTAMPTZ DEFAULT NOW()
-      );
+        created_at   TIMESTAMP DEFAULT NOW(),
+        updated_at   TIMESTAMP DEFAULT NOW()
+      )
     `).catch(() => {});
 
     await db.query(`
       CREATE TABLE IF NOT EXISTS admin_template_sections (
-        id          SERIAL PRIMARY KEY,
+        id          INT AUTO_INCREMENT PRIMARY KEY,
         template_id INTEGER REFERENCES admin_templates(id) ON DELETE CASCADE,
         section_key VARCHAR(100) NOT NULL,
         is_enabled  BOOLEAN DEFAULT true,
         sort_order  INTEGER DEFAULT 0,
         UNIQUE(template_id, section_key)
-      );
+      )
     `).catch(() => {});
 
     // Idempotent column additions — safe to run every startup
@@ -329,7 +338,7 @@ await db.query(`
     await db.query(`ALTER TABLE admin_template_sections ADD COLUMN IF NOT EXISTS label_override VARCHAR(150)`).catch(() => {});
 
     await db.query(`ALTER TABLE admin_settings ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`).catch(() => {});
-    await db.query(`ALTER TABLE admin_templates ADD COLUMN IF NOT EXISTS design_settings JSONB DEFAULT '{"fontFamily":"segoe","headingWeight":"800","bodySize":"medium","borderRadius":"soft","shadow":"none","sectionTitleStyle":"underline","headerStyle":"classic","pillShape":"rounded"}'::jsonb`).catch(() => {});
+    await db.query(`ALTER TABLE admin_templates ADD COLUMN IF NOT EXISTS design_settings JSON`).catch(() => {});
     await db.query(`ALTER TABLE admin_templates ADD COLUMN IF NOT EXISTS background_image_url TEXT`).catch(() => {});
     await db.query(`ALTER TABLE template_overrides ADD COLUMN IF NOT EXISTS background_image_url TEXT`).catch(() => {});
 
@@ -342,25 +351,25 @@ await db.query(`
         preview_image_url TEXT,
         is_available      BOOLEAN,
         badge             VARCHAR(100),
-        updated_at        TIMESTAMPTZ DEFAULT NOW()
-      );
+        updated_at        TIMESTAMP DEFAULT NOW()
+      )
     `).catch(() => {});
 
     await db.query(`
       CREATE TABLE IF NOT EXISTS ads (
-        id         SERIAL PRIMARY KEY,
+        id         INT AUTO_INCREMENT PRIMARY KEY,
         slot       VARCHAR(20) NOT NULL CHECK (slot IN ('sidebar','footer')),
         title      VARCHAR(200),
         image_url  TEXT,
         link_url   TEXT NOT NULL,
         is_active  BOOLEAN DEFAULT true,
         created_at TIMESTAMP DEFAULT NOW()
-      );
+      )
     `).catch(() => {});
 
     await db.query(`
       CREATE TABLE IF NOT EXISTS coupons (
-        id               SERIAL PRIMARY KEY,
+        id               INT AUTO_INCREMENT PRIMARY KEY,
         code             VARCHAR(50) UNIQUE NOT NULL,
         description      VARCHAR(200),
         discount_type    VARCHAR(10) NOT NULL CHECK (discount_type IN ('percent','fixed')),
@@ -370,9 +379,9 @@ await db.query(`
         uses_count       INTEGER DEFAULT 0,
         first_time_only  BOOLEAN DEFAULT false,
         is_active        BOOLEAN DEFAULT true,
-        expires_at       TIMESTAMP,
+        expires_at       TIMESTAMP NULL,
         created_at       TIMESTAMP DEFAULT NOW()
-      );
+      )
     `).catch(() => {});
 
     await db.query(`ALTER TABLE payments ADD COLUMN IF NOT EXISTS coupon_code TEXT`).catch(() => {});
@@ -390,14 +399,14 @@ await db.query(`
       do {
         code = generateReferralCode(u.name, u.id, tries++);
       } while (tries < 5);
-      await db.query("UPDATE users SET referral_code=$1 WHERE id=$2 AND referral_code IS NULL", [code, u.id]).catch(() => {});
+      await db.query("UPDATE users SET referral_code=? WHERE id=? AND referral_code IS NULL", [code, u.id]).catch(() => {});
     }
 
     // ── Investor system ───────────────────────────────────────────────────────
     await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS investor_approved BOOLEAN NOT NULL DEFAULT false`).catch(() => {});
     await db.query(`
       CREATE TABLE IF NOT EXISTS investor_requests (
-        id         SERIAL PRIMARY KEY,
+        id         INT AUTO_INCREMENT PRIMARY KEY,
         user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         status     VARCHAR(20) NOT NULL DEFAULT 'pending',
         admin_note TEXT,
@@ -411,7 +420,7 @@ await db.query(`
     await db.query(`ALTER TABLE investor_requests ADD COLUMN IF NOT EXISTS phone VARCHAR(20)`).catch(() => {});
     await db.query(`
       CREATE TABLE IF NOT EXISTS subadmin_permissions (
-        id       SERIAL PRIMARY KEY,
+        id       INT AUTO_INCREMENT PRIMARY KEY,
         user_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         section  VARCHAR(50) NOT NULL,
         level    VARCHAR(10) NOT NULL DEFAULT 'none',
@@ -420,24 +429,24 @@ await db.query(`
     `).catch(() => {});
     await db.query(`
       CREATE TABLE IF NOT EXISTS investments (
-        id                SERIAL PRIMARY KEY,
+        id                INT AUTO_INCREMENT PRIMARY KEY,
         user_id           INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         amount            NUMERIC(12,2) NOT NULL,
         equity_percent    NUMERIC(5,2) NOT NULL,
         valuation         NUMERIC(14,2) NOT NULL,
-        payment_id        TEXT NOT NULL UNIQUE,
+        payment_id        TEXT NOT NULL,
         razorpay_order_id TEXT,
-        created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(payment_id)
       )
     `).catch(() => {});
     // Seed default investment config
     await db.query(`
-      INSERT INTO admin_settings (key, value) VALUES
+      INSERT IGNORE INTO admin_settings (\`key\`, value) VALUES
         ('investment_amount', '50000'),
         ('investment_equity', '40'),
         ('investment_valuation', '125000'),
         ('company_name', 'SmrAI Studio')
-      ON CONFLICT (key) DO NOTHING
     `).catch(() => {});
 
     // Load env overrides from admin_settings (env_* keys)
@@ -481,9 +490,8 @@ app.post(
         await db.query(
           `
           INSERT INTO payments (razorpay_payment_id, status, amount, currency)
-          VALUES ($1, 'captured', $2, $3)
-          ON CONFLICT (razorpay_payment_id)
-          DO UPDATE SET status = 'captured'
+          VALUES (?, 'captured', ?, ?)
+          ON DUPLICATE KEY UPDATE status = 'captured'
           `,
           [payment.id, payment.amount, payment.currency]
         );
@@ -496,9 +504,8 @@ app.post(
         await db.query(
           `
           INSERT INTO payments (razorpay_payment_id, status, amount, currency)
-          VALUES ($1, 'failed', $2, $3)
-          ON CONFLICT (razorpay_payment_id)
-          DO UPDATE SET status = 'failed'
+          VALUES (?, 'failed', ?, ?)
+          ON DUPLICATE KEY UPDATE status = 'failed'
           `,
           [payment.id, payment.amount, payment.currency]
         );
@@ -565,11 +572,7 @@ const isProd = process.env.NODE_ENV === "production";
 app.set("trust proxy", 1);
 
 const sessionMiddleware = session({
-  store: new PgSession({
-    pool: db,
-    tableName: "session",
-    createTableIfMissing: true,
-  }),
+  store: new MysqlSession({}, pool),
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
@@ -595,7 +598,7 @@ passport.use(
     { usernameField: "email" },
     async (email, password, done) => {
       try {
-        const result = await db.query("SELECT * FROM users WHERE email = $1", [
+        const result = await db.query("SELECT * FROM users WHERE email = ?", [
           email,
         ]);
 
@@ -639,15 +642,16 @@ passport.use(
         const googleId = profile.id;
         const name = profile.displayName;
 
-        let result = await db.query("SELECT * FROM users WHERE google_id = $1", [
+        let result = await db.query("SELECT * FROM users WHERE google_id = ?", [
           googleId,
         ]);
 
         if (result.rows.length === 0) {
-          result = await db.query(
-            "INSERT INTO users (email, google_id, name) VALUES ($1, $2, $3) RETURNING *",
+          const insertResult = await db.query(
+            "INSERT INTO users (email, google_id, name) VALUES (?, ?, ?)",
             [email, googleId, name]
           );
+          result = await db.query("SELECT * FROM users WHERE id = ?", [insertResult.insertId]);
         }
 
         const user = result.rows[0];
@@ -666,7 +670,7 @@ passport.serializeUser((user, done) => {
 
 passport.deserializeUser(async (id, done) => {
   try {
-    const result = await db.query("SELECT * FROM users WHERE id = $1", [id]);
+    const result = await db.query("SELECT * FROM users WHERE id = ?", [id]);
     // Pass false (not undefined) when user not found — Passport clears the stale
     // session cookie silently instead of logging "Failed to deserialize user".
     done(null, result.rows[0] || false);
@@ -699,7 +703,7 @@ app.use(async (req, res, next) => {
   if (req.user) {
     try {
       const profileResult = await db.query(
-        "SELECT * FROM user_profiles WHERE user_id = $1",
+        "SELECT * FROM user_profiles WHERE user_id = ?",
         [req.user.id]
       );
       if (profileResult.rows.length > 0) {
@@ -714,8 +718,8 @@ app.use(async (req, res, next) => {
     const [sbAd, ftAd, aeRow, trackingRows] = await Promise.all([
       db.query("SELECT * FROM ads WHERE slot='sidebar' AND is_active=true ORDER BY id DESC LIMIT 1"),
       db.query("SELECT * FROM ads WHERE slot='footer'  AND is_active=true ORDER BY id DESC LIMIT 1"),
-      db.query("SELECT value FROM admin_settings WHERE key='ads_enabled'"),
-      db.query("SELECT key, value FROM admin_settings WHERE key = ANY($1)", [['adsense_publisher_id', 'facebook_pixel_id', 'homepage_ad_slot', 'footer_ad_slot', 'google_translate_enabled']]),
+      db.query("SELECT value FROM admin_settings WHERE `key`='ads_enabled'"),
+      db.query("SELECT `key`, value FROM admin_settings WHERE `key` IN ('adsense_publisher_id', 'facebook_pixel_id', 'homepage_ad_slot', 'footer_ad_slot', 'google_translate_enabled')"),
     ]);
     res.locals.sidebarAd  = sbAd.rows[0] || null;
     res.locals.footerAd   = ftAd.rows[0] || null;
@@ -745,7 +749,7 @@ app.get("/api/my-requests", ensureAuthenticated, async (req, res) => {
     const rows = await db.query(
       `SELECT id, service_type, details, status, created_at
        FROM service_requests
-       WHERE user_id = $1
+       WHERE user_id = ?
        ORDER BY created_at DESC`,
       [req.user.id]
     );
@@ -761,7 +765,7 @@ app.delete("/api/my-request/:id", ensureAuthenticated, async (req, res) => {
     if (!id) return res.status(400).json({ success: false });
     // WHERE user_id = req.user.id ensures users can only delete their own requests
     const result = await db.query(
-      "DELETE FROM service_requests WHERE id = $1 AND user_id = $2",
+      "DELETE FROM service_requests WHERE id = ? AND user_id = ?",
       [id, req.user.id]
     );
     res.json({ success: result.rowCount > 0 });
@@ -774,9 +778,9 @@ app.delete("/api/my-request/:id", ensureAuthenticated, async (req, res) => {
 app.get("/api/public/stats", async (req, res) => {
   try {
     const [users, resumes, downloads] = await Promise.all([
-      db.query("SELECT COUNT(*)::int AS count FROM users"),
-      db.query("SELECT COUNT(*)::int AS count FROM resumes"),
-      db.query("SELECT COUNT(*)::int AS count FROM resume_events WHERE kind = 'download'"),
+      db.query("SELECT COUNT(*) AS count FROM users"),
+      db.query("SELECT COUNT(*) AS count FROM resumes"),
+      db.query("SELECT COUNT(*) AS count FROM resume_events WHERE kind = 'download'"),
     ]);
     res.json({
       users:     users.rows[0].count,
@@ -791,9 +795,8 @@ app.get("/api/public/stats", async (req, res) => {
 // Home: your AI services landing page
 app.get("/", async (_req, res) => {
   try {
-    const keys = ["homepage_hero","homepage_services","homepage_features","homepage_testimonials"];
     const rows = (await db.query(
-      `SELECT key, value FROM admin_settings WHERE key = ANY($1)`, [keys]
+      `SELECT \`key\`, value FROM admin_settings WHERE \`key\` IN ('homepage_hero','homepage_services','homepage_features','homepage_testimonials')`
     )).rows;
     const map = Object.fromEntries(rows.map(r => [r.key, JSON.parse(r.value)]));
     res.render("home", {
@@ -816,7 +819,7 @@ app.get("/register", async (req, res) => {
   if (refCode) {
     try {
       const row = await db.query(
-        "SELECT name FROM users WHERE referral_code=$1 AND is_active=true",
+        "SELECT name FROM users WHERE referral_code=? AND is_active=true",
         [refCode.trim().toUpperCase()]
       );
       const firstName = row.rows[0]?.name?.split(' ')[0] || 'Someone';
@@ -832,38 +835,39 @@ app.post("/register", async (req, res) => {
   const { name, email, password, referralCode } = req.body;
 
   try {
-    const check = await db.query("SELECT * FROM users WHERE email = $1", [email]);
+    const check = await db.query("SELECT * FROM users WHERE email = ?", [email]);
 
     if (check.rows.length > 0) {
       return res.render("already-registered");
     }
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    const result = await db.query(
-      "INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING *",
+    const insertResult = await db.query(
+      "INSERT INTO users (name, email, password) VALUES (?, ?, ?)",
       [name, email, hashedPassword]
     );
+    const userRow = await db.query("SELECT * FROM users WHERE id = ?", [insertResult.insertId]);
 
-    const user = result.rows[0];
+    const user = userRow.rows[0];
 
     // Generate unique referral code for new user
     let newCode, tries = 0;
     do {
       newCode = generateReferralCode(name, user.id, tries++);
-      const conflict = await db.query("SELECT id FROM users WHERE referral_code=$1", [newCode]);
+      const conflict = await db.query("SELECT id FROM users WHERE referral_code=?", [newCode]);
       if (!conflict.rows.length) break;
     } while (tries < 10);
-    await db.query("UPDATE users SET referral_code=$1 WHERE id=$2", [newCode, user.id]).catch(() => {});
+    await db.query("UPDATE users SET referral_code=? WHERE id=?", [newCode, user.id]).catch(() => {});
 
     // Link referrer if a valid referral code was provided
     if (referralCode && referralCode.trim()) {
       const upper = referralCode.trim().toUpperCase();
       const refUser = await db.query(
-        "SELECT id FROM users WHERE referral_code=$1 AND is_active=true AND id<>$2",
+        "SELECT id FROM users WHERE referral_code=? AND is_active=true AND id<>?",
         [upper, user.id]
       );
       if (refUser.rows.length) {
-        await db.query("UPDATE users SET referred_by=$1 WHERE id=$2", [refUser.rows[0].id, user.id]).catch(() => {});
+        await db.query("UPDATE users SET referred_by=? WHERE id=?", [refUser.rows[0].id, user.id]).catch(() => {});
       }
     }
 
@@ -918,7 +922,7 @@ app.post("/forgot-password", async (req, res) => {
   const { email } = req.body;
 
   try {
-    const result = await db.query("SELECT * FROM users WHERE email = $1", [email]);
+    const result = await db.query("SELECT * FROM users WHERE email = ?", [email]);
 
     if (result.rows.length === 0) {
       // For security, we don't say "no such email"
@@ -935,7 +939,7 @@ app.post("/forgot-password", async (req, res) => {
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 min from now
 
     await db.query(
-      "INSERT INTO password_reset_tokens (user_id, otp_hash, expires_at) VALUES ($1, $2, $3)",
+      "INSERT INTO password_reset_tokens (user_id, otp_hash, expires_at) VALUES (?, ?, ?)",
       [user.id, otpHash, expiresAt]
     );
 
@@ -973,7 +977,7 @@ app.post("/reset-password", async (req, res) => {
   const { email, otp, newPassword } = req.body;
 
   try {
-    const userResult = await db.query("SELECT * FROM users WHERE email = $1", [email]);
+    const userResult = await db.query("SELECT * FROM users WHERE email = ?", [email]);
 
     if (userResult.rows.length === 0) {
       return res.render("reset-password", {
@@ -987,8 +991,8 @@ app.post("/reset-password", async (req, res) => {
 
     // Get latest unused token for this user
     const tokenResult = await db.query(
-      `SELECT * FROM password_reset_tokens 
-       WHERE user_id = $1 AND used = FALSE 
+      `SELECT * FROM password_reset_tokens
+       WHERE user_id = ? AND used = FALSE
        ORDER BY created_at DESC
        LIMIT 1`,
       [user.id]
@@ -1025,12 +1029,12 @@ app.post("/reset-password", async (req, res) => {
     // OTP ok → update password & mark token used
     const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
 
-    await db.query("UPDATE users SET password = $1 WHERE id = $2", [
+    await db.query("UPDATE users SET password = ? WHERE id = ?", [
       hashedPassword,
       user.id,
     ]);
 
-    await db.query("UPDATE password_reset_tokens SET used = TRUE WHERE id = $1", [
+    await db.query("UPDATE password_reset_tokens SET used = TRUE WHERE id = ?", [
       token.id,
     ]);
 
@@ -1133,32 +1137,30 @@ app.post("/resume/save", ensureAuthenticated, async (req, res) => {
     if (resumeId) {
       const result = await db.query(
         `UPDATE resumes
-         SET title = $1,
-             template = $2,
-             data = $3,
-             experience_level = $4,
+         SET title = ?,
+             template = ?,
+             data = ?,
+             experience_level = ?,
              updated_at = NOW()
-         WHERE id = $5 AND user_id = $6
-         RETURNING id`,
-        [title || "Untitled Resume", template || "modern-1", data, experienceLevel || "experienced", resumeId, userId]
+         WHERE id = ? AND user_id = ?`,
+        [title || "Untitled Resume", template || "modern-1", JSON.stringify(data), experienceLevel || "experienced", resumeId, userId]
       );
 
-      if (result.rows.length === 0) {
+      if (result.rowCount === 0) {
         return res
           .status(404)
           .json({ success: false, error: "Resume not found." });
       }
 
-      savedId = result.rows[0].id;
+      savedId = resumeId;
     } else {
       const result = await db.query(
         `INSERT INTO resumes (user_id, title, template, data, experience_level)
-         VALUES ($1, $2, $3, $4, $5)
-         RETURNING id`,
-        [userId, title || "Untitled Resume", template || "modern-1", data, experienceLevel || "experienced"]
+         VALUES (?, ?, ?, ?, ?)`,
+        [userId, title || "Untitled Resume", template || "modern-1", JSON.stringify(data), experienceLevel || "experienced"]
       );
 
-      savedId = result.rows[0].id;
+      savedId = result.insertId;
     }
 
     req.session.currentResumeId = savedId;
@@ -1184,7 +1186,7 @@ app.post("/resume/delete", ensureAuthenticated, async (req, res) => {
   if (!resumeId) return res.redirect("/resumes");
   try {
     await db.query(
-      "DELETE FROM resumes WHERE id = $1 AND user_id = $2",
+      "DELETE FROM resumes WHERE id = ? AND user_id = ?",
       [resumeId, userId]
     );
     // Clear session if the deleted resume was the active one
@@ -1207,7 +1209,7 @@ app.get("/resume-builder", ensureAuthenticated, async (req, res) => {
   if (req.query.resumeId) {
     try {
       const r = await db.query(
-        "SELECT * FROM resumes WHERE id = $1 AND user_id = $2",
+        "SELECT * FROM resumes WHERE id = ? AND user_id = ?",
         [req.query.resumeId, req.user.id]
       );
       if (r.rows.length > 0) {
@@ -1226,7 +1228,7 @@ app.get("/resume-builder", ensureAuthenticated, async (req, res) => {
       // Admin-created template — verify it's published
       try {
         const tplRow = await db.query(
-          "SELECT slug FROM admin_templates WHERE slug=$1 AND is_published=true", [reqTpl]
+          "SELECT slug FROM admin_templates WHERE slug=? AND is_published=true", [reqTpl]
         );
         template = tplRow.rows[0] ? reqTpl : "modern-1";
       } catch (_) { template = "modern-1"; }
@@ -1245,10 +1247,10 @@ app.get("/resume-builder", ensureAuthenticated, async (req, res) => {
   let templateSections = null;
   if (template.startsWith("adm-")) {
     try {
-      const tplRow = await db.query("SELECT id FROM admin_templates WHERE slug=$1", [template]);
+      const tplRow = await db.query("SELECT id FROM admin_templates WHERE slug=?", [template]);
       if (tplRow.rows[0]) {
         const secRes = await db.query(
-          "SELECT section_key, is_enabled, sort_order, placement, display_type, label_override FROM admin_template_sections WHERE template_id=$1 ORDER BY sort_order",
+          "SELECT section_key, is_enabled, sort_order, placement, display_type, label_override FROM admin_template_sections WHERE template_id=? ORDER BY sort_order",
           [tplRow.rows[0].id]
         );
         templateSections = secRes.rows;
@@ -1293,7 +1295,7 @@ app.get("/resumes", ensureAuthenticated, async (req, res, next) => {
          WHERE kind = 'print'
          GROUP BY resume_id
        ) prints ON prints.resume_id = r.id
-       WHERE r.user_id = $1
+       WHERE r.user_id = ?
        ORDER BY r.updated_at DESC`,
       [userId]
     );
@@ -1326,7 +1328,7 @@ app.get("/payments", ensureAuthenticated, async (req, res, next) => {
         r.template AS resume_template
       FROM payments p
       LEFT JOIN resumes r ON r.id = p.resume_id
-      WHERE p.user_id = $1
+      WHERE p.user_id = ?
       ORDER BY p.created_at DESC
       `,
       [userId]
@@ -1470,11 +1472,11 @@ app.post("/resume-builder/preview", ensureAuthenticated, async (req, res) => {
   let templateSections = null;
   if (isAdminTpl) {
     try {
-      const tplRow = await db.query("SELECT * FROM admin_templates WHERE slug=$1", [template]);
+      const tplRow = await db.query("SELECT * FROM admin_templates WHERE slug=?", [template]);
       adminTemplateConfig = tplRow.rows[0] || null;
       if (adminTemplateConfig) {
         const secRes = await db.query(
-          "SELECT section_key, is_enabled, sort_order, placement, display_type, label_override FROM admin_template_sections WHERE template_id=$1 ORDER BY sort_order",
+          "SELECT section_key, is_enabled, sort_order, placement, display_type, label_override FROM admin_template_sections WHERE template_id=? ORDER BY sort_order",
           [adminTemplateConfig.id]
         );
         templateSections = secRes.rows;
@@ -1489,20 +1491,19 @@ app.post("/resume-builder/preview", ensureAuthenticated, async (req, res) => {
         (user_id, full_name, role_title, location, phone, email, summary,
          experience, education, languages, skills, profile_image_url, updated_at)
        VALUES
-        ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12, NOW())
-       ON CONFLICT (user_id)
-       DO UPDATE SET
-        full_name=$2,
-        role_title=$3,
-        location=$4,
-        phone=$5,
-        email=$6,
-        summary=$7,
-        experience=$8,
-        education=$9,
-        languages=$10,
-        skills=$11,
-        profile_image_url=$12,
+        (?,?,?,?,?,?,?,?,?,?,?,?, NOW())
+       ON DUPLICATE KEY UPDATE
+        full_name=VALUES(full_name),
+        role_title=VALUES(role_title),
+        location=VALUES(location),
+        phone=VALUES(phone),
+        email=VALUES(email),
+        summary=VALUES(summary),
+        experience=VALUES(experience),
+        education=VALUES(education),
+        languages=VALUES(languages),
+        skills=VALUES(skills),
+        profile_image_url=VALUES(profile_image_url),
         updated_at=NOW()`,
       [
         req.user.id,
@@ -1549,7 +1550,7 @@ app.post("/resume-builder/preview", ensureAuthenticated, async (req, res) => {
       const tplCategory = getTemplateById(template).category || "experienced";
       const priceKey = `price_${tplCategory}`;
       try {
-        const priceRes = await db.query("SELECT value FROM admin_settings WHERE key = $1", [priceKey]);
+        const priceRes = await db.query("SELECT value FROM admin_settings WHERE `key` = ?", [priceKey]);
         if (priceRes.rows.length) displayPrice = parseInt(priceRes.rows[0].value, 10);
       } catch (_) { /* ignore, use default */ }
     }
@@ -1560,7 +1561,7 @@ app.post("/resume-builder/preview", ensureAuthenticated, async (req, res) => {
       bgImageUrl = adminTemplateConfig.background_image_url || null;
     } else {
       try {
-        const ovRow = await db.query("SELECT background_image_url FROM template_overrides WHERE template_id=$1", [template]);
+        const ovRow = await db.query("SELECT background_image_url FROM template_overrides WHERE template_id=?", [template]);
         bgImageUrl = ovRow.rows[0]?.background_image_url || null;
       } catch (_) { /* ignore */ }
     }
@@ -1600,8 +1601,8 @@ app.post("/resume-builder/pdf", ensureAuthenticated, async (req, res) => {
   const pay = await db.query(
     `SELECT status
      FROM payments
-     WHERE user_id = $1
-       AND resume_id = $2
+     WHERE user_id = ?
+       AND resume_id = ?
      ORDER BY created_at DESC
      LIMIT 1`,
     [req.user.id, resumeId]
@@ -1811,7 +1812,7 @@ async function logActivity({ userId = null, actionType, route = null, metadata =
   try {
     await db.query(
       `INSERT INTO activity_logs (user_id, action_type, route, metadata, ip_address)
-       VALUES ($1, $2, $3, $4, $5)`,
+       VALUES (?, ?, ?, ?, ?)`,
       [userId, actionType, route, metadata ? JSON.stringify(metadata) : null, ip]
     );
   } catch (_) {}
@@ -1850,8 +1851,8 @@ app.get("/dashboard", ensureAuthenticated, async (req, res) => {
   let subadminProfile = null;
   if (req.user.role === "subadmin") {
     const [inv, profile] = await Promise.all([
-      db.query("SELECT * FROM investments WHERE user_id=$1 ORDER BY created_at DESC LIMIT 1", [req.user.id]),
-      db.query("SELECT full_name, profile_image_url FROM user_profiles WHERE user_id=$1", [req.user.id]),
+      db.query("SELECT * FROM investments WHERE user_id=? ORDER BY created_at DESC LIMIT 1", [req.user.id]),
+      db.query("SELECT full_name, profile_image_url FROM user_profiles WHERE user_id=?", [req.user.id]),
     ]);
     subadminInvestment = inv.rows[0] || null;
     subadminProfile = profile.rows[0] || null;
@@ -1883,7 +1884,7 @@ app.post("/resume/event", ensureAuthenticated, async (req, res) => {
   try {
     await db.query(
       `INSERT INTO resume_events (user_id, resume_id, kind)
-       VALUES ($1, $2, $3)`,
+       VALUES (?, ?, ?)`,
       [userId, resumeId || null, kind]
     );
 
@@ -2428,8 +2429,8 @@ app.post("/investor/request", ensureAuthenticated, async (req, res) => {
     const phone = (req.body.phone || '').trim().replace(/\D/g, '').slice(0, 20) || null;
     await db.query(
       `INSERT INTO investor_requests (user_id, status, desired_amount, desired_equity, phone)
-       VALUES ($1, 'pending', $2, $3, $4)
-       ON CONFLICT (user_id) DO UPDATE SET status='pending', desired_amount=$2, desired_equity=$3, phone=$4, updated_at=NOW()`,
+       VALUES (?, 'pending', ?, ?, ?)
+       ON DUPLICATE KEY UPDATE status='pending', desired_amount=VALUES(desired_amount), desired_equity=VALUES(desired_equity), phone=VALUES(phone), updated_at=NOW()`,
       [req.user.id, desiredAmount, desiredEquity, phone]
     );
     res.redirect("/dashboard?investor_requested=1");
@@ -2498,7 +2499,7 @@ app.post("/api/investor/verify", ensureAuthenticated, async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid payment signature." });
     }
     // Idempotency check
-    const existing = await db.query("SELECT id FROM investments WHERE payment_id=$1", [razorpay_payment_id]);
+    const existing = await db.query("SELECT id FROM investments WHERE payment_id=?", [razorpay_payment_id]);
     if (existing.rows.length > 0) return res.json({ success: true });
     // Re-check remaining equity
     const cfg = await getInvestmentConfig();
@@ -2512,11 +2513,11 @@ app.post("/api/investor/verify", ensureAuthenticated, async (req, res) => {
     const investAmount = parseFloat(amount) || parseFloat(((eq / 100) * cfg.valuation).toFixed(2));
     await db.query(
       `INSERT INTO investments (user_id, amount, equity_percent, valuation, payment_id, razorpay_order_id)
-       VALUES ($1,$2,$3,$4,$5,$6)`,
+       VALUES (?,?,?,?,?,?)`,
       [req.user.id, investAmount, eq, cfg.valuation, razorpay_payment_id, razorpay_order_id]
     );
     // Update user role
-    await db.query("UPDATE users SET role='investor' WHERE id=$1", [req.user.id]);
+    await db.query("UPDATE users SET role='investor' WHERE id=?", [req.user.id]);
     // Refresh session user
     req.user.role = "investor";
     res.json({ success: true });
@@ -2529,10 +2530,10 @@ app.post("/api/investor/verify", ensureAuthenticated, async (req, res) => {
 app.get("/investor/dashboard", ensureInvestor, async (req, res) => {
   try {
     const inv = await db.query(
-      `SELECT i.*, u.name, u.email FROM investments i JOIN users u ON u.id=i.user_id WHERE i.user_id=$1 ORDER BY i.created_at DESC LIMIT 1`,
+      `SELECT i.*, u.name, u.email FROM investments i JOIN users u ON u.id=i.user_id WHERE i.user_id=? ORDER BY i.created_at DESC LIMIT 1`,
       [req.user.id]
     );
-    const profile = await db.query("SELECT profile_image_url FROM user_profiles WHERE user_id=$1", [req.user.id]);
+    const profile = await db.query("SELECT profile_image_url FROM user_profiles WHERE user_id=?", [req.user.id]);
     const investment = inv.rows[0];
     if (!investment) return res.redirect("/investor/offer");
     res.render("investor-dashboard", {
@@ -2548,7 +2549,7 @@ app.get("/investor/dashboard", ensureInvestor, async (req, res) => {
 app.get("/investor/history", ensureInvestor, async (req, res) => {
   try {
     const rows = await db.query(
-      "SELECT * FROM investments WHERE user_id=$1 ORDER BY created_at DESC",
+      "SELECT * FROM investments WHERE user_id=? ORDER BY created_at DESC",
       [req.user.id]
     );
     res.render("investor-history", { investments: rows.rows });
@@ -2569,7 +2570,7 @@ app.get("/api/request/:id/messages", ensureAuthenticated, async (req, res) => {
     // Verify the user owns this request OR is admin
     if (!isAdmin) {
       const own = await db.query(
-        "SELECT id FROM service_requests WHERE id=$1 AND user_id=$2",
+        "SELECT id FROM service_requests WHERE id=? AND user_id=?",
         [requestId, userId]
       );
       if (!own.rows.length) return res.status(403).json({ success: false });
@@ -2579,14 +2580,14 @@ app.get("/api/request/:id/messages", ensureAuthenticated, async (req, res) => {
               u.name AS sender_name
        FROM request_messages m
        LEFT JOIN users u ON u.id = m.sender_id
-       WHERE m.request_id = $1
+       WHERE m.request_id = ?
        ORDER BY m.created_at ASC`,
       [requestId]
     );
     // Mark messages as read for this viewer
     const markRole = isAdmin ? "user" : "admin";
     await db.query(
-      "UPDATE request_messages SET is_read=true WHERE request_id=$1 AND sender_role=$2 AND is_read=false",
+      "UPDATE request_messages SET is_read=true WHERE request_id=? AND sender_role=? AND is_read=false",
       [requestId, markRole]
     );
     return res.json({ success: true, messages: msgs.rows });
@@ -2604,11 +2605,10 @@ app.post("/api/guest/start-chat", express.json(), async (req, res) => {
     const token = crypto.randomBytes(20).toString("hex");
     const result = await db.query(
       `INSERT INTO service_requests (name, email, service_type, details, guest_token)
-       VALUES ($1, $2, 'chat', 'Guest chat session', $3)
-       RETURNING id`,
+       VALUES (?, ?, 'chat', 'Guest chat session', ?)`,
       [name, email, token]
     );
-    return res.json({ success: true, requestId: result.rows[0].id, token });
+    return res.json({ success: true, requestId: result.insertId, token });
   } catch (err) {
     return res.status(500).json({ success: false });
   }
@@ -2620,16 +2620,17 @@ app.post("/api/guest/chat/message", express.json(), async (req, res) => {
   if (!requestId || !token || !msg) return res.status(400).json({ success: false });
   try {
     const check = await db.query(
-      "SELECT id FROM service_requests WHERE id=$1 AND guest_token=$2",
+      "SELECT id FROM service_requests WHERE id=? AND guest_token=?",
       [requestId, token]
     );
     if (!check.rows.length) return res.status(403).json({ success: false });
     const msgResult = await db.query(
       `INSERT INTO request_messages (request_id, sender_id, sender_role, message)
-       VALUES ($1, NULL, 'user', $2) RETURNING id, sender_role, message, created_at`,
+       VALUES (?, NULL, 'user', ?)`,
       [requestId, msg]
     );
-    const row = { ...msgResult.rows[0], request_id: requestId, sender_name: null };
+    const newMsg = await db.query("SELECT id, sender_role, message, created_at FROM request_messages WHERE id=?", [msgResult.insertId]);
+    const row = { ...newMsg.rows[0], request_id: requestId, sender_name: null };
     // Push to admin in real-time via Socket.io
     io.to(`request-${requestId}`).emit("message", row);
     return res.json({ success: true, id: msgResult.rows[0].id });
@@ -2643,7 +2644,7 @@ app.post("/api/guest/chat/typing", express.json(), async (req, res) => {
   if (!requestId || !token) return res.status(400).json({ success: false });
   try {
     const check = await db.query(
-      "SELECT id FROM service_requests WHERE id=$1 AND guest_token=$2",
+      "SELECT id FROM service_requests WHERE id=? AND guest_token=?",
       [parseInt(requestId, 10), token]
     );
     if (!check.rows.length) return res.status(403).json({ success: false });
@@ -2666,7 +2667,7 @@ app.get("/api/guest/chat/:requestId/messages", async (req, res) => {
   if (!requestId || !token) return res.status(400).json({ success: false });
   try {
     const check = await db.query(
-      "SELECT id FROM service_requests WHERE id=$1 AND guest_token=$2",
+      "SELECT id FROM service_requests WHERE id=? AND guest_token=?",
       [requestId, token]
     );
     if (!check.rows.length) return res.status(403).json({ success: false });
@@ -2675,7 +2676,7 @@ app.get("/api/guest/chat/:requestId/messages", async (req, res) => {
               u.name AS sender_name
        FROM request_messages m
        LEFT JOIN users u ON u.id = m.sender_id
-       WHERE m.request_id = $1
+       WHERE m.request_id = ?
        ORDER BY m.created_at ASC`,
       [requestId]
     );
@@ -2712,7 +2713,7 @@ io.on("connection", (socket) => {
       // Verify ownership
       try {
         const own = await db.query(
-          "SELECT id FROM service_requests WHERE id=$1 AND user_id=$2",
+          "SELECT id FROM service_requests WHERE id=? AND user_id=?",
           [rid, user.id]
         );
         if (!own.rows.length) return;
@@ -2741,18 +2742,21 @@ io.on("connection", (socket) => {
       // Verify access
       if (!isAdmin) {
         const own = await db.query(
-          "SELECT id FROM service_requests WHERE id=$1 AND user_id=$2",
+          "SELECT id FROM service_requests WHERE id=? AND user_id=?",
           [rid, user.id]
         );
         if (!own.rows.length) return;
       }
       const result = await db.query(
         `INSERT INTO request_messages (request_id, sender_id, sender_role, message)
-         VALUES ($1, $2, $3, $4)
-         RETURNING id, sender_id, sender_role, message, is_read, created_at`,
+         VALUES (?, ?, ?, ?)`,
         [rid, user.id, isAdmin ? "admin" : "user", msg]
       );
-      const row = { ...result.rows[0], request_id: rid, sender_name: user.name };
+      const newMsgRow = await db.query(
+        "SELECT id, sender_id, sender_role, message, is_read, created_at FROM request_messages WHERE id=?",
+        [result.insertId]
+      );
+      const row = { ...newMsgRow.rows[0], request_id: rid, sender_name: user.name };
       io.to(`request-${rid}`).emit("message", row);
     } catch (err) {
     }
@@ -2806,7 +2810,7 @@ app.post("/request", async (req, res) => {
 
   try {
     await db.query(
-      "INSERT INTO service_requests (name, email, service_type, details, user_id) VALUES ($1, $2, $3, $4, $5)",
+      "INSERT INTO service_requests (name, email, service_type, details, user_id) VALUES (?, ?, ?, ?, ?)",
       [name, email, service_type, details, userId]
     );
 
@@ -2821,7 +2825,7 @@ app.post("/profile/update", ensureAuthenticated, async (req, res) => {
   try {
     // Update users table (name)
     if (name && name.trim() !== "") {
-      await db.query("UPDATE users SET name = $1 WHERE id = $2", [
+      await db.query("UPDATE users SET name = ? WHERE id = ?", [
         name.trim(),
         req.user.id,
       ]);
@@ -2830,12 +2834,11 @@ app.post("/profile/update", ensureAuthenticated, async (req, res) => {
     // Upsert into user_profiles
     await db.query(
       `INSERT INTO user_profiles (user_id, full_name, phone, location, updated_at)
-       VALUES ($1, $2, $3, $4, NOW())
-       ON CONFLICT (user_id)
-       DO UPDATE SET
-         full_name = $2,
-         phone = $3,
-         location = $4,
+       VALUES (?, ?, ?, ?, NOW())
+       ON DUPLICATE KEY UPDATE
+         full_name = VALUES(full_name),
+         phone = VALUES(phone),
+         location = VALUES(location),
          updated_at = NOW()`,
       [req.user.id, name?.trim() || null, phone || null, location || null]
     );
@@ -2863,9 +2866,8 @@ app.post(
     try {
       await db.query(
         `INSERT INTO user_profiles (user_id, profile_image_url, updated_at)
-         VALUES ($1, $2, NOW())
-         ON CONFLICT (user_id)
-         DO UPDATE SET profile_image_url = $2, updated_at = NOW()`,
+         VALUES (?, ?, NOW())
+         ON DUPLICATE KEY UPDATE profile_image_url = VALUES(profile_image_url), updated_at = NOW()`,
         [req.user.id, b64]
       );
     } catch (err) {
@@ -2888,9 +2890,8 @@ app.post(
     try {
       await db.query(
         `INSERT INTO user_profiles (user_id, profile_image_url, updated_at)
-         VALUES ($1, $2, NOW())
-         ON CONFLICT (user_id)
-         DO UPDATE SET profile_image_url = $2, updated_at = NOW()`,
+         VALUES (?, ?, NOW())
+         ON DUPLICATE KEY UPDATE profile_image_url = VALUES(profile_image_url), updated_at = NOW()`,
         [req.user.id, b64]
       );
     } catch (err) {}
@@ -2903,7 +2904,7 @@ app.post(
 app.get("/refer", ensureAuthenticated, async (req, res) => {
   try {
     const uRow = await db.query(
-      "SELECT name, email, referral_code, wallet_balance FROM users WHERE id=$1",
+      "SELECT name, email, referral_code, wallet_balance FROM users WHERE id=?",
       [req.user.id]
     );
     const u = uRow.rows[0];
@@ -2917,7 +2918,7 @@ app.get("/refer", ensureAuthenticated, async (req, res) => {
     const stats = await db.query(
       `SELECT COUNT(u2.id) AS invited
        FROM users u2
-       WHERE u2.referred_by = $1`,
+       WHERE u2.referred_by = ?`,
       [req.user.id]
     );
 
@@ -2941,7 +2942,7 @@ async function getTemplatePrice(template) {
   let priceRupees = 100;
   if (template && template.startsWith("adm-")) {
     const tplRow = await db.query(
-      "SELECT price_inr, is_paid FROM admin_templates WHERE slug=$1", [template]
+      "SELECT price_inr, is_paid FROM admin_templates WHERE slug=?", [template]
     );
     if (tplRow.rows[0]) {
       priceRupees = tplRow.rows[0].is_paid ? (tplRow.rows[0].price_inr || 49) : 0;
@@ -2949,7 +2950,7 @@ async function getTemplatePrice(template) {
   } else {
     const category = getTemplateById(template || "modern-1").category || "experienced";
     const priceRes = await db.query(
-      "SELECT value FROM admin_settings WHERE key = $1", [`price_${category}`]
+      "SELECT value FROM admin_settings WHERE `key` = ?", [`price_${category}`]
     );
     if (priceRes.rows.length) priceRupees = parseInt(priceRes.rows[0].value, 10);
   }
@@ -2964,7 +2965,7 @@ app.post("/api/coupons/validate", ensureAuthenticated, async (req, res) => {
 
     const upper = String(code).trim().toUpperCase();
     const row = await db.query(
-      `SELECT * FROM coupons WHERE code=$1 AND is_active=true`, [upper]
+      `SELECT * FROM coupons WHERE code=? AND is_active=true`, [upper]
     );
     if (!row.rows[0]) return res.json({ valid: false, message: "Invalid coupon code." });
 
@@ -2981,7 +2982,7 @@ app.post("/api/coupons/validate", ensureAuthenticated, async (req, res) => {
     // First-time only check
     if (c.first_time_only) {
       const prior = await db.query(
-        "SELECT id FROM payments WHERE user_id=$1 AND status='captured' LIMIT 1",
+        "SELECT id FROM payments WHERE user_id=? AND status='captured' LIMIT 1",
         [req.user.id]
       );
       if (prior.rows.length > 0) {
@@ -3030,7 +3031,7 @@ app.post("/api/razorpay/create-order", ensureAuthenticated, async (req, res) => 
     if (couponCode) {
       const upper = String(couponCode).trim().toUpperCase();
       const row = await db.query(
-        `SELECT * FROM coupons WHERE code=$1 AND is_active=true`, [upper]
+        `SELECT * FROM coupons WHERE code=? AND is_active=true`, [upper]
       );
       const c = row.rows[0];
       if (c && !(c.expires_at && new Date(c.expires_at) < new Date()) &&
@@ -3048,11 +3049,11 @@ app.post("/api/razorpay/create-order", ensureAuthenticated, async (req, res) => 
     // Auto-apply referral discount (30%) if: user was referred AND has never paid before
     let referralDiscountRupees = 0;
     const userRefRow = await db.query(
-      "SELECT referred_by FROM users WHERE id=$1", [req.user.id]
+      "SELECT referred_by FROM users WHERE id=?", [req.user.id]
     );
     if (userRefRow.rows[0]?.referred_by) {
       const priorPay = await db.query(
-        "SELECT id FROM payments WHERE user_id=$1 AND status='captured' LIMIT 1",
+        "SELECT id FROM payments WHERE user_id=? AND status='captured' LIMIT 1",
         [req.user.id]
       );
       if (!priorPay.rows.length) {
@@ -3064,7 +3065,7 @@ app.post("/api/razorpay/create-order", ensureAuthenticated, async (req, res) => 
     // Apply wallet balance if requested
     let walletDeduction = 0;
     if (useWallet) {
-      const walletRow = await db.query("SELECT wallet_balance FROM users WHERE id=$1", [req.user.id]);
+      const walletRow = await db.query("SELECT wallet_balance FROM users WHERE id=?", [req.user.id]);
       const walletRs = parseFloat(walletRow.rows[0]?.wallet_balance) || 0;
       walletDeduction = Math.min(walletRs, priceRupees - 1); // keep min ₹1
       if (walletDeduction > 0) {
@@ -3145,13 +3146,13 @@ app.post("/api/razorpay/verify", async (req, res) => {
     const currency = "INR";
     const finalPurpose = purpose || "download";
 const existing = await db.query(
-  "SELECT id FROM payments WHERE razorpay_payment_id = $1",
+  "SELECT id FROM payments WHERE razorpay_payment_id = ?",
   [razorpay_payment_id]
 );
 
 if (existing.rows.length > 0) {
   const statusResult = await db.query(
-    "SELECT status FROM payments WHERE razorpay_payment_id = $1",
+    "SELECT status FROM payments WHERE razorpay_payment_id = ?",
     [razorpay_payment_id]
   );
 
@@ -3169,8 +3170,7 @@ if (existing.rows.length > 0) {
       `INSERT INTO payments
        (user_id, resume_id, amount, currency, purpose,
         razorpay_order_id, razorpay_payment_id, razorpay_signature, status, coupon_code)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'captured', $9)
-       RETURNING id`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'captured', ?)`,
       [
         userId,
         resumeId || null,
@@ -3183,12 +3183,12 @@ if (existing.rows.length > 0) {
         appliedCoupon,
       ]
     );
-    const newPaymentId = paymentInsert.rows[0].id;
+    const newPaymentId = paymentInsert.insertId;
 
     // Increment coupon uses_count if a coupon was applied
     if (appliedCoupon) {
       await db.query(
-        "UPDATE coupons SET uses_count = uses_count + 1 WHERE code = $1",
+        "UPDATE coupons SET uses_count = uses_count + 1 WHERE code = ?",
         [appliedCoupon]
       ).catch(() => {});
     }
@@ -3196,27 +3196,27 @@ if (existing.rows.length > 0) {
     // Deduct wallet balance if it was used
     if (walletUsed > 0) {
       await db.query(
-        "UPDATE users SET wallet_balance = GREATEST(0, wallet_balance - $1) WHERE id=$2",
+        "UPDATE users SET wallet_balance = GREATEST(0, wallet_balance - ?) WHERE id=?",
         [walletUsed, userId]
       ).catch(() => {});
     }
 
     // Issue referral reward to referrer on referee's first payment
-    const refRow = await db.query("SELECT referred_by FROM users WHERE id=$1", [userId]);
+    const refRow = await db.query("SELECT referred_by FROM users WHERE id=?", [userId]);
     const referrerId = refRow.rows[0]?.referred_by;
     if (referrerId) {
       const payCount = await db.query(
-        "SELECT COUNT(*) FROM payments WHERE user_id=$1 AND status='captured'",
+        "SELECT COUNT(*) AS count FROM payments WHERE user_id=? AND status='captured'",
         [userId]
       );
       if (parseInt(payCount.rows[0].count) === 1) {
         const reward = 20; // fixed ₹20 per successful referral
         await db.query(
-          "UPDATE users SET wallet_balance = wallet_balance + $1 WHERE id=$2",
+          "UPDATE users SET wallet_balance = wallet_balance + ? WHERE id=?",
           [reward, referrerId]
         ).catch(() => {});
         await db.query(
-          "UPDATE payments SET referral_reward_issued=true WHERE id=$1",
+          "UPDATE payments SET referral_reward_issued=true WHERE id=?",
           [newPaymentId]
         ).catch(() => {});
       }
@@ -3225,7 +3225,7 @@ if (existing.rows.length > 0) {
     // Also log an event (for counter stats)
     await db.query(
       `INSERT INTO resume_events (user_id, resume_id, kind)
-       VALUES ($1, $2, $3)`,
+       VALUES (?, ?, ?)`,
       [userId, resumeId || null, finalPurpose]
     );
 
@@ -3239,5 +3239,4 @@ if (existing.rows.length > 0) {
   }
 });
 
-db.on("connect", () => {
-});
+
