@@ -161,13 +161,14 @@ await db.query(`
         title VARCHAR(255) NOT NULL DEFAULT 'Untitled Resume',
         template VARCHAR(100) NOT NULL DEFAULT 'modern-1',
         data JSON NOT NULL,
+        experience_level VARCHAR(50) DEFAULT 'experienced',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
-    /* experience_level column (safe to run on every startup) */
-    await db.query(`ALTER TABLE resumes ADD COLUMN experience_level TEXT DEFAULT 'experienced'`).catch(() => {});
+    /* experience_level column (safe to run on every startup — for older DBs) */
+    await db.query(`ALTER TABLE resumes ADD COLUMN experience_level VARCHAR(50) DEFAULT 'experienced'`).catch(() => {});
 
     /* download/print events (for stats) */
     await db.query(`
