@@ -52,7 +52,7 @@ export default function adminRouter(db) {
   router.use(async (req, res, next) => {
     if (req.user?.role === "subadmin") {
       try {
-        const rows = await db.query("SELECT section, level FROM subadmin_permissions WHERE user_id=$1", [req.user.id]);
+        const rows = await db.query("SELECT section, level FROM subadmin_permissions WHERE user_id=?", [req.user.id]);
         req.subadminPerms = Object.fromEntries(rows.rows.map(r => [r.section, r.level]));
       } catch (_) { req.subadminPerms = {}; }
       // Block write requests for sections without edit permission
@@ -78,9 +78,9 @@ export default function adminRouter(db) {
         db.query("SELECT COUNT(*) FROM resume_events WHERE kind = 'download'"),
         db.query("SELECT COALESCE(SUM(amount),0) AS total FROM payments WHERE status = 'captured'"),
         db.query("SELECT COUNT(*) FROM activity_logs WHERE action_type LIKE 'ai_%'"),
-        db.query("SELECT COUNT(DISTINCT user_id) FROM activity_logs WHERE created_at > NOW() - INTERVAL '24 hours'"),
-        db.query("SELECT * FROM investments WHERE user_id=$1 ORDER BY created_at DESC LIMIT 1", [req.user.id]),
-        db.query("SELECT full_name, profile_image_url FROM user_profiles WHERE user_id=$1", [req.user.id]),
+        db.query("SELECT COUNT(DISTINCT user_id) FROM activity_logs WHERE created_at > NOW() - INTERVAL 24 HOUR"),
+        db.query("SELECT * FROM investments WHERE user_id=? ORDER BY created_at DESC LIMIT 1", [req.user.id]),
+        db.query("SELECT full_name, profile_image_url FROM user_profiles WHERE user_id=?", [req.user.id]),
         db.query("SELECT value FROM admin_settings WHERE key='company_name'"),
       ]);
 
@@ -120,23 +120,23 @@ export default function adminRouter(db) {
         SELECT
           u.id, u.name, u.email, u.role, u.is_active,
           up.full_name, up.phone, up.location, up.profile_image_url, up.updated_at AS created_at,
-          (SELECT COUNT(*)::int FROM resumes        WHERE user_id = u.id)                           AS resume_count,
-          (SELECT COUNT(*)::int FROM resume_events  WHERE user_id = u.id AND kind = 'download')     AS download_count,
+          (SELECT COUNT(*) FROM resumes        WHERE user_id = u.id)                           AS resume_count,
+          (SELECT COUNT(*) FROM resume_events  WHERE user_id = u.id AND kind = 'download')     AS download_count,
           (SELECT COALESCE(SUM(p.amount),0) FROM payments p WHERE p.user_id = u.id AND p.status = 'captured') AS total_paid,
           (SELECT MAX(al.created_at) FROM activity_logs al WHERE al.user_id = u.id)                AS last_active,
           EXISTS(SELECT 1 FROM investments WHERE user_id = u.id)                                    AS has_investment
         FROM users u
         LEFT JOIN user_profiles up ON up.user_id = u.id
-        ${q ? "WHERE u.name ILIKE $3 OR u.email ILIKE $3" : ""}
+        ${q ? "WHERE u.name LIKE ? OR u.email LIKE ?" : ""}
         ORDER BY u.id DESC
-        LIMIT $1 OFFSET $2
+        LIMIT ? OFFSET ?
       `;
 
-      const countSql = `SELECT COUNT(*) FROM users u ${q ? "WHERE u.name ILIKE $1 OR u.email ILIKE $1" : ""}`;
+      const countSql = `SELECT COUNT(*) AS count FROM users u ${q ? "WHERE u.name LIKE ? OR u.email LIKE ?" : ""}`;
 
       const [rows, countRes] = await Promise.all([
-        db.query(sql,      q ? [limit, offset, q] : [limit, offset]),
-        db.query(countSql, q ? [q] : []),
+        db.query(sql,      q ? [q, q, limit, offset] : [limit, offset]),
+        db.query(countSql, q ? [q, q] : []),
       ]);
 
       res.json({
@@ -160,18 +160,18 @@ export default function adminRouter(db) {
 
       const [userRes, profileRes, countsRes] = await Promise.all([
         db.query(
-          "SELECT id, name, email, role, is_active, EXISTS(SELECT 1 FROM investments WHERE user_id=$1) AS has_investment FROM users WHERE id = $1",
-          [id]
+          "SELECT id, name, email, role, is_active, EXISTS(SELECT 1 FROM investments WHERE user_id=?) AS has_investment FROM users WHERE id = ?",
+          [id, id]
         ),
-        db.query("SELECT * FROM user_profiles WHERE user_id = $1", [id]),
+        db.query("SELECT * FROM user_profiles WHERE user_id = ?", [id]),
         db.query(
           `SELECT
-            (SELECT COUNT(*)::int FROM resumes        WHERE user_id = $1)                           AS resumes,
-            (SELECT COUNT(*)::int FROM resume_events  WHERE user_id = $1 AND kind = 'download')     AS downloads,
-            (SELECT COUNT(*)::int FROM activity_logs  WHERE user_id = $1 AND action_type LIKE 'ai_%') AS ai_uses,
-            (SELECT COALESCE(SUM(amount),0) FROM payments WHERE user_id = $1 AND status = 'captured') AS total_paid,
-            (SELECT MAX(created_at) FROM activity_logs WHERE user_id = $1)                          AS last_active`,
-          [id]
+            (SELECT COUNT(*) FROM resumes        WHERE user_id = ?)                           AS resumes,
+            (SELECT COUNT(*) FROM resume_events  WHERE user_id = ? AND kind = 'download')     AS downloads,
+            (SELECT COUNT(*) FROM activity_logs  WHERE user_id = ? AND action_type LIKE 'ai_%') AS ai_uses,
+            (SELECT COALESCE(SUM(amount),0) FROM payments WHERE user_id = ? AND status = 'captured') AS total_paid,
+            (SELECT MAX(created_at) FROM activity_logs WHERE user_id = ?)                          AS last_active`,
+          [id, id, id, id, id]
         ),
       ]);
 
@@ -221,14 +221,14 @@ export default function adminRouter(db) {
         return res.status(403).json({ success: false, message: "Only main admin can change roles" });
       }
 
-      await db.query("UPDATE users SET role = $1 WHERE id = $2", [role, id]);
+      await db.query("UPDATE users SET role = ? WHERE id = ?", [role, id]);
 
       // Seed default permissions when promoting to subadmin
       if (role === "subadmin") {
         const SECTIONS = ["overview","users","activity","requests","pricing","templates","homepage","ads","coupons","apikeys","investors"];
         for (const section of SECTIONS) {
           await db.query(
-            `INSERT INTO subadmin_permissions (user_id, section, level) VALUES ($1, $2, 'none') ON CONFLICT (user_id, section) DO NOTHING`,
+            `INSERT IGNORE INTO subadmin_permissions (user_id, section, level) VALUES (?, ?, 'none')`,
             [id, section]
           );
         }
@@ -243,7 +243,7 @@ export default function adminRouter(db) {
   router.get("/api/user/:id/permissions", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const rows = await db.query("SELECT section, level FROM subadmin_permissions WHERE user_id=$1", [id]);
+      const rows = await db.query("SELECT section, level FROM subadmin_permissions WHERE user_id=?", [id]);
       const perms = Object.fromEntries(ADMIN_SECTIONS.map(s => [s, "none"]));
       for (const r of rows.rows) perms[r.section] = r.level;
       res.json({ success: true, permissions: perms });
@@ -260,8 +260,8 @@ export default function adminRouter(db) {
         if (!ADMIN_SECTIONS.includes(section)) continue;
         if (!["none","view","edit"].includes(level)) continue;
         await db.query(
-          `INSERT INTO subadmin_permissions (user_id, section, level) VALUES ($1,$2,$3)
-           ON CONFLICT (user_id, section) DO UPDATE SET level=$3`,
+          `INSERT INTO subadmin_permissions (user_id, section, level) VALUES (?,?,?)
+           ON DUPLICATE KEY UPDATE level=VALUES(level)`,
           [id, section, level]
         );
       }
@@ -277,12 +277,11 @@ export default function adminRouter(db) {
       if (id === req.user.id) {
         return res.status(403).json({ success: false, message: "Cannot deactivate yourself" });
       }
-      const result = await db.query(
-        "UPDATE users SET is_active = NOT is_active WHERE id = $1 RETURNING is_active",
-        [id]
-      );
-      if (!result.rows.length) return res.status(404).json({ success: false });
-      res.json({ success: true, is_active: result.rows[0].is_active });
+      const curRow = await db.query("SELECT is_active FROM users WHERE id = ?", [id]);
+      if (!curRow.rows.length) return res.status(404).json({ success: false });
+      const newActive = !curRow.rows[0].is_active;
+      await db.query("UPDATE users SET is_active = ? WHERE id = ?", [newActive, id]);
+      res.json({ success: true, is_active: newActive });
     } catch (err) {
       res.status(500).json({ success: false });
     }
@@ -296,7 +295,7 @@ export default function adminRouter(db) {
       if (id === req.user.id) {
         return res.status(403).json({ success: false, message: "Cannot delete yourself" });
       }
-      await db.query("DELETE FROM users WHERE id = $1", [id]);
+      await db.query("DELETE FROM users WHERE id = ?", [id]);
       res.json({ success: true });
     } catch (err) {
       res.status(500).json({ success: false });
@@ -310,15 +309,15 @@ export default function adminRouter(db) {
       let result;
       if (period === "recent") {
         result = await db.query(
-          `DELETE FROM activity_logs WHERE created_at >= NOW() - INTERVAL '1 hour'`
+          `DELETE FROM activity_logs WHERE created_at >= NOW() - INTERVAL 1 HOUR`
         );
       } else if (period === "today") {
         result = await db.query(
-          `DELETE FROM activity_logs WHERE created_at::date = CURRENT_DATE`
+          `DELETE FROM activity_logs WHERE DATE(created_at) = CURDATE()`
         );
       } else if (period === "yesterday") {
         result = await db.query(
-          `DELETE FROM activity_logs WHERE created_at::date = CURRENT_DATE - INTERVAL '1 day'`
+          `DELETE FROM activity_logs WHERE DATE(created_at) = DATE(NOW() - INTERVAL 1 DAY)`
         );
       } else if (period === "all") {
         result = await db.query(`DELETE FROM activity_logs`);
@@ -344,7 +343,7 @@ export default function adminRouter(db) {
         LEFT JOIN users u         ON u.id = al.user_id
         LEFT JOIN user_profiles up ON up.user_id = al.user_id
         ORDER BY al.created_at DESC
-        LIMIT $1`,
+        LIMIT ?`,
         [limit]
       );
       res.json({ success: true, activities: rows.rows });
@@ -363,7 +362,7 @@ export default function adminRouter(db) {
              u.name  AS user_name,
              u.email AS user_email,
              up.profile_image_url,
-             COUNT(*)::int                         AS activity_count,
+             COUNT(*)                              AS activity_count,
              MAX(al.created_at)                    AS last_active,
              (SELECT action_type FROM activity_logs
               WHERE user_id = al.user_id
@@ -382,8 +381,8 @@ export default function adminRouter(db) {
         // Count anonymous visitor sessions
         db.query(
           `SELECT
-             COUNT(*)::int                              AS total_visits,
-             COUNT(DISTINCT metadata->>'sid')::int      AS unique_sessions,
+             COUNT(*)                                   AS total_visits,
+             COUNT(DISTINCT JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.sid'))) AS unique_sessions,
              MAX(created_at)                            AS last_visit,
              (SELECT route FROM activity_logs
               WHERE user_id IS NULL AND action_type = 'visit'
@@ -423,7 +422,7 @@ export default function adminRouter(db) {
     try {
       const [routeRows, recentRows] = await Promise.all([
         db.query(
-          `SELECT route, COUNT(*)::int AS visits, MAX(created_at) AS last_visit
+          `SELECT route, COUNT(*) AS visits, MAX(created_at) AS last_visit
            FROM activity_logs
            WHERE user_id IS NULL AND action_type = 'visit' AND route IS NOT NULL
            GROUP BY route
@@ -450,7 +449,7 @@ export default function adminRouter(db) {
       const rows = await db.query(
         `SELECT action_type, route, created_at, metadata
          FROM activity_logs
-         WHERE user_id = $1
+         WHERE user_id = ?
          ORDER BY created_at DESC
          LIMIT 60`,
         [req.params.id]
@@ -518,12 +517,12 @@ export default function adminRouter(db) {
     try {
       const [routeHits, templateDownloads, dailyRevenue, dailyAI] = await Promise.all([
         db.query(
-          `SELECT route, COUNT(*)::int AS hits
+          `SELECT route, COUNT(*) AS hits
            FROM activity_logs WHERE action_type = 'visit' AND route IS NOT NULL
            GROUP BY route ORDER BY hits DESC LIMIT 8`
         ),
         db.query(
-          `SELECT r.template, COUNT(*)::int AS downloads
+          `SELECT r.template, COUNT(*) AS downloads
            FROM resume_events re
            JOIN resumes r ON r.id = re.resume_id
            WHERE re.kind = 'download'
@@ -531,12 +530,12 @@ export default function adminRouter(db) {
         ),
         db.query(
           `SELECT DATE(created_at) AS day, ROUND(SUM(amount)/100.0, 2) AS revenue
-           FROM payments WHERE status = 'captured' AND created_at > NOW() - INTERVAL '30 days'
+           FROM payments WHERE status = 'captured' AND created_at > NOW() - INTERVAL 30 DAY
            GROUP BY day ORDER BY day`
         ),
         db.query(
-          `SELECT DATE(created_at) AS day, COUNT(*)::int AS count
-           FROM activity_logs WHERE action_type LIKE 'ai_%' AND created_at > NOW() - INTERVAL '30 days'
+          `SELECT DATE(created_at) AS day, COUNT(*) AS count
+           FROM activity_logs WHERE action_type LIKE 'ai_%' AND created_at > NOW() - INTERVAL 30 DAY
            GROUP BY day ORDER BY day`
         ),
       ]);
@@ -561,8 +560,8 @@ export default function adminRouter(db) {
       const offset = (page - 1) * limit;
       const status = req.query.status || null;
 
-      const where  = status ? "WHERE status = $3" : "";
-      const params = status ? [limit, offset, status] : [limit, offset];
+      const where  = status ? "WHERE status = ?" : "";
+      const params = status ? [status, limit, offset] : [limit, offset];
 
       const [rows, countRes] = await Promise.all([
         db.query(
@@ -570,11 +569,11 @@ export default function adminRouter(db) {
            FROM service_requests
            ${where}
            ORDER BY created_at DESC
-           LIMIT $1 OFFSET $2`,
+           LIMIT ? OFFSET ?`,
           params
         ),
         db.query(
-          `SELECT COUNT(*)::int AS count FROM service_requests ${status ? "WHERE status = $1" : ""}`,
+          `SELECT COUNT(*) AS count FROM service_requests ${status ? "WHERE status = ?" : ""}`,
           status ? [status] : []
         ),
       ]);
@@ -593,7 +592,7 @@ export default function adminRouter(db) {
       if (!id || !["new", "in_progress", "done", "closed"].includes(status)) {
         return res.status(400).json({ success: false });
       }
-      await db.query("UPDATE service_requests SET status = $1 WHERE id = $2", [status, id]);
+      await db.query("UPDATE service_requests SET status = ? WHERE id = ?", [status, id]);
       res.json({ success: true });
     } catch (err) {
       res.status(500).json({ success: false });
@@ -605,7 +604,7 @@ export default function adminRouter(db) {
     try {
       const id = parseInt(req.params.id);
       if (!id) return res.status(400).json({ success: false });
-      await db.query("DELETE FROM service_requests WHERE id = $1", [id]);
+      await db.query("DELETE FROM service_requests WHERE id = ?", [id]);
       res.json({ success: true });
     } catch (err) {
       res.status(500).json({ success: false });
@@ -640,15 +639,15 @@ export default function adminRouter(db) {
           const num = parseInt(value, 10);
           if (isNaN(num) || num < 0) return res.status(400).json({ success: false, message: `Invalid value for ${key}` });
           await db.query(
-            `INSERT INTO admin_settings (key, value, updated_at) VALUES ($1, $2, NOW())
-             ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`,
+            `INSERT INTO admin_settings (\`key\`, value, updated_at) VALUES (?, ?, NOW())
+             ON DUPLICATE KEY UPDATE value = VALUES(value), updated_at = NOW()`,
             [key, String(num)]
           );
         } else {
           const strVal = String(value ?? '').trim();
           await db.query(
-            `INSERT INTO admin_settings (key, value, updated_at) VALUES ($1, $2, NOW())
-             ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`,
+            `INSERT INTO admin_settings (\`key\`, value, updated_at) VALUES (?, ?, NOW())
+             ON DUPLICATE KEY UPDATE value = VALUES(value), updated_at = NOW()`,
             [key, strVal]
           );
         }
@@ -665,8 +664,8 @@ export default function adminRouter(db) {
     try {
       const rows = await db.query(`
         SELECT t.*,
-          (SELECT COUNT(*)::int FROM admin_template_sections s WHERE s.template_id = t.id AND s.is_enabled = true) AS enabled_sections,
-          (SELECT COUNT(*)::int FROM resumes r WHERE r.template = t.slug) AS usage_count
+          (SELECT COUNT(*) FROM admin_template_sections s WHERE s.template_id = t.id AND s.is_enabled = true) AS enabled_sections,
+          (SELECT COUNT(*) FROM resumes r WHERE r.template = t.slug) AS usage_count
         FROM admin_templates t
         ORDER BY t.sort_order, t.created_at DESC
       `);
@@ -686,7 +685,7 @@ export default function adminRouter(db) {
       const tempSlug = `adm-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-").substring(0, 40)}-tmp`;
       const insert = await db.query(
         `INSERT INTO admin_templates (slug, title, description, category, badge, layout_type, color_scheme, is_paid, price_inr, created_by)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
+         VALUES (?,?,?,?,?,?,?,?,?,?)`,
         [
           tempSlug, title, description || null,
           category || "experienced", badge || "New",
@@ -695,10 +694,10 @@ export default function adminRouter(db) {
           is_paid !== false, price_inr || 49, req.user.id,
         ]
       );
-      const newId = insert.rows[0].id;
+      const newId = insert.insertId;
       // Update slug to include real id
       const finalSlug = `adm-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-").substring(0, 40)}-${newId}`;
-      await db.query("UPDATE admin_templates SET slug=$1, updated_at=NOW() WHERE id=$2", [finalSlug, newId]);
+      await db.query("UPDATE admin_templates SET slug=?, updated_at=NOW() WHERE id=?", [finalSlug, newId]);
 
       // Insert default sections
       const defaultSections = [
@@ -725,12 +724,12 @@ export default function adminRouter(db) {
         await db.query(
           `INSERT INTO admin_template_sections
              (template_id, section_key, is_enabled, sort_order, placement, display_type, label_override)
-           VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+           VALUES (?,?,?,?,?,?,?)`,
           [newId, s.key, !s.disabled, s.order, s.placement, s.display, null]
         );
       }
 
-      const tpl = await db.query("SELECT * FROM admin_templates WHERE id=$1", [newId]);
+      const tpl = await db.query("SELECT * FROM admin_templates WHERE id=?", [newId]);
       res.json({ success: true, template: tpl.rows[0] });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
@@ -746,10 +745,10 @@ export default function adminRouter(db) {
       const DEFAULT_DESIGN = { fontFamily:"segoe", headingWeight:"800", bodySize:"medium", borderRadius:"soft", shadow:"none", sectionTitleStyle:"underline", headerStyle:"classic", pillShape:"rounded" };
       await db.query(
         `UPDATE admin_templates SET
-          title=$1, description=$2, category=$3, badge=$4, layout_type=$5,
-          color_scheme=$6, is_paid=$7, price_inr=$8, sort_order=$9,
-          design_settings=$10, updated_at=NOW()
-         WHERE id=$11`,
+          title=?, description=?, category=?, badge=?, layout_type=?,
+          color_scheme=?, is_paid=?, price_inr=?, sort_order=?,
+          design_settings=?, updated_at=NOW()
+         WHERE id=?`,
         [
           title, description || null, category || "experienced", badge || "New",
           layout_type || "two-column-left",
@@ -759,7 +758,7 @@ export default function adminRouter(db) {
           id,
         ]
       );
-      const tpl = await db.query("SELECT * FROM admin_templates WHERE id=$1", [id]);
+      const tpl = await db.query("SELECT * FROM admin_templates WHERE id=?", [id]);
       res.json({ success: true, template: tpl.rows[0] });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
@@ -771,7 +770,7 @@ export default function adminRouter(db) {
     try {
       const id = parseInt(req.params.id);
       if (!id) return res.status(400).json({ success: false });
-      await db.query("DELETE FROM admin_templates WHERE id=$1", [id]);
+      await db.query("DELETE FROM admin_templates WHERE id=?", [id]);
       res.json({ success: true });
     } catch (err) {
       res.status(500).json({ success: false });
@@ -783,10 +782,10 @@ export default function adminRouter(db) {
     try {
       const id = parseInt(req.params.id);
       if (!id) return res.status(400).json({ success: false });
-      const current = await db.query("SELECT is_published FROM admin_templates WHERE id=$1", [id]);
+      const current = await db.query("SELECT is_published FROM admin_templates WHERE id=?", [id]);
       if (!current.rows[0]) return res.status(404).json({ success: false });
       const newState = !current.rows[0].is_published;
-      await db.query("UPDATE admin_templates SET is_published=$1, updated_at=NOW() WHERE id=$2", [newState, id]);
+      await db.query("UPDATE admin_templates SET is_published=?, updated_at=NOW() WHERE id=?", [newState, id]);
       res.json({ success: true, is_published: newState });
     } catch (err) {
       res.status(500).json({ success: false });
@@ -800,7 +799,7 @@ export default function adminRouter(db) {
       if (!id) return res.status(400).json({ success: false });
       const { thumbnailUrl } = req.body || {};
       await db.query(
-        "UPDATE admin_templates SET thumbnail_url=$1, updated_at=NOW() WHERE id=$2",
+        "UPDATE admin_templates SET thumbnail_url=?, updated_at=NOW() WHERE id=?",
         [thumbnailUrl || null, id]
       );
       res.json({ success: true });
@@ -816,7 +815,7 @@ export default function adminRouter(db) {
       if (!id || !req.file) return res.status(400).json({ success: false });
       const imageUrl = `/images/templates/uploads/${req.file.filename}`;
       await db.query(
-        "UPDATE admin_templates SET thumbnail_url=$1, updated_at=NOW() WHERE id=$2",
+        "UPDATE admin_templates SET thumbnail_url=?, updated_at=NOW() WHERE id=?",
         [imageUrl, id]
       );
       res.json({ success: true, imageUrl });
@@ -832,7 +831,7 @@ export default function adminRouter(db) {
       if (!id || !req.file) return res.status(400).json({ success: false, error: "No file" });
       const imageUrl = `/images/templates/uploads/${req.file.filename}`;
       await db.query(
-        "UPDATE admin_templates SET background_image_url=$1, updated_at=NOW() WHERE id=$2",
+        "UPDATE admin_templates SET background_image_url=?, updated_at=NOW() WHERE id=?",
         [imageUrl, id]
       );
       res.json({ success: true, imageUrl });
@@ -846,7 +845,7 @@ export default function adminRouter(db) {
     try {
       const id = parseInt(req.params.id);
       if (!id) return res.status(400).json({ success: false });
-      await db.query("UPDATE admin_templates SET background_image_url=NULL, updated_at=NOW() WHERE id=$1", [id]);
+      await db.query("UPDATE admin_templates SET background_image_url=NULL, updated_at=NOW() WHERE id=?", [id]);
       res.json({ success: true });
     } catch (err) {
       res.status(500).json({ success: false });
@@ -859,7 +858,7 @@ export default function adminRouter(db) {
       const id = parseInt(req.params.id);
       if (!id) return res.status(400).json({ success: false });
       const rows = await db.query(
-        "SELECT section_key, is_enabled, sort_order, placement, display_type, label_override FROM admin_template_sections WHERE template_id=$1 ORDER BY sort_order",
+        "SELECT section_key, is_enabled, sort_order, placement, display_type, label_override FROM admin_template_sections WHERE template_id=? ORDER BY sort_order",
         [id]
       );
       res.json({ success: true, sections: rows.rows });
@@ -877,17 +876,17 @@ export default function adminRouter(db) {
       if (!Array.isArray(sections)) return res.status(400).json({ success: false, error: "sections must be array" });
 
       // Delete existing and re-insert
-      await db.query("DELETE FROM admin_template_sections WHERE template_id=$1", [id]);
+      await db.query("DELETE FROM admin_template_sections WHERE template_id=?", [id]);
       for (const s of sections) {
         await db.query(
           `INSERT INTO admin_template_sections
              (template_id, section_key, is_enabled, sort_order, placement, display_type, label_override)
-           VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+           VALUES (?,?,?,?,?,?,?)`,
           [id, s.section_key, s.is_enabled !== false, s.sort_order || 0,
            s.placement || 'auto', s.display_type || 'bullets', s.label_override || null]
         );
       }
-      await db.query("UPDATE admin_templates SET updated_at=NOW() WHERE id=$1", [id]);
+      await db.query("UPDATE admin_templates SET updated_at=NOW() WHERE id=?", [id]);
       res.json({ success: true });
     } catch (err) {
       res.status(500).json({ success: false });
@@ -902,7 +901,7 @@ export default function adminRouter(db) {
   router.get("/api/homepage", async (_req, res) => {
     try {
       const keys = ["homepage_hero","homepage_services","homepage_features","homepage_testimonials"];
-      const rows = (await db.query(`SELECT key, value FROM admin_settings WHERE key = ANY($1)`, [keys])).rows;
+      const rows = (await db.query(`SELECT \`key\`, value FROM admin_settings WHERE \`key\` IN (?,?,?,?)`, keys)).rows;
       const data = Object.fromEntries(rows.map(r => [r.key.replace("homepage_",""), JSON.parse(r.value)]));
       res.json({ success: true, data });
     } catch (err) {
@@ -919,8 +918,8 @@ export default function adminRouter(db) {
       const key   = `homepage_${section}`;
       const value = JSON.stringify(req.body);
       await db.query(
-        `INSERT INTO admin_settings (key, value, updated_at) VALUES ($1,$2,NOW())
-         ON CONFLICT (key) DO UPDATE SET value=$2, updated_at=NOW()`,
+        `INSERT INTO admin_settings (\`key\`, value, updated_at) VALUES (?,?,NOW())
+         ON DUPLICATE KEY UPDATE value=VALUES(value), updated_at=NOW()`,
         [key, value]
       );
       res.json({ success: true });
@@ -957,8 +956,8 @@ export default function adminRouter(db) {
     try {
       const images = Array.isArray(req.body.images) ? req.body.images : [];
       await db.query(
-        `INSERT INTO admin_settings (key, value, updated_at) VALUES ('bgremover_backgrounds',$1,NOW())
-         ON CONFLICT (key) DO UPDATE SET value=$1, updated_at=NOW()`,
+        `INSERT INTO admin_settings (\`key\`, value, updated_at) VALUES ('bgremover_backgrounds',?,NOW())
+         ON DUPLICATE KEY UPDATE value=VALUES(value), updated_at=NOW()`,
         [JSON.stringify(images)]
       );
       res.json({ success: true });
@@ -980,8 +979,8 @@ export default function adminRouter(db) {
     try {
       const provider = (req.body && req.body.provider === 'free') ? 'free' : 'removebg';
       await db.query(
-        `INSERT INTO admin_settings (key, value) VALUES ('bgremover_provider',$1)
-         ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value`,
+        `INSERT INTO admin_settings (\`key\`, value) VALUES ('bgremover_provider',?)
+         ON DUPLICATE KEY UPDATE value=VALUES(value)`,
         [provider]
       );
       res.json({ success: true, provider });
@@ -1023,12 +1022,12 @@ export default function adminRouter(db) {
       const { title, description, badge, isAvailable } = req.body || {};
       await db.query(`
         INSERT INTO template_overrides (template_id, title, description, badge, is_available, updated_at)
-        VALUES ($1,$2,$3,$4,$5,NOW())
-        ON CONFLICT (template_id) DO UPDATE SET
-          title        = COALESCE(EXCLUDED.title,        template_overrides.title),
-          description  = COALESCE(EXCLUDED.description,  template_overrides.description),
-          badge        = COALESCE(EXCLUDED.badge,         template_overrides.badge),
-          is_available = COALESCE(EXCLUDED.is_available,  template_overrides.is_available),
+        VALUES (?,?,?,?,?,NOW())
+        ON DUPLICATE KEY UPDATE
+          title        = COALESCE(VALUES(title),        title),
+          description  = COALESCE(VALUES(description),  description),
+          badge        = COALESCE(VALUES(badge),         badge),
+          is_available = COALESCE(VALUES(is_available),  is_available),
           updated_at   = NOW()
       `, [id, title || null, description || null, badge || null, isAvailable != null ? isAvailable : null]);
       res.json({ success: true });
@@ -1045,9 +1044,9 @@ export default function adminRouter(db) {
       const imageUrl = `/images/templates/uploads/${req.file.filename}`;
       await db.query(`
         INSERT INTO template_overrides (template_id, preview_image_url, updated_at)
-        VALUES ($1,$2,NOW())
-        ON CONFLICT (template_id) DO UPDATE SET
-          preview_image_url = EXCLUDED.preview_image_url,
+        VALUES (?,?,NOW())
+        ON DUPLICATE KEY UPDATE
+          preview_image_url = VALUES(preview_image_url),
           updated_at        = NOW()
       `, [id, imageUrl]);
       res.json({ success: true, imageUrl });
@@ -1064,9 +1063,9 @@ export default function adminRouter(db) {
       const imageUrl = `/images/templates/uploads/${req.file.filename}`;
       await db.query(`
         INSERT INTO template_overrides (template_id, background_image_url, updated_at)
-        VALUES ($1,$2,NOW())
-        ON CONFLICT (template_id) DO UPDATE SET
-          background_image_url = EXCLUDED.background_image_url,
+        VALUES (?,?,NOW())
+        ON DUPLICATE KEY UPDATE
+          background_image_url = VALUES(background_image_url),
           updated_at           = NOW()
       `, [id, imageUrl]);
       res.json({ success: true, imageUrl });
@@ -1080,8 +1079,8 @@ export default function adminRouter(db) {
     try {
       const { id } = req.params;
       await db.query(`
-        INSERT INTO template_overrides (template_id, background_image_url, updated_at) VALUES ($1,NULL,NOW())
-        ON CONFLICT (template_id) DO UPDATE SET background_image_url=NULL, updated_at=NOW()
+        INSERT INTO template_overrides (template_id, background_image_url, updated_at) VALUES (?,NULL,NOW())
+        ON DUPLICATE KEY UPDATE background_image_url=NULL, updated_at=NOW()
       `, [id]);
       res.json({ success: true });
     } catch (err) {
@@ -1122,12 +1121,12 @@ export default function adminRouter(db) {
   router.get("/preview/:slug", async (req, res) => {
     try {
       const { slug } = req.params;
-      const tplRow = await db.query("SELECT * FROM admin_templates WHERE slug=$1", [slug]);
+      const tplRow = await db.query("SELECT * FROM admin_templates WHERE slug=?", [slug]);
       const adminTemplateConfig = tplRow.rows[0] || null;
       if (!adminTemplateConfig) return res.status(404).send("Template not found");
 
       const secRes = await db.query(
-        "SELECT section_key, is_enabled, sort_order, placement, display_type, label_override FROM admin_template_sections WHERE template_id=$1 ORDER BY sort_order",
+        "SELECT section_key, is_enabled, sort_order, placement, display_type, label_override FROM admin_template_sections WHERE template_id=? ORDER BY sort_order",
         [adminTemplateConfig.id]
       );
       const templateSections = secRes.rows;
@@ -1165,7 +1164,7 @@ export default function adminRouter(db) {
       const upper = String(code).trim().toUpperCase();
       const result = await db.query(
         `INSERT INTO coupons (code, description, discount_type, discount_value, min_amount, max_uses, first_time_only, expires_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           upper,
           description || null,
@@ -1177,7 +1176,8 @@ export default function adminRouter(db) {
           expires_at || null,
         ]
       );
-      res.json({ success: true, coupon: result.rows[0] });
+      const newCoupon = await db.query("SELECT * FROM coupons WHERE id=?", [result.insertId]);
+      res.json({ success: true, coupon: newCoupon.rows[0] });
     } catch (err) {
       if (err.code === "23505") return res.status(400).json({ success: false, error: "A coupon with that code already exists." });
       res.status(500).json({ success: false, error: "Server error." });
@@ -1186,17 +1186,19 @@ export default function adminRouter(db) {
 
   router.put("/api/coupons/:id/toggle", async (req, res) => {
     try {
-      const result = await db.query(
-        "UPDATE coupons SET is_active = NOT is_active WHERE id=$1 RETURNING *",
-        [parseInt(req.params.id, 10)]
-      );
-      res.json({ success: true, coupon: result.rows[0] });
+      const cid = parseInt(req.params.id, 10);
+      const curCoupon = await db.query("SELECT is_active FROM coupons WHERE id=?", [cid]);
+      if (!curCoupon.rows[0]) return res.status(404).json({ success: false });
+      const newActive = !curCoupon.rows[0].is_active;
+      await db.query("UPDATE coupons SET is_active=? WHERE id=?", [newActive, cid]);
+      const updatedCoupon = await db.query("SELECT * FROM coupons WHERE id=?", [cid]);
+      res.json({ success: true, coupon: updatedCoupon.rows[0] });
     } catch { res.status(500).json({ success: false }); }
   });
 
   router.delete("/api/coupons/:id", async (req, res) => {
     try {
-      await db.query("DELETE FROM coupons WHERE id=$1", [parseInt(req.params.id, 10)]);
+      await db.query("DELETE FROM coupons WHERE id=?", [parseInt(req.params.id, 10)]);
       res.json({ success: true });
     } catch { res.status(500).json({ success: false }); }
   });
@@ -1211,9 +1213,11 @@ export default function adminRouter(db) {
 
   router.get("/api/env-settings", async (req, res) => {
     try {
+      const envKeys = ENV_WHITELIST.map(k => `env_${k.toLowerCase()}`);
+      const placeholders = envKeys.map(() => '?').join(',');
       const rows = await db.query(
-        "SELECT key, value FROM admin_settings WHERE key = ANY($1)",
-        [ENV_WHITELIST.map(k => `env_${k.toLowerCase()}`)]
+        `SELECT \`key\`, value FROM admin_settings WHERE \`key\` IN (${placeholders})`,
+        envKeys
       );
       const saved = {};
       for (const r of rows.rows) saved[r.key] = r.value;
@@ -1234,8 +1238,8 @@ export default function adminRouter(db) {
         const dbKey = `env_${key.toLowerCase()}`;
         const strVal = String(val ?? '').trim();
         await db.query(
-          `INSERT INTO admin_settings (key, value, updated_at) VALUES ($1,$2,NOW())
-           ON CONFLICT (key) DO UPDATE SET value=$2, updated_at=NOW()`,
+          `INSERT INTO admin_settings (\`key\`, value, updated_at) VALUES (?,?,NOW())
+           ON DUPLICATE KEY UPDATE value=VALUES(value), updated_at=NOW()`,
           [dbKey, strVal]
         );
         if (strVal) process.env[key] = strVal;
@@ -1254,7 +1258,7 @@ export default function adminRouter(db) {
   router.put("/api/ads/settings", async (req, res) => {
     try {
       const enabled = req.body.enabled !== false;
-      await db.query("UPDATE admin_settings SET value=$1 WHERE key='ads_enabled'", [enabled ? 'true' : 'false']);
+      await db.query("UPDATE admin_settings SET value=? WHERE `key`='ads_enabled'", [enabled ? 'true' : 'false']);
       res.json({ success: true, adsEnabled: enabled });
     } catch { res.status(500).json({ success: false }); }
   });
@@ -1273,26 +1277,31 @@ export default function adminRouter(db) {
     const image_url = req.file ? `/uploads/ads/${req.file.filename}` : null;
     try {
       const result = await db.query(
-        "INSERT INTO ads (slot, title, image_url, link_url) VALUES ($1,$2,$3,$4) RETURNING *",
+        "INSERT INTO ads (slot, title, image_url, link_url) VALUES (?,?,?,?)",
         [slot, title || null, image_url, link_url]
       );
-      res.json({ success: true, ad: result.rows[0] });
+      const newAd = await db.query("SELECT * FROM ads WHERE id=?", [result.insertId]);
+      res.json({ success: true, ad: newAd.rows[0] });
     } catch (err) { res.status(500).json({ success: false }); }
   });
 
   router.put("/api/ads/:id/toggle", async (req, res) => {
     try {
-      const result = await db.query(
-        "UPDATE ads SET is_active = NOT is_active WHERE id=$1 RETURNING *",
-        [parseInt(req.params.id, 10)]
-      );
-      res.json({ success: true, ad: result.rows[0] });
+      const aid = parseInt(req.params.id, 10);
+      const curAd = await db.query("SELECT is_active FROM ads WHERE id=?", [aid]);
+      if (!curAd.rows[0]) return res.status(404).json({ success: false });
+      const newAdActive = !curAd.rows[0].is_active;
+      await db.query("UPDATE ads SET is_active=? WHERE id=?", [newAdActive, aid]);
+      const updatedAd = await db.query("SELECT * FROM ads WHERE id=?", [aid]);
+      res.json({ success: true, ad: updatedAd.rows[0] });
     } catch (err) { res.status(500).json({ success: false }); }
   });
 
   router.delete("/api/ads/:id", async (req, res) => {
     try {
-      const row = await db.query("DELETE FROM ads WHERE id=$1 RETURNING image_url", [parseInt(req.params.id, 10)]);
+      const delId = parseInt(req.params.id, 10);
+      const row = await db.query("SELECT image_url FROM ads WHERE id=?", [delId]);
+      await db.query("DELETE FROM ads WHERE id=?", [delId]);
       if (row.rows[0]?.image_url) {
         const filePath = path.join(__dirname, "..", "public", row.rows[0].image_url);
         fs.unlink(filePath, () => {});
@@ -1320,11 +1329,12 @@ export default function adminRouter(db) {
     try {
       const { id } = req.params;
       const r = await db.query(
-        "UPDATE investor_requests SET status='approved', updated_at=NOW() WHERE id=$1 RETURNING user_id",
+        "SELECT user_id FROM investor_requests WHERE id=?",
         [id]
       );
       if (!r.rows[0]) return res.status(404).json({ success: false });
-      await db.query("UPDATE users SET investor_approved=true WHERE id=$1", [r.rows[0].user_id]);
+      await db.query("UPDATE investor_requests SET status='approved', updated_at=NOW() WHERE id=?", [id]);
+      await db.query("UPDATE users SET investor_approved=true WHERE id=?", [r.rows[0].user_id]);
       res.json({ success: true });
     } catch (err) { res.status(500).json({ success: false }); }
   });
@@ -1335,7 +1345,7 @@ export default function adminRouter(db) {
       const { id } = req.params;
       const { admin_note } = req.body;
       await db.query(
-        "UPDATE investor_requests SET status='rejected', admin_note=$1, updated_at=NOW() WHERE id=$2",
+        "UPDATE investor_requests SET status='rejected', admin_note=?, updated_at=NOW() WHERE id=?",
         [admin_note || null, id]
       );
       res.json({ success: true });
@@ -1345,7 +1355,7 @@ export default function adminRouter(db) {
   // DELETE /admin/api/investor-requests/:id — remove a request entirely
   router.delete("/api/investor-requests/:id", async (req, res) => {
     try {
-      await db.query("DELETE FROM investor_requests WHERE id=$1", [req.params.id]);
+      await db.query("DELETE FROM investor_requests WHERE id=?", [req.params.id]);
       res.json({ success: true });
     } catch (err) { res.status(500).json({ success: false }); }
   });
@@ -1374,7 +1384,7 @@ export default function adminRouter(db) {
       for (const r of cfgRows.rows) cfg[r.key] = parseFloat(r.value);
       const valuation = valuationOverride ? parseFloat(valuationOverride) : (cfg.investment_valuation || 125000);
       const totalEquity = cfg.investment_equity || 40;
-      const soldRes = await db.query("SELECT COALESCE(SUM(equity_percent),0) AS sold FROM investments WHERE user_id!=$1", [user_id]);
+      const soldRes = await db.query("SELECT COALESCE(SUM(equity_percent),0) AS sold FROM investments WHERE user_id!=?", [user_id]);
       const sold = parseFloat(soldRes.rows[0].sold) || 0;
       const remaining = parseFloat((totalEquity - sold).toFixed(2));
       const equityPercent = parseFloat(((parseFloat(amount) / valuation) * 100).toFixed(2));
@@ -1383,13 +1393,12 @@ export default function adminRouter(db) {
       }
       const paymentId = payment_ref || `MANUAL-${Date.now()}`;
       await db.query(
-        `INSERT INTO investments (user_id, amount, equity_percent, valuation, payment_id)
-         VALUES ($1, $2, $3, $4, $5)
-         ON CONFLICT (payment_id) DO NOTHING`,
+        `INSERT IGNORE INTO investments (user_id, amount, equity_percent, valuation, payment_id)
+         VALUES (?, ?, ?, ?, ?)`,
         [user_id, parseFloat(amount), equityPercent, valuation, paymentId]
       );
       // Only set role='investor' if not already admin or subadmin
-      await db.query("UPDATE users SET role='investor' WHERE id=$1 AND role NOT IN ('admin','subadmin')", [user_id]);
+      await db.query("UPDATE users SET role='investor' WHERE id=? AND role NOT IN ('admin','subadmin')", [user_id]);
       res.json({ success: true, equityPercent });
     } catch (err) { res.status(500).json({ success: false, message: err.message }); }
   });
@@ -1400,15 +1409,15 @@ export default function adminRouter(db) {
       const { id } = req.params;
       const { amount, payment_ref } = req.body;
       if (!amount) return res.status(400).json({ success: false, message: 'amount required' });
-      const inv = await db.query("SELECT * FROM investments WHERE id=$1", [id]);
+      const inv = await db.query("SELECT * FROM investments WHERE id=?", [id]);
       if (!inv.rows[0]) return res.status(404).json({ success: false });
       const valuation = parseFloat(inv.rows[0].valuation);
       const equityPercent = parseFloat(((parseFloat(amount) / valuation) * 100).toFixed(2));
-      const updates = ["amount=$1", "equity_percent=$2"];
+      const updates = ["amount=?", "equity_percent=?"];
       const params = [parseFloat(amount), equityPercent];
-      if (payment_ref) { updates.push(`payment_id=$${params.length + 1}`); params.push(payment_ref); }
+      if (payment_ref) { updates.push("payment_id=?"); params.push(payment_ref); }
       params.push(id);
-      await db.query(`UPDATE investments SET ${updates.join(', ')} WHERE id=$${params.length}`, params);
+      await db.query(`UPDATE investments SET ${updates.join(', ')} WHERE id=?`, params);
       res.json({ success: true, equityPercent });
     } catch (err) { res.status(500).json({ success: false, message: err.message }); }
   });
@@ -1434,9 +1443,9 @@ export default function adminRouter(db) {
     try {
       const { amount, equity, valuation } = req.body;
       const updates = [];
-      if (amount   != null) updates.push(db.query("INSERT INTO admin_settings(key,value) VALUES('investment_amount',$1) ON CONFLICT(key) DO UPDATE SET value=$1", [String(amount)]));
-      if (equity   != null) updates.push(db.query("INSERT INTO admin_settings(key,value) VALUES('investment_equity',$1) ON CONFLICT(key) DO UPDATE SET value=$1", [String(equity)]));
-      if (valuation!= null) updates.push(db.query("INSERT INTO admin_settings(key,value) VALUES('investment_valuation',$1) ON CONFLICT(key) DO UPDATE SET value=$1", [String(valuation)]));
+      if (amount   != null) updates.push(db.query("INSERT INTO admin_settings(`key`,value) VALUES('investment_amount',?) ON DUPLICATE KEY UPDATE value=VALUES(value)", [String(amount)]));
+      if (equity   != null) updates.push(db.query("INSERT INTO admin_settings(`key`,value) VALUES('investment_equity',?) ON DUPLICATE KEY UPDATE value=VALUES(value)", [String(equity)]));
+      if (valuation!= null) updates.push(db.query("INSERT INTO admin_settings(`key`,value) VALUES('investment_valuation',?) ON DUPLICATE KEY UPDATE value=VALUES(value)", [String(valuation)]));
       await Promise.all(updates);
       res.json({ success: true });
     } catch (err) { res.status(500).json({ success: false }); }
