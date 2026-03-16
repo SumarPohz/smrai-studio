@@ -676,7 +676,7 @@
     <div id="bgremover" class="adm-section-page" hidden>
       <div class="adm-section-header">
         <h2><i class="fas fa-eraser"></i> Background Remover — Backgrounds</h2>
-        <p class="adm-section-desc">Upload background images users can apply after removing a background. Max 8 images. Stored persistently in the database.</p>
+        <p class="adm-section-desc">Upload background images users can apply after removing a background. Max 20 images. Stored persistently in the database.</p>
       </div>
       <div class="adm-card">
         <div id="bgr_images_list" style="display:flex;flex-wrap:wrap;gap:0.6rem;margin-bottom:1rem;min-height:24px;"></div>
@@ -1632,6 +1632,8 @@
 /* ════════════════════════════════════════════════════════════════════════════
    SmrAI-Studio Admin Dashboard JS
 ════════════════════════════════════════════════════════════════════════════ */
+const isSubAdmin = <%- JSON.stringify(isSubAdmin) %>;
+const myPerms    = <%- JSON.stringify(myPerms) %>;
 
 // ── Section navigation ─────────────────────────────────────────────────────
 const sections = document.querySelectorAll(".adm-section-page");
@@ -1838,11 +1840,11 @@ async function loadUsers(page, q) {
         <td>₹${Math.round(u.total_paid / 100)}</td>
         <td class="adm-muted">${fmtDate(u.last_active)}</td>
       `;
-      <% if (!isSubAdmin) { %>
-      tr.addEventListener("click", () => openUserModal(u.id));
-      <% } else { %>
-      tr.style.cursor = "default";
-      <% } %>
+      if (!isSubAdmin) {
+        tr.addEventListener("click", () => openUserModal(u.id));
+      } else {
+        tr.style.cursor = "default";
+      }
       tbody.appendChild(tr);
     });
 
@@ -4678,9 +4680,9 @@ document.getElementById("couponCreateForm").addEventListener("submit", async fun
 });
 
 // ── Sub-admin page-load enforcement ─────────────────────────────────────────
-<% if (isSubAdmin && myPerms) { %>
+if (isSubAdmin && myPerms) {
 (function() {
-  const perms = <%- JSON.stringify(myPerms) %>;
+  const perms = myPerms;
   const sections = ["overview","users","activity","requests","pricing","templates","homepage","ads","coupons","apikeys","investors"];
 
   sections.forEach(function(sec) {
@@ -4731,7 +4733,7 @@ document.getElementById("couponCreateForm").addEventListener("submit", async fun
     showSection(firstAllowed);
   }
 })();
-<% } %>
+}
 
 // ── Background Remover Backgrounds ──────────────────────────────────────────
 let bgrImagesList = [];
@@ -4745,7 +4747,7 @@ let bgrImagesList = [];
 })();
 
 document.getElementById("bgr_img_input") && document.getElementById("bgr_img_input").addEventListener("change", async function() {
-  if (bgrImagesList.length >= 8) { alert("Maximum 8 images allowed"); this.value = ""; return; }
+  if (bgrImagesList.length >= 20) { alert("Maximum 20 images allowed"); this.value = ""; return; }
   const file = this.files[0]; if (!file) return;
   const fd = new FormData(); fd.append("image", file);
   const r = await fetch("/admin/api/homepage/upload-image", { method: "POST", body: fd });

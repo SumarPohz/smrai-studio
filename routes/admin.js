@@ -73,15 +73,15 @@ export default function adminRouter(db) {
   router.get("/", async (req, res) => {
     try {
       const [users, resumes, downloads, revenue, aiUse, active24h, myInv, myProfile, companyRow] = await Promise.all([
-        db.query("SELECT COUNT(*) FROM users"),
-        db.query("SELECT COUNT(*) FROM resumes"),
-        db.query("SELECT COUNT(*) FROM resume_events WHERE kind = 'download'"),
+        db.query("SELECT COUNT(*) AS count FROM users"),
+        db.query("SELECT COUNT(*) AS count FROM resumes"),
+        db.query("SELECT COUNT(*) AS count FROM resume_events WHERE kind = 'download'"),
         db.query("SELECT COALESCE(SUM(amount),0) AS total FROM payments WHERE status = 'captured'"),
-        db.query("SELECT COUNT(*) FROM activity_logs WHERE action_type LIKE 'ai_%'"),
-        db.query("SELECT COUNT(DISTINCT user_id) FROM activity_logs WHERE created_at > NOW() - INTERVAL 24 HOUR"),
+        db.query("SELECT COUNT(*) AS count FROM activity_logs WHERE action_type LIKE 'ai_%'"),
+        db.query("SELECT COUNT(DISTINCT user_id) AS count FROM activity_logs WHERE created_at > NOW() - INTERVAL 24 HOUR"),
         db.query("SELECT * FROM investments WHERE user_id=? ORDER BY created_at DESC LIMIT 1", [req.user.id]),
         db.query("SELECT full_name, profile_image_url FROM user_profiles WHERE user_id=?", [req.user.id]),
-        db.query("SELECT value FROM admin_settings WHERE key='company_name'"),
+        db.query("SELECT value FROM admin_settings WHERE `key`='company_name'"),
       ]);
 
       const isSubAdmin = req.user.role === "subadmin";
@@ -104,7 +104,8 @@ export default function adminRouter(db) {
         myPerms,
       });
     } catch (err) {
-      res.status(500).send("Dashboard error");
+      console.error("[admin dashboard error]", err.message);
+      res.status(500).send("Dashboard error: " + err.message);
     }
   });
 
@@ -118,8 +119,8 @@ export default function adminRouter(db) {
 
       const sql = `
         SELECT
-          u.id, u.name, u.email, u.role, u.is_active,
-          up.full_name, up.phone, up.location, up.profile_image_url, up.updated_at AS created_at,
+          u.id, u.name, u.email, u.role, u.is_active, u.created_at,
+          up.full_name, up.phone, up.location, up.profile_image_url,
           (SELECT COUNT(*) FROM resumes        WHERE user_id = u.id)                           AS resume_count,
           (SELECT COUNT(*) FROM resume_events  WHERE user_id = u.id AND kind = 'download')     AS download_count,
           (SELECT COALESCE(SUM(p.amount),0) FROM payments p WHERE p.user_id = u.id AND p.status = 'captured') AS total_paid,
@@ -147,7 +148,8 @@ export default function adminRouter(db) {
         limit,
       });
     } catch (err) {
-      res.status(500).json({ success: false });
+      console.error("[admin/api/users error]", err.message);
+      res.status(500).json({ success: false, message: err.message });
     }
   });
 
@@ -160,7 +162,7 @@ export default function adminRouter(db) {
 
       const [userRes, profileRes, countsRes] = await Promise.all([
         db.query(
-          "SELECT id, name, email, role, is_active, EXISTS(SELECT 1 FROM investments WHERE user_id=?) AS has_investment FROM users WHERE id = ?",
+          "SELECT id, name, email, role, is_active, created_at, EXISTS(SELECT 1 FROM investments WHERE user_id=?) AS has_investment FROM users WHERE id = ?",
           [id, id]
         ),
         db.query("SELECT * FROM user_profiles WHERE user_id = ?", [id]),
@@ -197,6 +199,7 @@ export default function adminRouter(db) {
           ai_uses:           counts.ai_uses     || 0,
           total_paid:        Math.round(+counts.total_paid / 100),
           last_active:       counts.last_active || null,
+          created_at:        userRes.rows[0].created_at || null,
         },
       });
     } catch (err) {
@@ -614,7 +617,7 @@ export default function adminRouter(db) {
   // ── GET /admin/api/settings — return all key-value settings ──────────────
   router.get("/api/settings", async (req, res) => {
     try {
-      const result = await db.query("SELECT key, value FROM admin_settings ORDER BY key");
+      const result = await db.query("SELECT `key`, value FROM admin_settings ORDER BY `key`");
       const settings = {};
       for (const row of result.rows) settings[row.key] = row.value;
       res.json({ success: true, settings });
@@ -943,7 +946,7 @@ export default function adminRouter(db) {
   // ── GET /admin/api/bgremover/backgrounds — fetch admin-uploaded bg images ─────
   router.get("/api/bgremover/backgrounds", async (_req, res) => {
     try {
-      const r = await db.query("SELECT value FROM admin_settings WHERE key='bgremover_backgrounds'");
+      const r = await db.query("SELECT value FROM admin_settings WHERE `key`='bgremover_backgrounds'");
       const images = r.rows.length ? JSON.parse(r.rows[0].value) : [];
       res.json({ success: true, images });
     } catch (err) {
@@ -969,7 +972,7 @@ export default function adminRouter(db) {
   // ── GET /admin/api/bgremover/provider — get current API provider ──────────────
   router.get("/api/bgremover/provider", async (_req, res) => {
     try {
-      const r = await db.query("SELECT value FROM admin_settings WHERE key='bgremover_provider'");
+      const r = await db.query("SELECT value FROM admin_settings WHERE `key`='bgremover_provider'");
       res.json({ success: true, provider: r.rows[0]?.value ?? 'removebg' });
     } catch { res.status(500).json({ success: false }); }
   });
@@ -1250,7 +1253,7 @@ export default function adminRouter(db) {
 
   router.get("/api/ads/settings", async (req, res) => {
     try {
-      const r = await db.query("SELECT value FROM admin_settings WHERE key='ads_enabled'");
+      const r = await db.query("SELECT value FROM admin_settings WHERE `key`='ads_enabled'");
       res.json({ success: true, adsEnabled: (r.rows[0]?.value ?? 'true') === 'true' });
     } catch { res.status(500).json({ success: false }); }
   });
@@ -1378,7 +1381,7 @@ export default function adminRouter(db) {
       const { user_id, amount, payment_ref, valuation: valuationOverride } = req.body;
       if (!user_id || !amount) return res.status(400).json({ success: false, message: 'user_id and amount required' });
       const cfgRows = await db.query(
-        "SELECT key, value FROM admin_settings WHERE key IN ('investment_equity','investment_valuation')"
+        "SELECT `key`, value FROM admin_settings WHERE `key` IN ('investment_equity','investment_valuation')"
       );
       const cfg = {};
       for (const r of cfgRows.rows) cfg[r.key] = parseFloat(r.value);
@@ -1426,7 +1429,7 @@ export default function adminRouter(db) {
   router.get("/api/investment-config", async (req, res) => {
     try {
       const rows = await db.query(
-        "SELECT key, value FROM admin_settings WHERE key IN ('investment_amount','investment_equity','investment_valuation')"
+        "SELECT `key`, value FROM admin_settings WHERE `key` IN ('investment_amount','investment_equity','investment_valuation')"
       );
       const cfg = {};
       for (const r of rows.rows) cfg[r.key] = parseFloat(r.value);
