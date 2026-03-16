@@ -2371,6 +2371,7 @@
 
     nextBtn.addEventListener("click", () => {
       if (current < steps.length - 1) {
+        saveResume(true); // silent auto-save before advancing
         current++;
         updateUI();
       }
@@ -2574,11 +2575,11 @@
             resumeIdInput.value = data.resumeId;
           }
           if (!isAuto) {
-            alert("Resume saved!");
+            showToast("Resume saved!", "success");
           }
         } else {
           if (!isAuto) {
-            alert(data.error || "Failed to save resume.");
+            showToast(data.error || "Failed to save resume.", "error");
           } else {
             console.warn("Auto-save failed:", data.error);
           }
@@ -2586,7 +2587,7 @@
       } catch (err) {
         console.error("Error saving resume:", err);
         if (!isAuto) {
-          alert("Something went wrong while saving.");
+          showToast("Something went wrong while saving.", "error");
         }
       } finally {
         if (!isAuto && saveBtn) {
@@ -2716,14 +2717,14 @@ document.addEventListener("DOMContentLoaded", () => {
           setTimeout(() => (textarea.style.background = "white"), 1200);
         } else {
           if (data.error === "insufficient_quota") {
-            alert("⚠️ AI helper is temporarily unavailable (quota finished). Please check your API key or try later.");
+            showToast("AI helper is temporarily unavailable. Please try later.", "warning");
           } else {
-            alert("⚠️ Could not generate suggestion. Try again.");
+            showToast("Could not generate suggestion. Try again.", "warning");
           }
         }
       } catch (err) {
         console.error(err);
-        alert("Error contacting AI helper.");
+        showToast("Error contacting AI helper.", "error");
       } finally {
         btn.textContent = oldText;
         btn.disabled = false;
@@ -3422,6 +3423,36 @@ document.addEventListener("DOMContentLoaded", () => {
     placeholder.classList.remove("ph-hidden");
     removeBtn.classList.add("ph-hidden");
   });
+})();
+
+/* ── Toast notifications ── */
+(function(){
+  const style = document.createElement('style');
+  style.textContent = `
+    #rb-toast-container { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); z-index:99999; display:flex; flex-direction:column; align-items:center; gap:10px; pointer-events:none; }
+    .rb-toast { display:flex; align-items:center; gap:10px; padding:12px 20px; border-radius:12px; font-size:0.9rem; font-weight:500; color:#fff; box-shadow:0 4px 20px rgba(0,0,0,0.18); pointer-events:auto; animation:rbSlideUp 0.3s ease; min-width:220px; max-width:380px; }
+    .rb-toast.success { background:#22c55e; }
+    .rb-toast.error   { background:#ef4444; }
+    .rb-toast.info    { background:#3b82f6; }
+    .rb-toast.warning { background:#f59e0b; }
+    @keyframes rbSlideUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes rbFadeOut { to { opacity:0; transform:translateY(8px); } }
+  `;
+  document.head.appendChild(style);
+  const container = document.createElement('div');
+  container.id = 'rb-toast-container';
+  document.body.appendChild(container);
+  window.showToast = function(msg, type='info', duration=3500) {
+    const icons = { success:'✓', error:'✕', info:'ℹ', warning:'⚠' };
+    const t = document.createElement('div');
+    t.className = `rb-toast ${type}`;
+    t.innerHTML = `<span>${icons[type]||'ℹ'}</span><span>${msg}</span>`;
+    container.appendChild(t);
+    setTimeout(() => {
+      t.style.animation = 'rbFadeOut 0.3s ease forwards';
+      setTimeout(() => t.remove(), 300);
+    }, duration);
+  };
 })();
 </script>
 

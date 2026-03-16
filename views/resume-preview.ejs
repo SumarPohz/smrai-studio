@@ -185,6 +185,12 @@
     padding: 1.5rem 1rem 2.5rem;
   }
 
+  @media (max-width: 480px) {
+    .preview-section {
+      padding: 1rem 0.25rem 2rem;
+    }
+  }
+
   .preview-section > h1 {
     margin-bottom: 0.25rem;
   }
@@ -234,16 +240,10 @@
     width: 100%;
     max-width: 820px;
     margin: 1rem auto;
-    /*
-     * overflow-x: clip  — prevents the 794px scale-container from creating a
-     *   horizontal scrollbar on narrow screens. Unlike overflow:hidden, `clip`
-     *   does NOT create a scroll container, so overflow-y can remain visible.
-     * overflow-y: visible — content taller than the JS-set height can flow
-     *   naturally; the page itself scrolls, not the wrapper.
-     */
-    overflow-x: clip;
+    overflow-x: hidden; /* fallback for older iOS Safari */
+    overflow-x: clip;   /* preferred: no scroll container so overflow-y stays visible */
     overflow-y: visible;
-    position: relative;        /* stacking context for z-index */
+    position: relative;
   }
 
   /* ===== SCALE CONTAINER: holds the A4 and gets transform applied ===== */
@@ -252,6 +252,11 @@
     transform-origin: top left; /* set in CSS so JS never races to set it.
                                    Desktop: translateX centers it (origin irrelevant for translate).
                                    Mobile:  scale() anchors top-left — no rightward shift. */
+  }
+
+  /* Safety: prevent scale-container from ever causing body overflow */
+  @media (max-width: 820px) {
+    body { overflow-x: hidden; }
   }
 
   /* ===== A4 CARD: captured as JPG, natural height for multi-page content ===== */
