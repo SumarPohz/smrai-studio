@@ -1,30 +1,178 @@
 <%- include("partials/header") %>
 
-<div style="max-width: 900px; margin: auto; padding: 24px; line-height: 1.7;">
+<style>
+.news-page { min-height: 100vh; background: #e2e5ea; position: relative; overflow: hidden; padding: 80px 20px 60px; font-family: 'Segoe UI', system-ui, sans-serif; }
 
-  <h1>News & Updates</h1>
+/* ── Animated BG ── */
+.contact-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+.contact-bg-orb { position: absolute; border-radius: 50%; filter: blur(80px); animation: orbFloat 8s ease-in-out infinite; }
+.contact-bg-orb:nth-child(1) { width: 500px; height: 500px; background: radial-gradient(circle, rgba(99,102,241,0.18) 0%, transparent 70%); top: -100px; left: -100px; animation-delay: 0s; }
+.contact-bg-orb:nth-child(2) { width: 400px; height: 400px; background: radial-gradient(circle, rgba(168,85,247,0.14) 0%, transparent 70%); top: 30%; right: -80px; animation-delay: -3s; }
+.contact-bg-orb:nth-child(3) { width: 350px; height: 350px; background: radial-gradient(circle, rgba(236,72,153,0.1) 0%, transparent 70%); bottom: -50px; left: 30%; animation-delay: -5s; }
+.contact-bg-grid { position: absolute; inset: 0; background-image: linear-gradient(rgba(99,102,241,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.05) 1px, transparent 1px); background-size: 50px 50px; }
+@keyframes orbFloat { 0%,100%{transform:translateY(0) scale(1)} 50%{transform:translateY(-30px) scale(1.05)} }
 
-  <p>Latest updates from SmrAI-Studio.</p>
+/* ── Wrapper ── */
+.news-wrapper { max-width: 860px; margin: 0 auto; position: relative; z-index: 1; }
 
-  <hr>
+/* ── Header ── */
+.news-header { text-align: center; margin-bottom: 44px; }
+.news-badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.25); border-radius: 50px; padding: 6px 16px; font-size: 13px; color: #4f46e5; margin-bottom: 20px; }
+.news-header h1 { font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 800; color: #111827; margin: 0 0 16px; line-height: 1.1; }
+.news-header p { color: #4b5563; font-size: 1.05rem; max-width: 500px; margin: 0 auto; }
 
-  <h3>January 2026</h3>
-  <p>
-    🚀 SmrAI-Studio launched with AI-powered resume building, secure payments,
-    and modern templates.
-  </p>
+/* ── Timeline ── */
+.news-timeline { display: flex; flex-direction: column; gap: 20px; margin-bottom: 32px; }
+.news-item { background: #1e2030; border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 22px 24px; box-shadow: 0 2px 12px rgba(0,0,0,0.15); display: flex; gap: 18px; align-items: flex-start; transition: all 0.3s; }
+.news-item:hover { background: #252840; border-color: rgba(99,102,241,0.35); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(99,102,241,0.12); }
+.news-dot { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; margin-top: 2px; }
+.news-dot.purple { background: rgba(99,102,241,0.2); }
+.news-dot.green  { background: rgba(34,197,94,0.2); }
+.news-dot.blue   { background: rgba(59,130,246,0.2); }
+.news-dot.pink   { background: rgba(236,72,153,0.2); }
+.news-dot.orange { background: rgba(251,146,60,0.2); }
+.news-meta { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
+.news-date { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #64748b; font-weight: 600; }
+.news-tag { font-size: 10px; padding: 2px 10px; border-radius: 20px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
+.news-tag.launch  { background: rgba(99,102,241,0.15); color: #818cf8; border: 1px solid rgba(99,102,241,0.25); }
+.news-tag.feature { background: rgba(34,197,94,0.12); color: #4ade80; border: 1px solid rgba(34,197,94,0.25); }
+.news-tag.update  { background: rgba(59,130,246,0.12); color: #60a5fa; border: 1px solid rgba(59,130,246,0.25); }
+.news-tag.coming  { background: rgba(251,146,60,0.12); color: #fb923c; border: 1px solid rgba(251,146,60,0.25); }
+.news-item h3 { font-size: 1rem; font-weight: 700; color: #f1f5f9; margin: 0 0 6px; }
+.news-item p  { color: #94a3b8; font-size: 0.87rem; line-height: 1.6; margin: 0; }
 
-  <h3>Upcoming</h3>
-  <ul>
-    <li>More resume templates</li>
-    <li>Improved AI suggestions</li>
-    <li>Mobile app enhancements</li>
-  </ul>
+/* ── Upcoming Card ── */
+.upcoming-card { background: #1e2030; border: 1px solid rgba(99,102,241,0.2); border-radius: 20px; padding: 24px 28px; box-shadow: 0 2px 12px rgba(0,0,0,0.15); margin-bottom: 24px; }
+.upcoming-card h2 { font-size: 1.05rem; font-weight: 700; color: #f1f5f9; margin: 0 0 16px; display: flex; align-items: center; gap: 8px; }
+.upcoming-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+.upcoming-item { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; padding: 10px 14px; color: #94a3b8; font-size: 0.83rem; display: flex; align-items: center; gap: 8px; }
+@media(max-width:600px){ .upcoming-grid { grid-template-columns: 1fr 1fr; } }
+@media(max-width:400px){ .upcoming-grid { grid-template-columns: 1fr; } }
 
-  <p>
-    Follow us on social media for updates.
-  </p>
+/* ── Follow Strip ── */
+.follow-strip { background: #1e2030; border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 18px 22px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; box-shadow: 0 2px 12px rgba(0,0,0,0.15); }
+.follow-strip p { color: #94a3b8; font-size: 0.88rem; margin: 0; }
+.follow-links { display: flex; gap: 8px; flex-wrap: wrap; }
+.follow-link { display: flex; align-items: center; gap: 7px; padding: 6px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: #94a3b8; text-decoration: none; font-size: 12px; transition: all 0.25s; }
+.follow-link:hover { color: #fff; border-color: rgba(99,102,241,0.5); background: rgba(99,102,241,0.12); }
 
+@media(max-width:768px){
+  .news-page { padding: 50px 12px 30px; }
+  .news-header { margin-bottom: 28px; }
+  .news-item { padding: 16px; gap: 12px; }
+  .news-dot { width: 34px; height: 34px; font-size: 15px; border-radius: 10px; }
+  .upcoming-card { padding: 18px; }
+  .follow-strip { flex-direction: column; align-items: flex-start; }
+}
+</style>
+
+<!-- Animated Background -->
+<div class="contact-bg">
+  <div class="contact-bg-grid"></div>
+  <div class="contact-bg-orb"></div>
+  <div class="contact-bg-orb"></div>
+  <div class="contact-bg-orb"></div>
+</div>
+
+<div class="news-page">
+  <div class="news-wrapper">
+
+    <!-- Header -->
+    <div class="news-header">
+      <div class="news-badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/></svg>
+        News & Updates
+      </div>
+      <h1>What's new at<br>SmrAI-Studio</h1>
+      <p>Stay updated with our latest features, improvements, and announcements.</p>
+    </div>
+
+    <!-- Timeline -->
+    <div class="news-timeline">
+
+      <div class="news-item">
+        <div class="news-dot purple">🚀</div>
+        <div>
+          <div class="news-meta">
+            <span class="news-date">March 2026</span>
+            <span class="news-tag update">Update</span>
+          </div>
+          <h3>Wallet System & Referral Rewards</h3>
+          <p>Introduced a wallet system — earn ₹20 credits for every successful referral. Use your wallet balance to pay for resume downloads directly.</p>
+        </div>
+      </div>
+
+      <div class="news-item">
+        <div class="news-dot green">🖼️</div>
+        <div>
+          <div class="news-meta">
+            <span class="news-date">February 2026</span>
+            <span class="news-tag feature">Feature</span>
+          </div>
+          <h3>AI Background Remover</h3>
+          <p>Remove image backgrounds instantly using our free AI-powered background remover — no signup required, supports up to 20 images.</p>
+        </div>
+      </div>
+
+      <div class="news-item">
+        <div class="news-dot blue">✉️</div>
+        <div>
+          <div class="news-meta">
+            <span class="news-date">February 2026</span>
+            <span class="news-tag feature">Feature</span>
+          </div>
+          <h3>Application Letter Generator</h3>
+          <p>Generate professional job application letters with AI in seconds. Customize tone, role, and company details for a personalized output.</p>
+        </div>
+      </div>
+
+      <div class="news-item">
+        <div class="news-dot pink">🎨</div>
+        <div>
+          <div class="news-meta">
+            <span class="news-date">January 2026</span>
+            <span class="news-tag launch">Launch</span>
+          </div>
+          <h3>SmrAI-Studio Launched</h3>
+          <p>Official launch with AI-powered resume building, 8+ professional templates, secure Razorpay payments, and instant PDF & JPG downloads.</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Upcoming -->
+    <div class="upcoming-card">
+      <h2>⏳ Coming Soon</h2>
+      <div class="upcoming-grid">
+        <div class="upcoming-item">📱 Mobile App</div>
+        <div class="upcoming-item">🤖 Voice Resume AI</div>
+        <div class="upcoming-item">🖼️ More Templates</div>
+        <div class="upcoming-item">💬 AI Chat Support</div>
+        <div class="upcoming-item">🌐 Multi-language</div>
+        <div class="upcoming-item">📊 Resume Analytics</div>
+      </div>
+    </div>
+
+    <!-- Follow -->
+    <div class="follow-strip">
+      <p>Follow us for the latest updates</p>
+      <div class="follow-links">
+        <a href="#" class="follow-link">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"/></svg>
+          Twitter
+        </a>
+        <a href="#" class="follow-link">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6zM2 9h4v12H2z"/><circle cx="4" cy="4" r="2"/></svg>
+          LinkedIn
+        </a>
+        <a href="#" class="follow-link">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+          Instagram
+        </a>
+      </div>
+    </div>
+
+  </div>
 </div>
 
 <%- include("partials/footer") %>
