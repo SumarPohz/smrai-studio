@@ -1,75 +1,188 @@
 <%- include("partials/header") %>
 
-<div style="font-family: Arial, sans-serif; line-height: 1.7; padding: 24px; max-width: 900px; margin: auto;">
+<style>
+.tp-page { min-height: 100vh; background: #e2e5ea; position: relative; overflow: hidden; padding: 80px 20px 60px; font-family: 'Segoe UI', system-ui, sans-serif; }
 
-  <h1>Terms & Privacy Policy</h1>
-  <p>Last updated: January 2026</p>
+/* ── Animated BG ── */
+.contact-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+.contact-bg-orb { position: absolute; border-radius: 50%; filter: blur(80px); animation: orbFloat 8s ease-in-out infinite; }
+.contact-bg-orb:nth-child(1) { width: 500px; height: 500px; background: radial-gradient(circle, rgba(99,102,241,0.18) 0%, transparent 70%); top: -100px; left: -100px; }
+.contact-bg-orb:nth-child(2) { width: 400px; height: 400px; background: radial-gradient(circle, rgba(168,85,247,0.14) 0%, transparent 70%); top: 30%; right: -80px; animation-delay: -3s; }
+.contact-bg-orb:nth-child(3) { width: 350px; height: 350px; background: radial-gradient(circle, rgba(236,72,153,0.1) 0%, transparent 70%); bottom: -50px; left: 30%; animation-delay: -5s; }
+.contact-bg-grid { position: absolute; inset: 0; background-image: linear-gradient(rgba(99,102,241,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.05) 1px, transparent 1px); background-size: 50px 50px; }
+@keyframes orbFloat { 0%,100%{transform:translateY(0) scale(1)} 50%{transform:translateY(-30px) scale(1.05)} }
 
-  <hr>
+.tp-wrapper { max-width: 900px; margin: 0 auto; position: relative; z-index: 1; }
 
-  <h2>Privacy Policy</h2>
+/* ── Header ── */
+.tp-header { text-align: center; margin-bottom: 40px; }
+.tp-badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.25); border-radius: 50px; padding: 6px 16px; font-size: 13px; color: #4f46e5; margin-bottom: 20px; }
+.tp-header h1 { font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; color: #111827; margin: 0 0 12px; line-height: 1.1; }
+.tp-header p { color: #4b5563; font-size: 0.95rem; }
 
-  <p>SmrAI-Studio ("we", "our", "us") respects your privacy. This section explains how we collect, use, and protect your information.</p>
+/* ── Tab Nav ── */
+.tp-tabs { display: flex; gap: 8px; margin-bottom: 24px; background: #1e2030; border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 6px; width: fit-content; }
+.tp-tab { padding: 8px 22px; border-radius: 10px; font-size: 0.88rem; font-weight: 600; cursor: pointer; color: #64748b; border: none; background: transparent; transition: all 0.25s; }
+.tp-tab.active { background: linear-gradient(135deg, #6366f1, #a855f7); color: #fff; box-shadow: 0 4px 12px rgba(99,102,241,0.3); }
 
-  <h3>Information We Collect</h3>
-  <ul>
-    <li>Name and email address during registration or login</li>
-    <li>Resume data entered by users</li>
-    <li>Cookies and session data</li>
-    <li>Payment-related information processed via third-party services</li>
-  </ul>
+/* ── Content Panel ── */
+.tp-panel { display: none; }
+.tp-panel.active { display: block; }
 
-  <h3>How We Use Your Information</h3>
-  <ul>
-    <li>To provide resume-building services</li>
-    <li>To authenticate users</li>
-    <li>To process payments and downloads</li>
-    <li>To improve service quality and security</li>
-  </ul>
+/* ── Section Card ── */
+.tp-card { background: #1e2030; border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 24px 28px; margin-bottom: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.15); }
+.tp-card h3 { font-size: 0.98rem; font-weight: 700; color: #f1f5f9; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+.tp-card h3 .sec-icon { font-size: 16px; }
+.tp-card p { color: #94a3b8; font-size: 0.87rem; line-height: 1.75; margin: 0 0 8px; }
+.tp-card p:last-child { margin: 0; }
+.tp-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.tp-list li { display: flex; align-items: flex-start; gap: 8px; color: #94a3b8; font-size: 0.85rem; line-height: 1.6; }
+.tp-list li::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: #6366f1; flex-shrink: 0; margin-top: 7px; }
 
-  <h3>Third-Party Services</h3>
-  <ul>
-    <li>Google OAuth</li>
-    <li>Razorpay</li>
-    <li>OpenAI (AI-powered resume assistance)</li>
-  </ul>
+/* ── Contact strip ── */
+.tp-contact { background: #1e2030; border: 1px solid rgba(99,102,241,0.2); border-radius: 16px; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-top: 8px; }
+.tp-contact p { color: #94a3b8; font-size: 0.87rem; margin: 0; }
+.tp-contact a { color: #818cf8; text-decoration: none; font-weight: 600; }
+.tp-contact a:hover { color: #a5b4fc; }
 
-  <h3>Cookies</h3>
-  <p>Cookies are used to maintain sessions and enhance user experience.</p>
+@media(max-width:768px){
+  .tp-page { padding: 50px 12px 30px; }
+  .tp-card { padding: 16px 18px; }
+  .tp-tabs { width: 100%; }
+  .tp-tab { flex: 1; text-align: center; padding: 8px 10px; font-size: 0.82rem; }
+}
+</style>
 
-  <h3>Data Security</h3>
-  <p>We implement reasonable safeguards, but no system is completely secure.</p>
-
-  <hr>
-
-  <h2>Terms & Conditions</h2>
-
-  <h3>Use of Service</h3>
-  <p>You agree to use SmrAI-Studio for lawful purposes only.</p>
-
-  <h3>User Accounts</h3>
-  <p>You are responsible for maintaining the confidentiality of your account credentials.</p>
-
-  <h3>Payments</h3>
-  <p>Payments are processed securely via third-party payment providers. Refunds are subject to our discretion.</p>
-
-  <h3>Intellectual Property</h3>
-  <p>All content and branding belong to SmrAI-Studio. Unauthorized use is prohibited.</p>
-
-  <h3>Limitation of Liability</h3>
-  <p>We are not liable for indirect or consequential damages arising from use of the service.</p>
-
-  <h3>Termination</h3>
-  <p>We may suspend or terminate accounts that violate these terms.</p>
-
-  <h3>Governing Law</h3>
-  <p>These terms are governed by the laws of India.</p>
-
-  <hr>
-
-  <h3>Contact Us</h3>
-  <p>Email: <strong>support@smrai-studio.com</strong></p>
-
+<!-- Animated Background -->
+<div class="contact-bg">
+  <div class="contact-bg-grid"></div>
+  <div class="contact-bg-orb"></div>
+  <div class="contact-bg-orb"></div>
+  <div class="contact-bg-orb"></div>
 </div>
+
+<div class="tp-page">
+  <div class="tp-wrapper">
+
+    <!-- Header -->
+    <div class="tp-header">
+      <div class="tp-badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Legal
+      </div>
+      <h1>Terms & Privacy Policy</h1>
+      <p>Last updated: March 2026 &nbsp;·&nbsp; Governing law: India</p>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tp-tabs">
+      <button class="tp-tab active" onclick="switchTab('privacy')">Privacy Policy</button>
+      <button class="tp-tab" onclick="switchTab('terms')">Terms & Conditions</button>
+    </div>
+
+    <!-- Privacy Panel -->
+    <div class="tp-panel active" id="panel-privacy">
+
+      <div class="tp-card">
+        <h3><span class="sec-icon">📋</span>Information We Collect</h3>
+        <ul class="tp-list">
+          <li>Name and email address during registration or login</li>
+          <li>Resume data entered by you in the resume builder</li>
+          <li>Profile photo uploaded for use in resume templates</li>
+          <li>Cookies and session data to maintain your login</li>
+          <li>Payment-related information processed via Razorpay</li>
+          <li>Referral codes and wallet transaction history</li>
+        </ul>
+      </div>
+
+      <div class="tp-card">
+        <h3><span class="sec-icon">⚙️</span>How We Use Your Information</h3>
+        <ul class="tp-list">
+          <li>To provide resume-building and AI-assistance services</li>
+          <li>To authenticate users via email/password or Google OAuth</li>
+          <li>To process payments and enable resume downloads</li>
+          <li>To manage wallet balances and referral rewards</li>
+          <li>To improve service quality, performance, and security</li>
+        </ul>
+      </div>
+
+      <div class="tp-card">
+        <h3><span class="sec-icon">🔗</span>Third-Party Services</h3>
+        <ul class="tp-list">
+          <li>Google OAuth — for social login</li>
+          <li>Razorpay — for secure payment processing</li>
+          <li>OpenAI — for AI-powered resume assistance</li>
+          <li>Nodemailer — for transactional emails</li>
+        </ul>
+      </div>
+
+      <div class="tp-card">
+        <h3><span class="sec-icon">🍪</span>Cookies</h3>
+        <p>Cookies are used to maintain your login session and enhance your experience. You may disable cookies in your browser, but some features may not function correctly.</p>
+      </div>
+
+      <div class="tp-card">
+        <h3><span class="sec-icon">🔒</span>Data Security</h3>
+        <p>We implement industry-standard safeguards to protect your data. However, no system is completely immune to risks. We recommend using a strong, unique password for your account.</p>
+      </div>
+
+    </div>
+
+    <!-- Terms Panel -->
+    <div class="tp-panel" id="panel-terms">
+
+      <div class="tp-card">
+        <h3><span class="sec-icon">✅</span>Use of Service</h3>
+        <p>By using SmrAI-Studio, you agree to use the platform for lawful purposes only. You must not misuse, reverse-engineer, or attempt to compromise the platform in any way.</p>
+      </div>
+
+      <div class="tp-card">
+        <h3><span class="sec-icon">👤</span>User Accounts</h3>
+        <p>You are responsible for maintaining the confidentiality of your account credentials. Any activity under your account is your responsibility. Notify us immediately of any unauthorized access.</p>
+      </div>
+
+      <div class="tp-card">
+        <h3><span class="sec-icon">💳</span>Payments & Refunds</h3>
+        <p>Payments are processed securely via Razorpay. Resume downloads are digital products — refunds are granted at our sole discretion. Wallet credits earned via referrals are non-transferable and non-withdrawable.</p>
+      </div>
+
+      <div class="tp-card">
+        <h3><span class="sec-icon">©️</span>Intellectual Property</h3>
+        <p>All content, branding, templates, and code belong to SmrAI-Studio. Unauthorized reproduction, distribution, or commercial use is strictly prohibited.</p>
+      </div>
+
+      <div class="tp-card">
+        <h3><span class="sec-icon">⚠️</span>Limitation of Liability</h3>
+        <p>SmrAI-Studio is not liable for indirect, incidental, or consequential damages arising from your use of the service. The platform is provided "as is" without warranties of any kind.</p>
+      </div>
+
+      <div class="tp-card">
+        <h3><span class="sec-icon">🚫</span>Termination</h3>
+        <p>We reserve the right to suspend or permanently terminate accounts that violate these terms, engage in fraudulent activity, or misuse the platform without prior notice.</p>
+      </div>
+
+      <div class="tp-card">
+        <h3><span class="sec-icon">⚖️</span>Governing Law</h3>
+        <p>These terms are governed by the laws of India. Any disputes shall be subject to the jurisdiction of courts in India.</p>
+      </div>
+
+    </div>
+
+    <!-- Contact -->
+    <div class="tp-contact">
+      <p>Questions about our terms or privacy policy?</p>
+      <a href="mailto:tech@sumarpohz.com">tech@sumarpohz.com</a>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function switchTab(tab) {
+  document.querySelectorAll('.tp-tab').forEach((t, i) => t.classList.toggle('active', (i === 0 && tab === 'privacy') || (i === 1 && tab === 'terms')));
+  document.getElementById('panel-privacy').classList.toggle('active', tab === 'privacy');
+  document.getElementById('panel-terms').classList.toggle('active', tab === 'terms');
+}
+</script>
 
 <%- include("partials/footer") %>
