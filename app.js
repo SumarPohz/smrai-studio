@@ -2859,6 +2859,42 @@ app.post("/contact", async (req, res) => {
 app.get("/support", (req, res) => {
   res.render("support");
 });
+
+app.post("/support", async (req, res) => {
+  const { name, email, subject, message } = req.body;
+  if (!name || !email || !message) {
+    return res.render("support", { contactError: "Please fill in all required fields." });
+  }
+  try {
+    const transporter = getTransporter();
+    await transporter.sendMail({
+      from: `"SmrAI-Studio Support" <${process.env.EMAIL_USER}>`,
+      to: "tech@sumarpohz.com",
+      replyTo: email,
+      subject: `[Support] ${subject || "General"} — from ${name}`,
+      html: `
+        <div style="font-family:sans-serif;max-width:600px;margin:auto;background:#f9fafb;padding:32px;border-radius:12px;">
+          <h2 style="color:#4f46e5;margin-bottom:4px;">New Support Ticket</h2>
+          <p style="color:#6b7280;margin-top:0;font-size:14px;">via SmrAI-Studio support form</p>
+          <table style="width:100%;border-collapse:collapse;margin:24px 0;">
+            <tr><td style="padding:10px 0;color:#374151;font-weight:600;width:120px;">Name</td><td style="padding:10px 0;color:#111827;">${name}</td></tr>
+            <tr><td style="padding:10px 0;color:#374151;font-weight:600;">Email</td><td style="padding:10px 0;color:#111827;"><a href="mailto:${email}" style="color:#4f46e5;">${email}</a></td></tr>
+            <tr><td style="padding:10px 0;color:#374151;font-weight:600;">Issue Type</td><td style="padding:10px 0;color:#111827;">${subject || 'General'}</td></tr>
+          </table>
+          <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:20px;">
+            <p style="color:#374151;font-size:15px;line-height:1.7;margin:0;">${message.replace(/\n/g, '<br>')}</p>
+          </div>
+          <p style="color:#9ca3af;font-size:12px;margin-top:24px;">Reply directly to this email to respond to ${name}.</p>
+        </div>
+      `,
+    });
+    res.render("support", { contactSuccess: true });
+  } catch (err) {
+    console.error("[support mail error]", err.message);
+    res.render("support", { contactError: "Failed to send. Please email us directly at tech@sumarpohz.com" });
+  }
+});
+
 // Help Center
 app.get("/help", (req, res) => {
   res.render("help");
