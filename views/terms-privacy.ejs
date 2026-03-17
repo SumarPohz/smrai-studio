@@ -27,10 +27,12 @@
 
 /* ── Content Panel ── */
 .tp-panel { display: none; }
-.tp-panel.active { display: block; }
+.tp-panel.active { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media(max-width:768px){ .tp-panel.active { grid-template-columns: 1fr; } }
 
 /* ── Section Card ── */
-.tp-card { background: #1e2030; border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 24px 28px; margin-bottom: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.15); }
+.tp-card { background: #1e2030; border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 22px 24px; box-shadow: 0 2px 12px rgba(0,0,0,0.15); transition: all 0.3s; }
+.tp-card:hover { background: #252840; border-color: rgba(99,102,241,0.3); transform: translateY(-2px); }
 .tp-card h3 { font-size: 0.98rem; font-weight: 700; color: #f1f5f9; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
 .tp-card h3 .sec-icon { font-size: 16px; }
 .tp-card p { color: #94a3b8; font-size: 0.87rem; line-height: 1.75; margin: 0 0 8px; }
@@ -40,7 +42,7 @@
 .tp-list li::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: #6366f1; flex-shrink: 0; margin-top: 7px; }
 
 /* ── Contact strip ── */
-.tp-contact { background: #1e2030; border: 1px solid rgba(99,102,241,0.2); border-radius: 16px; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-top: 8px; }
+.tp-contact { background: #1e2030; border: 1px solid rgba(99,102,241,0.2); border-radius: 16px; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-top: 16px; }
 .tp-contact p { color: #94a3b8; font-size: 0.87rem; margin: 0; }
 .tp-contact a { color: #818cf8; text-decoration: none; font-weight: 600; }
 .tp-contact a:hover { color: #a5b4fc; }
