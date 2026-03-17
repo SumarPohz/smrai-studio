@@ -28,7 +28,7 @@
 /* ── Content Panel ── */
 .tp-panel { display: none; }
 .tp-panel.active { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-@media(max-width:768px){ .tp-panel.active { grid-template-columns: 1fr; } }
+@media(max-width:768px){ .tp-panel.active { grid-template-columns: 1fr 1fr; gap: 10px; } }
 
 /* ── Section Card ── */
 .tp-card { background: #1e2030; border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 22px 24px; box-shadow: 0 2px 12px rgba(0,0,0,0.15); transition: all 0.3s; }
@@ -49,9 +49,17 @@
 
 @media(max-width:768px){
   .tp-page { padding: 50px 12px 30px; }
-  .tp-card { padding: 16px 18px; }
   .tp-tabs { width: 100%; }
-  .tp-tab { flex: 1; text-align: center; padding: 8px 10px; font-size: 0.82rem; }
+  .tp-tab { flex: 1; text-align: center; padding: 7px 8px; font-size: 0.8rem; }
+  .tp-card { padding: 10px 12px; border-radius: 12px; }
+  .tp-card h3 { font-size: 0.78rem; margin-bottom: 8px; gap: 6px; }
+  .tp-card h3 .sec-icon { font-size: 13px; }
+  .tp-card p { font-size: 0.74rem; line-height: 1.55; }
+  .tp-list li { font-size: 0.73rem; gap: 6px; }
+  .tp-list li::before { width: 4px; height: 4px; margin-top: 6px; }
+  .tp-list { gap: 4px; }
+  .tp-contact { padding: 12px 16px; }
+  .tp-contact p, .tp-contact a { font-size: 0.82rem; }
 }
 </style>
 
