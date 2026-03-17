@@ -35,7 +35,9 @@
 @media(max-width:768px){ .about-grid { grid-template-columns: 1fr; } }
 
 /* ── Cards ── */
-.about-card { background: #1e2030; border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 28px; box-shadow: 0 2px 12px rgba(0,0,0,0.15); }
+.about-card { background: #1e2030; border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 28px; box-shadow: 0 2px 12px rgba(0,0,0,0.15); display: flex; flex-direction: column; }
+.about-card .feature-list { flex: 1; }
+.about-card .serve-grid { flex: 1; }
 .about-card h2 { font-size: 1.1rem; font-weight: 700; color: #f1f5f9; margin: 0 0 16px; display: flex; align-items: center; gap: 10px; }
 .about-card h2 .card-icon { width: 32px; height: 32px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
 .card-icon.purple { background: rgba(99,102,241,0.2); }
@@ -53,7 +55,7 @@
 .feature-list li::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: linear-gradient(135deg, #6366f1, #a855f7); flex-shrink: 0; }
 
 /* ── Who We Serve ── */
-.serve-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.serve-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-content: start; }
 .serve-item { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 10px 14px; color: #94a3b8; font-size: 0.85rem; display: flex; align-items: center; gap: 8px; }
 
 /* ── Full-width mission ── */
