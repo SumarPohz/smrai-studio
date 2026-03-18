@@ -1,47 +1,295 @@
 <%- include("partials/header") %>
 
-    <section>
-      <h1>Create Your SmrAI-Studio Account</h1>
-      <form action="/register" method="POST" class="form-card">
-        <label for="name">Full Name</label>
-        <input type="text" id="name" name="name" required />
+<style>
+  body { background: #0d1117; }
 
-        <label for="email">Email</label>
-        <input type="email" id="email" name="email" required />
+  .auth-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 16px 40px;
+    position: relative;
+    overflow: hidden;
+  }
 
-        <label for="password">Password</label>
-        <input type="password" id="password" name="password" required />
+  .auth-orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.18;
+    animation: authFloat 8s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .auth-orb-1 { width: 400px; height: 400px; background: #16a34a; top: -100px; left: -100px; animation-delay: 0s; }
+  .auth-orb-2 { width: 300px; height: 300px; background: #0891b2; bottom: -80px; right: -80px; animation-delay: 3s; }
+  .auth-orb-3 { width: 250px; height: 250px; background: #7c3aed; top: 50%; left: 60%; animation-delay: 5s; }
 
-        <div class="ref-field">
-          <label for="referralCode">Referral Code <span class="ref-optional">(optional)</span></label>
-          <input type="text" id="referralCode" name="referralCode"
-                 value="<%= refCode || '' %>"
-                 placeholder="e.g. JOHN3K9XM"
-                 maxlength="20"
-                 autocomplete="off"
-                 style="text-transform:uppercase;letter-spacing:0.06em" />
-          <% if (refCode) { %>
-          <p class="ref-hint ref-hint--active">You'll get <strong>30% off</strong> your first resume download!</p>
-          <% } else { %>
-          <p class="ref-hint">Have a friend's referral code? Enter it to get 30% off your first purchase.</p>
-          <% } %>
-        </div>
+  @keyframes authFloat {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-30px) scale(1.05); }
+  }
 
-        <button type="submit">Sign Up</button>
-      </form>
+  .auth-page::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
 
-      <div class="auth-divider"><span>or</span></div>
-      <a href="/auth/google" class="btn-google">
-        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
-          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-        </svg>
-        Sign up with Google
-      </a>
+  .auth-card {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 420px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    padding: 36px 32px 28px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 8px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(22,163,74,0.08);
+    animation: authCardIn 0.5s cubic-bezier(0.16,1,0.3,1) both;
+    transition: box-shadow 0.3s;
+  }
+  .auth-card:hover {
+    box-shadow: 0 8px 60px rgba(0,0,0,0.5), 0 0 40px rgba(22,163,74,0.12);
+  }
 
+  @keyframes authCardIn {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .auth-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .auth-logo img { height: 36px; }
+  .auth-logo span { font-size: 1.1rem; font-weight: 700; color: #fff; }
+
+  .auth-title {
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 6px;
+  }
+  .auth-subtitle {
+    text-align: center;
+    font-size: 0.85rem;
+    color: rgba(255,255,255,0.5);
+    margin: 0 0 24px;
+  }
+
+  .auth-error {
+    background: rgba(239,68,68,0.15);
+    border: 1px solid rgba(239,68,68,0.3);
+    border-radius: 10px;
+    padding: 10px 14px;
+    color: #fca5a5;
+    font-size: 0.85rem;
+    margin-bottom: 16px;
+  }
+
+  .auth-form { display: flex; flex-direction: column; gap: 14px; }
+
+  .auth-label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: rgba(255,255,255,0.7);
+    margin-bottom: 5px;
+  }
+  .auth-label .ref-optional {
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.35);
+    font-weight: 400;
+  }
+
+  .auth-input {
+    width: 100%;
+    padding: 11px 14px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    color: #fff;
+    font-size: 0.9rem;
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .auth-input::placeholder { color: rgba(255,255,255,0.25); }
+  .auth-input:focus {
+    border-color: rgba(22,163,74,0.6);
+    box-shadow: 0 0 0 3px rgba(22,163,74,0.2);
+  }
+
+  .auth-ref-hint {
+    font-size: 0.78rem;
+    color: rgba(255,255,255,0.4);
+    margin: 4px 0 0;
+  }
+  .auth-ref-hint--active {
+    color: #34d399;
+    font-weight: 500;
+  }
+
+  .auth-btn {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #16a34a, #0d9488);
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(22,163,74,0.35);
+    transition: opacity 0.2s, box-shadow 0.2s, transform 0.15s;
+    margin-top: 4px;
+  }
+  .auth-btn:hover {
+    opacity: 0.92;
+    box-shadow: 0 6px 28px rgba(22,163,74,0.5);
+    transform: translateY(-1px);
+  }
+  .auth-btn:active { transform: translateY(0); }
+
+  .auth-divider-line {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 20px 0;
+    color: rgba(255,255,255,0.3);
+    font-size: 0.8rem;
+  }
+  .auth-divider-line::before,
+  .auth-divider-line::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(255,255,255,0.1);
+  }
+
+  .auth-btn-google {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 11px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    box-sizing: border-box;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .auth-btn-google:hover {
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.2);
+    color: #fff;
+  }
+
+  .auth-links {
+    margin-top: 18px;
+    text-align: center;
+  }
+  .auth-links p {
+    color: rgba(255,255,255,0.45);
+    font-size: 0.84rem;
+    margin: 0;
+  }
+  .auth-links a {
+    color: #34d399;
+    text-decoration: none;
+  }
+  .auth-links a:hover { text-decoration: underline; }
+
+  @media(max-width:480px){
+    .auth-card { padding: 28px 20px 22px; }
+  }
+</style>
+
+<div class="auth-page">
+  <div class="auth-orb auth-orb-1"></div>
+  <div class="auth-orb auth-orb-2"></div>
+  <div class="auth-orb auth-orb-3"></div>
+
+  <div class="auth-card">
+    <div class="auth-logo">
+      <img src="/images/logo.png" alt="SmrAI-Studio" onerror="this.style.display='none'">
+      <span>SmrAI-Studio</span>
+    </div>
+
+    <h1 class="auth-title">Create Account</h1>
+    <p class="auth-subtitle">Join thousands building better resumes with AI</p>
+
+    <% if (typeof error !== "undefined" && error) { %>
+      <div class="auth-error"><%= error %></div>
+    <% } %>
+
+    <form action="/register" method="POST" class="auth-form">
+      <div>
+        <label class="auth-label" for="name">Full Name</label>
+        <input class="auth-input" type="text" id="name" name="name" placeholder="John Doe" required />
+      </div>
+      <div>
+        <label class="auth-label" for="email">Email</label>
+        <input class="auth-input" type="email" id="email" name="email" placeholder="you@example.com" required />
+      </div>
+      <div>
+        <label class="auth-label" for="password">Password</label>
+        <input class="auth-input" type="password" id="password" name="password" placeholder="••••••••" required />
+      </div>
+      <div>
+        <label class="auth-label" for="referralCode">
+          Referral Code <span class="ref-optional">(optional)</span>
+        </label>
+        <input class="auth-input" type="text" id="referralCode" name="referralCode"
+               value="<%= refCode || '' %>"
+               placeholder="e.g. JOHN3K9XM"
+               maxlength="20"
+               autocomplete="off"
+               style="text-transform:uppercase;letter-spacing:0.06em" />
+        <% if (refCode) { %>
+          <p class="auth-ref-hint auth-ref-hint--active">You'll get <strong>30% off</strong> your first resume download!</p>
+        <% } else { %>
+          <p class="auth-ref-hint">Have a friend's referral code? Enter it for 30% off your first purchase.</p>
+        <% } %>
+      </div>
+      <button type="submit" class="auth-btn">Sign Up</button>
+    </form>
+
+    <div class="auth-divider-line"><span>or</span></div>
+
+    <a href="/auth/google" class="auth-btn-google">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+      </svg>
+      Sign up with Google
+    </a>
+
+    <div class="auth-links">
       <p>Already have an account? <a href="/login">Login here</a>.</p>
-    </section>
+    </div>
+  </div>
+</div>
 
 <%- include("partials/footer") %>
