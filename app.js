@@ -814,6 +814,54 @@ app.get("/api/public/stats", async (req, res) => {
   }
 });
 
+// Sitemap & robots
+app.get("/sitemap.xml", (req, res) => {
+  const base = "https://smraistudio.sumarpohz.com";
+  const pages = [
+    { url: "/", priority: "1.0", changefreq: "weekly" },
+    { url: "/about", priority: "0.8", changefreq: "monthly" },
+    { url: "/contact", priority: "0.7", changefreq: "monthly" },
+    { url: "/support", priority: "0.7", changefreq: "monthly" },
+    { url: "/news", priority: "0.8", changefreq: "weekly" },
+    { url: "/faq", priority: "0.7", changefreq: "monthly" },
+    { url: "/terms-privacy", priority: "0.5", changefreq: "yearly" },
+    { url: "/background-remover", priority: "0.8", changefreq: "monthly" },
+    { url: "/application-builder", priority: "0.8", changefreq: "monthly" },
+    { url: "/register", priority: "0.6", changefreq: "yearly" },
+    { url: "/login", priority: "0.5", changefreq: "yearly" },
+  ];
+  const now = new Date().toISOString().split("T")[0];
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${pages.map(p => `  <url>
+    <loc>${base}${p.url}</loc>
+    <lastmod>${now}</lastmod>
+    <changefreq>${p.changefreq}</changefreq>
+    <priority>${p.priority}</priority>
+  </url>`).join("\n")}
+</urlset>`;
+  res.setHeader("Content-Type", "application/xml");
+  res.send(xml);
+});
+
+app.get("/robots.txt", (req, res) => {
+  res.setHeader("Content-Type", "text/plain");
+  res.send(`User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /resumes
+Disallow: /resume-builder
+Disallow: /payments
+Disallow: /wallet
+Disallow: /refer
+Disallow: /photo-editor
+Disallow: /resume-templates
+Disallow: /api/
+Disallow: /admin/
+Sitemap: https://smraistudio.sumarpohz.com/sitemap.xml
+`);
+});
+
 // Home: your AI services landing page
 app.get("/", async (_req, res) => {
   try {
