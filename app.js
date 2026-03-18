@@ -24,6 +24,7 @@ import QRCode from "qrcode";
 import { getFieldsForTemplate, isPhotoTemplate } from "./config/template-fields.js";
 import adminRouter from "./routes/admin.js";
 import { removeBackgroundFromImageBase64 } from "remove.bg";
+import compression from "compression";
 let _removeBackground = null;
 async function getRemoveBg() {
   if (!_removeBackground) {
@@ -559,8 +560,14 @@ app.use((req, res, next) => {
 const port = process.env.PORT || 3000;
 const saltRounds = 10;
 
-// Static files
-app.use(express.static(path.join(__dirname, "public")));
+// Gzip compression — compress all responses
+app.use(compression());
+
+// Static files with cache headers (1 week for CSS/JS/images)
+app.use(express.static(path.join(__dirname, "public"), {
+  maxAge: "7d",
+  etag: true,
+}));
 app.use((req, res, next) => { res.locals.currentPath = req.path; next(); });
 const uploadDir = path.join(__dirname, "public", "uploads");
 
