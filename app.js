@@ -669,11 +669,20 @@ passport.use(
         ]);
 
         if (result.rows.length === 0) {
-          const insertResult = await db.query(
-            "INSERT INTO users (email, google_id, name) VALUES (?, ?, ?)",
-            [email, googleId, name]
-          );
-          result = await db.query("SELECT * FROM users WHERE id = ?", [insertResult.insertId]);
+          // Check if account exists with same email (registered via password)
+          const emailCheck = await db.query("SELECT * FROM users WHERE email = ?", [email]);
+          if (emailCheck.rows.length > 0) {
+            // Link google_id to existing account
+            await db.query("UPDATE users SET google_id = ? WHERE email = ?", [googleId, email]);
+            result = emailCheck;
+          } else {
+            // Brand new user — insert
+            const insertResult = await db.query(
+              "INSERT INTO users (email, google_id, name) VALUES (?, ?, ?)",
+              [email, googleId, name]
+            );
+            result = await db.query("SELECT * FROM users WHERE id = ?", [insertResult.insertId]);
+          }
         }
 
         const user = result.rows[0];
