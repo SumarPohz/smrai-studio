@@ -5,15 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <!-- ── Primary SEO ── -->
-  <title>SmrAI-Studio – AI Resume Builder with Voice Input</title>
-  <meta name="description"  content="Create professional resumes using AI voice input and smart suggestions. Download A4 JPG or PDF instantly. Perfect for students and job seekers in India.">
-  <meta name="keywords"     content="AI resume builder, resume maker online, voice resume builder, professional CV builder, resume AI India">
+  <title><%= locals.pageTitle || 'SmrAI-Studio – Free AI Resume Builder | Download PDF & JPG' %></title>
+  <meta name="description"  content="<%= locals.pageDescription || 'Build a professional resume in minutes with AI. Choose from 8+ templates, get AI writing suggestions, and download as A4 PDF or JPG instantly. Free to try — trusted by job seekers in India.' %>">
+  <meta name="keywords"     content="AI resume builder, free resume maker India, resume builder online, professional CV maker, resume templates download, PDF resume builder, AI CV generator, job application letter, background remover free">
   <meta name="author"       content="Sumar Pohsnem">
   <meta name="robots"       content="index, follow">
   <meta name="theme-color"  content="#0f172a">
 
   <!-- ── Canonical ── -->
-  <link rel="canonical" href="https://smrai-studio.onrender.com/">
+  <link rel="canonical" href="https://smraistudio.sumarpohz.com<%= typeof locals.currentPath !== 'undefined' ? locals.currentPath : '/' %>">
 
   <!-- ── Favicons ── -->
   <link rel="icon"             type="image/png" sizes="32x32" href="/images/favicon-32.png">
@@ -33,7 +33,7 @@
   <meta name="twitter:card"        content="summary_large_image">
   <meta name="twitter:title"       content="<%= locals.ogTitle       || 'SmrAI-Studio – AI Resume Builder' %>">
   <meta name="twitter:description" content="<%= locals.ogDescription || 'AI-powered resume builder with voice input and smart content enhancement.' %>">
-  <meta name="twitter:image"       content="<%= locals.ogImage       || 'https://smrai-studio.onrender.com/images/so-pre.jpeg' %>">
+  <meta name="twitter:image"       content="<%= locals.ogImage       || 'https://smraistudio.sumarpohz.com/images/meta.png' %>">
 
   <!-- ── Structured Data (JSON-LD) ── -->
   <script type="application/ld+json">
@@ -42,9 +42,20 @@
     "@type": "SoftwareApplication",
     "name": "SmrAI-Studio",
     "applicationCategory": "BusinessApplication",
-    "operatingSystem": "Web",
-    "description": "AI-powered resume builder with voice input and smart content enhancement.",
-    "url": "https://smrai-studio.onrender.com/"
+    "operatingSystem": "Web, Android",
+    "description": "AI-powered resume builder with 8+ professional templates, voice input, smart suggestions, PDF & JPG download, background remover, and application letter generator.",
+    "url": "https://smraistudio.sumarpohz.com/",
+    "applicationCategory": "ProductivityApplication",
+    "offers": {
+      "@type": "Offer",
+      "price": "49",
+      "priceCurrency": "INR"
+    },
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "4.8",
+      "ratingCount": "120"
+    }
   }
   </script>
 

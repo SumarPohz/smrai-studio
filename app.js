@@ -2861,11 +2861,17 @@ server.listen(port, () => {
 
 // ========== Service Request Routes ==========
 app.get("/terms-privacy", (req, res) => {
-  res.render("terms-privacy");
+  res.render("terms-privacy", {
+    pageTitle: "Terms & Privacy Policy – SmrAI-Studio",
+    pageDescription: "Read SmrAI-Studio's Terms & Conditions and Privacy Policy. Learn how we collect, use, and protect your data.",
+  });
 });
 // Contact page
 app.get("/contact", (req, res) => {
-  res.render("contact");
+  res.render("contact", {
+    pageTitle: "Contact Us – SmrAI-Studio | Get in Touch",
+    pageDescription: "Have a question or need help? Contact the SmrAI-Studio team. We respond within 24 hours.",
+  });
 });
 
 app.post("/contact", async (req, res) => {
@@ -2905,7 +2911,10 @@ app.post("/contact", async (req, res) => {
 
 // Support page
 app.get("/support", (req, res) => {
-  res.render("support");
+  res.render("support", {
+    pageTitle: "Support Center – SmrAI-Studio | Help & Troubleshooting",
+    pageDescription: "Need help with SmrAI-Studio? Submit a support ticket for login issues, payment problems, resume errors, and more.",
+  });
 });
 
 app.post("/support", async (req, res) => {
@@ -2945,21 +2954,33 @@ app.post("/support", async (req, res) => {
 
 // Help Center
 app.get("/help", (req, res) => {
-  res.render("help");
+  res.render("help", {
+    pageTitle: "Help Center – SmrAI-Studio",
+    pageDescription: "Find answers to common questions about SmrAI-Studio — resume building, payments, downloads, and account management.",
+  });
 });
 
 // FAQ
 app.get("/faq", (req, res) => {
-  res.render("faq");
+  res.render("faq", {
+    pageTitle: "FAQ – SmrAI-Studio | Frequently Asked Questions",
+    pageDescription: "Answers to frequently asked questions about SmrAI-Studio's AI resume builder, pricing, templates, downloads, and referral rewards.",
+  });
 });
 // About Us
 app.get("/about", (req, res) => {
-  res.render("about");
+  res.render("about", {
+    pageTitle: "About SmrAI-Studio – AI Resume Builder for Job Seekers in India",
+    pageDescription: "SmrAI-Studio is an AI-powered resume platform with 8+ templates, voice input, PDF/JPG export, background remover, and referral rewards. Built for job seekers in India.",
+  });
 });
 
 // News
 app.get("/news", (req, res) => {
-  res.render("news");
+  res.render("news", {
+    pageTitle: "News & Updates – SmrAI-Studio | Latest Features",
+    pageDescription: "Stay up to date with the latest features, improvements, and announcements from SmrAI-Studio — AI resume builder.",
+  });
 });
 
 // Show request form
