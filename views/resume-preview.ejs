@@ -1109,6 +1109,18 @@
     // Shared payment flag — only one Razorpay transaction needed for both exports
     let paymentVerified = false;
 
+    // ── Subscription bypass: if user has active Pro plan, skip payment ───────
+    (async function checkSubscription() {
+      try {
+        const r = await fetch("/api/subscription/status");
+        const d = await r.json();
+        if (d.active) {
+          paymentVerified = true;
+          document.querySelector(".resume-watermark")?.remove();
+        }
+      } catch(_) {}
+    })();
+
     // ================================================================
     // Image helpers — convert <img> src to data URLs before capture
     // so html2canvas can read pixel data regardless of CORS headers.

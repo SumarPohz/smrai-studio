@@ -82,6 +82,11 @@
         <i class="fas fa-wallet"></i> Wallet
       </a>
       <% } %>
+      <% if (_p('subscriptions')) { %>
+      <a href="#subscriptions" class="adm-nav-link" data-section="subscriptions">
+        <i class="fas fa-bolt"></i> Subscriptions
+      </a>
+      <% } %>
       <a href="/dashboard" class="adm-nav-link adm-nav-back">
         <i class="fas fa-arrow-left"></i> Back to App
       </a>
@@ -1498,6 +1503,79 @@
       </div>
     </div><!-- /wallet -->
 
+    <!-- ── Section: Subscriptions ─────────────────────────────────────────── -->
+    <div id="subscriptions" class="adm-section-page" hidden>
+      <style>
+        .sub-stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:1rem; margin-bottom:1.5rem; }
+        .sub-plans-wrap, .sub-list-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+        .sub-search-row { display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap; }
+        .sub-search-row input { width:175px; }
+        @media(max-width:640px) {
+          .sub-stats-grid { grid-template-columns:repeat(2,1fr); gap:0.75rem; }
+          .sub-search-row input { width:130px; }
+        }
+        @media(max-width:480px) {
+          .sub-plan-form-grid { grid-template-columns:1fr !important; }
+          #subPlanModal input, #subPlanModal select,
+          #subGrantModal input, #subGrantModal select { font-size:16px; }
+          #subPlanModal > div, #subGrantModal > div { padding:1.1rem !important; }
+        }
+      </style>
+      <div class="adm-section-header">
+        <h2><i class="fas fa-bolt"></i> Subscriptions</h2>
+        <p class="adm-section-desc">Manage subscription plans, view active subscribers, and grant free access.</p>
+      </div>
+
+      <!-- Stats row -->
+      <div class="sub-stats-grid">
+        <div class="adm-stat-card" style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:1rem 1.25rem">
+          <div style="font-size:1.5rem;font-weight:800;color:#7c3aed" id="subStatActive">—</div>
+          <div style="font-size:0.78rem;color:#6b7280;margin-top:0.2rem">Active Subscribers</div>
+        </div>
+        <div class="adm-stat-card" style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:1rem 1.25rem">
+          <div style="font-size:1.5rem;font-weight:800;color:#059669" id="subStatRevenue">—</div>
+          <div style="font-size:0.78rem;color:#6b7280;margin-top:0.2rem">Subscription Revenue</div>
+        </div>
+        <div class="adm-stat-card" style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:1rem 1.25rem">
+          <div style="font-size:1.5rem;font-weight:800;color:#0ea5e9" id="subStatTotal">—</div>
+          <div style="font-size:0.78rem;color:#6b7280;margin-top:0.2rem">Total Subscriptions</div>
+        </div>
+        <div class="adm-stat-card" style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:1rem 1.25rem">
+          <div style="font-size:1.5rem;font-weight:800;color:#f59e0b" id="subStatFree">—</div>
+          <div style="font-size:0.78rem;color:#6b7280;margin-top:0.2rem">Admin Grants (Free)</div>
+        </div>
+      </div>
+
+      <!-- Plans management -->
+      <div class="adm-ads-form-card" style="margin-bottom:1.25rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;margin-bottom:0.85rem">
+          <div style="font-size:0.85rem;font-weight:700;color:#374151"><i class="fas fa-tags"></i> Subscription Plans</div>
+          <button onclick="openAddPlanModal()" style="padding:0.4rem 0.85rem;background:#7c3aed;color:#fff;border:none;border-radius:8px;font-size:0.8rem;font-weight:700;cursor:pointer">
+            <i class="fas fa-plus"></i> Add Plan
+          </button>
+        </div>
+        <div class="sub-plans-wrap"><div id="subPlansTable" style="font-size:0.85rem;color:#6b7280">Loading…</div></div>
+      </div>
+
+      <!-- Subscribers list -->
+      <div class="adm-ads-form-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;margin-bottom:0.85rem">
+          <div style="font-size:0.85rem;font-weight:700;color:#374151"><i class="fas fa-users"></i> Subscribers</div>
+          <div class="sub-search-row">
+            <select id="subFilterStatus" onchange="loadSubList()" style="padding:0.35rem 0.55rem;border:1px solid #d1d5db;border-radius:6px;font-size:0.8rem">
+              <option value="">All statuses</option>
+              <option value="active">Active</option>
+              <option value="expired">Expired</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+            <input type="text" id="subSearchInput" placeholder="Search name/email…" oninput="loadSubList()" style="padding:0.35rem 0.65rem;border:1px solid #d1d5db;border-radius:6px;font-size:0.8rem">
+          </div>
+        </div>
+        <div class="sub-list-wrap"><div id="subListTable" style="font-size:0.85rem;color:#6b7280">Loading…</div></div>
+        <div id="subListPagination" style="display:flex;gap:0.5rem;justify-content:center;margin-top:0.75rem;flex-wrap:wrap"></div>
+      </div>
+    </div><!-- /subscriptions -->
+
     <!-- Wallet Adjust Modal -->
     <div id="walAdjustModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">
       <div style="background:#fff;border-radius:16px;padding:1.5rem;max-width:380px;width:90%;position:relative">
@@ -1543,6 +1621,59 @@
 
   </div><!-- /adm-main -->
 </div><!-- /adm-shell -->
+
+<!-- ── Add/Edit Plan Modal ──────────────────────────────────────────────── -->
+<div id="subPlanModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:16px;padding:1.5rem;max-width:400px;width:90%;position:relative">
+    <h3 id="subPlanModalTitle" style="margin:0 0 1.25rem;font-size:1rem;font-weight:800">Add Plan</h3>
+    <input type="hidden" id="subPlanModalId" value="">
+    <div style="margin-bottom:0.75rem">
+      <label style="font-size:0.78rem;font-weight:600;color:#374151;display:block;margin-bottom:0.3rem">Plan Name</label>
+      <input type="text" id="subPlanName" placeholder="e.g. 30-Day Unlimited" style="width:100%;padding:0.5rem 0.65rem;border:1px solid #d1d5db;border-radius:8px;font-size:0.88rem;box-sizing:border-box">
+    </div>
+    <div class="sub-plan-form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem">
+      <div>
+        <label style="font-size:0.78rem;font-weight:600;color:#374151;display:block;margin-bottom:0.3rem">Duration (days)</label>
+        <input type="number" id="subPlanDuration" min="1" placeholder="30" style="width:100%;padding:0.5rem 0.65rem;border:1px solid #d1d5db;border-radius:8px;font-size:0.88rem;box-sizing:border-box">
+      </div>
+      <div>
+        <label style="font-size:0.78rem;font-weight:600;color:#374151;display:block;margin-bottom:0.3rem">Price (₹)</label>
+        <input type="number" id="subPlanPrice" min="0" step="0.01" placeholder="149" style="width:100%;padding:0.5rem 0.65rem;border:1px solid #d1d5db;border-radius:8px;font-size:0.88rem;box-sizing:border-box">
+      </div>
+    </div>
+    <div style="margin-bottom:0.75rem">
+      <label style="font-size:0.78rem;font-weight:600;color:#374151;display:block;margin-bottom:0.3rem">Description (optional)</label>
+      <input type="text" id="subPlanDesc" placeholder="Unlock all features for 30 days" style="width:100%;padding:0.5rem 0.65rem;border:1px solid #d1d5db;border-radius:8px;font-size:0.88rem;box-sizing:border-box">
+    </div>
+    <div style="margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem">
+      <input type="checkbox" id="subPlanActive" checked style="width:16px;height:16px;cursor:pointer">
+      <label for="subPlanActive" style="font-size:0.85rem;color:#374151;cursor:pointer">Active (visible to users)</label>
+    </div>
+    <div id="subPlanModalErr" style="color:#dc2626;font-size:0.78rem;margin-bottom:0.5rem;min-height:1em"></div>
+    <div style="display:flex;gap:0.5rem">
+      <button onclick="saveSubPlan()" style="flex:1;padding:0.6rem;background:#7c3aed;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer" id="subPlanSaveBtn">Save Plan</button>
+      <button onclick="closeSubPlanModal()" style="flex:1;padding:0.6rem;background:#f3f4f6;color:#374151;border:none;border-radius:8px;font-weight:600;cursor:pointer">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Grant Free Subscription Modal ───────────────────────────────────── -->
+<div id="subGrantModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:16px;padding:1.5rem;max-width:380px;width:90%;position:relative">
+    <h3 style="margin:0 0 0.5rem;font-size:1rem;font-weight:800">Grant Free Subscription</h3>
+    <p id="subGrantUserLabel" style="font-size:0.8rem;color:#6b7280;margin-bottom:1rem"></p>
+    <input type="hidden" id="subGrantUserId" value="">
+    <div style="margin-bottom:0.75rem">
+      <label style="font-size:0.78rem;font-weight:600;color:#374151;display:block;margin-bottom:0.3rem">Plan</label>
+      <select id="subGrantPlanId" style="width:100%;padding:0.5rem 0.65rem;border:1px solid #d1d5db;border-radius:8px;font-size:0.88rem"></select>
+    </div>
+    <div id="subGrantErr" style="color:#dc2626;font-size:0.78rem;margin-bottom:0.5rem;min-height:1em"></div>
+    <div style="display:flex;gap:0.5rem">
+      <button onclick="submitSubGrant()" style="flex:1;padding:0.6rem;background:#7c3aed;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer" id="subGrantBtn">Grant Access</button>
+      <button onclick="closeSubGrantModal()" style="flex:1;padding:0.6rem;background:#f3f4f6;color:#374151;border:none;border-radius:8px;font-weight:600;cursor:pointer">Cancel</button>
+    </div>
+  </div>
+</div>
 
 <!-- Record / Edit Investment Modal -->
 <div id="invModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;align-items:center;justify-content:center">
@@ -5007,6 +5138,226 @@ function closeWalTxnModal() {
   var modal = document.getElementById("walTxnModal");
   if (modal) modal.style.display = "none";
 }
+
+// ── Subscriptions ─────────────────────────────────────────────────────────────
+let subCurrentPage = 1;
+let subPlansCache = [];
+
+async function loadSubStats() {
+  try {
+    const d = await fetch("/admin/api/subscriptions/stats").then(r => r.json());
+    if (!d.success) return;
+    document.getElementById("subStatActive").textContent = d.stats.activeCount;
+    document.getElementById("subStatRevenue").textContent = "₹" + parseFloat(d.stats.totalRevenue || 0).toFixed(0);
+    document.getElementById("subStatTotal").textContent = d.stats.totalCount;
+    document.getElementById("subStatFree").textContent = d.stats.freeCount;
+  } catch(_) {}
+}
+
+async function loadSubPlans() {
+  const el = document.getElementById("subPlansTable");
+  if (!el) return;
+  try {
+    const d = await fetch("/admin/api/subscription-plans").then(r => r.json());
+    if (!d.success || !d.plans.length) { el.innerHTML = '<p style="color:#9ca3af;padding:0.5rem 0">No plans yet.</p>'; return; }
+    subPlansCache = d.plans;
+    el.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:0.85rem">' +
+      '<thead><tr style="border-bottom:2px solid #e5e7eb">' +
+      '<th style="text-align:left;padding:0.5rem 0.6rem;color:#6b7280;font-weight:600">Name</th>' +
+      '<th style="text-align:left;padding:0.5rem 0.6rem;color:#6b7280;font-weight:600">Days</th>' +
+      '<th style="text-align:left;padding:0.5rem 0.6rem;color:#6b7280;font-weight:600">Price</th>' +
+      '<th style="text-align:left;padding:0.5rem 0.6rem;color:#6b7280;font-weight:600">Status</th>' +
+      '<th style="text-align:left;padding:0.5rem 0.6rem;color:#6b7280;font-weight:600">Actions</th>' +
+      '</tr></thead><tbody>' +
+      d.plans.map(p => '<tr style="border-bottom:1px solid #f3f4f6">' +
+        '<td style="padding:0.55rem 0.6rem;font-weight:600">' + p.name + '</td>' +
+        '<td style="padding:0.55rem 0.6rem">' + p.duration_days + ' days</td>' +
+        '<td style="padding:0.55rem 0.6rem;color:#7c3aed;font-weight:700">₹' + parseFloat(p.price).toFixed(0) + '</td>' +
+        '<td style="padding:0.55rem 0.6rem">' +
+          '<span style="display:inline-block;padding:0.15rem 0.5rem;border-radius:20px;font-size:0.72rem;font-weight:700;background:' +
+          (p.is_active ? '#dcfce7;color:#16a34a' : '#f3f4f6;color:#9ca3af') + '">' +
+          (p.is_active ? 'Active' : 'Disabled') + '</span></td>' +
+        '<td style="padding:0.55rem 0.6rem">' +
+          '<button onclick="editSubPlan(' + p.id + ')" style="padding:0.25rem 0.65rem;background:#7c3aed;color:#fff;border:none;border-radius:6px;font-size:0.75rem;font-weight:600;cursor:pointer;margin-right:0.35rem">Edit</button>' +
+          '<button onclick="toggleSubPlan(' + p.id + ',' + !p.is_active + ')" style="padding:0.25rem 0.65rem;background:' +
+          (p.is_active ? '#fee2e2;color:#dc2626' : '#dcfce7;color:#16a34a') +
+          ';border:none;border-radius:6px;font-size:0.75rem;font-weight:600;cursor:pointer">' +
+          (p.is_active ? 'Disable' : 'Enable') + '</button>' +
+        '</td></tr>'
+      ).join('') + '</tbody></table>';
+  } catch(e) { el.innerHTML = '<p style="color:#dc2626">Error loading plans</p>'; }
+}
+
+function openAddPlanModal() {
+  document.getElementById("subPlanModalTitle").textContent = "Add Plan";
+  document.getElementById("subPlanModalId").value = "";
+  document.getElementById("subPlanName").value = "";
+  document.getElementById("subPlanDuration").value = "";
+  document.getElementById("subPlanPrice").value = "";
+  document.getElementById("subPlanDesc").value = "";
+  document.getElementById("subPlanActive").checked = true;
+  document.getElementById("subPlanModalErr").textContent = "";
+  document.getElementById("subPlanModal").style.display = "flex";
+}
+
+function editSubPlan(id) {
+  const p = subPlansCache.find(x => x.id === id);
+  if (!p) return;
+  document.getElementById("subPlanModalTitle").textContent = "Edit Plan";
+  document.getElementById("subPlanModalId").value = id;
+  document.getElementById("subPlanName").value = p.name;
+  document.getElementById("subPlanDuration").value = p.duration_days;
+  document.getElementById("subPlanPrice").value = parseFloat(p.price).toFixed(2);
+  document.getElementById("subPlanDesc").value = p.description || "";
+  document.getElementById("subPlanActive").checked = !!p.is_active;
+  document.getElementById("subPlanModalErr").textContent = "";
+  document.getElementById("subPlanModal").style.display = "flex";
+}
+
+function closeSubPlanModal() {
+  document.getElementById("subPlanModal").style.display = "none";
+}
+
+async function saveSubPlan() {
+  const id = document.getElementById("subPlanModalId").value;
+  const payload = {
+    name: document.getElementById("subPlanName").value.trim(),
+    duration_days: parseInt(document.getElementById("subPlanDuration").value),
+    price: parseFloat(document.getElementById("subPlanPrice").value),
+    description: document.getElementById("subPlanDesc").value.trim(),
+    is_active: document.getElementById("subPlanActive").checked
+  };
+  const errEl = document.getElementById("subPlanModalErr");
+  if (!payload.name || !payload.duration_days || isNaN(payload.price)) {
+    errEl.textContent = "Name, duration and price are required."; return;
+  }
+  const btn = document.getElementById("subPlanSaveBtn");
+  btn.disabled = true; btn.textContent = "Saving…";
+  try {
+    const url = id ? "/admin/api/subscription-plans/" + id : "/admin/api/subscription-plans";
+    const method = id ? "PATCH" : "POST";
+    const d = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }).then(r => r.json());
+    if (d.success) {
+      closeSubPlanModal();
+      loadSubPlans();
+      showAdmToast("Plan saved");
+    } else { errEl.textContent = d.error || "Save failed"; }
+  } catch(e) { errEl.textContent = "Error: " + e.message; }
+  btn.disabled = false; btn.textContent = "Save Plan";
+}
+
+async function toggleSubPlan(id, active) {
+  try {
+    const d = await fetch("/admin/api/subscription-plans/" + id, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ is_active: active })
+    }).then(r => r.json());
+    if (d.success) { loadSubPlans(); showAdmToast(active ? "Plan enabled" : "Plan disabled"); }
+    else alert("Failed: " + (d.error || "unknown"));
+  } catch(e) { alert("Error: " + e.message); }
+}
+
+async function loadSubList() {
+  const el = document.getElementById("subListTable");
+  const pagEl = document.getElementById("subListPagination");
+  if (!el) return;
+  el.innerHTML = "Loading…";
+  const status = document.getElementById("subFilterStatus").value;
+  const q = document.getElementById("subSearchInput").value.trim();
+  try {
+    let url = `/admin/api/subscriptions?page=${subCurrentPage}&limit=20`;
+    if (status) url += "&status=" + status;
+    if (q) url += "&q=" + encodeURIComponent(q);
+    const d = await fetch(url).then(r => r.json());
+    if (!d.success || !d.subscriptions.length) {
+      el.innerHTML = '<p style="color:#9ca3af;text-align:center;padding:1rem">No subscribers found.</p>';
+      pagEl.innerHTML = ""; return;
+    }
+    el.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:0.82rem">' +
+      '<thead><tr style="border-bottom:2px solid #e5e7eb">' +
+      '<th style="text-align:left;padding:0.5rem 0.6rem;color:#6b7280;font-weight:600">User</th>' +
+      '<th style="text-align:left;padding:0.5rem 0.6rem;color:#6b7280;font-weight:600">Plan</th>' +
+      '<th style="text-align:left;padding:0.5rem 0.6rem;color:#6b7280;font-weight:600">Start</th>' +
+      '<th style="text-align:left;padding:0.5rem 0.6rem;color:#6b7280;font-weight:600">Expires</th>' +
+      '<th style="text-align:left;padding:0.5rem 0.6rem;color:#6b7280;font-weight:600">Amount</th>' +
+      '<th style="text-align:left;padding:0.5rem 0.6rem;color:#6b7280;font-weight:600">Status</th>' +
+      '<th style="text-align:left;padding:0.5rem 0.6rem;color:#6b7280;font-weight:600">Action</th>' +
+      '</tr></thead><tbody>' +
+      d.subscriptions.map(s => {
+        const statusColor = s.status === 'active' ? '#dcfce7;color:#16a34a' : s.status === 'cancelled' ? '#fee2e2;color:#dc2626' : '#f3f4f6;color:#6b7280';
+        return '<tr style="border-bottom:1px solid #f3f4f6">' +
+          '<td style="padding:0.55rem 0.6rem"><div style="font-weight:600">' + s.user_name + '</div><div style="font-size:0.72rem;color:#9ca3af">' + s.user_email + '</div></td>' +
+          '<td style="padding:0.55rem 0.6rem">' + s.plan_name + '</td>' +
+          '<td style="padding:0.55rem 0.6rem">' + new Date(s.start_date).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) + '</td>' +
+          '<td style="padding:0.55rem 0.6rem">' + new Date(s.end_date).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) + '</td>' +
+          '<td style="padding:0.55rem 0.6rem">' + (s.granted_by_admin ? '<span style="color:#7c3aed;font-weight:600">Free</span>' : '₹' + parseFloat(s.amount).toFixed(0)) + '</td>' +
+          '<td style="padding:0.55rem 0.6rem"><span style="display:inline-block;padding:0.15rem 0.5rem;border-radius:20px;font-size:0.72rem;font-weight:700;background:' + statusColor + '">' + s.status + '</span></td>' +
+          '<td style="padding:0.55rem 0.6rem"><button onclick="openSubGrantModal(' + s.user_id + ',\'' + s.user_name.replace(/'/g,'') + '\')" style="padding:0.2rem 0.6rem;background:#7c3aed;color:#fff;border:none;border-radius:6px;font-size:0.72rem;font-weight:600;cursor:pointer">Grant</button></td>' +
+          '</tr>';
+      }).join('') + '</tbody></table>';
+
+    // Pagination
+    const total = d.total || 0;
+    const totalPages = Math.ceil(total / 20);
+    pagEl.innerHTML = Array.from({length: totalPages}, (_,i) =>
+      '<button onclick="subCurrentPage=' + (i+1) + ';loadSubList()" style="padding:0.3rem 0.65rem;border:1px solid ' +
+      (subCurrentPage === i+1 ? '#7c3aed;background:#7c3aed;color:#fff' : '#e5e7eb;background:#fff;color:#374151') +
+      ';border-radius:6px;font-size:0.8rem;cursor:pointer">' + (i+1) + '</button>'
+    ).join('');
+  } catch(e) { el.innerHTML = '<p style="color:#dc2626">Error: ' + e.message + '</p>'; }
+}
+
+async function openSubGrantModal(userId, userName) {
+  document.getElementById("subGrantUserId").value = userId;
+  document.getElementById("subGrantUserLabel").textContent = "Granting free subscription to: " + userName;
+  document.getElementById("subGrantErr").textContent = "";
+  // Populate plan select from cache
+  const sel = document.getElementById("subGrantPlanId");
+  if (subPlansCache.length) {
+    sel.innerHTML = subPlansCache.map(p => '<option value="' + p.id + '">' + p.name + ' (' + p.duration_days + ' days)</option>').join('');
+  } else {
+    const d = await fetch("/admin/api/subscription-plans").then(r => r.json());
+    sel.innerHTML = (d.plans || []).map(p => '<option value="' + p.id + '">' + p.name + ' (' + p.duration_days + ' days)</option>').join('');
+  }
+  document.getElementById("subGrantModal").style.display = "flex";
+}
+
+function closeSubGrantModal() {
+  document.getElementById("subGrantModal").style.display = "none";
+}
+
+async function submitSubGrant() {
+  const userId = document.getElementById("subGrantUserId").value;
+  const planId = document.getElementById("subGrantPlanId").value;
+  const errEl = document.getElementById("subGrantErr");
+  const btn = document.getElementById("subGrantBtn");
+  btn.disabled = true; btn.textContent = "Granting…";
+  try {
+    const d = await fetch("/admin/api/subscriptions/grant", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, planId })
+    }).then(r => r.json());
+    if (d.success) {
+      closeSubGrantModal();
+      loadSubList();
+      loadSubStats();
+      showAdmToast("Free subscription granted!");
+    } else { errEl.textContent = d.error || "Failed to grant"; }
+  } catch(e) { errEl.textContent = "Error: " + e.message; }
+  btn.disabled = false; btn.textContent = "Grant Access";
+}
+
+// Load subscriptions data when tab is shown
+document.addEventListener("DOMContentLoaded", function() {
+  const subNavLink = document.querySelector('[data-section="subscriptions"]');
+  if (subNavLink) {
+    subNavLink.addEventListener("click", function() {
+      loadSubStats();
+      loadSubPlans();
+      loadSubList();
+    });
+  }
+});
 
 // ── BG Remover provider toggle ────────────────────────────────────────────────
 (async function() {

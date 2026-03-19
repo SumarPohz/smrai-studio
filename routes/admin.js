@@ -29,7 +29,7 @@ const adImgStorage = multer.diskStorage({
 });
 const adUpload = multer({ storage: adImgStorage, limits: { fileSize: 5 * 1024 * 1024 } });
 
-const ADMIN_SECTIONS = ["overview","users","activity","requests","pricing","templates","homepage","ads","coupons","apikeys","investors","wallet"];
+const ADMIN_SECTIONS = ["overview","users","activity","requests","pricing","templates","homepage","ads","coupons","apikeys","investors","wallet","subscriptions"];
 
 // Map API path prefixes → section key (for write-guard)
 const SECTION_API_MAP = [
@@ -1516,6 +1516,118 @@ export default function adminRouter(db) {
         [userId]
       );
       res.json({ success: true, transactions: rows.rows });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+  });
+
+  // ── Subscription Admin Routes ─────────────────────────────────────────────
+
+  // List all plans
+  router.get("/api/subscription-plans", async (req, res) => {
+    try {
+      const result = await db.query("SELECT * FROM subscription_plans ORDER BY duration_days ASC");
+      res.json({ success: true, plans: result.rows });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+  });
+
+  // Create new plan
+  router.post("/api/subscription-plans", async (req, res) => {
+    try {
+      const { name, duration_days, price, description } = req.body;
+      if (!name || !duration_days || !price) {
+        return res.status(400).json({ success: false, message: "Name, duration and price are required" });
+      }
+      await db.query(
+        "INSERT INTO subscription_plans (name, duration_days, price, description) VALUES (?,?,?,?)",
+        [name, parseInt(duration_days), parseFloat(price), description || null]
+      );
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+  });
+
+  // Update plan (price, duration, name, description, is_active)
+  router.patch("/api/subscription-plans/:id", async (req, res) => {
+    try {
+      const { name, duration_days, price, description, is_active } = req.body;
+      await db.query(
+        `UPDATE subscription_plans SET
+          name = COALESCE(?, name),
+          duration_days = COALESCE(?, duration_days),
+          price = COALESCE(?, price),
+          description = COALESCE(?, description),
+          is_active = COALESCE(?, is_active)
+         WHERE id = ?`,
+        [name||null, duration_days ? parseInt(duration_days) : null,
+         price ? parseFloat(price) : null, description||null,
+         is_active !== undefined ? is_active : null, req.params.id]
+      );
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+  });
+
+  // List all user subscriptions with filters
+  router.get("/api/subscriptions", async (req, res) => {
+    try {
+      const page = parseInt(req.query.page) || 1;
+      const limit = 20;
+      const offset = (page - 1) * limit;
+      const status = req.query.status || null;
+
+      let where = status ? "WHERE us.status = ?" : "";
+      const params = status ? [status, limit, offset] : [limit, offset];
+
+      const result = await db.query(
+        `SELECT us.*, u.name AS user_name, u.email AS user_email, sp.name AS plan_name
+         FROM user_subscriptions us
+         JOIN users u ON us.user_id = u.id
+         JOIN subscription_plans sp ON us.plan_id = sp.id
+         ${where}
+         ORDER BY us.created_at DESC LIMIT ? OFFSET ?`,
+        params
+      );
+      const countResult = await db.query(
+        `SELECT COUNT(*) AS total FROM user_subscriptions us ${where}`,
+        status ? [status] : []
+      );
+      res.json({ success: true, subscriptions: result.rows, total: countResult.rows[0].total });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+  });
+
+  // Grant free subscription to a user
+  router.post("/api/subscriptions/grant", async (req, res) => {
+    try {
+      const { userId, planId } = req.body;
+      const plan = await db.query("SELECT * FROM subscription_plans WHERE id = ?", [planId]);
+      if (!plan.rows.length) return res.status(404).json({ success: false, message: "Plan not found" });
+      const p = plan.rows[0];
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + p.duration_days);
+      await db.query(
+        `INSERT INTO user_subscriptions (user_id, plan_id, amount, status, end_date, granted_by_admin)
+         VALUES (?, ?, 0, 'active', ?, true)`,
+        [userId, planId, endDate]
+      );
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+  });
+
+  // Subscription analytics stats
+  router.get("/api/subscriptions/stats", async (req, res) => {
+    try {
+      const [activeCount, totalRevenue, planBreakdown] = await Promise.all([
+        db.query("SELECT COUNT(*) AS count FROM user_subscriptions WHERE status='active' AND end_date >= NOW()"),
+        db.query("SELECT COALESCE(SUM(amount),0) AS total FROM user_subscriptions WHERE granted_by_admin=false"),
+        db.query(
+          `SELECT sp.name, sp.duration_days, COUNT(*) AS count, COALESCE(SUM(us.amount),0) AS revenue
+           FROM user_subscriptions us JOIN subscription_plans sp ON us.plan_id=sp.id
+           GROUP BY sp.id, sp.name, sp.duration_days`
+        ),
+      ]);
+      res.json({
+        success: true,
+        activeSubscribers: activeCount.rows[0].count,
+        totalRevenue: totalRevenue.rows[0].total,
+        planBreakdown: planBreakdown.rows,
+      });
     } catch (err) { res.status(500).json({ success: false, message: err.message }); }
   });
 

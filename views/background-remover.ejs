@@ -436,6 +436,10 @@
     </div>
     <h1>Remove <span>Background</span> Instantly</h1>
     <p>Upload any image and our AI removes the background in seconds — perfect for resumes, portfolios, product photos, and more.</p>
+    <div id="bgr-pro-badge" style="display:none;margin-top:0.75rem;display:none;align-items:center;justify-content:center;gap:0.4rem;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border-radius:20px;padding:0.3rem 0.9rem;font-size:0.78rem;font-weight:700;width:fit-content;margin:0.75rem auto 0">
+      <span>⚡</span>
+      <span id="bgr-pro-badge-text">Pro Access — Unlimited</span>
+    </div>
   </div>
 
   <!-- Main card -->
@@ -475,8 +479,9 @@
     <div class="bgr-processing" id="bgr-processing">
       <div class="bgr-spinner"></div>
       <div class="bgr-processing-text">Removing background…</div>
-      <div class="bgr-processing-sub">AI is analysing your image</div>
+      <div class="bgr-processing-sub">Sumar's Studio is analysing your image</div>
     </div>
+    
 
     <!-- Result -->
     <div class="bgr-result" id="bgr-result">
@@ -573,6 +578,20 @@
 </div>
 
 <script>
+// ── Subscription Pro badge check ─────────────────────────────────────────────
+(function() {
+  fetch('/api/subscription/status').then(function(r){ return r.json(); }).then(function(d) {
+    if (d.active) {
+      var badge = document.getElementById('bgr-pro-badge');
+      var badgeTxt = document.getElementById('bgr-pro-badge-text');
+      if (badge) {
+        badge.style.display = 'flex';
+        if (badgeTxt) badgeTxt.textContent = 'Pro Access — Unlimited · ' + d.daysLeft + ' days left';
+      }
+    }
+  }).catch(function(){});
+})();
+
 (function() {
   var dropZone    = document.getElementById('bgr-drop-zone');
   var fileInput   = document.getElementById('bgr-file-input');
@@ -724,25 +743,45 @@
 
     showState('processing');
 
-    var fd = new FormData();
-    fd.append('image', file);
-
-    fetch('/api/background-remover', { method: 'POST', body: fd })
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        if (data.success) {
-          removedBgDataUrl = data.image;
-          resultImg.src    = data.image;
-          dlBtn.href       = data.image;
+    // ✅ Use on-device ML Kit when running in Android app (fast, free, offline)
+    if (window.AndroidBridge && window.AndroidBridge.removeBackground) {
+      var androidReader = new FileReader();
+      androidReader.onload = function(e) {
+        window.mlkitCallback = function(dataUrl) {
+          removedBgDataUrl = dataUrl;
+          resultImg.src    = dataUrl;
+          dlBtn.href       = dataUrl;
           resetSwatches();
           showState('result');
-        } else {
-          showError(data.error || 'Background removal failed. Please try again.');
-        }
-      })
-      .catch(function() {
-        showError('Network error. Please check your connection and try again.');
-      });
+        };
+        window.mlkitCallbackError = function(error) {
+          showError(error || 'Background removal failed. Please try again.');
+        };
+        AndroidBridge.removeBackground(e.target.result, 'mlkitCallback');
+      };
+      androidReader.readAsDataURL(file);
+    } else {
+      // Fallback: server-side API (for web browser users)
+      var fd = new FormData();
+      fd.append('image', file);
+
+      fetch('/api/background-remover', { method: 'POST', body: fd })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.success) {
+            removedBgDataUrl = data.image;
+            resultImg.src    = data.image;
+            dlBtn.href       = data.image;
+            resetSwatches();
+            showState('result');
+          } else {
+            showError(data.error || 'Background removal failed. Please try again.');
+          }
+        })
+        .catch(function() {
+          showError('Network error. Please check your connection and try again.');
+        });
+    }
   }
 
   function showError(msg) {
