@@ -152,6 +152,14 @@ await db.query(`
   )
 `);
 
+  await db.query(`
+  CREATE TABLE IF NOT EXISTS mobile_auth_tokens (
+    token VARCHAR(64) PRIMARY KEY,
+    user_id INT NOT NULL,
+    expires_at TIMESTAMP NOT NULL
+  )
+`);
+
     /* resumes main table */
     await db.query(`
       CREATE TABLE IF NOT EXISTS resumes (
@@ -613,7 +621,7 @@ const sessionMiddleware = session({
     // "none" lets Android WebView & OAuth send cookies cross-context (requires secure:true)
     // "lax"  is the safe browser default and works fine on localhost
     sameSite: isProd ? "none" : "lax",
-    maxAge: 1000 * 60 * 60 * 24 * 7,
+    maxAge: 1000 * 60 * 60 * 24 * 30,
   },
 });
 app.use(sessionMiddleware);
@@ -1844,15 +1852,53 @@ app.get(
   passport.authenticate("google", { scope: ["email", "profile"] })
 );
 
+// Mobile app Google Auth — sets isMobileAuth flag before redirect
+app.get("/auth/google/mobile", (req, res, next) => {
+  req.session.isMobileAuth = true;
+  req.session.save(() => next());
+}, passport.authenticate("google", { scope: ["email", "profile"] }));
+
 app.get(
   "/auth/google/callback",
   passport.authenticate("google", { failureRedirect: "/login" }),
-  (req, res) => {
+  async (req, res) => {
+    if (req.session.isMobileAuth) {
+      delete req.session.isMobileAuth;
+      const token = crypto.randomBytes(32).toString("hex");
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+      await db.query(
+        "INSERT INTO mobile_auth_tokens (token, user_id, expires_at) VALUES (?, ?, ?)",
+        [token, req.user.id, expiresAt]
+      );
+      return res.redirect(`smraistudio://login?token=${token}`);
+    }
     const redirectTo = req.session.returnTo || "/dashboard";
     delete req.session.returnTo;
     res.redirect(redirectTo);
   }
 );
+
+// Mobile token exchange — WebView loads this URL to establish session
+app.get("/auth/mobile-token/:token", async (req, res) => {
+  try {
+    const result = await db.query(
+      "SELECT * FROM mobile_auth_tokens WHERE token = ? AND expires_at > NOW()",
+      [req.params.token]
+    );
+    if (result.rows.length === 0) return res.redirect("/login?error=expired");
+
+    const { user_id } = result.rows[0];
+    await db.query("DELETE FROM mobile_auth_tokens WHERE token = ?", [req.params.token]);
+
+    const userResult = await db.query("SELECT * FROM users WHERE id = ?", [user_id]);
+    req.login(userResult.rows[0], (err) => {
+      if (err) return res.redirect("/login?error=failed");
+      res.redirect("/dashboard");
+    });
+  } catch (err) {
+    res.redirect("/login?error=failed");
+  }
+});
 
 // ── Site URL helper — reads from admin_settings first, then process.env ──────
 async function getSiteUrl() {
