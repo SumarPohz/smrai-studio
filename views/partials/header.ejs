@@ -231,6 +231,7 @@
       <!-- 🔹 New links -->
       <a href="/resumes">My Resumes</a>
       <a href="/payments">Payments</a>
+      <a href="/subscription">⚡ Pro Plans</a>
     <% } else { %>
       <a href="/login">Login</a>
       <a href="/register">Register</a>
@@ -393,6 +394,15 @@
           <span class="sidebar-wallet-amount" id="sidebarWalletAmt">—</span>
         </a>
 
+        <!-- Pro subscription badge -->
+        <a href="/subscription" id="sidebarSubBadge" style="display:none;text-decoration:none;background:linear-gradient(135deg,#7c3aed,#6d28d9);border-radius:10px;padding:0.6rem 1rem;margin:0.5rem 0;align-items:center;justify-content:space-between;gap:0.5rem;color:#fff">
+          <div style="display:flex;align-items:center;gap:0.5rem">
+            <span style="font-size:1rem">⚡</span>
+            <span style="font-size:0.8rem;font-weight:700">Pro Member</span>
+          </div>
+          <span id="sidebarSubDays" style="font-size:0.72rem;background:rgba(255,255,255,0.2);border-radius:20px;padding:0.15rem 0.55rem;font-weight:700;white-space:nowrap"></span>
+        </a>
+
         <!-- Edit profile -->
         <div class="sidebar-section">
           <h3 class="sidebar-section-title">Profile</h3>
@@ -473,6 +483,14 @@
           fetch("/api/wallet/balance").then(function(r){ return r.json(); }).then(function(d) {
             var el = document.getElementById("sidebarWalletAmt");
             if (el) el.textContent = "₹" + (d.balance || 0).toFixed(0);
+          }).catch(function(){});
+          fetch("/api/subscription/status").then(function(r){ return r.json(); }).then(function(d) {
+            var badge = document.getElementById("sidebarSubBadge");
+            var days = document.getElementById("sidebarSubDays");
+            if (badge && d.active) {
+              badge.style.display = "flex";
+              if (days) days.textContent = d.daysLeft + " days left";
+            }
           }).catch(function(){});
         }
       }

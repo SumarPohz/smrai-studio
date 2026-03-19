@@ -487,6 +487,47 @@ await db.query(`
       }
     } catch (_) {}
 
+    /* ── Subscription Plans ── */
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS subscription_plans (
+        id           INT AUTO_INCREMENT PRIMARY KEY,
+        name         VARCHAR(100) NOT NULL,
+        duration_days INT NOT NULL,
+        price        DECIMAL(10,2) NOT NULL,
+        description  TEXT,
+        is_active    BOOLEAN DEFAULT true,
+        created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `);
+    await db.query(`
+      INSERT IGNORE INTO subscription_plans (id, name, duration_days, price, description, is_active)
+      VALUES
+        (1, '14-Day Unlimited', 14, 99.00, 'Full access to all paid features for 14 days', true),
+        (2, '30-Day Unlimited', 30, 149.00, 'Full access to all paid features for 30 days', true)
+    `);
+
+    /* ── User Subscriptions ── */
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS user_subscriptions (
+        id                   INT AUTO_INCREMENT PRIMARY KEY,
+        user_id              INT NOT NULL,
+        plan_id              INT NOT NULL,
+        razorpay_order_id    TEXT,
+        razorpay_payment_id  TEXT UNIQUE,
+        razorpay_signature   TEXT,
+        amount               DECIMAL(10,2) NOT NULL,
+        status               ENUM('active','expired','cancelled') DEFAULT 'active',
+        start_date           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        end_date             TIMESTAMP NOT NULL,
+        granted_by_admin     BOOLEAN DEFAULT false,
+        created_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX (user_id),
+        INDEX (status),
+        INDEX (end_date)
+      )
+    `);
+
   } catch (err) {
     console.error('[initDb] FAILED:', err.message);
   }
@@ -1506,6 +1547,10 @@ app.post("/api/background-remover", ensureAuthenticated, upload.single("image"),
     : fs.readFileSync(req.file.path).toString("base64");
   if (req.file.path) { try { fs.unlinkSync(req.file.path); } catch (_) {} }
 
+  // ✅ Subscription check — subscribers always get free access
+  const activeSub = await hasActiveSubscription(req.user.id);
+  // (background remover is currently free for all users; subscription grants priority access)
+
   let provider = 'removebg';
   try {
     const pr = await db.query("SELECT value FROM admin_settings WHERE `key`='bgremover_provider'");
@@ -1694,19 +1739,18 @@ app.post("/resume-builder/pdf", ensureAuthenticated, async (req, res) => {
     }
   }
 
-  /* 🔐 PAYMENT CHECK (MANDATORY) */
-  const pay = await db.query(
-    `SELECT status
-     FROM payments
-     WHERE user_id = ?
-       AND resume_id = ?
-     ORDER BY created_at DESC
-     LIMIT 1`,
-    [req.user.id, resumeId]
-  );
-
-  if (!pay.rows.length || pay.rows[0].status !== "captured") {
-    return res.status(403).send("Payment not completed");
+  /* 🔐 PAYMENT CHECK — subscription OR one-time payment */
+  const activeSub = await hasActiveSubscription(req.user.id);
+  if (!activeSub) {
+    const pay = await db.query(
+      `SELECT status FROM payments
+       WHERE user_id = ? AND resume_id = ?
+       ORDER BY created_at DESC LIMIT 1`,
+      [req.user.id, resumeId]
+    );
+    if (!pay.rows.length || pay.rows[0].status !== "captured") {
+      return res.status(403).send("Payment not completed");
+    }
   }
 
   /* ✅ PAYMENT CONFIRMED → GENERATE PDF (multi-page) */
@@ -3147,6 +3191,190 @@ app.post(
   }
 );
 
+// ── Subscription ─────────────────────────────────────────────────────────────
+
+app.get("/subscription", ensureAuthenticated, async (req, res) => {
+  try {
+    const [plansResult, subResult, historyResult] = await Promise.all([
+      db.query(`SELECT * FROM subscription_plans ORDER BY duration_days ASC`),
+      hasActiveSubscription(req.user.id),
+      db.query(
+        `SELECT us.*, sp.name AS plan_name, sp.duration_days
+         FROM user_subscriptions us
+         JOIN subscription_plans sp ON us.plan_id = sp.id
+         WHERE us.user_id = ? ORDER BY us.created_at DESC LIMIT 10`,
+        [req.user.id]
+      ),
+      ]);
+    const walletRow = await db.query("SELECT wallet_balance FROM users WHERE id=?", [req.user.id]);
+    const walletBalance = parseFloat(walletRow.rows[0]?.wallet_balance) || 0;
+    res.render("subscription", {
+      plans: plansResult.rows,
+      activeSub: subResult,
+      history: historyResult.rows,
+      walletBalance,
+      user: req.user,
+    });
+  } catch (err) {
+    res.redirect("/dashboard");
+  }
+});
+
+app.get("/api/subscription/status", ensureAuthenticated, async (req, res) => {
+  try {
+    const sub = await hasActiveSubscription(req.user.id);
+    if (!sub) return res.json({ active: false });
+    const daysLeft = Math.max(0, Math.ceil((new Date(sub.end_date) - new Date()) / 86400000));
+    res.json({ active: true, daysLeft, endDate: sub.end_date });
+  } catch (_) {
+    res.json({ active: false });
+  }
+});
+
+app.post("/api/subscription/create-order", ensureAuthenticated, async (req, res) => {
+  try {
+    const { planId, useWallet } = req.body;
+    const planResult = await db.query(
+      `SELECT * FROM subscription_plans WHERE id = ? AND is_active = true`, [planId]
+    );
+    if (!planResult.rows.length) {
+      return res.status(404).json({ success: false, message: "Plan not found or unavailable" });
+    }
+    const plan = planResult.rows[0];
+    let priceRupees = parseFloat(plan.price);
+
+    // Check if already subscribed
+    const existing = await hasActiveSubscription(req.user.id);
+    if (existing) {
+      return res.json({ success: false, message: "You already have an active subscription" });
+    }
+
+    // Wallet deduction
+    let walletDeduction = 0;
+    if (useWallet) {
+      const wRow = await db.query("SELECT wallet_balance FROM users WHERE id=?", [req.user.id]);
+      const walletBalance = parseFloat(wRow.rows[0]?.wallet_balance) || 0;
+      walletDeduction = Math.min(walletBalance, priceRupees);
+      if (walletDeduction >= priceRupees) {
+        return res.json({ success: true, walletOnly: true, walletDeduction, planId, planName: plan.name });
+      }
+      priceRupees = Math.max(1, priceRupees - walletDeduction);
+    }
+
+    const order = await getRazorpay().orders.create({
+      amount: Math.round(priceRupees * 100),
+      currency: "INR",
+      receipt: "sub_" + Date.now(),
+    });
+
+    res.json({
+      success: true,
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      key: process.env.RAZORPAY_KEY_ID,
+      walletDeduction,
+      planName: plan.name,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Unable to create order" });
+  }
+});
+
+app.post("/api/subscription/verify", ensureAuthenticated, async (req, res) => {
+  try {
+    const {
+      razorpay_order_id, razorpay_payment_id, razorpay_signature,
+      planId, walletDeduction
+    } = req.body;
+
+    // Verify signature
+    const hmac = crypto.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET);
+    hmac.update(razorpay_order_id + "|" + razorpay_payment_id);
+    if (hmac.digest("hex") !== razorpay_signature) {
+      return res.status(400).json({ success: false, message: "Invalid payment signature" });
+    }
+
+    // Duplicate check
+    const dup = await db.query(
+      "SELECT id FROM user_subscriptions WHERE razorpay_payment_id = ?", [razorpay_payment_id]
+    );
+    if (dup.rows.length) return res.json({ success: true });
+
+    const plan = await db.query("SELECT * FROM subscription_plans WHERE id = ?", [planId]);
+    if (!plan.rows.length) return res.status(404).json({ success: false });
+    const p = plan.rows[0];
+
+    const walletUsed = parseFloat(walletDeduction) || 0;
+    const amount = parseFloat(p.price);
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + p.duration_days);
+
+    await db.query(
+      `INSERT INTO user_subscriptions
+       (user_id, plan_id, razorpay_order_id, razorpay_payment_id, razorpay_signature, amount, status, end_date)
+       VALUES (?, ?, ?, ?, ?, ?, 'active', ?)`,
+      [req.user.id, planId, razorpay_order_id, razorpay_payment_id, razorpay_signature, amount, endDate]
+    );
+
+    // Deduct wallet if used
+    if (walletUsed > 0) {
+      await db.query(
+        "UPDATE users SET wallet_balance = GREATEST(0, wallet_balance - ?) WHERE id=?",
+        [walletUsed, req.user.id]
+      ).catch(() => {});
+      await db.query(
+        "INSERT INTO wallet_transactions (user_id,amount,type,reason) VALUES (?,?,'debit','subscription_payment')",
+        [req.user.id, walletUsed]
+      ).catch(() => {});
+    }
+
+    logActivity({ userId: req.user.id, actionType: "subscription", metadata: { planId, duration: p.duration_days }, ip: req.ip });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Subscription activation failed" });
+  }
+});
+
+app.post("/api/subscription/wallet-pay", ensureAuthenticated, async (req, res) => {
+  try {
+    const { planId } = req.body;
+    const plan = await db.query("SELECT * FROM subscription_plans WHERE id = ? AND is_active = true", [planId]);
+    if (!plan.rows.length) return res.status(404).json({ success: false, message: "Plan not found" });
+    const p = plan.rows[0];
+
+    const existing = await hasActiveSubscription(req.user.id);
+    if (existing) return res.json({ success: false, message: "Already subscribed" });
+
+    const wRow = await db.query("SELECT wallet_balance FROM users WHERE id=?", [req.user.id]);
+    const walletBalance = parseFloat(wRow.rows[0]?.wallet_balance) || 0;
+    if (walletBalance < parseFloat(p.price)) {
+      return res.json({ success: false, message: "Insufficient wallet balance" });
+    }
+
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + p.duration_days);
+
+    await db.query(
+      `INSERT INTO user_subscriptions (user_id, plan_id, amount, status, end_date)
+       VALUES (?, ?, ?, 'active', ?)`,
+      [req.user.id, planId, p.price, endDate]
+    );
+    await db.query(
+      "UPDATE users SET wallet_balance = GREATEST(0, wallet_balance - ?) WHERE id=?",
+      [p.price, req.user.id]
+    );
+    await db.query(
+      "INSERT INTO wallet_transactions (user_id,amount,type,reason) VALUES (?,?,'debit','subscription_payment')",
+      [req.user.id, p.price]
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Wallet payment failed" });
+  }
+});
+
 // ── Refer & Earn page ────────────────────────────────────────────────────────
 app.get("/refer", ensureAuthenticated, async (req, res) => {
   try {
@@ -3183,6 +3411,20 @@ app.get("/refer", ensureAuthenticated, async (req, res) => {
     res.redirect("/dashboard");
   }
 });
+
+// ── Subscription helper ──────────────────────────────────────────────────────
+async function hasActiveSubscription(userId) {
+  try {
+    const result = await db.query(
+      `SELECT id, end_date, plan_id FROM user_subscriptions
+       WHERE user_id = ? AND status = 'active'
+       AND end_date >= DATE_SUB(NOW(), INTERVAL 1 DAY)
+       ORDER BY end_date DESC LIMIT 1`,
+      [userId]
+    );
+    return result.rows.length > 0 ? result.rows[0] : null;
+  } catch (_) { return null; }
+}
 
 // ── Shared helper: look up original price for a template ────────────────────
 async function getTemplatePrice(template) {
@@ -3271,6 +3513,13 @@ app.post("/api/coupons/validate", ensureAuthenticated, async (req, res) => {
 app.post("/api/razorpay/create-order", ensureAuthenticated, async (req, res) => {
   try {
     const { template, couponCode, useWallet } = req.body || {};
+
+    // ✅ Subscribers get free access — skip payment entirely
+    const activeSub = await hasActiveSubscription(req.user.id);
+    if (activeSub) {
+      return res.json({ success: true, subscribed: true });
+    }
+
     const originalPriceRupees = await getTemplatePrice(template);
     let priceRupees = originalPriceRupees;
 

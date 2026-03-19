@@ -1,0 +1,261 @@
+<%- include("partials/header") %>
+
+<style>
+  .sub-page { max-width: 860px; margin: 1rem auto; padding: 0 1rem 3rem; }
+  .sub-hero { text-align: center; padding: 2rem 1rem 1.5rem; }
+  .sub-hero h1 { font-size: 1.75rem; font-weight: 700; margin: 0 0 0.5rem; color: var(--text-primary, #1e293b); }
+  .sub-hero p { color: var(--text-muted, #64748b); font-size: 0.95rem; margin: 0; }
+
+  /* Active subscription banner */
+  .sub-active-banner {
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    color: #fff;
+    border-radius: 14px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+  .sub-active-banner .badge-icon { font-size: 2rem; }
+  .sub-active-banner h3 { margin: 0 0 0.25rem; font-size: 1.1rem; }
+  .sub-active-banner p { margin: 0; font-size: 0.875rem; opacity: 0.9; }
+  .sub-days-pill {
+    background: rgba(255,255,255,0.2);
+    border-radius: 20px;
+    padding: 0.4rem 1rem;
+    font-weight: 700;
+    font-size: 1rem;
+    white-space: nowrap;
+  }
+
+  /* Plan cards */
+  .sub-plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem; margin-bottom: 2rem; }
+  .sub-plan-card {
+    background: var(--card-bg, #fff);
+    border: 2px solid var(--border-color, #e2e8f0);
+    border-radius: 16px;
+    padding: 1.75rem 1.5rem;
+    position: relative;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .sub-plan-card:hover { border-color: #7c3aed; box-shadow: 0 4px 24px rgba(124,58,237,0.1); }
+  .sub-plan-card.popular { border-color: #7c3aed; }
+  .sub-popular-badge {
+    position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+    background: linear-gradient(135deg,#7c3aed,#6d28d9);
+    color: #fff; font-size: 0.72rem; font-weight: 700;
+    padding: 0.2rem 0.75rem; border-radius: 20px; white-space: nowrap;
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .sub-plan-name { font-size: 1.1rem; font-weight: 700; margin: 0 0 0.25rem; }
+  .sub-plan-price { font-size: 2rem; font-weight: 800; color: #7c3aed; margin: 0.5rem 0; }
+  .sub-plan-price span { font-size: 1rem; font-weight: 500; color: var(--text-muted,#64748b); }
+  .sub-plan-desc { font-size: 0.85rem; color: var(--text-muted,#64748b); margin: 0 0 1.25rem; }
+  .sub-features { list-style: none; padding: 0; margin: 0 0 1.5rem; }
+  .sub-features li { font-size: 0.875rem; padding: 0.3rem 0; color: var(--text-secondary,#475569); }
+  .sub-features li::before { content: "✓ "; color: #16a34a; font-weight: 700; }
+  .sub-btn {
+    width: 100%; padding: 0.75rem; border: none; border-radius: 10px;
+    background: linear-gradient(135deg,#7c3aed,#6d28d9);
+    color: #fff; font-size: 0.95rem; font-weight: 600; cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .sub-btn:hover { opacity: 0.9; }
+  .sub-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .sub-btn.wallet-btn { background: linear-gradient(135deg,#0ea5e9,#0284c7); margin-top: 0.5rem; }
+  .sub-unavailable { text-align:center; color: var(--text-muted,#64748b); font-size:0.875rem; padding:0.5rem 0; }
+
+  /* Wallet info */
+  .sub-wallet-info { text-align: center; font-size: 0.85rem; color: var(--text-muted,#64748b); margin-bottom: 1.25rem; }
+  .sub-wallet-info strong { color: #0ea5e9; }
+
+  /* History */
+  .sub-section-title { font-size: 1rem; font-weight: 700; margin: 2rem 0 0.75rem; color: var(--text-primary,#1e293b); }
+  .sub-history-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+  .sub-history-table th { text-align: left; padding: 0.5rem 0.75rem; color: var(--text-muted,#64748b); font-weight: 600; border-bottom: 1px solid var(--border-color,#e2e8f0); }
+  .sub-history-table td { padding: 0.65rem 0.75rem; border-bottom: 1px solid var(--border-color,#f1f5f9); }
+  .status-pill { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+  .status-pill.active { background: #dcfce7; color: #16a34a; }
+  .status-pill.expired { background: #f1f5f9; color: #64748b; }
+  .status-pill.cancelled { background: #fee2e2; color: #dc2626; }
+  .sub-empty { text-align:center; color:var(--text-muted,#64748b); padding:1.5rem; font-size:0.875rem; }
+
+  @media(max-width:640px) {
+    .sub-active-banner { flex-direction: column; text-align: center; gap: 0.5rem; padding: 1rem 1.25rem; }
+    .sub-days-pill { white-space: normal; font-size: 0.9rem; }
+    .sub-plan-price { font-size: 1.6rem; }
+    .sub-plans { grid-template-columns: 1fr; gap: 0.75rem; }
+    .sub-btn { min-height: 44px; font-size: 0.85rem; }
+    .sub-history-table { display: block; overflow-x: auto; }
+    .sub-history-table th, .sub-history-table td { padding: 0.4rem 0.3rem; font-size: 0.75rem; }
+    .sub-wallet-info { font-size: 0.8rem; }
+    .sub-section-title { margin-top: 1.25rem; }
+  }
+  @media(max-width:420px) {
+    .sub-page { padding: 0 0.6rem 2rem; }
+    .sub-plan-card { padding: 1.25rem 1rem; }
+    .sub-hero h1 { font-size: 1.4rem; }
+    .sub-hero p { font-size: 0.85rem; }
+  }
+</style>
+
+<div class="sub-page">
+  <div class="sub-hero">
+    <h1>⚡ Unlimited Access Plans</h1>
+    <p>Pay once, use everything — resumes, background remover, photo editor — without per-download charges.</p>
+  </div>
+
+  <% if (activeSub) {
+    const daysLeft = Math.max(0, Math.ceil((new Date(activeSub.end_date) - new Date()) / 86400000));
+    const endFormatted = new Date(activeSub.end_date).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
+  %>
+  <div class="sub-active-banner">
+    <div>
+      <div class="badge-icon">⚡</div>
+      <h3>You're a Pro Member!</h3>
+      <p>All paid features are unlocked until <%= endFormatted %></p>
+    </div>
+    <div class="sub-days-pill"><%= daysLeft %> days left</div>
+  </div>
+  <% } %>
+
+  <div class="sub-wallet-info">
+    Your wallet balance: <strong>₹<%= walletBalance.toFixed(0) %></strong>
+    <% if (walletBalance > 0) { %> — can be used to pay for plans<% } %>
+  </div>
+
+  <% const activePlans = plans.filter(p => p.is_active); %>
+  <% if (activePlans.length === 0 && !activeSub) { %>
+    <div class="sub-unavailable">Subscription plans are currently unavailable. Please check back later.</div>
+  <% } else { %>
+  <div class="sub-plans">
+    <% activePlans.forEach((plan, idx) => { %>
+    <div class="sub-plan-card <%= idx === activePlans.length - 1 && activePlans.length > 1 ? 'popular' : '' %>">
+      <% if (idx === activePlans.length - 1 && activePlans.length > 1) { %>
+        <div class="sub-popular-badge">Best Value</div>
+      <% } %>
+      <div class="sub-plan-name"><%= plan.name %></div>
+      <div class="sub-plan-price">₹<%= parseFloat(plan.price).toFixed(0) %> <span>/ <%= plan.duration_days %> days</span></div>
+      <div class="sub-plan-desc"><%= plan.description || 'Unlimited access to all paid features' %></div>
+      <ul class="sub-features">
+        <li>Unlimited resume downloads (JPG + PDF)</li>
+        <li>Free background removal</li>
+        <li>All resume templates</li>
+        <li>Photo editor access</li>
+        <li>No per-download charges</li>
+      </ul>
+      <% if (activeSub) { %>
+        <button class="sub-btn" disabled>Already Subscribed</button>
+      <% } else { %>
+        <button class="sub-btn" onclick="startSubPayment(<%= plan.id %>, <%= plan.price %>, '<%= plan.name.replace(/'/g,'') %>')">
+          Get <%= plan.duration_days %>-Day Access — ₹<%= parseFloat(plan.price).toFixed(0) %>
+        </button>
+        <% if (walletBalance >= plan.price) { %>
+          <button class="sub-btn wallet-btn" onclick="payWithWallet(<%= plan.id %>, '<%= plan.name.replace(/'/g,'') %>')">
+            Pay with Wallet (₹<%= parseFloat(plan.price).toFixed(0) %>)
+          </button>
+        <% } %>
+      <% } %>
+    </div>
+    <% }); %>
+  </div>
+  <% } %>
+
+  <% if (history.length > 0) { %>
+  <div class="sub-section-title">Subscription History</div>
+  <table class="sub-history-table">
+    <thead>
+      <tr>
+        <th>Plan</th>
+        <th>Start</th>
+        <th>Expires</th>
+        <th>Amount</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% history.forEach(h => { %>
+      <tr>
+        <td><%= h.plan_name %></td>
+        <td><%= new Date(h.start_date).toLocaleDateString('en-IN') %></td>
+        <td><%= new Date(h.end_date).toLocaleDateString('en-IN') %></td>
+        <td><%= h.granted_by_admin ? 'Free (Admin)' : '₹' + parseFloat(h.amount).toFixed(0) %></td>
+        <td><span class="status-pill <%= h.status %>"><%= h.status %></span></td>
+      </tr>
+      <% }); %>
+    </tbody>
+  </table>
+  <% } else { %>
+    <div class="sub-empty">No subscription history yet.</div>
+  <% } %>
+</div>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+async function startSubPayment(planId, planPrice, planName) {
+  try {
+    const res = await fetch('/api/subscription/create-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ planId, useWallet: true })
+    });
+    const data = await res.json();
+    if (!data.success) return alert(data.message || 'Unable to start payment');
+
+    if (data.walletOnly) {
+      if (!confirm('Pay ₹' + planPrice + ' from your wallet for ' + planName + '?')) return;
+      const wRes = await fetch('/api/subscription/wallet-pay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planId })
+      });
+      const wData = await wRes.json();
+      if (wData.success) { alert('Subscription activated! Refreshing...'); location.reload(); }
+      else alert(wData.message || 'Wallet payment failed');
+      return;
+    }
+
+    new Razorpay({
+      key: data.key,
+      amount: data.amount,
+      currency: 'INR',
+      description: planName,
+      order_id: data.orderId,
+      handler: async function(response) {
+        const vRes = await fetch('/api/subscription/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature,
+            planId,
+            walletDeduction: data.walletDeduction || 0
+          })
+        });
+        const vData = await vRes.json();
+        if (vData.success) { alert('Subscription activated! Enjoy unlimited access.'); location.reload(); }
+        else alert('Verification failed. Please contact support.');
+      },
+      theme: { color: '#7c3aed' }
+    }).open();
+  } catch(e) { alert('Something went wrong. Please try again.'); }
+}
+
+async function payWithWallet(planId, planName) {
+  if (!confirm('Pay with wallet for ' + planName + '?')) return;
+  const res = await fetch('/api/subscription/wallet-pay', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ planId })
+  });
+  const data = await res.json();
+  if (data.success) { alert('Subscription activated!'); location.reload(); }
+  else alert(data.message || 'Failed');
+}
+</script>
+
+<%- include("partials/footer") %>
