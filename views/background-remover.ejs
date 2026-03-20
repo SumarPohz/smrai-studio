@@ -602,6 +602,12 @@
   var origImg     = document.getElementById('bgr-original-img');
   var resultImg   = document.getElementById('bgr-result-img');
   var dlBtn       = document.getElementById('bgr-download-btn');
+  dlBtn.addEventListener('click', function(e) {
+    if (window.AndroidDownloadBridge && dlBtn.href && dlBtn.href.startsWith('data:')) {
+      e.preventDefault();
+      AndroidDownloadBridge.downloadBlob(dlBtn.href, dlBtn.getAttribute('download') || 'background-removed.png');
+    }
+  });
   var tryAgain    = document.getElementById('bgr-try-again');
   var customColor = document.getElementById('bgr-custom-color');
 
