@@ -178,58 +178,194 @@
   }
   .ps-tab.active { color: var(--ps-blue); }
   .ps-tab .tab-icon { font-size: 20px; line-height: 1; }
+
+  /* ── Desktop-only base resets ── */
+  .ht-toolbar { display: none; }
+  .ht-detail  { display: none; }
+
+  /* ── Desktop Layout ── */
+  @media (min-width: 769px) {
+    .ps-wrap { max-width: 100%; background: #f0f4ff; padding-bottom: 0; }
+    .ps-header   { display: none; }
+    .ps-tab-bar  { display: none; }
+    .ps-tabs     { display: none; }
+    .ps-panel    { padding: 0; }
+    .ps-txn-item { display: none; }
+
+    .ht-page {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .ht-main {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 1px 8px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+
+    .ht-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px 0;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .ht-title { font-size: 17px; font-weight: 700; color: #1e293b; }
+    .ht-toolbar .ps-htab { flex: none; padding: 12px 18px; font-size: 13px; }
+
+    .ht-thead,
+    .ht-trow {
+      display: grid;
+      grid-template-columns: 110px 1fr 140px 90px 90px 80px;
+      padding: 0 24px;
+    }
+    .ht-thead { border-bottom: 1px solid #e2e8f0; }
+    .ht-th {
+      font-size: 11px; font-weight: 600; color: #94a3b8;
+      padding: 10px 0; text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .ht-trow {
+      border-bottom: 1px solid #f1f5f9;
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+    .ht-trow:hover     { background: #f8fafc; }
+    .ht-trow.ht-selected { background: #eff6ff; }
+    .ht-td {
+      padding: 13px 0; font-size: 13px; color: #334155;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .ht-td-date { color: #64748b; font-size: 12px; }
+    .ht-td-op   { font-weight: 600; color: #1e293b; }
+    .ht-td-amt  { font-weight: 700; color: #1e293b; }
+
+    .ht-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .ht-dot.success { background: #16a34a; }
+    .ht-dot.failed  { background: #dc2626; }
+    .ht-dot.pending { background: #d97706; }
+
+    /* ── Detail Panel ── */
+    .ht-detail {
+      background: #fff; border-radius: 12px;
+      box-shadow: 0 1px 8px rgba(0,0,0,0.08);
+      padding: 24px; position: sticky; top: 80px;
+    }
+    .ht-detail.open { display: block; }
+    .ht-detail-close {
+      float: right; background: none; border: none;
+      font-size: 18px; cursor: pointer; color: #94a3b8; line-height: 1;
+    }
+    .ht-detail-label {
+      font-size: 11px; font-weight: 600; color: #94a3b8;
+      text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 3px;
+    }
+    .ht-detail-value {
+      font-size: 14px; color: #1e293b; font-weight: 500;
+      margin-bottom: 16px; word-break: break-all;
+    }
+    .ht-detail-amt { font-size: 28px; font-weight: 800; color: #1e293b; margin: 10px 0 18px; }
+    .ht-status-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
+    }
+    .ht-status-badge.success { background: #dcfce7; color: #166534; }
+    .ht-status-badge.failed  { background: #fee2e2; color: #991b1b; }
+    .ht-status-badge.pending { background: #fef9c3; color: #854d0e; }
+  }
 </style>
 
 <div class="ps-wrap">
 
-  <!-- Header -->
+  <!-- Mobile Header -->
   <div class="ps-header">
     <button class="ps-back-btn" onclick="history.back()">←</button>
     <span class="ps-header-title">Transaction History</span>
   </div>
 
-  <!-- Tab Bar -->
+  <!-- Mobile Tab Bar -->
   <div class="ps-tab-bar">
     <button class="ps-htab active" id="tab-recharge" onclick="switchTab('recharge')">📱 Recharges</button>
     <button class="ps-htab" id="tab-bills" onclick="switchTab('bills')">🧾 Bills</button>
   </div>
 
-  <!-- Recharges Panel -->
-  <div class="ps-panel visible" id="panel-recharge">
-    <!-- Skeleton shown while loading -->
-    <div id="recharge-skeleton">
-      <% for(let i=0;i<4;i++){ %>
-      <div class="ps-skeleton">
-        <div class="sk-box sk-icon"></div>
-        <div class="sk-lines">
-          <div class="sk-box sk-line wide"></div>
-          <div class="sk-box sk-line narrow"></div>
+  <!-- Desktop Grid -->
+  <div class="ht-page">
+    <div class="ht-main">
+
+      <!-- Desktop Toolbar -->
+      <div class="ht-toolbar">
+        <span class="ht-title">Transaction History</span>
+        <div>
+          <button class="ps-htab active" id="dtab-recharge" onclick="switchTab('recharge')">📱 Recharges</button>
+          <button class="ps-htab" id="dtab-bills" onclick="switchTab('bills')">🧾 Bills</button>
         </div>
       </div>
-      <% } %>
-    </div>
-    <div id="recharge-list" style="display:none;"></div>
-  </div>
 
-  <!-- Bills Panel -->
-  <div class="ps-panel" id="panel-bills">
-    <div id="bills-skeleton">
-      <% for(let i=0;i<4;i++){ %>
-      <div class="ps-skeleton">
-        <div class="sk-box sk-icon"></div>
-        <div class="sk-lines">
-          <div class="sk-box sk-line wide"></div>
-          <div class="sk-box sk-line narrow"></div>
+      <!-- Recharges Panel -->
+      <div class="ps-panel visible" id="panel-recharge">
+        <div id="recharge-skeleton">
+          <% for(let i=0;i<4;i++){ %>
+          <div class="ps-skeleton">
+            <div class="sk-box sk-icon"></div>
+            <div class="sk-lines">
+              <div class="sk-box sk-line wide"></div>
+              <div class="sk-box sk-line narrow"></div>
+            </div>
+          </div>
+          <% } %>
         </div>
+        <div id="recharge-list" style="display:none;"></div>
       </div>
-      <% } %>
+
+      <!-- Bills Panel -->
+      <div class="ps-panel" id="panel-bills">
+        <div id="bills-skeleton">
+          <% for(let i=0;i<4;i++){ %>
+          <div class="ps-skeleton">
+            <div class="sk-box sk-icon"></div>
+            <div class="sk-lines">
+              <div class="sk-box sk-line wide"></div>
+              <div class="sk-box sk-line narrow"></div>
+            </div>
+          </div>
+          <% } %>
+        </div>
+        <div id="bills-list" style="display:none;"></div>
+      </div>
+
+    </div><!-- /.ht-main -->
+
+    <!-- Detail Panel (desktop only) -->
+    <div class="ht-detail" id="htDetail">
+      <button class="ht-detail-close" onclick="closeDetail()">✕</button>
+      <div style="clear:both; margin-bottom:6px; font-size:11px; font-weight:600; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em;">Transaction Details</div>
+      <div class="ht-detail-amt" id="hdAmt"></div>
+      <div id="hdStatus"></div>
+      <div style="margin-top:22px;">
+        <div class="ht-detail-label">Date &amp; Time</div>
+        <div class="ht-detail-value" id="hdDate"></div>
+        <div class="ht-detail-label">Operator / Biller</div>
+        <div class="ht-detail-value" id="hdOp"></div>
+        <div class="ht-detail-label">Number</div>
+        <div class="ht-detail-value" id="hdNum"></div>
+        <div class="ht-detail-label">Type</div>
+        <div class="ht-detail-value" id="hdType"></div>
+        <div class="ht-detail-label">Reference</div>
+        <div class="ht-detail-value" id="hdRef"></div>
+      </div>
     </div>
-    <div id="bills-list" style="display:none;"></div>
-  </div>
 
-</div>
+  </div><!-- /.ht-page -->
 
-<!-- Bottom Tabs -->
+</div><!-- /.ps-wrap -->
+
+<!-- Mobile Bottom Tabs -->
 <div class="ps-tabs">
   <a class="ps-tab" href="/paysetu">
     <span class="tab-icon">🏠</span>Home
@@ -252,7 +388,11 @@
   };
 
   let rechargeLoaded = false;
-  let billsLoaded = false;
+  let billsLoaded    = false;
+  window._rHistory   = [];
+  window._bHistory   = [];
+
+  function isDesktop() { return window.innerWidth >= 769; }
 
   document.addEventListener('DOMContentLoaded', () => {
     loadRecharges();
@@ -261,9 +401,11 @@
   function switchTab(tab) {
     document.getElementById('tab-recharge').classList.toggle('active', tab === 'recharge');
     document.getElementById('tab-bills').classList.toggle('active', tab === 'bills');
+    document.getElementById('dtab-recharge')?.classList.toggle('active', tab === 'recharge');
+    document.getElementById('dtab-bills')?.classList.toggle('active', tab === 'bills');
     document.getElementById('panel-recharge').classList.toggle('visible', tab === 'recharge');
     document.getElementById('panel-bills').classList.toggle('visible', tab === 'bills');
-    if (tab === 'bills' && !billsLoaded) loadBills();
+    if (tab === 'bills'    && !billsLoaded)    loadBills();
     if (tab === 'recharge' && !rechargeLoaded) loadRecharges();
   }
 
@@ -275,21 +417,45 @@
       const list = document.getElementById('recharge-list');
       list.style.display = 'block';
       if (d.success && d.history.length) {
-        list.innerHTML = d.history.map(tx => {
-          const icon = OP_ICONS[tx.operator] || OP_ICONS.default;
-          const date = new Date(tx.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'2-digit' });
-          return `<div class="ps-txn-item">
-            <div class="ps-txn-icon">${icon}</div>
-            <div class="ps-txn-main">
-              <div class="ps-txn-title">${tx.operator} · ${tx.type === 'dth' ? 'DTH' : 'Mobile'}</div>
-              <div class="ps-txn-sub">${tx.mobile} · ${date}</div>
-            </div>
-            <div class="ps-txn-right">
-              <div class="ps-txn-amount">₹${Number(tx.amount).toFixed(0)}</div>
-              <span class="ps-badge ${tx.status}">${tx.status}</span>
-            </div>
-          </div>`;
-        }).join('');
+        window._rHistory = d.history;
+        if (isDesktop()) {
+          list.innerHTML =
+            `<div class="ht-thead">
+              <div class="ht-th">Date</div>
+              <div class="ht-th">Operator</div>
+              <div class="ht-th">Number</div>
+              <div class="ht-th">Type</div>
+              <div class="ht-th">Amount</div>
+              <div class="ht-th">Status</div>
+            </div>` +
+            d.history.map((tx, i) => {
+              const date = new Date(tx.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'2-digit' });
+              return `<div class="ht-trow" onclick="showDetail(${i},'recharge')">
+                <div class="ht-td ht-td-date">${date}</div>
+                <div class="ht-td ht-td-op">${tx.operator}</div>
+                <div class="ht-td">${tx.mobile}</div>
+                <div class="ht-td">${tx.type === 'dth' ? 'DTH' : 'Mobile'}</div>
+                <div class="ht-td ht-td-amt">₹${Number(tx.amount).toFixed(0)}</div>
+                <div class="ht-td"><span class="ht-dot ${tx.status}"></span>${tx.status}</div>
+              </div>`;
+            }).join('');
+        } else {
+          list.innerHTML = d.history.map(tx => {
+            const icon = OP_ICONS[tx.operator] || OP_ICONS.default;
+            const date = new Date(tx.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'2-digit' });
+            return `<div class="ps-txn-item">
+              <div class="ps-txn-icon">${icon}</div>
+              <div class="ps-txn-main">
+                <div class="ps-txn-title">${tx.operator} · ${tx.type === 'dth' ? 'DTH' : 'Mobile'}</div>
+                <div class="ps-txn-sub">${tx.mobile} · ${date}</div>
+              </div>
+              <div class="ps-txn-right">
+                <div class="ps-txn-amount">₹${Number(tx.amount).toFixed(0)}</div>
+                <span class="ps-badge ${tx.status}">${tx.status}</span>
+              </div>
+            </div>`;
+          }).join('');
+        }
       } else {
         list.innerHTML = emptyState('📱', 'No recharges yet', 'Your recharge history will appear here');
       }
@@ -309,21 +475,45 @@
       const list = document.getElementById('bills-list');
       list.style.display = 'block';
       if (d.success && d.history.length) {
-        list.innerHTML = d.history.map(tx => {
-          const icon = CAT_ICONS[tx.category] || '🏦';
-          const date = new Date(tx.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'2-digit' });
-          return `<div class="ps-txn-item">
-            <div class="ps-txn-icon">${icon}</div>
-            <div class="ps-txn-main">
-              <div class="ps-txn-title">${tx.biller_name || tx.biller_id}</div>
-              <div class="ps-txn-sub">${tx.customer_number} · ${date}</div>
-            </div>
-            <div class="ps-txn-right">
-              <div class="ps-txn-amount">₹${Number(tx.amount).toFixed(0)}</div>
-              <span class="ps-badge ${tx.status}">${tx.status}</span>
-            </div>
-          </div>`;
-        }).join('');
+        window._bHistory = d.history;
+        if (isDesktop()) {
+          list.innerHTML =
+            `<div class="ht-thead">
+              <div class="ht-th">Date</div>
+              <div class="ht-th">Biller</div>
+              <div class="ht-th">Account</div>
+              <div class="ht-th">Category</div>
+              <div class="ht-th">Amount</div>
+              <div class="ht-th">Status</div>
+            </div>` +
+            d.history.map((tx, i) => {
+              const date = new Date(tx.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'2-digit' });
+              return `<div class="ht-trow" onclick="showDetail(${i},'bills')">
+                <div class="ht-td ht-td-date">${date}</div>
+                <div class="ht-td ht-td-op">${tx.biller_name || tx.biller_id}</div>
+                <div class="ht-td">${tx.customer_number}</div>
+                <div class="ht-td">${tx.category || '—'}</div>
+                <div class="ht-td ht-td-amt">₹${Number(tx.amount).toFixed(0)}</div>
+                <div class="ht-td"><span class="ht-dot ${tx.status}"></span>${tx.status}</div>
+              </div>`;
+            }).join('');
+        } else {
+          list.innerHTML = d.history.map(tx => {
+            const icon = CAT_ICONS[tx.category] || '🏦';
+            const date = new Date(tx.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'2-digit' });
+            return `<div class="ps-txn-item">
+              <div class="ps-txn-icon">${icon}</div>
+              <div class="ps-txn-main">
+                <div class="ps-txn-title">${tx.biller_name || tx.biller_id}</div>
+                <div class="ps-txn-sub">${tx.customer_number} · ${date}</div>
+              </div>
+              <div class="ps-txn-right">
+                <div class="ps-txn-amount">₹${Number(tx.amount).toFixed(0)}</div>
+                <span class="ps-badge ${tx.status}">${tx.status}</span>
+              </div>
+            </div>`;
+          }).join('');
+        }
       } else {
         list.innerHTML = emptyState('🧾', 'No bills paid yet', 'Your bill payment history will appear here');
       }
@@ -333,6 +523,33 @@
       document.getElementById('bills-list').innerHTML = emptyState('⚠️', 'Could not load', 'Please try again');
       document.getElementById('bills-list').style.display = 'block';
     }
+  }
+
+  function showDetail(i, type) {
+    const tx = type === 'recharge' ? window._rHistory[i] : window._bHistory[i];
+    if (!tx) return;
+    document.getElementById('hdAmt').textContent = '₹' + Number(tx.amount).toFixed(2);
+    document.getElementById('hdStatus').innerHTML =
+      `<span class="ht-status-badge ${tx.status}">${tx.status}</span>`;
+    document.getElementById('hdDate').textContent =
+      new Date(tx.created_at).toLocaleString('en-IN', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+    document.getElementById('hdOp').textContent =
+      type === 'recharge' ? tx.operator : (tx.biller_name || tx.biller_id);
+    document.getElementById('hdNum').textContent =
+      type === 'recharge' ? tx.mobile : tx.customer_number;
+    document.getElementById('hdType').textContent =
+      type === 'recharge' ? (tx.type === 'dth' ? 'DTH Prepaid' : 'Mobile Prepaid') : (tx.category || '—');
+    document.getElementById('hdRef').textContent = tx.external_ref || tx.id || '—';
+
+    document.querySelectorAll('.ht-trow').forEach(r => r.classList.remove('ht-selected'));
+    const rows = document.querySelectorAll('.ht-trow');
+    if (rows[i]) rows[i].classList.add('ht-selected');
+    document.getElementById('htDetail').classList.add('open');
+  }
+
+  function closeDetail() {
+    document.getElementById('htDetail').classList.remove('open');
+    document.querySelectorAll('.ht-trow').forEach(r => r.classList.remove('ht-selected'));
   }
 
   function emptyState(icon, title, sub) {
