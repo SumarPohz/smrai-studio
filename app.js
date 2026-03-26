@@ -4817,7 +4817,7 @@ app.post("/api/recharge", ensureAuthenticated, paysetuLimiter, async (req, res) 
         );
       }
     } catch (_) {}
-    return res.status(500).json({ success: false, message: "Recharge service unavailable. Amount has been refunded." });
+    return res.status(500).json({ success: false, message: "Recharge service unavailable. Please try again later." });
   }
 });
 
