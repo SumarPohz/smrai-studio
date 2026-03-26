@@ -713,6 +713,70 @@ await db.query(`
       ('SUNTV_DTH','Sun Direct DTH','dth')
     `).catch(() => {});
 
+    // ── Recharge Plans catalog ────────────────────────────────────────────────
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS recharge_plans (
+        id          INT AUTO_INCREMENT PRIMARY KEY,
+        type        VARCHAR(20)  NOT NULL DEFAULT 'mobile',
+        operator    VARCHAR(50)  NOT NULL,
+        amount      INT          NOT NULL,
+        validity    VARCHAR(60)  NOT NULL,
+        description TEXT         NOT NULL,
+        category    VARCHAR(20)  NOT NULL DEFAULT 'data',
+        is_active   TINYINT(1)   NOT NULL DEFAULT 1,
+        sort_order  INT          NOT NULL DEFAULT 0,
+        created_at  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+        INDEX (type, operator)
+      )
+    `).catch(() => {});
+    await db.query(`
+      INSERT IGNORE INTO recharge_plans (type, operator, amount, validity, description, category, sort_order) VALUES
+      -- Airtel Mobile
+      ('mobile','airtel',19,  '1 day',    '200MB data',                                        'data', 1),
+      ('mobile','airtel',98,  '28 days',  'Talktime only',                                     'voice',2),
+      ('mobile','airtel',199, '28 days',  '1.5GB/day + Unlimited calls',                       'data', 3),
+      ('mobile','airtel',299, '28 days',  '2GB/day + Unlimited calls',                         'data', 4),
+      ('mobile','airtel',359, '28 days',  '2.5GB/day + Unlimited calls',                       'data', 5),
+      ('mobile','airtel',449, '56 days',  '1.5GB/day + Unlimited calls',                       'data', 6),
+      ('mobile','airtel',549, '56 days',  '2GB/day + Unlimited calls',                         'data', 7),
+      ('mobile','airtel',599, '56 days',  '2.5GB/day + Unlimited calls',                       'data', 8),
+      ('mobile','airtel',699, '84 days',  '1.5GB/day + Unlimited calls',                       'long', 9),
+      ('mobile','airtel',839, '84 days',  '2GB/day + Unlimited calls',                         'long', 10),
+      ('mobile','airtel',979, '84 days',  '2.5GB/day + Unlimited calls',                       'long', 11),
+      ('mobile','airtel',1199,'84 days',  '2GB/day + Unlimited calls + Disney+ Hotstar',       'long', 12),
+      ('mobile','airtel',1499,'84 days',  '2.5GB/day + Unlimited calls + Netflix',             'long', 13),
+      ('mobile','airtel',2999,'365 days', '2GB/day + Unlimited calls',                         'long', 14),
+      ('mobile','airtel',3599,'365 days', 'Unlimited 5G + 2GB/day + Unlimited calls',          'long', 15),
+      -- Vi Mobile
+      ('mobile','vi',99,  '28 days',  'Talktime + 100MB data',                                'voice',1),
+      ('mobile','vi',179, '28 days',  '1.5GB/day + Unlimited calls',                          'data', 2),
+      ('mobile','vi',299, '28 days',  '2GB/day + Unlimited calls',                            'data', 3),
+      ('mobile','vi',359, '28 days',  '2.5GB/day + Unlimited calls',                          'data', 4),
+      ('mobile','vi',399, '56 days',  '1.5GB/day + Unlimited calls',                          'data', 5),
+      ('mobile','vi',479, '56 days',  '2GB/day + Unlimited calls',                            'data', 6),
+      ('mobile','vi',699, '84 days',  '1.5GB/day + Unlimited calls',                          'long', 7),
+      ('mobile','vi',839, '84 days',  '2GB/day + Unlimited calls',                            'long', 8),
+      ('mobile','vi',2899,'365 days', '2GB/day + Unlimited calls',                            'long', 9),
+      -- BSNL Mobile
+      ('mobile','bsnl',97,  '18 days',  '1GB/day + Unlimited calls',                          'data', 1),
+      ('mobile','bsnl',107, '18 days',  '2GB/day + Unlimited calls',                          'data', 2),
+      ('mobile','bsnl',187, '28 days',  '1GB/day + Unlimited calls',                          'data', 3),
+      ('mobile','bsnl',397, '80 days',  '2GB/day + Unlimited calls',                          'long', 4),
+      ('mobile','bsnl',797, '160 days', '2GB/day + Unlimited calls',                          'long', 5),
+      -- Tata Play DTH
+      ('dth','tataplay',153, '30 days', 'Basic SD Pack',                                      'data', 1),
+      ('dth','tataplay',259, '30 days', 'Popular SD Pack',                                    'data', 2),
+      ('dth','tataplay',399, '30 days', 'HD Pack',                                            'data', 3),
+      -- Dish TV DTH
+      ('dth','dishtv',149, '30 days',   'Economy Pack',                                       'data', 1),
+      ('dth','dishtv',249, '30 days',   'Super Family Pack',                                  'data', 2),
+      ('dth','dishtv',349, '30 days',   'Super HD Pack',                                      'data', 3),
+      -- Airtel DTH
+      ('dth','airtel_dth',153, '30 days', 'Basic Pack',                                       'data', 1),
+      ('dth','airtel_dth',299, '30 days', 'Value Pack',                                       'data', 2),
+      ('dth','airtel_dth',499, '30 days', 'Premium HD Pack',                                  'data', 3)
+    `).catch(() => {});
+
     await db.query(`
       CREATE TABLE IF NOT EXISTS recharge_api_providers (
         id           INT AUTO_INCREMENT PRIMARY KEY,
@@ -4390,6 +4454,27 @@ const FEMONEY24_OP_CODES = {
 
 // ── Mock recharge plans ────────────────────────────────────────────────────────
 
+const _jioCache = { plans: null, at: 0, TTL: 30 * 60 * 1000 }; // 30-min cache
+
+function mapJioPlan(plan, subCatType) {
+  const details  = plan.misc?.details || [];
+  const validity = details.find(d => /day|month|year/i.test(d)) || 'See details';
+  const benefits = [plan.primeData?.offerBenefits1, plan.primeData?.offerBenefits2, plan.primeData?.offerBenefits3]
+                     .filter(Boolean).join(' | ');
+  const amt = parseInt(plan.amount) || 0;
+  let category = 'data';
+  if (/voice|talktime/i.test(subCatType))            category = 'voice';
+  if (/365|annual|year|300/i.test(validity))         category = 'long';
+  else if (amt >= 500 && /84|90|91/i.test(validity)) category = 'long';
+  return {
+    amount:        amt,
+    validity,
+    description:   benefits || plan.description || subCatType || '',
+    category,
+    subscriptions: plan.misc?.subscriptions || []
+  };
+}
+
 const RECHARGE_PLANS = {
   mobile: {
     airtel: [
@@ -4517,21 +4602,50 @@ app.post("/api/wallet/topup/verify", ensureAuthenticated, async (req, res) => {
 
 // ── Recharge: Get plans ───────────────────────────────────────────────────────
 
-app.get("/api/recharge/plans", ensureAuthenticated, (req, res) => {
+app.get("/api/recharge/plans", ensureAuthenticated, async (req, res) => {
   const type     = (req.query.type     || "mobile").toLowerCase();
   const operator = (req.query.operator || "").toLowerCase();
 
+  // Live Jio plans via Jio's own API
+  if (type === "mobile" && operator === "jio") {
+    const now = Date.now();
+    if (_jioCache.plans && now - _jioCache.at < _jioCache.TTL) {
+      return res.json({ success: true, plans: _jioCache.plans });
+    }
+    try {
+      const r    = await fetch("https://www.jio.com/api/jio-mdmdata-service/mdmdata/recharge/plans?productType=MOBILITY&billingType=1");
+      const data = await r.json();
+      const plans = [];
+      for (const cat of (data.planCategories || [])) {
+        for (const sub of (cat.subCategories || [])) {
+          for (const plan of (sub.plans || [])) {
+            plans.push(mapJioPlan(plan, sub.type || cat.type));
+          }
+        }
+      }
+      _jioCache.plans = plans;
+      _jioCache.at    = now;
+      return res.json({ success: true, plans });
+    } catch {
+      return res.json({ success: true, plans: RECHARGE_PLANS.mobile?.jio || [] });
+    }
+  }
+
+  // All other operators — query DB, fallback to static
+  if (operator) {
+    try {
+      const result = await db.query(
+        `SELECT amount, validity, description, category FROM recharge_plans
+         WHERE type=? AND operator=? AND is_active=1 ORDER BY sort_order, amount`,
+        [type, operator]
+      );
+      if (result.rows.length) return res.json({ success: true, plans: result.rows });
+    } catch (_) {}
+  }
+  // Static fallback
   const typeGroup = RECHARGE_PLANS[type];
-  if (!typeGroup) {
-    return res.status(400).json({ success: false, message: "Invalid type. Use: mobile, dth" });
-  }
-
-  if (operator && typeGroup[operator]) {
-    return res.json({ success: true, plans: typeGroup[operator] });
-  }
-
-  // Return all operators if no specific one requested
-  return res.json({ success: true, plans: typeGroup });
+  if (!typeGroup) return res.status(400).json({ success: false, message: "Invalid type." });
+  return res.json({ success: true, plans: operator ? (typeGroup[operator] || []) : typeGroup });
 });
 
 // ── Recharge: Process mobile/DTH recharge ────────────────────────────────────

@@ -30,7 +30,7 @@ const adImgStorage = multer.diskStorage({
 });
 const adUpload = multer({ storage: adImgStorage, limits: { fileSize: 5 * 1024 * 1024 } });
 
-const ADMIN_SECTIONS = ["overview","users","activity","requests","pricing","templates","homepage","ads","coupons","apikeys","investors","wallet","subscriptions","paysetu"];
+const ADMIN_SECTIONS = ["overview","users","activity","requests","pricing","templates","homepage","ads","coupons","apikeys","investors","wallet","subscriptions","paysetu","plans"];
 
 // Map API path prefixes → section key (for write-guard)
 const SECTION_API_MAP = [
@@ -1906,6 +1906,60 @@ export default function adminRouter(db) {
       }
       return res.json({ success: false, message: "Balance check not supported for this provider." });
     } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+  });
+
+  // ── Recharge Plans CRUD ───────────────────────────────────────────────────
+
+  router.get("/api/recharge-plans", async (req, res) => {
+    try {
+      const { type, operator } = req.query;
+      let sql = "SELECT * FROM recharge_plans WHERE 1=1";
+      const params = [];
+      if (type)     { sql += " AND type=?";     params.push(type); }
+      if (operator) { sql += " AND operator=?"; params.push(operator); }
+      sql += " ORDER BY type, operator, sort_order, amount";
+      const result = await db.query(sql, params);
+      res.json({ success: true, plans: result.rows });
+    } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+  });
+
+  router.post("/api/recharge-plans", async (req, res) => {
+    try {
+      const { type, operator, amount, validity, description, category, sort_order } = req.body;
+      if (!type || !operator || !amount || !validity || !description) {
+        return res.status(400).json({ success: false, error: "type, operator, amount, validity, description are required." });
+      }
+      const result = await db.query(
+        "INSERT INTO recharge_plans (type, operator, amount, validity, description, category, sort_order) VALUES (?,?,?,?,?,?,?)",
+        [type, operator, parseInt(amount), validity, description, category || "data", parseInt(sort_order) || 0]
+      );
+      res.json({ success: true, id: result.insertId });
+    } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+  });
+
+  router.put("/api/recharge-plans/:id", async (req, res) => {
+    try {
+      const { amount, validity, description, category, sort_order, is_active } = req.body;
+      await db.query(
+        "UPDATE recharge_plans SET amount=?, validity=?, description=?, category=?, sort_order=?, is_active=? WHERE id=?",
+        [parseInt(amount), validity, description, category, parseInt(sort_order) || 0, is_active ? 1 : 0, req.params.id]
+      );
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+  });
+
+  router.post("/api/recharge-plans/:id/toggle", async (req, res) => {
+    try {
+      await db.query("UPDATE recharge_plans SET is_active = 1 - is_active WHERE id=?", [req.params.id]);
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+  });
+
+  router.delete("/api/recharge-plans/:id", async (req, res) => {
+    try {
+      await db.query("DELETE FROM recharge_plans WHERE id=?", [req.params.id]);
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ success: false, error: err.message }); }
   });
 
   return router;

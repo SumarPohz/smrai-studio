@@ -92,6 +92,9 @@
         <i class="fas fa-satellite-dish"></i> PaySetu
       </a>
       <% } %>
+      <a href="#plans" class="adm-nav-link" data-section="plans">
+        <i class="fas fa-list-alt"></i> Recharge Plans
+      </a>
       <a href="/dashboard" class="adm-nav-link adm-nav-back">
         <i class="fas fa-arrow-left"></i> Back to App
       </a>
@@ -1681,6 +1684,102 @@
       </div>
 
     </div><!-- /paysetu -->
+
+    <!-- ── Section: Recharge Plans ──────────────────────────────────────────── -->
+    <div id="plans" class="adm-section-page" hidden>
+      <div class="adm-section-header">
+        <h2><i class="fas fa-list-alt"></i> Recharge Plans</h2>
+        <p>Manage prepaid plans shown to users. Jio uses a live API. Airtel, Vi, BSNL &amp; DTH use this table.</p>
+      </div>
+
+      <!-- Filter + Add bar -->
+      <div class="adm-ads-form-card" style="margin-bottom:1rem">
+        <div style="display:flex;flex-wrap:wrap;gap:0.75rem;align-items:flex-end">
+          <div style="flex:1;min-width:130px">
+            <label style="font-size:0.78rem;font-weight:700;color:#475569;display:block;margin-bottom:4px">Type</label>
+            <select id="plansFilterType" class="adm-ads-field select" style="width:100%;padding:0.5rem 0.65rem;border:1px solid #cbd5e1;border-radius:8px;font-size:0.85rem;background:#f8fafc" onchange="plansFilterOperatorUpdate();loadPlansTable()">
+              <option value="">All</option>
+              <option value="mobile">Mobile</option>
+              <option value="dth">DTH</option>
+            </select>
+          </div>
+          <div style="flex:1;min-width:130px">
+            <label style="font-size:0.78rem;font-weight:700;color:#475569;display:block;margin-bottom:4px">Operator</label>
+            <select id="plansFilterOp" class="adm-ads-field select" style="width:100%;padding:0.5rem 0.65rem;border:1px solid #cbd5e1;border-radius:8px;font-size:0.85rem;background:#f8fafc" onchange="loadPlansTable()">
+              <option value="">All</option>
+            </select>
+          </div>
+          <button onclick="openPlanModal()" style="padding:0.55rem 1.1rem;background:#6366f1;color:#fff;border:none;border-radius:8px;font-size:0.85rem;font-weight:700;cursor:pointer;white-space:nowrap">+ Add Plan</button>
+        </div>
+      </div>
+
+      <!-- Plans Table -->
+      <div class="adm-ads-table-card">
+        <table class="adm-ads-table" style="width:100%">
+          <thead>
+            <tr>
+              <th>Amount</th><th>Validity</th><th>Description</th><th>Category</th><th>Operator</th><th>Type</th><th>Status</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="plansTableBody"><tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:1.5rem">Loading…</td></tr></tbody>
+        </table>
+      </div>
+
+      <!-- Add / Edit Modal -->
+      <div id="planModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9999;align-items:center;justify-content:center">
+        <div style="background:#fff;border-radius:16px;padding:1.5rem;max-width:460px;width:92%;max-height:90vh;overflow-y:auto">
+          <h3 id="planModalTitle" style="margin:0 0 1rem;font-size:1rem;color:#1e293b">Add Plan</h3>
+          <input type="hidden" id="planEditId">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem">
+            <div>
+              <label style="font-size:0.78rem;font-weight:700;color:#475569;display:block;margin-bottom:3px">Type *</label>
+              <select id="planFormType" style="width:100%;padding:0.5rem;border:1px solid #cbd5e1;border-radius:8px;font-size:0.85rem" onchange="planModalOpUpdate()">
+                <option value="mobile">Mobile</option>
+                <option value="dth">DTH</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:0.78rem;font-weight:700;color:#475569;display:block;margin-bottom:3px">Operator *</label>
+              <select id="planFormOp" style="width:100%;padding:0.5rem;border:1px solid #cbd5e1;border-radius:8px;font-size:0.85rem">
+                <option value="airtel">Airtel</option>
+                <option value="vi">Vi</option>
+                <option value="bsnl">BSNL</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:0.78rem;font-weight:700;color:#475569;display:block;margin-bottom:3px">Amount (₹) *</label>
+              <input type="number" id="planFormAmount" min="1" placeholder="e.g. 299" style="width:100%;padding:0.5rem;border:1px solid #cbd5e1;border-radius:8px;font-size:0.85rem;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:0.78rem;font-weight:700;color:#475569;display:block;margin-bottom:3px">Validity *</label>
+              <input type="text" id="planFormValidity" placeholder="e.g. 28 days" style="width:100%;padding:0.5rem;border:1px solid #cbd5e1;border-radius:8px;font-size:0.85rem;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:0.78rem;font-weight:700;color:#475569;display:block;margin-bottom:3px">Category</label>
+              <select id="planFormCat" style="width:100%;padding:0.5rem;border:1px solid #cbd5e1;border-radius:8px;font-size:0.85rem">
+                <option value="data">Data</option>
+                <option value="voice">Voice</option>
+                <option value="long">Long Validity</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:0.78rem;font-weight:700;color:#475569;display:block;margin-bottom:3px">Sort Order</label>
+              <input type="number" id="planFormSort" value="0" min="0" style="width:100%;padding:0.5rem;border:1px solid #cbd5e1;border-radius:8px;font-size:0.85rem;box-sizing:border-box">
+            </div>
+          </div>
+          <div style="margin-bottom:1rem">
+            <label style="font-size:0.78rem;font-weight:700;color:#475569;display:block;margin-bottom:3px">Description *</label>
+            <input type="text" id="planFormDesc" placeholder="e.g. 2GB/day + Unlimited calls" style="width:100%;padding:0.5rem;border:1px solid #cbd5e1;border-radius:8px;font-size:0.85rem;box-sizing:border-box">
+          </div>
+          <div id="planModalErr" style="color:#dc2626;font-size:0.8rem;min-height:18px;margin-bottom:0.5rem"></div>
+          <div style="display:flex;gap:0.6rem">
+            <button onclick="submitPlanForm()" id="planSaveBtn" style="flex:1;padding:0.65rem;background:#6366f1;color:#fff;border:none;border-radius:9px;font-weight:700;cursor:pointer;font-size:0.9rem">Save Plan</button>
+            <button onclick="closePlanModal()" style="flex:1;padding:0.65rem;background:#f1f5f9;color:#374151;border:none;border-radius:9px;font-weight:600;cursor:pointer;font-size:0.9rem">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /plans -->
 
     <!-- PaySetu: Refund Modal -->
     <div id="psRefundModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">
@@ -6083,6 +6182,136 @@ async function togglePsProvider(id, activate) {
     } else showAdmToast('Failed: ' + d.message, 'error');
   } catch(e) { showAdmToast(e.message, 'error'); }
 }
+
+// ── Recharge Plans ────────────────────────────────────────────────────────────
+
+const PLAN_OPS = {
+  mobile: [['airtel','Airtel'],['vi','Vi'],['bsnl','BSNL']],
+  dth:    [['tataplay','Tata Play'],['dishtv','Dish TV'],['airtel_dth','Airtel DTH']]
+};
+
+function plansFilterOperatorUpdate() {
+  const type = document.getElementById('plansFilterType').value;
+  const sel  = document.getElementById('plansFilterOp');
+  sel.innerHTML = '<option value="">All</option>';
+  (PLAN_OPS[type] || []).forEach(([v,l]) => sel.innerHTML += `<option value="${v}">${l}</option>`);
+}
+
+function planModalOpUpdate() {
+  const type = document.getElementById('planFormType').value;
+  const sel  = document.getElementById('planFormOp');
+  sel.innerHTML = '';
+  (PLAN_OPS[type] || []).forEach(([v,l]) => sel.innerHTML += `<option value="${v}">${l}</option>`);
+}
+
+async function loadPlansTable() {
+  const tbody = document.getElementById('plansTableBody');
+  tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:1rem">Loading…</td></tr>';
+  const type = document.getElementById('plansFilterType').value;
+  const op   = document.getElementById('plansFilterOp').value;
+  let url = '/admin/api/recharge-plans';
+  const params = [];
+  if (type) params.push('type=' + type);
+  if (op)   params.push('operator=' + op);
+  if (params.length) url += '?' + params.join('&');
+  try {
+    const d = await fetch(url).then(r => r.json());
+    if (!d.success || !d.plans.length) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:1.5rem">No plans found.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = d.plans.map(p => `
+      <tr>
+        <td><strong>₹${p.amount}</strong></td>
+        <td>${p.validity}</td>
+        <td style="max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${p.description}">${p.description}</td>
+        <td><span style="background:#ede9fe;color:#6d28d9;border-radius:99px;padding:2px 9px;font-size:0.72rem;font-weight:700">${p.category}</span></td>
+        <td style="text-transform:capitalize">${p.operator}</td>
+        <td style="text-transform:capitalize">${p.type}</td>
+        <td>
+          <span style="cursor:pointer;background:${p.is_active?'#dcfce7':'#fee2e2'};color:${p.is_active?'#16a34a':'#dc2626'};border-radius:99px;padding:2px 10px;font-size:0.72rem;font-weight:700"
+            onclick="togglePlan(${p.id},this)">${p.is_active?'Active':'Off'}</span>
+        </td>
+        <td style="white-space:nowrap">
+          <button onclick='editPlan(${JSON.stringify(p)})' style="padding:3px 10px;background:#e0e7ff;color:#4338ca;border:none;border-radius:6px;font-size:0.75rem;font-weight:600;cursor:pointer;margin-right:4px">Edit</button>
+          <button onclick="deletePlan(${p.id})" style="padding:3px 10px;background:#fee2e2;color:#dc2626;border:none;border-radius:6px;font-size:0.75rem;font-weight:600;cursor:pointer">Del</button>
+        </td>
+      </tr>`).join('');
+  } catch(e) { tbody.innerHTML = '<tr><td colspan="8" style="color:#dc2626;padding:1rem">Error loading plans.</td></tr>'; }
+}
+
+function openPlanModal(edit) {
+  document.getElementById('planModal').style.display = 'flex';
+  document.getElementById('planModalErr').textContent = '';
+  document.getElementById('planEditId').value = edit ? edit.id : '';
+  document.getElementById('planModalTitle').textContent = edit ? 'Edit Plan' : 'Add Plan';
+  document.getElementById('planFormType').value = edit ? edit.type : 'mobile';
+  planModalOpUpdate();
+  if (edit) document.getElementById('planFormOp').value = edit.operator;
+  document.getElementById('planFormAmount').value   = edit ? edit.amount   : '';
+  document.getElementById('planFormValidity').value = edit ? edit.validity : '';
+  document.getElementById('planFormDesc').value     = edit ? edit.description : '';
+  document.getElementById('planFormCat').value      = edit ? edit.category : 'data';
+  document.getElementById('planFormSort').value     = edit ? (edit.sort_order || 0) : 0;
+}
+function closePlanModal() { document.getElementById('planModal').style.display = 'none'; }
+function editPlan(p) { openPlanModal(p); }
+
+async function submitPlanForm() {
+  const btn = document.getElementById('planSaveBtn');
+  const err = document.getElementById('planModalErr');
+  const id  = document.getElementById('planEditId').value;
+  const body = {
+    type:        document.getElementById('planFormType').value,
+    operator:    document.getElementById('planFormOp').value,
+    amount:      document.getElementById('planFormAmount').value,
+    validity:    document.getElementById('planFormValidity').value.trim(),
+    description: document.getElementById('planFormDesc').value.trim(),
+    category:    document.getElementById('planFormCat').value,
+    sort_order:  document.getElementById('planFormSort').value,
+    is_active:   1
+  };
+  if (!body.amount || !body.validity || !body.description) {
+    err.textContent = 'Amount, validity and description are required.'; return;
+  }
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const url    = id ? `/admin/api/recharge-plans/${id}` : '/admin/api/recharge-plans';
+    const method = id ? 'PUT' : 'POST';
+    const d = await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) }).then(r => r.json());
+    if (d.success) { closePlanModal(); loadPlansTable(); showAdmToast('✅ Plan saved'); }
+    else { err.textContent = d.error || 'Failed to save.'; }
+  } catch(e) { err.textContent = e.message; }
+  btn.disabled = false; btn.textContent = 'Save Plan';
+}
+
+async function togglePlan(id, el) {
+  try {
+    const d = await fetch(`/admin/api/recharge-plans/${id}/toggle`, {method:'POST'}).then(r => r.json());
+    if (d.success) loadPlansTable();
+    else showAdmToast('Toggle failed', 'error');
+  } catch(e) { showAdmToast(e.message,'error'); }
+}
+
+async function deletePlan(id) {
+  if (!confirm('Delete this plan?')) return;
+  try {
+    const d = await fetch(`/admin/api/recharge-plans/${id}`, {method:'DELETE'}).then(r => r.json());
+    if (d.success) { loadPlansTable(); showAdmToast('🗑️ Plan deleted'); }
+    else showAdmToast('Delete failed', 'error');
+  } catch(e) { showAdmToast(e.message,'error'); }
+}
+
+// Load plans when section becomes active
+document.addEventListener('DOMContentLoaded', () => {
+  const plansSection = document.getElementById('plans');
+  if (plansSection) {
+    const obs = new MutationObserver(() => {
+      if (!plansSection.hidden) { plansFilterOperatorUpdate(); loadPlansTable(); obs.disconnect(); }
+    });
+    obs.observe(plansSection, { attributes: true, attributeFilter: ['hidden'] });
+  }
+});
 </script>
 
 <%- include("../partials/footer") %>

@@ -288,7 +288,8 @@
   .ds-plan-card:hover { border-color: var(--ds-blue); box-shadow: 0 2px 10px rgba(26,43,107,0.10); }
   .ds-plan-amt { font-size: 22px; font-weight: 800; color: var(--ds-blue); margin-bottom: 4px; }
   .ds-plan-validity { font-size: 12px; color: var(--ds-muted); margin-bottom: 4px; }
-  .ds-plan-desc { font-size: 12px; color: #475569; margin-bottom: 12px; line-height: 1.5; }
+  .ds-plan-desc { font-size: 12px; color: #475569; margin-bottom: 6px; line-height: 1.5; }
+  .ds-plan-subs { font-size: 10.5px; color: #f97316; font-weight: 600; margin-bottom: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ds-plan-btn {
     width: 100%;
     padding: 8px;
@@ -931,13 +932,19 @@
       grid.innerHTML = '<div class="ds-no-plans">No plans found for this filter.</div>';
       return;
     }
-    grid.innerHTML = plans.map((p, i) => `
+    grid.innerHTML = plans.map((p, i) => {
+      const subs = p.subscriptions?.length
+        ? `<div class="ds-plan-subs">📺 ${p.subscriptions.slice(0, 3).join(' · ')}</div>`
+        : '';
+      return `
       <div class="ds-plan-card">
         <div class="ds-plan-amt">₹ ${p.amount}</div>
         <div class="ds-plan-validity">Validity: ${p.validity}</div>
         <div class="ds-plan-desc">${p.description}</div>
+        ${subs}
         <button class="ds-plan-btn" onclick="openBkModal(${i})">Recharge</button>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   }
 
   /* ── Plan Breakdown Modal ── */
