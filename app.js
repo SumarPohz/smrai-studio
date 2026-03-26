@@ -270,6 +270,8 @@ await db.query(`
     `);
     await db.query(`INSERT IGNORE INTO admin_settings (\`key\`, value) VALUES ('ads_enabled', 'true')`);
     await db.query(`INSERT IGNORE INTO admin_settings (\`key\`, value) VALUES ('google_translate_enabled', 'false')`);
+    await db.query(`INSERT IGNORE INTO admin_settings (\`key\`, value) VALUES ('dth_recharge_min', '200')`);
+    await db.query(`INSERT IGNORE INTO admin_settings (\`key\`, value) VALUES ('dth_recharge_max', '50000')`);
 
     // ── Homepage editable content defaults ───────────────────────────────────
     const homepageDefaults = [
@@ -4672,8 +4674,22 @@ app.post("/api/recharge", ensureAuthenticated, paysetuLimiter, async (req, res) 
     return res.status(400).json({ success: false, message: "Type must be mobile or dth." });
   }
   const amount = parseFloat(rawAmount);
-  if (!amount || amount <= 0 || amount > 10000) {
-    return res.status(400).json({ success: false, message: "Amount must be between ₹1 and ₹10,000." });
+  if (!amount || amount <= 0) {
+    return res.status(400).json({ success: false, message: "Invalid amount." });
+  }
+  if (String(type || "").toLowerCase() === "dth") {
+    try {
+      const limRows = (await db.query(
+        "SELECT `key`, value FROM admin_settings WHERE `key` IN ('dth_recharge_min','dth_recharge_max')"
+      )).rows;
+      const lim = {};
+      for (const r of limRows) lim[r.key] = parseInt(r.value, 10);
+      const dthMin = lim.dth_recharge_min ?? 200;
+      const dthMax = lim.dth_recharge_max ?? 50000;
+      if (amount < dthMin || amount > dthMax) {
+        return res.status(400).json({ success: false, message: `DTH recharge amount must be between ₹${dthMin} and ₹${dthMax}.` });
+      }
+    } catch (_) {}
   }
 
   const userId = req.user.id;
@@ -4928,6 +4944,24 @@ app.get("/api/bbps/history", ensureAuthenticated, async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+
+// ── Recharge: DTH limits (public — read by recharge page on load) ─────────────
+app.get("/api/recharge/dth-limits", ensureAuthenticated, async (req, res) => {
+  try {
+    const result = await db.query(
+      "SELECT `key`, value FROM admin_settings WHERE `key` IN ('dth_recharge_min','dth_recharge_max')"
+    );
+    const map = {};
+    for (const r of result.rows) map[r.key] = parseInt(r.value, 10) || 0;
+    return res.json({
+      success: true,
+      min: map.dth_recharge_min ?? 200,
+      max: map.dth_recharge_max ?? 50000,
+    });
+  } catch {
+    return res.json({ success: true, min: 200, max: 50000 });
+  }
+});
 
 // ── PaySetu Page Routes ───────────────────────────────────────────────────────
 app.get('/paysetu', ensureAuthenticated, (req, res) => {

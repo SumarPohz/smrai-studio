@@ -1692,6 +1692,26 @@
         <p>Manage prepaid plans shown to users. Jio uses a live API. Airtel, Vi, BSNL &amp; DTH use this table.</p>
       </div>
 
+      <!-- DTH Limits card -->
+      <div class="adm-ads-form-card" style="margin-bottom:1.25rem">
+        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.85rem">
+          <i class="fas fa-satellite-dish" style="color:#6366f1;font-size:1rem"></i>
+          <span style="font-weight:700;font-size:0.95rem;color:#1e293b">DTH Recharge Limits</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:0.75rem;align-items:flex-end">
+          <div style="flex:1;min-width:120px">
+            <label style="font-size:0.78rem;font-weight:700;color:#475569;display:block;margin-bottom:4px">Min Amount (₹)</label>
+            <input type="number" id="dthLimitMin" min="1" max="49999" style="width:100%;padding:0.5rem 0.65rem;border:1px solid #cbd5e1;border-radius:8px;font-size:0.85rem" placeholder="200" />
+          </div>
+          <div style="flex:1;min-width:120px">
+            <label style="font-size:0.78rem;font-weight:700;color:#475569;display:block;margin-bottom:4px">Max Amount (₹)</label>
+            <input type="number" id="dthLimitMax" min="1" max="1000000" style="width:100%;padding:0.5rem 0.65rem;border:1px solid #cbd5e1;border-radius:8px;font-size:0.85rem" placeholder="50000" />
+          </div>
+          <button onclick="saveDthLimits()" style="padding:0.55rem 1.1rem;background:#6366f1;color:#fff;border:none;border-radius:8px;font-size:0.85rem;font-weight:700;cursor:pointer;white-space:nowrap">Save Limits</button>
+        </div>
+        <p id="dthLimitsMsg" style="margin:0.5rem 0 0;font-size:0.8rem;color:#10b981;display:none"></p>
+      </div>
+
       <!-- Filter + Add bar -->
       <div class="adm-ads-form-card" style="margin-bottom:1rem">
         <div style="display:flex;flex-wrap:wrap;gap:0.75rem;align-items:flex-end">
@@ -6302,12 +6322,44 @@ async function deletePlan(id) {
   } catch(e) { showAdmToast(e.message,'error'); }
 }
 
+async function loadDthLimits() {
+  try {
+    const d = await fetch('/admin/api/settings').then(r => r.json());
+    if (d.success) {
+      const s = d.settings;
+      document.getElementById('dthLimitMin').value = s.dth_recharge_min || 200;
+      document.getElementById('dthLimitMax').value = s.dth_recharge_max || 50000;
+    }
+  } catch(e) {}
+}
+
+async function saveDthLimits() {
+  const min = parseInt(document.getElementById('dthLimitMin').value, 10);
+  const max = parseInt(document.getElementById('dthLimitMax').value, 10);
+  const msg = document.getElementById('dthLimitsMsg');
+  if (isNaN(min) || min < 1) { showAdmToast('Enter a valid minimum amount', 'error'); return; }
+  if (isNaN(max) || max <= min) { showAdmToast('Max must be greater than min', 'error'); return; }
+  try {
+    const d = await fetch('/admin/api/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dth_recharge_min: min, dth_recharge_max: max })
+    }).then(r => r.json());
+    if (d.success) {
+      msg.textContent = `Saved — Min ₹${min}, Max ₹${max}`;
+      msg.style.display = 'block';
+      setTimeout(() => msg.style.display = 'none', 3000);
+      showAdmToast('DTH limits updated');
+    } else showAdmToast('Save failed', 'error');
+  } catch(e) { showAdmToast(e.message, 'error'); }
+}
+
 // Load plans when section becomes active
 document.addEventListener('DOMContentLoaded', () => {
   const plansSection = document.getElementById('plans');
   if (plansSection) {
     const obs = new MutationObserver(() => {
-      if (!plansSection.hidden) { plansFilterOperatorUpdate(); loadPlansTable(); obs.disconnect(); }
+      if (!plansSection.hidden) { plansFilterOperatorUpdate(); loadPlansTable(); loadDthLimits(); obs.disconnect(); }
     });
     obs.observe(plansSection, { attributes: true, attributeFilter: ['hidden'] });
   }
