@@ -460,12 +460,76 @@
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* ── Toast ── */
+  /* ── Recharge Status Modal ── */
+  .rcg-overlay {
+    position: fixed; inset: 0;
+    background: rgba(15,23,42,0.5);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 900; opacity: 0; pointer-events: none;
+    transition: opacity 0.25s;
+  }
+  .rcg-overlay.show { opacity: 1; pointer-events: all; }
+  .rcg-card {
+    background: #fff; border-radius: 20px;
+    padding: 36px 28px 24px; width: min(400px, 92vw);
+    text-align: center;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.18);
+    transform: translateY(28px) scale(0.95);
+    transition: transform 0.35s cubic-bezier(0.34,1.5,0.64,1);
+  }
+  .rcg-overlay.show .rcg-card { transform: translateY(0) scale(1); }
+  .rcg-icon-wrap {
+    width: 76px; height: 76px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 18px;
+  }
+  .rcg-icon-wrap.success { background: #dcfce7; }
+  .rcg-icon-wrap.pending { background: #fef3c7; }
+  .rcg-icon-wrap.failed  { background: #fee2e2; }
+  @keyframes rcg-draw { to { stroke-dashoffset: 0; } }
+  @keyframes rcg-spin  { to { transform: rotate(360deg); } }
+  .rcg-anim-check { stroke-dasharray: 56; stroke-dashoffset: 56; animation: rcg-draw 0.45s 0.15s ease forwards; }
+  .rcg-anim-spin  { transform-origin: center; animation: rcg-spin 1.4s linear infinite; }
+  .rcg-title {
+    font-size: 20px; font-weight: 700; margin-bottom: 6px; line-height: 1.3;
+  }
+  .rcg-title.success { color: #15803d; }
+  .rcg-title.pending { color: #92400e; }
+  .rcg-title.failed  { color: #b91c1c; }
+  .rcg-subtitle {
+    font-size: 14px; color: var(--ds-muted); margin-bottom: 18px; line-height: 1.55;
+  }
+  .rcg-pills {
+    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 18px;
+  }
+  .rcg-pill {
+    background: #f1f5f9; border-radius: 100px;
+    padding: 5px 13px; font-size: 13px; color: #334155; font-weight: 500;
+  }
+  .rcg-refund {
+    background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px;
+    padding: 10px 14px; font-size: 13px; color: #166534;
+    display: flex; align-items: center; gap: 8px; margin-bottom: 18px;
+    text-align: left;
+  }
+  .rcg-progress { height: 3px; background: #e2e8f0; border-radius: 3px; margin-bottom: 20px; overflow: hidden; }
+  .rcg-progress-bar { height: 100%; border-radius: 3px; width: 100%; }
+  .rcg-progress-bar.success { background: var(--ds-green); }
+  .rcg-actions { display: flex; gap: 10px; }
+  .rcg-btn {
+    flex: 1; padding: 12px 10px; border-radius: 10px;
+    font-size: 14px; font-weight: 600; cursor: pointer; border: none;
+    transition: opacity 0.18s, transform 0.18s;
+  }
+  .rcg-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+  .rcg-btn.primary { background: var(--ds-blue); color: #fff; }
+  .rcg-btn.secondary { background: #f1f5f9; color: #334155; }
+  /* keep small toast for non-recharge alerts */
   .ds-toast {
     position: fixed; bottom: 28px; left: 50%;
     transform: translateX(-50%) translateY(20px);
     background: #1e293b; color: #fff;
-    padding: 12px 22px; border-radius: 10px;
+    padding: 11px 20px; border-radius: 10px;
     font-size: 14px; font-weight: 500;
     z-index: 700; opacity: 0; transition: all 0.3s;
     white-space: nowrap; max-width: 90vw; text-align: center;
@@ -726,6 +790,22 @@
 <!-- Spinner & Toast -->
 <div class="ds-spinner-overlay" id="spinner"><div class="ds-spinner"></div></div>
 <div class="ds-toast" id="toast"></div>
+
+<!-- Recharge Status Modal -->
+<div class="rcg-overlay" id="rcgOverlay" onclick="if(event.target===this)hideRcgModal()">
+  <div class="rcg-card">
+    <div class="rcg-icon-wrap" id="rcgIconWrap"></div>
+    <div class="rcg-title" id="rcgTitle"></div>
+    <div class="rcg-subtitle" id="rcgSubtitle"></div>
+    <div class="rcg-pills" id="rcgPills"></div>
+    <div class="rcg-refund" id="rcgRefund" style="display:none">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      Wallet balance has been refunded automatically.
+    </div>
+    <div class="rcg-progress" id="rcgProgress" style="display:none"><div class="rcg-progress-bar" id="rcgProgressBar"></div></div>
+    <div class="rcg-actions" id="rcgActions"></div>
+  </div>
+</div>
 
 <script>
   const OPERATORS = {
@@ -1075,13 +1155,43 @@
       const d = await r.json();
       showSpinner(false);
       if (d.success) {
-        showToast(`✅ Recharge successful! Ref: ${d.ref}`, 'success');
         updateBalance(d.balance);
+        if (d.pending) {
+          showRcgModal({
+            type: 'pending',
+            title: 'Recharge Processing',
+            subtitle: 'Your recharge is being processed. This usually completes within a few minutes.',
+            pills: [`₹${pendingPlan.amount}`, selectedOp.label, `Ref: ${d.ref}`],
+            actions: [
+              { label: 'View History', cls: 'secondary', fn: "window.location='/paysetu/history'" },
+              { label: 'Done', cls: 'primary', fn: 'hideRcgModal()' }
+            ]
+          });
+        } else {
+          showRcgModal({
+            type: 'success',
+            title: 'Recharge Successful!',
+            subtitle: `Your ${selectedOp.label} number has been recharged.`,
+            pills: [`₹${pendingPlan.amount}`, selectedOp.label, `Ref: ${d.ref}`],
+            autoDismiss: 6000,
+            actions: [{ label: 'Done', cls: 'primary', fn: 'hideRcgModal()' }]
+          });
+        }
         pendingPlan = null;
       } else {
-        showToast(`❌ ${d.message || 'Recharge failed'}`, 'error');
+        showRcgModal({
+          type: 'failed',
+          title: 'Recharge Failed',
+          subtitle: d.message || 'Something went wrong at the provider. Please try again.',
+          pills: [`₹${pendingPlan?.amount}`, selectedOp?.label].filter(Boolean),
+          showRefund: true,
+          actions: [
+            { label: 'Try Again', cls: 'secondary', fn: 'hideRcgModal()' },
+            { label: 'View History', cls: 'primary', fn: "window.location='/paysetu/history'" }
+          ]
+        });
       }
-    } catch { showSpinner(false); showToast('❌ Network error. Try again.', 'error'); }
+    } catch { showSpinner(false); showToast('Network error. Try again.', 'error'); }
   }
 
   /* ── Helpers ── */
@@ -1117,6 +1227,54 @@
     t.textContent = msg;
     t.className = 'ds-toast show' + (type ? ' ' + type : '');
     setTimeout(() => t.classList.remove('show'), 4000);
+  }
+
+  /* ── Recharge Status Modal ── */
+  const _RCG_ICONS = {
+    success: `<svg width="38" height="38" viewBox="0 0 52 52" fill="none">
+      <circle cx="26" cy="26" r="24" stroke="#16a34a" stroke-width="2.5" fill="none"/>
+      <polyline class="rcg-anim-check" points="15,27 23,35 37,18" fill="none" stroke="#16a34a" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`,
+    pending: `<svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      <path class="rcg-anim-spin" d="M12 6v6l4 2"/>
+    </svg>`,
+    failed: `<svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.5" stroke-linecap="round">
+      <circle cx="12" cy="12" r="10"/>
+      <line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+    </svg>`
+  };
+  let _rcgTimer = null;
+
+  function showRcgModal({ type, title, subtitle, pills = [], showRefund = false, autoDismiss = 0, actions = [] }) {
+    document.getElementById('rcgIconWrap').className = 'rcg-icon-wrap ' + type;
+    document.getElementById('rcgIconWrap').innerHTML = _RCG_ICONS[type] || '';
+    const titleEl = document.getElementById('rcgTitle');
+    titleEl.className = 'rcg-title ' + type;
+    titleEl.textContent = title;
+    document.getElementById('rcgSubtitle').textContent = subtitle;
+    document.getElementById('rcgPills').innerHTML = pills.map(p => `<span class="rcg-pill">${p}</span>`).join('');
+    document.getElementById('rcgRefund').style.display = showRefund ? 'flex' : 'none';
+    const prog = document.getElementById('rcgProgress');
+    const bar  = document.getElementById('rcgProgressBar');
+    if (_rcgTimer) { clearTimeout(_rcgTimer); _rcgTimer = null; }
+    if (autoDismiss > 0) {
+      prog.style.display = 'block';
+      bar.className = 'rcg-progress-bar ' + type;
+      bar.style.transition = 'none'; bar.style.width = '100%';
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        bar.style.transition = `width ${autoDismiss}ms linear`; bar.style.width = '0%';
+      }));
+      _rcgTimer = setTimeout(hideRcgModal, autoDismiss);
+    } else { prog.style.display = 'none'; }
+    document.getElementById('rcgActions').innerHTML = actions.map(a =>
+      `<button class="rcg-btn ${a.cls}" onclick="${a.fn}">${a.label}</button>`
+    ).join('');
+    document.getElementById('rcgOverlay').classList.add('show');
+  }
+  function hideRcgModal() {
+    document.getElementById('rcgOverlay').classList.remove('show');
+    if (_rcgTimer) { clearTimeout(_rcgTimer); _rcgTimer = null; }
   }
 </script>
 

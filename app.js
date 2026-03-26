@@ -4436,6 +4436,7 @@ async function callRechargeApi(mobile, operator, amount, type, clientId) {
     } else if (data.STATUS === 'IN PROCESS') {
       return { success: true,  ref: String(data.TRANSACTIONID), pending: true };
     } else {
+      console.error('[femoney24] FAILURE raw:', raw.slice(0, 500));
       console.error('[femoney24] FAILURE:', data.STATUS, '|', data.MESSAGE, '| op:', operator, '| amt:', amount);
       return { success: false, error: data.MESSAGE || 'Recharge failed at provider' };
     }
