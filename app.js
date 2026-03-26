@@ -4468,6 +4468,7 @@ const FEMONEY24_OP_CODES = {
   'Airtel':          3,
   'Vi (Vodafone)':   2,
   'BSNL':            5,
+  'BSNL Special':  151,
   'Tata Play':      31,
   'Dish TV':        35,
   'Airtel DTH':     34,
