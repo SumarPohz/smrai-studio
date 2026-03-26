@@ -25,6 +25,9 @@ logs/
 # Uploads or generated files
 /public/uploads/
 uploads/
+public/audio/
+public/videos/
+public/videos/temp/
 
 # Coverage / test output
 coverage/
