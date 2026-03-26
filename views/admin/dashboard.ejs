@@ -1661,6 +1661,7 @@
               <option value="all">All</option>
               <option value="recharge">Recharges</option>
               <option value="bbps">Bill Payments</option>
+              <option value="pending">Pending Only</option>
               <option value="failed">Failed Only</option>
             </select>
             <input type="text" id="psTxnSearch" placeholder="Search user/operator…" oninput="loadPsTxns(1)"
@@ -5897,7 +5898,9 @@ async function loadPsTxns(page) {
       const statusColor = t.status === 'success' ? '#16a34a' : t.status === 'failed' ? '#dc2626' : '#f59e0b';
       const date = new Date(t.created_at).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'2-digit'});
       const refundBtn = t.status === 'failed'
-        ? `<button onclick="openPsRefundModal(${t.id},'${t.txn_type}',${t.amount},'${(t.user_name||'').replace(/'/g,"\\'")} (${t.user_email||''})')" style="padding:0.25rem 0.55rem;background:#f97316;color:#fff;border:none;border-radius:5px;font-size:0.72rem;cursor:pointer;margin-right:0.3rem">Refund</button>` : '';
+        ? `<button onclick="openPsRefundModal(${t.id},'${t.txn_type}',${t.amount},'${(t.user_name||'').replace(/'/g,"\\'")} (${t.user_email||''})')" style="padding:0.25rem 0.55rem;background:#f97316;color:#fff;border:none;border-radius:5px;font-size:0.72rem;cursor:pointer;margin-right:0.3rem">Refund</button>`
+        : (t.status === 'pending' && t.txn_type === 'recharge')
+        ? `<button onclick="forceRefundPending(${t.id})" style="padding:0.25rem 0.55rem;background:#dc2626;color:#fff;border:none;border-radius:5px;font-size:0.72rem;cursor:pointer;margin-right:0.3rem">Force Refund</button>` : '';
       const pinBtn = `<button onclick="openPsPinModal(${t.user_id},'${(t.user_name||'User').replace(/'/g,"\\'")} (${t.user_email||''})')" style="padding:0.25rem 0.55rem;background:#6366f1;color:#fff;border:none;border-radius:5px;font-size:0.72rem;cursor:pointer">Reset PIN</button>`;
       return `<tr style="border-bottom:1px solid #f3f4f6">
         <td style="padding:0.5rem 0.45rem;white-space:nowrap">${typeLabel}</td>
@@ -5934,6 +5937,16 @@ async function loadPsTxns(page) {
       pager.appendChild(btn);
     }
   } catch(e) { el.innerHTML = `<p style="color:#dc2626">Error: ${e.message}</p>`; }
+}
+
+// Force-refund a stuck pending recharge
+async function forceRefundPending(id) {
+  if (!confirm(`Force-refund transaction #${id}? This will mark it as failed and return the amount to the user's wallet.`)) return;
+  try {
+    const d = await fetch(`/admin/api/recharge-transactions/${id}/refund`, { method: 'POST' }).then(r => r.json());
+    if (d.success) { showAdmToast('✅ ' + d.message, 'success'); loadPsTxns(); }
+    else showAdmToast(d.message || 'Refund failed', 'error');
+  } catch(e) { showAdmToast(e.message, 'error'); }
 }
 
 // Refund Modal

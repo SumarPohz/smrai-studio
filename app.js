@@ -4790,7 +4790,24 @@ app.post("/api/recharge", ensureAuthenticated, paysetuLimiter, async (req, res) 
       });
     }
   } catch (err) {
-    return res.status(500).json({ success: false, message: "Recharge service unavailable." });
+    // Best-effort cleanup: mark failed + refund wallet if transaction was already inserted
+    try {
+      // Find the most recent pending transaction for this user (just inserted)
+      const stuck = await db.query(
+        "SELECT id FROM recharge_transactions WHERE user_id=? AND status='pending' ORDER BY id DESC LIMIT 1",
+        [req.user.id]
+      );
+      if (stuck.rows.length) {
+        const stuckId = stuck.rows[0].id;
+        await db.query("UPDATE recharge_transactions SET status='failed' WHERE id=?", [stuckId]);
+        await db.query("UPDATE users SET wallet_balance = wallet_balance + ? WHERE id=?", [amount, req.user.id]);
+        await db.query(
+          "INSERT INTO wallet_transactions (user_id, amount, type, reason, ref_id) VALUES (?,?,'credit','recharge_refund',?)",
+          [req.user.id, amount, stuckId]
+        );
+      }
+    } catch (_) {}
+    return res.status(500).json({ success: false, message: "Recharge service unavailable. Amount has been refunded." });
   }
 });
 

@@ -1721,6 +1721,16 @@ export default function adminRouter(db) {
           [...params, limit, offset]
         );
         rows = res2.rows;
+      } else if (filter === "pending") {
+        const rcWhere = search ? "AND (u.name LIKE ? OR u.email LIKE ? OR t.operator LIKE ?)" : "";
+        const rcParams = search ? [likeSearch, likeSearch, likeSearch] : [];
+        const countRes = await db.query(`SELECT COUNT(*) AS c FROM recharge_transactions t JOIN users u ON u.id=t.user_id WHERE t.status='pending' ${rcWhere}`, rcParams);
+        total = +countRes.rows[0].c;
+        const res2 = await db.query(
+          `SELECT t.*, u.name AS user_name, u.email AS user_email, 'recharge' AS txn_type FROM recharge_transactions t JOIN users u ON u.id=t.user_id WHERE t.status='pending' ${rcWhere} ORDER BY t.created_at DESC LIMIT ? OFFSET ?`,
+          [...rcParams, limit, offset]
+        );
+        rows = res2.rows;
       } else if (filter === "failed") {
         const rcWhere = search ? "AND (u.name LIKE ? OR u.email LIKE ? OR t.operator LIKE ?)" : "";
         const rcParams = search ? [likeSearch, likeSearch, likeSearch] : [];
@@ -1959,6 +1969,25 @@ export default function adminRouter(db) {
     try {
       await db.query("DELETE FROM recharge_plans WHERE id=?", [req.params.id]);
       res.json({ success: true });
+    } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+  });
+
+  // ── Resolve stuck pending recharge transaction (mark failed + refund) ────────
+  router.post("/api/recharge-transactions/:id/refund", async (req, res) => {
+    try {
+      const txRow = await db.query(
+        "SELECT * FROM recharge_transactions WHERE id=? AND status='pending'",
+        [req.params.id]
+      );
+      if (!txRow.rows.length) return res.status(404).json({ success: false, message: "Transaction not found or not pending." });
+      const txn = txRow.rows[0];
+      await db.query("UPDATE recharge_transactions SET status='failed' WHERE id=?", [txn.id]);
+      await db.query("UPDATE users SET wallet_balance = wallet_balance + ? WHERE id=?", [txn.amount, txn.user_id]);
+      await db.query(
+        "INSERT INTO wallet_transactions (user_id, amount, type, reason, ref_id) VALUES (?,?,'credit','recharge_refund',?)",
+        [txn.user_id, txn.amount, txn.id]
+      );
+      res.json({ success: true, message: `₹${txn.amount} refunded to user #${txn.user_id}` });
     } catch (err) { res.status(500).json({ success: false, error: err.message }); }
   });
 
