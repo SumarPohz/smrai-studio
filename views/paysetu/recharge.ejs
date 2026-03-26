@@ -1080,15 +1080,31 @@
   }
 
   /* ── Helpers ── */
+  let _walletCap = 0;
   async function loadBalance() {
     try {
-      const r = await fetch('/api/wallet/balance');
-      const d = await r.json();
-      if (d.balance !== undefined) updateBalance(d.balance);
+      const d = await fetch('/api/wallet/balance').then(r => r.json());
+      if (d.balance !== undefined) {
+        _walletCap = d.cap || 0;
+        updateBalance(d.balance);
+      }
     } catch {}
   }
   function updateBalance(bal) {
-    document.getElementById('ds-bal').textContent = '₹' + Number(bal).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const usable = Math.max(0, bal - _walletCap);
+    document.getElementById('ds-bal').textContent = '₹' + usable.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    let hint = document.getElementById('ds-bal-hint');
+    if (_walletCap > 0) {
+      if (!hint) {
+        hint = document.createElement('span');
+        hint.id = 'ds-bal-hint';
+        hint.style.cssText = 'font-size:10px;color:#94a3b8;margin-left:6px';
+        document.getElementById('ds-bal').after(hint);
+      }
+      hint.textContent = `(₹${_walletCap} reserved)`;
+    } else if (hint) {
+      hint.textContent = '';
+    }
   }
   function showSpinner(v) { document.getElementById('spinner').classList.toggle('show', v); }
   function showToast(msg, type = '') {

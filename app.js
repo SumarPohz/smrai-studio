@@ -272,6 +272,7 @@ await db.query(`
     await db.query(`INSERT IGNORE INTO admin_settings (\`key\`, value) VALUES ('google_translate_enabled', 'false')`);
     await db.query(`INSERT IGNORE INTO admin_settings (\`key\`, value) VALUES ('dth_recharge_min', '200')`);
     await db.query(`INSERT IGNORE INTO admin_settings (\`key\`, value) VALUES ('dth_recharge_max', '50000')`);
+    await db.query(`INSERT IGNORE INTO admin_settings (\`key\`, value) VALUES ('wallet_cap', '100')`);
 
     // ── Homepage editable content defaults ───────────────────────────────────
     const homepageDefaults = [
@@ -3752,12 +3753,15 @@ app.post("/api/subscription/create-order", ensureAuthenticated, async (req, res)
       return res.json({ success: false, message: "You already have an active subscription" });
     }
 
-    // Wallet deduction
+    // Wallet deduction (respects wallet cap)
     let walletDeduction = 0;
     if (useWallet) {
-      const wRow = await db.query("SELECT wallet_balance FROM users WHERE id=?", [req.user.id]);
+      const [wRow, subCap] = await Promise.all([
+        db.query("SELECT wallet_balance FROM users WHERE id=?", [req.user.id]),
+        getWalletCap(),
+      ]);
       const walletBalance = parseFloat(wRow.rows[0]?.wallet_balance) || 0;
-      walletDeduction = Math.min(walletBalance, priceRupees);
+      walletDeduction = Math.min(Math.max(0, walletBalance - subCap), priceRupees);
       if (walletDeduction >= priceRupees) {
         return res.json({ success: true, walletOnly: true, walletDeduction, planId, planName: plan.name });
       }
@@ -4064,9 +4068,12 @@ app.post("/api/razorpay/create-order", ensureAuthenticated, async (req, res) => 
     // Apply wallet balance if requested
     let walletDeduction = 0;
     if (useWallet) {
-      const walletRow = await db.query("SELECT wallet_balance FROM users WHERE id=?", [req.user.id]);
+      const [walletRow, rzpCap] = await Promise.all([
+        db.query("SELECT wallet_balance FROM users WHERE id=?", [req.user.id]),
+        getWalletCap(),
+      ]);
       const walletRs = parseFloat(walletRow.rows[0]?.wallet_balance) || 0;
-      walletDeduction = Math.min(walletRs, priceRupees);
+      walletDeduction = Math.min(Math.max(0, walletRs - rzpCap), priceRupees);
       if (walletDeduction >= priceRupees) {
         // Wallet covers full price — skip Razorpay entirely
         return res.json({
@@ -4114,9 +4121,12 @@ app.post("/api/razorpay/create-order", ensureAuthenticated, async (req, res) => 
 // Wallet balance for sidebar
 app.get("/api/wallet/balance", ensureAuthenticated, async (req, res) => {
   try {
-    const row = await db.query("SELECT wallet_balance FROM users WHERE id=?", [req.user.id]);
-    res.json({ success: true, balance: parseFloat(row.rows[0]?.wallet_balance) || 0 });
-  } catch (_) { res.json({ success: true, balance: 0 }); }
+    const [row, cap] = await Promise.all([
+      db.query("SELECT wallet_balance FROM users WHERE id=?", [req.user.id]),
+      getWalletCap(),
+    ]);
+    res.json({ success: true, balance: parseFloat(row.rows[0]?.wallet_balance) || 0, cap });
+  } catch (_) { res.json({ success: true, balance: 0, cap: 100 }); }
 });
 
 // Wallet-only payment — full amount covered by wallet, no Razorpay
@@ -4157,11 +4167,14 @@ app.post("/api/wallet/pay", ensureAuthenticated, async (req, res) => {
       }
     }
 
-    // Server-side check: wallet must cover the full price
-    const walletRow = await db.query("SELECT wallet_balance FROM users WHERE id=?", [userId]);
+    // Server-side check: wallet must cover the full price (respecting cap)
+    const [walletRow, walletCap] = await Promise.all([
+      db.query("SELECT wallet_balance FROM users WHERE id=?", [userId]),
+      getWalletCap(),
+    ]);
     const walletRs = parseFloat(walletRow.rows[0]?.wallet_balance) || 0;
-    if (walletRs < priceRupees) {
-      return res.status(400).json({ success: false, message: "Insufficient wallet balance" });
+    if (walletRs - walletCap < priceRupees) {
+      return res.status(400).json({ success: false, message: walletCap > 0 ? `Insufficient usable balance. ₹${walletCap} is reserved in your wallet.` : "Insufficient wallet balance" });
     }
 
     // Deduct from wallet
@@ -4458,6 +4471,19 @@ const FEMONEY24_OP_CODES = {
 
 const _jioCache = { plans: null, at: 0, TTL: 30 * 60 * 1000 }; // 30-min cache
 
+const _walletCapCache = { value: 100, at: 0, TTL: 60_000 }; // 1-min cache
+async function getWalletCap() {
+  const now = Date.now();
+  if (now - _walletCapCache.at < _walletCapCache.TTL) return _walletCapCache.value;
+  try {
+    const r = await db.query("SELECT value FROM admin_settings WHERE `key`='wallet_cap'");
+    const v = parseInt(r.rows[0]?.value, 10);
+    _walletCapCache.value = isNaN(v) ? 100 : v;
+    _walletCapCache.at = now;
+  } catch (_) {}
+  return _walletCapCache.value;
+}
+
 function mapJioPlan(plan, subCatType) {
   const details  = plan.misc?.details || [];
   const validity = details.find(d => /day|month|year/i.test(d)) || 'See details';
@@ -4695,13 +4721,14 @@ app.post("/api/recharge", ensureAuthenticated, paysetuLimiter, async (req, res) 
   const userId = req.user.id;
 
   try {
-    // Atomic deduction: only succeeds if wallet has sufficient balance
+    // Atomic deduction: only succeeds if usable balance (after cap) is sufficient
+    const rechargeCap = await getWalletCap();
     const deducted = await db.query(
-      "UPDATE users SET wallet_balance = wallet_balance - ? WHERE id = ? AND wallet_balance >= ?",
-      [amount, userId, amount]
+      "UPDATE users SET wallet_balance = wallet_balance - ? WHERE id = ? AND wallet_balance - ? >= ?",
+      [amount, userId, rechargeCap, amount]
     );
     if (deducted.rowCount === 0) {
-      return res.status(400).json({ success: false, message: "Insufficient wallet balance." });
+      return res.status(400).json({ success: false, message: rechargeCap > 0 ? `Insufficient usable balance. ₹${rechargeCap} is reserved in your wallet.` : "Insufficient wallet balance." });
     }
 
     // Log wallet debit
@@ -4864,13 +4891,14 @@ app.post("/api/bbps/pay", ensureAuthenticated, paysetuLimiter, async (req, res) 
     }
     const { name: billerName, category } = billerRow.rows[0];
 
-    // Atomic wallet deduction
+    // Atomic wallet deduction (respects wallet cap)
+    const bbpsCap = await getWalletCap();
     const deducted = await db.query(
-      "UPDATE users SET wallet_balance = wallet_balance - ? WHERE id = ? AND wallet_balance >= ?",
-      [amount, userId, amount]
+      "UPDATE users SET wallet_balance = wallet_balance - ? WHERE id = ? AND wallet_balance - ? >= ?",
+      [amount, userId, bbpsCap, amount]
     );
     if (deducted.rowCount === 0) {
-      return res.status(400).json({ success: false, message: "Insufficient wallet balance." });
+      return res.status(400).json({ success: false, message: bbpsCap > 0 ? `Insufficient usable balance. ₹${bbpsCap} is reserved in your wallet.` : "Insufficient wallet balance." });
     }
 
     // Log wallet debit

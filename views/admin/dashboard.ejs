@@ -466,6 +466,31 @@
 
         </div><!-- /adm-price-grid -->
 
+        <!-- Wallet Cap -->
+        <div style="margin-top:1.75rem">
+          <h3 style="font-size:0.9rem;font-weight:700;color:#1e293b;margin-bottom:0.4rem">
+            <i class="fas fa-wallet" style="color:#6366f1"></i> Wallet Cap (Reserved Balance)
+          </h3>
+          <p style="font-size:0.8rem;color:#64748b;margin-bottom:0.85rem">
+            Users cannot spend below this amount. Usable balance = wallet balance &minus; cap. Set to 0 for no restriction.
+          </p>
+          <div class="adm-price-card">
+            <div class="adm-price-card-icon adm-icon-purple"><i class="fas fa-lock"></i></div>
+            <div class="adm-price-card-info">
+              <h3>Wallet Cap</h3>
+              <p>Minimum reserved balance users cannot spend</p>
+            </div>
+            <div class="adm-price-card-input-wrap">
+              <span class="adm-price-currency">₹</span>
+              <input type="number" class="adm-price-input" id="wallet_cap" min="0" step="1" placeholder="100" />
+            </div>
+            <button class="adm-price-save-btn" data-key="wallet_cap">
+              <i class="fas fa-check"></i> Save
+            </button>
+            <span class="adm-price-status" id="status_wallet_cap" hidden></span>
+          </div>
+        </div>
+
       </div>
 
     </div><!-- /pricing -->
@@ -3534,7 +3559,7 @@ async function loadPricing() {
     const res  = await fetch("/admin/api/settings");
     const data = await res.json();
     if (!data.success) return;
-    ["price_fresher", "price_experienced", "price_developer", "price_ats-friendly"].forEach(key => {
+    ["price_fresher", "price_experienced", "price_developer", "price_ats-friendly", "wallet_cap"].forEach(key => {
       const input = document.getElementById(key);
       if (input && data.settings[key] !== undefined) input.value = data.settings[key];
     });
