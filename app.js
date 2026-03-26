@@ -4416,19 +4416,27 @@ async function callRechargeApi(mobile, operator, amount, type, clientId) {
     const opCode = FEMONEY24_OP_CODES[operator];
     if (!opCode) return { success: false, error: `Unsupported operator: ${operator}` };
 
-    const url = `https://femoney24.com/RechargeApi/Recharge.aspx` +
+    const url = `http://femoney24.com/RechargeApi/Recharge.aspx` +
       `?Apitoken=${encodeURIComponent(p.api_key)}` +
       `&Amount=${amount}&OperatorCode=${opCode}` +
       `&Number=${mobile}&ClientId=${clientId}`;
 
     const resp = await fetch(url, { signal: AbortSignal.timeout(15000) });
-    const data = await resp.json();
+    const raw  = await resp.text();
+    let data;
+    try {
+      data = JSON.parse(raw);
+    } catch (_) {
+      console.error('[femoney24] Non-JSON response:', raw.slice(0, 300));
+      return { success: false, error: 'Recharge provider returned an unexpected response. Please try again.' };
+    }
 
     if (data.STATUS === 'SUCCESS') {
       return { success: true,  ref: String(data.TRANSACTIONID), pending: false };
     } else if (data.STATUS === 'IN PROCESS') {
       return { success: true,  ref: String(data.TRANSACTIONID), pending: true };
     } else {
+      console.error('[femoney24] FAILURE:', data.STATUS, '|', data.MESSAGE, '| op:', operator, '| amt:', amount);
       return { success: false, error: data.MESSAGE || 'Recharge failed at provider' };
     }
   }
