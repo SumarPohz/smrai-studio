@@ -4800,6 +4800,7 @@ app.post("/api/recharge", ensureAuthenticated, paysetuLimiter, async (req, res) 
       });
     }
   } catch (err) {
+    console.error('[recharge] Unexpected exception:', err?.message || err);
     // Best-effort cleanup: mark failed + refund wallet if transaction was already inserted
     try {
       // Find the most recent pending transaction for this user (just inserted)
