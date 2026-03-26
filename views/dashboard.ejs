@@ -71,30 +71,70 @@
     <% } %>
   </div>
 
-  <!-- Platform stats -->
-  <div class="dash-stat-grid">
-    <div class="dash-stat-card">
-      <div class="dash-stat-icon" style="background:#ede9fe;color:#7c3aed"><i class="fas fa-users"></i></div>
+  <!-- ── All Services ─────────────────────────────────────────────────── -->
+  <div style="margin-bottom:2rem">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
       <div>
-        <div class="dash-stat-num" id="dStatUsers">–</div>
-        <div class="dash-stat-label">Total Users</div>
+        <h2 style="font-size:1.1rem;font-weight:800;color:#111827;margin:0 0 0.2rem">Explore Services</h2>
+        <p style="font-size:0.82rem;color:#6b7280;margin:0">Everything available on SmrAI-Studio</p>
       </div>
     </div>
-    <div class="dash-stat-card">
-      <div class="dash-stat-icon" style="background:#dbeafe;color:#2563eb"><i class="fas fa-file-alt"></i></div>
-      <div>
-        <div class="dash-stat-num" id="dStatResumes">–</div>
-        <div class="dash-stat-label">Resumes Created</div>
-      </div>
-    </div>
-    <div class="dash-stat-card">
-      <div class="dash-stat-icon" style="background:#dcfce7;color:#16a34a"><i class="fas fa-download"></i></div>
-      <div>
-        <div class="dash-stat-num" id="dStatDownloads">–</div>
-        <div class="dash-stat-label">Total Downloads</div>
-      </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.85rem" class="dash-svc-grid">
+
+      <a href="/resume-templates" style="display:flex;align-items:center;gap:0.85rem;background:#fff;border:1.5px solid #ede9fe;border-radius:14px;padding:1rem 1.1rem;text-decoration:none;transition:box-shadow 0.18s,transform 0.18s" onmouseover="this.style.boxShadow='0 6px 20px rgba(109,40,217,0.13)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='none';this.style.transform='none'">
+        <div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#ede9fe,#c4b5fd);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0">📄</div>
+        <div style="min-width:0">
+          <div style="font-size:0.88rem;font-weight:700;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Resume Builder</div>
+          <div style="font-size:0.72rem;color:#7c3aed;margin-top:1px">8 templates · PDF + JPG</div>
+        </div>
+      </a>
+
+      <a href="/paysetu" style="display:flex;align-items:center;gap:0.85rem;background:#fff;border:1.5px solid #fed7aa;border-radius:14px;padding:1rem 1.1rem;text-decoration:none;transition:box-shadow 0.18s,transform 0.18s" onmouseover="this.style.boxShadow='0 6px 20px rgba(234,88,12,0.12)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='none';this.style.transform='none'">
+        <div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#fff7ed,#fdba74);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0">💳</div>
+        <div style="min-width:0">
+          <div style="font-size:0.88rem;font-weight:700;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">PaySetu</div>
+          <div style="font-size:0.72rem;color:#ea580c;margin-top:1px">Recharge &amp; Pay Bills</div>
+        </div>
+      </a>
+
+      <a href="/application-builder" style="display:flex;align-items:center;gap:0.85rem;background:#fff;border:1.5px solid #e9d5ff;border-radius:14px;padding:1rem 1.1rem;text-decoration:none;transition:box-shadow 0.18s,transform 0.18s" onmouseover="this.style.boxShadow='0 6px 20px rgba(124,58,237,0.12)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='none';this.style.transform='none'">
+        <div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#faf5ff,#d8b4fe);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0">📋</div>
+        <div style="min-width:0">
+          <div style="font-size:0.88rem;font-weight:700;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Applications</div>
+          <div style="font-size:0.72rem;color:#7c3aed;margin-top:1px">Govt forms &amp; A4 docs</div>
+        </div>
+      </a>
+
+      <a href="/photo-editor" style="display:flex;align-items:center;gap:0.85rem;background:#fff;border:1.5px solid #a5f3eb;border-radius:14px;padding:1rem 1.1rem;text-decoration:none;transition:box-shadow 0.18s,transform 0.18s" onmouseover="this.style.boxShadow='0 6px 20px rgba(13,148,136,0.12)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='none';this.style.transform='none'">
+        <div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#f0fdfa,#5eead4);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0">🖼️</div>
+        <div style="min-width:0">
+          <div style="font-size:0.88rem;font-weight:700;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Photo Editor</div>
+          <div style="font-size:0.72rem;color:#0f766e;margin-top:1px">Edit &amp; enhance photos</div>
+        </div>
+      </a>
+
+      <a href="/background-remover" style="display:flex;align-items:center;gap:0.85rem;background:#fff;border:1.5px solid #bbf7d0;border-radius:14px;padding:1rem 1.1rem;text-decoration:none;transition:box-shadow 0.18s,transform 0.18s" onmouseover="this.style.boxShadow='0 6px 20px rgba(22,163,74,0.12)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='none';this.style.transform='none'">
+        <div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#f0fdf4,#86efac);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0">✂️</div>
+        <div style="min-width:0">
+          <div style="font-size:0.88rem;font-weight:700;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">BG Remover</div>
+          <div style="font-size:0.72rem;color:#16a34a;margin-top:1px">AI background removal</div>
+        </div>
+      </a>
+
+      <a href="/reels" style="display:flex;align-items:center;gap:0.85rem;background:#fff;border:1.5px solid #fecdd3;border-radius:14px;padding:1rem 1.1rem;text-decoration:none;transition:box-shadow 0.18s,transform 0.18s" onmouseover="this.style.boxShadow='0 6px 20px rgba(225,29,72,0.12)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='none';this.style.transform='none'">
+        <div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#fff1f2,#fda4af);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0">🎬</div>
+        <div style="min-width:0">
+          <div style="font-size:0.88rem;font-weight:700;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">AI Reels</div>
+          <div style="font-size:0.72rem;color:#e11d48;margin-top:1px">Generate video reels</div>
+        </div>
+      </a>
+
     </div>
   </div>
+  <style>
+    @media (max-width: 640px) { .dash-svc-grid { grid-template-columns: repeat(2,1fr) !important; } }
+    @media (max-width: 360px) { .dash-svc-grid { grid-template-columns: 1fr !important; } }
+  </style>
 
   <!-- Action cards -->
   <div class="card-grid">

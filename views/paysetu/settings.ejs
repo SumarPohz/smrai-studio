@@ -299,6 +299,60 @@
 
   </div>
 
+  <!-- WALLET MPIN -->
+  <div class="ps-section-label">Wallet Security</div>
+  <div class="ps-list-card">
+    <div style="padding:16px;display:flex;align-items:center;gap:14px">
+      <div class="ps-item-icon" style="background:<%= hasMpin ? 'linear-gradient(135deg,#d1fae5,#6ee7b7)' : 'linear-gradient(135deg,#fee2e2,#fca5a5)' %>">
+        <%= hasMpin ? '🔒' : '🔓' %>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div class="ps-item-title">Wallet MPIN</div>
+        <div class="ps-item-sub" style="color:<%= hasMpin ? '#16a34a' : '#dc2626' %>">
+          <%= hasMpin ? '✓ PIN is set and active' : 'No PIN set — payments unprotected' %>
+        </div>
+      </div>
+      <button onclick="openMpinModal()" style="background:<%= hasMpin ? '#f1f5f9' : '#f97316' %>;color:<%= hasMpin ? '#475569' : '#fff' %>;border:none;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;font-family:inherit">
+        <%= hasMpin ? 'Change PIN' : 'Set PIN' %>
+      </button>
+    </div>
+  </div>
+
+  <!-- MPIN Modal -->
+  <div id="mpinModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9000;align-items:flex-end;justify-content:center">
+    <div style="background:#fff;border-radius:24px 24px 0 0;padding:28px 24px 40px;width:100%;max-width:480px;margin:0 auto">
+      <div style="text-align:center;margin-bottom:20px">
+        <div style="font-size:36px;margin-bottom:8px">🔐</div>
+        <div style="font-size:17px;font-weight:800;color:#0f172a" id="mpinModalTitle"><%= hasMpin ? 'Change Wallet MPIN' : 'Set Wallet MPIN' %></div>
+        <div style="font-size:12.5px;color:#64748b;margin-top:4px">4-digit PIN to secure all wallet payments</div>
+      </div>
+
+      <!-- New PIN -->
+      <div style="font-size:11px;font-weight:700;color:#475569;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:10px">New PIN</div>
+      <div style="display:flex;gap:12px;justify-content:center;margin-bottom:20px" id="mpin-new-row">
+        <input class="mpin-box" type="password" inputmode="numeric" maxlength="1" style="width:54px;height:54px;border:2px solid #e2e8f0;border-radius:12px;font-size:22px;font-weight:700;text-align:center;outline:none;background:#f8fafc;color:#1e3a8a;transition:border-color 0.2s;-webkit-text-security:disc">
+        <input class="mpin-box" type="password" inputmode="numeric" maxlength="1" style="width:54px;height:54px;border:2px solid #e2e8f0;border-radius:12px;font-size:22px;font-weight:700;text-align:center;outline:none;background:#f8fafc;color:#1e3a8a;transition:border-color 0.2s;-webkit-text-security:disc">
+        <input class="mpin-box" type="password" inputmode="numeric" maxlength="1" style="width:54px;height:54px;border:2px solid #e2e8f0;border-radius:12px;font-size:22px;font-weight:700;text-align:center;outline:none;background:#f8fafc;color:#1e3a8a;transition:border-color 0.2s;-webkit-text-security:disc">
+        <input class="mpin-box" type="password" inputmode="numeric" maxlength="1" style="width:54px;height:54px;border:2px solid #e2e8f0;border-radius:12px;font-size:22px;font-weight:700;text-align:center;outline:none;background:#f8fafc;color:#1e3a8a;transition:border-color 0.2s;-webkit-text-security:disc">
+      </div>
+
+      <!-- Confirm PIN -->
+      <div style="font-size:11px;font-weight:700;color:#475569;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:10px">Confirm PIN</div>
+      <div style="display:flex;gap:12px;justify-content:center;margin-bottom:20px" id="mpin-confirm-row">
+        <input class="mpin-box" type="password" inputmode="numeric" maxlength="1" style="width:54px;height:54px;border:2px solid #e2e8f0;border-radius:12px;font-size:22px;font-weight:700;text-align:center;outline:none;background:#f8fafc;color:#1e3a8a;transition:border-color 0.2s;-webkit-text-security:disc">
+        <input class="mpin-box" type="password" inputmode="numeric" maxlength="1" style="width:54px;height:54px;border:2px solid #e2e8f0;border-radius:12px;font-size:22px;font-weight:700;text-align:center;outline:none;background:#f8fafc;color:#1e3a8a;transition:border-color 0.2s;-webkit-text-security:disc">
+        <input class="mpin-box" type="password" inputmode="numeric" maxlength="1" style="width:54px;height:54px;border:2px solid #e2e8f0;border-radius:12px;font-size:22px;font-weight:700;text-align:center;outline:none;background:#f8fafc;color:#1e3a8a;transition:border-color 0.2s;-webkit-text-security:disc">
+        <input class="mpin-box" type="password" inputmode="numeric" maxlength="1" style="width:54px;height:54px;border:2px solid #e2e8f0;border-radius:12px;font-size:22px;font-weight:700;text-align:center;outline:none;background:#f8fafc;color:#1e3a8a;transition:border-color 0.2s;-webkit-text-security:disc">
+      </div>
+
+      <div id="mpinErr" style="color:#dc2626;font-size:12.5px;text-align:center;min-height:18px;margin-bottom:12px"></div>
+      <div id="mpinOk" style="color:#16a34a;font-size:13px;font-weight:600;text-align:center;display:none;margin-bottom:12px">✅ PIN saved successfully!</div>
+
+      <button id="mpinSaveBtn" onclick="saveMpin()" disabled style="width:100%;padding:14px;background:#f97316;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;opacity:0.45">Save PIN</button>
+      <button onclick="closeMpinModal()" style="width:100%;padding:12px;background:none;border:none;color:#64748b;font-size:13.5px;font-weight:600;cursor:pointer;margin-top:8px;font-family:inherit">Cancel</button>
+    </div>
+  </div>
+
   <!-- REVIEW & POLICY -->
   <div class="ps-section-label">Review &amp; Policy</div>
   <div class="ps-list-card">
@@ -380,6 +434,7 @@
 </div>
 
 <script>
+  /* ── Coming Soon toast ── */
   let _csTimer = null;
   function comingSoon(name) {
     const t = document.getElementById('psToast');
@@ -388,6 +443,122 @@
     clearTimeout(_csTimer);
     _csTimer = setTimeout(() => t.style.opacity = '0', 2500);
   }
+
+  /* ── MPIN Modal ── */
+  const _allBoxes = () => Array.from(document.querySelectorAll('.mpin-box'));
+  const _newBoxes  = () => Array.from(document.querySelectorAll('#mpin-new-row .mpin-box'));
+  const _confBoxes = () => Array.from(document.querySelectorAll('#mpin-confirm-row .mpin-box'));
+
+  function openMpinModal() {
+    const modal = document.getElementById('mpinModal');
+    modal.style.display = 'flex';
+    _allBoxes().forEach(b => { b.value = ''; b.style.borderColor = '#e2e8f0'; });
+    document.getElementById('mpinErr').textContent = '';
+    document.getElementById('mpinOk').style.display  = 'none';
+    document.getElementById('mpinSaveBtn').disabled   = true;
+    document.getElementById('mpinSaveBtn').style.opacity = '0.45';
+    _newBoxes()[0].focus();
+  }
+
+  function closeMpinModal() {
+    document.getElementById('mpinModal').style.display = 'none';
+  }
+
+  function _checkComplete() {
+    const full = _allBoxes().every(b => b.value.length === 1);
+    const btn  = document.getElementById('mpinSaveBtn');
+    btn.disabled       = !full;
+    btn.style.opacity  = full ? '1' : '0.45';
+  }
+
+  /* OTP-style box navigation */
+  document.addEventListener('DOMContentLoaded', () => {
+    _allBoxes().forEach((box, idx, arr) => {
+      box.addEventListener('input', e => {
+        const val = e.target.value.replace(/\D/g, '');
+        e.target.value = val ? val.slice(-1) : '';
+        if (val && idx < arr.length - 1) arr[idx + 1].focus();
+        _checkComplete();
+      });
+      box.addEventListener('keydown', e => {
+        if (e.key === 'Backspace' && !e.target.value && idx > 0) {
+          arr[idx - 1].focus();
+          arr[idx - 1].value = '';
+          _checkComplete();
+        }
+      });
+      box.addEventListener('paste', e => {
+        e.preventDefault();
+        const digits = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, arr.length - idx);
+        digits.split('').forEach((d, i) => {
+          if (arr[idx + i]) arr[idx + i].value = d;
+        });
+        const next = arr[Math.min(idx + digits.length, arr.length - 1)];
+        next.focus();
+        _checkComplete();
+      });
+    });
+  });
+
+  async function saveMpin() {
+    const newPin  = _newBoxes().map(b => b.value).join('');
+    const confPin = _confBoxes().map(b => b.value).join('');
+    const errEl   = document.getElementById('mpinErr');
+    const okEl    = document.getElementById('mpinOk');
+    const btn     = document.getElementById('mpinSaveBtn');
+
+    errEl.textContent = '';
+    okEl.style.display = 'none';
+
+    if (newPin.length !== 4 || confPin.length !== 4) {
+      errEl.textContent = 'Please fill in all 4 digits.'; return;
+    }
+    if (newPin !== confPin) {
+      errEl.textContent = 'PINs do not match. Please try again.';
+      _confBoxes().forEach(b => { b.value = ''; b.style.borderColor = '#dc2626'; });
+      _confBoxes()[0].focus();
+      _checkComplete();
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+    btn.style.opacity = '0.7';
+
+    try {
+      const res = await fetch('/api/user/pin/set', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: newPin })
+      });
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        okEl.style.display = 'block';
+        btn.textContent = 'Saved ✓';
+        btn.style.background = '#16a34a';
+        setTimeout(() => {
+          closeMpinModal();
+          location.reload();
+        }, 1200);
+      } else {
+        errEl.textContent = data.message || 'Failed to save PIN. Try again.';
+        btn.disabled = false;
+        btn.textContent = 'Save PIN';
+        btn.style.opacity = '1';
+      }
+    } catch {
+      errEl.textContent = 'Network error. Please try again.';
+      btn.disabled = false;
+      btn.textContent = 'Save PIN';
+      btn.style.opacity = '1';
+    }
+  }
+
+  /* Close modal on backdrop click */
+  document.getElementById('mpinModal').addEventListener('click', function(e) {
+    if (e.target === this) closeMpinModal();
+  });
 </script>
 
 <%- include('../partials/footer') %>

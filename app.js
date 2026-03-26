@@ -426,6 +426,7 @@ await db.query(`
     await db.query(`ALTER TABLE users ADD COLUMN referral_code VARCHAR(20) UNIQUE`).catch(() => {});
     await db.query(`ALTER TABLE users ADD COLUMN referred_by INTEGER`).catch(() => {});
     await db.query(`ALTER TABLE users ADD COLUMN wallet_balance DECIMAL(10,2) NOT NULL DEFAULT 0`).catch(() => {});
+    await db.query(`ALTER TABLE users ADD COLUMN wallet_pin VARCHAR(255) NULL`).catch(() => {});
     await db.query(`ALTER TABLE payments ADD COLUMN referral_reward_issued BOOLEAN NOT NULL DEFAULT false`).catch(() => {});
 
     // Backfill referral codes for existing users who don't have one
@@ -4832,10 +4833,15 @@ app.get('/paysetu/support', ensureAuthenticated, (req, res) => {
 
 app.get('/paysetu/settings', ensureAuthenticated, async (req, res) => {
   try {
-    const profileRes = await db.query('SELECT phone FROM user_profiles WHERE user_id = ?', [req.user.id]);
-    res.render('paysetu/settings', { currentUser: req.user, psPhone: profileRes.rows[0]?.phone || null });
+    const [profileRes, pinRes] = await Promise.all([
+      db.query('SELECT phone FROM user_profiles WHERE user_id = ?', [req.user.id]),
+      db.query('SELECT wallet_pin FROM users WHERE id = ?', [req.user.id]),
+    ]);
+    const psPhone   = profileRes.rows[0]?.phone || null;
+    const hasMpin   = !!(pinRes.rows[0]?.wallet_pin);
+    res.render('paysetu/settings', { currentUser: req.user, psPhone, hasMpin });
   } catch {
-    res.render('paysetu/settings', { currentUser: req.user, psPhone: null });
+    res.render('paysetu/settings', { currentUser: req.user, psPhone: null, hasMpin: false });
   }
 });
 
@@ -4962,11 +4968,6 @@ setTimeout(() => {
 
 // ── Wallet PIN Routes ─────────────────────────────────────────────────────────
 // Ensure wallet_pin column exists (safe to run on every start)
-(async () => {
-  try {
-    await db.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS wallet_pin VARCHAR(255) NULL');
-  } catch (_) {}
-})();
 
 app.post('/api/user/pin/set', ensureAuthenticated, async (req, res) => {
   const { pin } = req.body;
