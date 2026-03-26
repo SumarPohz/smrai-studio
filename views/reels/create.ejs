@@ -1,0 +1,689 @@
+<%- include('../partials/header', { title: 'Create AI Reel — SmrAI Studio' }) %>
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+#reel-wizard {
+  background: #fff;
+  min-height: 100vh;
+  color: #111827;
+}
+.wiz-progress { display:flex; gap:6px; margin-bottom:32px; }
+.wiz-seg { height:5px; flex:1; border-radius:999px; background:#e5e7eb; transition:background 0.3s; }
+.wiz-seg.done { background:#7c3aed; }
+.step-badge { display:inline-block; padding:3px 12px; border-radius:999px; border:1.5px solid #7c3aed; color:#7c3aed; font-size:13px; font-weight:600; margin-left:10px; vertical-align:middle; }
+.opt-badge  { display:inline-block; padding:3px 10px; border-radius:999px; border:1.5px solid #7c3aed; color:#7c3aed; font-size:12px; font-weight:600; margin-left:8px; vertical-align:middle; }
+.step-title { font-size:1.65rem; font-weight:800; color:#111827; margin-bottom:6px; }
+.step-sub   { font-size:14px; color:#6b7280; margin-bottom:22px; }
+
+/* Tabs */
+.wiz-tabs { display:flex; border-bottom:1.5px solid #e5e7eb; margin-bottom:20px; }
+.wiz-tab  { padding:10px 18px; font-size:14px; font-weight:500; color:#6b7280; cursor:pointer; border:none; border-bottom:2.5px solid transparent; margin-bottom:-1.5px; background:none; display:flex; align-items:center; gap:6px; }
+.wiz-tab.active { color:#7c3aed; border-bottom-color:#7c3aed; }
+
+/* Niche presets */
+.niche-item { border:1.5px solid #e5e7eb; border-radius:12px; padding:14px 18px; cursor:pointer; margin-bottom:10px; transition:border-color .15s,background .15s; }
+.niche-item:hover,.niche-item.selected { border-color:#7c3aed; background:#faf5ff; }
+.niche-item-title { font-size:15px; font-weight:600; color:#111827; }
+.niche-item-desc  { font-size:13px; color:#9ca3af; margin-top:2px; }
+
+/* Voice */
+.wiz-card { border:1.5px solid #e5e7eb; border-radius:14px; overflow:hidden; }
+.voice-item { display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-bottom:1px solid #f3f4f6; cursor:pointer; transition:background .12s; }
+.voice-item:last-child { border-bottom:none; }
+.voice-item.selected { background:#faf5ff; }
+.v-radio { width:18px; height:18px; border-radius:50%; border:2px solid #d1d5db; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.voice-item.selected .v-radio { border-color:#7c3aed; }
+.v-dot { width:9px; height:9px; border-radius:50%; background:#7c3aed; display:none; }
+.voice-item.selected .v-dot { display:block; }
+.v-badge { display:inline-block; padding:2px 9px; border-radius:999px; background:#dbeafe; color:#1d4ed8; font-size:11px; font-weight:700; margin-left:6px; }
+.v-badge.female { background:#fce7f3; color:#9d174d; }
+
+/* Music */
+.music-item { display:flex; align-items:center; gap:14px; padding:13px 18px; border:1.5px solid #e5e7eb; border-radius:12px; margin-bottom:10px; cursor:pointer; transition:border-color .15s; }
+.music-item.selected { border-color:#7c3aed; background:#faf5ff; }
+.music-color { width:40px; height:40px; border-radius:9px; flex-shrink:0; }
+
+/* Art style */
+.art-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; }
+@media(min-width:540px){ .art-grid{ grid-template-columns:repeat(4,1fr); } }
+.art-item { border-radius:12px; overflow:hidden; cursor:pointer; border:2.5px solid transparent; transition:border-color .15s; }
+.art-item.selected { border-color:#7c3aed; }
+.art-thumb { width:100%; aspect-ratio:9/16; display:flex; align-items:center; justify-content:center; font-size:2rem; }
+.art-label { font-size:13px; font-weight:600; color:#111827; margin-top:7px; text-align:center; padding-bottom:4px; }
+
+/* Caption */
+.cap-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+@media(min-width:480px){ .cap-grid{ grid-template-columns:repeat(3,1fr); } }
+.cap-item { border:1.5px solid #e5e7eb; border-radius:12px; overflow:hidden; cursor:pointer; transition:border-color .15s; }
+.cap-item.selected { border-color:#7c3aed; }
+.cap-preview { background:#4b5563; display:flex; flex-direction:column; align-items:center; justify-content:center; aspect-ratio:4/3; gap:4px; padding:8px; }
+.cap-label { font-size:13px; font-weight:500; color:#374151; padding:8px 10px; }
+
+/* Effects */
+.effect-item { display:flex; align-items:center; justify-content:space-between; padding:16px 18px; border:1.5px solid #e5e7eb; border-radius:12px; margin-bottom:10px; }
+.eff-badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:700; margin-left:6px; }
+.badge-new     { background:#e0f2fe; color:#0284c7; }
+.badge-premium { background:#fef9c3; color:#b45309; }
+.toggle { position:relative; width:44px; height:24px; background:#e5e7eb; border-radius:999px; cursor:pointer; transition:background .2s; flex-shrink:0; border:none; outline:none; }
+.toggle.on { background:#7c3aed; }
+.toggle::after { content:''; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:#fff; transition:transform .2s; box-shadow:0 1px 3px rgba(0,0,0,.2); }
+.toggle.on::after { transform:translateX(20px); }
+
+/* Social */
+.social-item { display:flex; align-items:center; gap:12px; padding:14px 18px; border:1.5px solid #e5e7eb; border-radius:12px; margin-bottom:12px; }
+
+/* Inputs */
+.wiz-input,.wiz-select,.wiz-textarea { width:100%; border:1.5px solid #e5e7eb; border-radius:10px; padding:12px 14px; font-size:15px; color:#111827; background:#fff; outline:none; transition:border-color .15s; box-sizing:border-box; }
+.wiz-input:focus,.wiz-select:focus,.wiz-textarea:focus { border-color:#7c3aed; }
+.wiz-textarea { resize:vertical; min-height:100px; font-family:inherit; }
+.wiz-label { font-size:14px; font-weight:600; color:#111827; margin-bottom:8px; display:block; }
+.char-count { font-size:12px; color:#9ca3af; }
+
+/* Upload zone */
+.upload-zone { border:2px dashed #e5e7eb; border-radius:12px; padding:36px; text-align:center; cursor:pointer; transition:border-color .15s; }
+.upload-zone:hover { border-color:#a78bfa; }
+
+/* Nav */
+.wiz-nav { display:flex; justify-content:space-between; align-items:center; padding-top:24px; border-top:1px solid #f3f4f6; margin-top:32px; }
+.btn-back { display:flex; align-items:center; gap:6px; padding:12px 22px; border:1.5px solid #e5e7eb; border-radius:10px; background:#fff; color:#374151; font-size:15px; font-weight:500; cursor:pointer; transition:border-color .15s; }
+.btn-back:hover { border-color:#6b7280; }
+.btn-next { display:flex; align-items:center; gap:6px; padding:12px 26px; border-radius:10px; background:#7c3aed; color:#fff; font-size:15px; font-weight:600; cursor:pointer; border:none; transition:background .15s; }
+.btn-next:hover { background:#6d28d9; }
+.btn-next:disabled { opacity:.5; cursor:not-allowed; }
+.err-box { display:none; background:rgba(239,68,68,.08); border:1px solid rgba(239,68,68,.25); border-radius:10px; padding:12px 16px; color:#dc2626; font-size:14px; margin-bottom:16px; }
+@keyframes spin { to { transform:rotate(360deg); } }
+</style>
+
+<div id="reel-wizard" style="padding-top:80px;padding-bottom:60px;">
+<div style="max-width:720px;margin:0 auto;padding:0 20px;">
+
+  <!-- Progress -->
+  <div class="wiz-progress" id="wizProg">
+    <% for(let i=0;i<8;i++){%><div class="wiz-seg" id="seg<%=i%>"></div><%}%>
+  </div>
+
+  <!-- ── STEP 1: Niche ──────────────────────────────────────────────────── -->
+  <div id="step-1" class="wiz-step">
+    <h2 class="step-title">Choose your niche <span class="step-badge">Step 1 of 8</span></h2>
+    <p class="step-sub">Select a preset or describe your own niche</p>
+    <div id="s1err" class="err-box"></div>
+
+    <div class="wiz-tabs">
+      <button class="wiz-tab active" id="t1a" onclick="sTab(1,'a')">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        Presets
+      </button>
+      <button class="wiz-tab" id="t1b" onclick="sTab(1,'b')">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg>
+        Custom
+      </button>
+    </div>
+
+    <div id="p1a">
+      <% [
+        ['Scary Stories','Scary stories that give you goosebumps'],
+        ['History','Viral videos about history spanning from ancient times to the modern day.'],
+        ['True Crime','Viral videos about true crime stories.'],
+        ['Stoic Motivation','Viral videos about stoic philosophy and life lessons.'],
+        ['Finance Tips','Smart money habits and financial freedom strategies.'],
+        ['Motivation','Inspirational content to push people to their limits.'],
+        ['Biblical Stories','Timeless stories from the Bible brought to life.'],
+        ['Mythology','Ancient myths and legends from around the world.'],
+        ['Anime Stories','Epic anime-inspired story arcs and character arcs.'],
+        ['Act of Kindness','Heartwarming stories of humans helping each other.'],
+        ['Tech Tips','Quick and useful technology tips for everyday life.'],
+        ['Health Hacks','Simple daily habits for a healthier and longer life.'],
+      ].forEach(n => { %>
+      <div class="niche-item" onclick="pickNiche('<%= n[0] %>')" data-niche="<%= n[0] %>">
+        <div class="niche-item-title"><%= n[0] %></div>
+        <div class="niche-item-desc"><%= n[1] %></div>
+      </div>
+      <% }) %>
+    </div>
+
+    <div id="p1b" style="display:none;">
+      <div style="margin-bottom:20px;">
+        <label class="wiz-label">Niche</label>
+        <textarea id="customNiche" class="wiz-textarea" maxlength="5000"
+          placeholder="Describe your content focus, e.g.: 'Weird historical facts that sound fake but are real, delivered in a casual conversational tone with humor'"
+          oninput="cc('customNiche','cc1',5000)"></textarea>
+        <div style="display:flex;justify-content:space-between;margin-top:4px;">
+          <span style="font-size:13px;color:#7c3aed;">Describe your topic</span>
+          <span class="char-count" id="cc1">0/5000</span>
+        </div>
+      </div>
+      <div>
+        <label class="wiz-label">Example script <span class="opt-badge">Optional</span></label>
+        <textarea id="exScript" class="wiz-textarea" style="min-height:130px;" maxlength="2000"
+          placeholder="Paste an example of how you want your videos to sound, e.g.:&#10;&#10;&quot;Okay so get this — in 1932, Australia literally declared war on emus...&quot;"
+          oninput="cc('exScript','cc2',2000)"></textarea>
+        <div style="display:flex;justify-content:space-between;margin-top:4px;">
+          <span style="font-size:13px;color:#7c3aed;">AI will match this style and tone</span>
+          <span class="char-count" id="cc2">0/2000</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="wiz-nav">
+      <div></div>
+      <button class="btn-next" onclick="go(2)">Continue <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+  </div>
+
+  <!-- ── STEP 2: Language & Voice ────────────────────────────────────────── -->
+  <div id="step-2" class="wiz-step" style="display:none;">
+    <h2 class="step-title">Language &amp; Voice <span class="step-badge">Step 2 of 8</span></h2>
+    <p class="step-sub">Choose the language and voice style for your video</p>
+
+    <div style="margin-bottom:22px;">
+      <label class="wiz-label">Language</label>
+      <select id="langSel" class="wiz-select">
+        <option value="en">🇬🇧 English</option>
+        <option value="hi">🇮🇳 Hindi</option>
+        <option value="es">🇪🇸 Spanish</option>
+        <option value="fr">🇫🇷 French</option>
+        <option value="de">🇩🇪 German</option>
+        <option value="pt">🇧🇷 Portuguese</option>
+        <option value="ja">🇯🇵 Japanese</option>
+        <option value="ko">🇰🇷 Korean</option>
+      </select>
+    </div>
+
+    <label class="wiz-label">Voice Style</label>
+    <div class="wiz-card">
+      <% [
+        ['alloy',   'Alloy',   'Neutral',  false, 'Neutral &amp; balanced — great for any content.'],
+        ['echo',    'Echo',    'Male',     false, 'Deep &amp; authoritative — the well known voice of TikTok.'],
+        ['fable',   'Fable',   'Male',     false, 'British &amp; storytelling — ideal for narratives.'],
+        ['onyx',    'Onyx',    'Male',     false, 'Rich &amp; powerful — perfect for storytelling.'],
+        ['nova',    'Nova',    'Female',   true,  'Warm &amp; friendly — great for lifestyle content.'],
+        ['shimmer', 'Shimmer', 'Female',   true,  'Soft &amp; calm — ideal for relaxing content.'],
+      ].forEach((v,vi) => { %>
+      <div class="voice-item <%= vi===0?'selected':'' %>" onclick="pickVoice('<%= v[0] %>')" data-voice="<%= v[0] %>">
+        <div style="display:flex;align-items:center;gap:12px;flex:1;">
+          <div class="v-radio"><div class="v-dot"></div></div>
+          <div>
+            <div style="display:flex;align-items:center;">
+              <span style="font-size:15px;font-weight:700;color:#111827;"><%= v[1] %></span>
+              <span class="v-badge <%= v[3]?'female':'' %>"><%= v[2] %></span>
+            </div>
+            <div style="font-size:13px;color:#6b7280;margin-top:2px;"><%- v[4] %></div>
+          </div>
+        </div>
+        <button class="play-btn" onclick="event.stopPropagation();" title="Preview" style="width:34px;height:34px;border-radius:8px;border:1.5px solid #e5e7eb;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#374151;flex-shrink:0;">
+          <svg width="11" height="11" fill="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        </button>
+      </div>
+      <% }) %>
+    </div>
+
+    <div class="wiz-nav">
+      <button class="btn-back" onclick="go(1)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg> Back</button>
+      <button class="btn-next" onclick="go(3)">Continue <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+  </div>
+
+  <!-- ── STEP 3: Background Music ────────────────────────────────────────── -->
+  <div id="step-3" class="wiz-step" style="display:none;">
+    <h2 class="step-title">Background Music <span class="step-badge">Step 3 of 8</span> <span class="opt-badge">Optional</span></h2>
+    <p class="step-sub">Choose as many songs as you want, we'll pick a random one for each video</p>
+
+    <div class="wiz-tabs">
+      <button class="wiz-tab active" id="t3a" onclick="sTab(3,'a')">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        Preset music
+      </button>
+      <button class="wiz-tab" id="t3b" onclick="sTab(3,'b')">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z"/></svg>
+        Custom
+      </button>
+    </div>
+
+    <div id="p3a">
+      <% [
+        ['happy',    'Happy rhythm',       'Upbeat and energetic, perfect for positive content',            'linear-gradient(135deg,#f59e0b,#ef4444)'],
+        ['storm',    'Quiet before storm', 'Building tension and anticipation for dramatic reveals',         'linear-gradient(135deg,#6366f1,#4338ca)'],
+        ['peaceful', 'Peaceful vibes',     'Calm and soothing background for relaxed storytelling',         'linear-gradient(135deg,#22c55e,#16a34a)'],
+        ['symphony', 'Brilliant symphony', 'Orchestral and majestic for epic storytelling',                 'linear-gradient(135deg,#8b5cf6,#7c3aed)'],
+        ['shadows',  'Breathing shadows',  'Mysterious and eerie ambiance for suspenseful videos',          'linear-gradient(135deg,#312e81,#1e1b4b)'],
+      ].forEach(m => { %>
+      <div class="music-item" onclick="toggleMusic('<%= m[0] %>')" data-music="<%= m[0] %>">
+        <div class="music-color" style="background:<%= m[3] %>;"></div>
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:600;color:#111827;"><%= m[1] %></div>
+          <div style="font-size:13px;color:#9ca3af;"><%= m[2] %></div>
+        </div>
+        <button class="play-btn" onclick="event.stopPropagation();" style="width:34px;height:34px;border-radius:8px;border:1.5px solid #e5e7eb;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#374151;flex-shrink:0;">
+          <svg width="11" height="11" fill="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        </button>
+      </div>
+      <% }) %>
+    </div>
+
+    <div id="p3b" style="display:none;">
+      <div style="margin-bottom:20px;">
+        <label class="wiz-label">TikTok Sound URLs <span style="font-size:12px;color:#9ca3af;font-weight:400;">(copy+paste link to TikTok sound)</span></label>
+        <textarea class="wiz-textarea" placeholder="Enter TikTok sound URLs, one per line" style="min-height:80px;"></textarea>
+      </div>
+      <label class="wiz-label">Upload Sound Files</label>
+      <div class="upload-zone">
+        <svg width="28" height="28" fill="none" stroke="#9ca3af" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto 10px;display:block;"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+        <div style="font-size:14px;font-weight:600;color:#374151;">Click to upload sound files or drag and drop</div>
+        <div style="font-size:13px;color:#9ca3af;margin-top:4px;">MP3, WAV up to 10MB</div>
+      </div>
+    </div>
+
+    <div class="wiz-nav">
+      <button class="btn-back" onclick="go(2)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg> Back</button>
+      <button class="btn-next" onclick="go(4)">Skip <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+  </div>
+
+  <!-- ── STEP 4: Art Style ───────────────────────────────────────────────── -->
+  <div id="step-4" class="wiz-step" style="display:none;">
+    <h2 class="step-title">Art Style <span class="step-badge">Step 4 of 8</span></h2>
+    <p class="step-sub">Choose the visual style for your video</p>
+
+    <div class="art-grid">
+      <% [
+        ['cinematic',  'Cinematic',   'linear-gradient(160deg,#0f172a,#1e293b,#334155)', '🎬'],
+        ['creepy',     'Creepy Comic','linear-gradient(160deg,#1c0a00,#3b1f0a,#5c2e0e)', '👻'],
+        ['vibrant',    'Modern Cartoon','linear-gradient(160deg,#7c3aed,#ec4899,#f97316)', '✨'],
+        ['disney',     'Disney',      'linear-gradient(160deg,#1e3a5f,#2563eb,#60a5fa)',  '🏰'],
+        ['nature',     'Nature',      'linear-gradient(160deg,#052e16,#166534,#4ade80)',  '🌿'],
+        ['urban',      'Urban',       'linear-gradient(160deg,#111827,#374151,#6b7280)',  '🏙️'],
+        ['fantasy',    'Fantasy',     'linear-gradient(160deg,#4a044e,#a21caf,#e879f9)',  '🔮'],
+        ['historical', 'Historical',  'linear-gradient(160deg,#451a03,#92400e,#d97706)',  '📜'],
+      ].forEach((a,ai) => { %>
+      <div class="art-item <%= ai===0?'selected':'' %>" onclick="pickArt('<%= a[0] %>')" data-art="<%= a[0] %>">
+        <div class="art-thumb" style="background:<%= a[2] %>;border-radius:9px;"><span style="font-size:2.2rem;"><%= a[3] %></span></div>
+        <div class="art-label"><%= a[1] %></div>
+      </div>
+      <% }) %>
+    </div>
+
+    <div class="wiz-nav">
+      <button class="btn-back" onclick="go(3)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg> Back</button>
+      <button class="btn-next" onclick="go(5)">Continue <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+  </div>
+
+  <!-- ── STEP 5: Caption Style ──────────────────────────────────────────── -->
+  <div id="step-5" class="wiz-step" style="display:none;">
+    <h2 class="step-title">Caption Style <span class="step-badge">Step 5 of 8</span></h2>
+    <p class="step-sub">Choose how captions will appear in your video</p>
+
+    <div class="cap-grid">
+      <!-- Bold Stroke -->
+      <div class="cap-item selected" onclick="pickCap('bold-stroke')" data-cap="bold-stroke">
+        <div class="cap-preview" style="background:#374151;">
+          <span style="font-size:1.7rem;font-weight:900;color:#fff;text-shadow:-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000,2px 2px 0 #000;">DUSTY</span>
+        </div>
+        <div class="cap-label">Bold Stroke</div>
+      </div>
+      <!-- Red Highlight -->
+      <div class="cap-item" onclick="pickCap('red-highlight')" data-cap="red-highlight">
+        <div class="cap-preview" style="background:#4b5563;">
+          <span style="font-size:1rem;font-weight:700;color:#d1d5db;">A</span>
+          <span style="font-size:1.5rem;font-weight:900;color:#ef4444;">DUSTY</span>
+        </div>
+        <div class="cap-label">Red Highlight</div>
+      </div>
+      <!-- Sleek -->
+      <div class="cap-item" onclick="pickCap('sleek')" data-cap="sleek">
+        <div class="cap-preview" style="background:#4b5563;">
+          <span style="font-size:1rem;font-weight:600;color:#d1d5db;letter-spacing:.08em;">A</span>
+          <span style="font-size:1.4rem;font-weight:700;color:#fff;letter-spacing:.1em;">DUSTY</span>
+        </div>
+        <div class="cap-label">Sleek</div>
+      </div>
+      <!-- Karaoke -->
+      <div class="cap-item" onclick="pickCap('karaoke')" data-cap="karaoke">
+        <div class="cap-preview" style="background:#374151;">
+          <span style="font-size:1rem;font-weight:700;color:#d1d5db;">A</span>
+          <span style="background:#7c3aed;color:#fff;padding:2px 12px;border-radius:4px;font-size:1.5rem;font-weight:900;">DUSTY</span>
+        </div>
+        <div class="cap-label">Karaoke</div>
+      </div>
+      <!-- Majestic -->
+      <div class="cap-item" onclick="pickCap('majestic')" data-cap="majestic">
+        <div class="cap-preview" style="background:#4b5563;">
+          <span style="font-size:1rem;font-weight:700;color:#d1d5db;">A</span>
+          <span style="font-size:1.5rem;font-weight:800;color:#fff;">DUSTY</span>
+        </div>
+        <div class="cap-label">Majestic</div>
+      </div>
+      <!-- Beast -->
+      <div class="cap-item" onclick="pickCap('beast')" data-cap="beast">
+        <div class="cap-preview" style="background:#374151;">
+          <span style="font-size:1.6rem;font-weight:900;color:#fff;font-style:italic;text-shadow:3px 3px 0 #000;">DUSTY</span>
+        </div>
+        <div class="cap-label">Beast</div>
+      </div>
+      <!-- Elegant -->
+      <div class="cap-item" onclick="pickCap('elegant')" data-cap="elegant">
+        <div class="cap-preview" style="background:#4b5563;">
+          <span style="font-size:1.3rem;font-weight:400;color:#fff;letter-spacing:.2em;">DUSTY</span>
+        </div>
+        <div class="cap-label">Elegant</div>
+      </div>
+      <!-- Clarity -->
+      <div class="cap-item" onclick="pickCap('clarity')" data-cap="clarity">
+        <div class="cap-preview" style="background:#374151;">
+          <span style="font-size:1.2rem;font-weight:500;color:#e5e7eb;letter-spacing:.04em;">dusty</span>
+        </div>
+        <div class="cap-label">Clarity</div>
+      </div>
+    </div>
+
+    <div class="wiz-nav">
+      <button class="btn-back" onclick="go(4)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg> Back</button>
+      <button class="btn-next" onclick="go(6)">Continue <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+  </div>
+
+  <!-- ── STEP 6: Effects ─────────────────────────────────────────────────── -->
+  <div id="step-6" class="wiz-step" style="display:none;">
+    <h2 class="step-title">Effects <span class="step-badge">Step 6 of 8</span> <span class="opt-badge">Optional</span></h2>
+    <p class="step-sub">Add visual effects to make your videos more engaging and eye-catching.</p>
+
+    <div class="effect-item">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#111827;display:flex;align-items:center;">Shake effect <span class="eff-badge badge-new">NEW</span></div>
+        <div style="font-size:13px;color:#6b7280;margin-top:3px;">Subjects pop out with eerie motion — great for horror, thriller, and suspenseful stories.</div>
+      </div>
+      <button class="toggle" onclick="this.classList.toggle('on')" type="button"></button>
+    </div>
+    <div class="effect-item">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#111827;display:flex;align-items:center;">Film grain <span class="eff-badge badge-new">NEW</span></div>
+        <div style="font-size:13px;color:#6b7280;margin-top:3px;">Add an old film look with scanlines, dust particles, noise, and a subtle vignette.</div>
+      </div>
+      <button class="toggle" onclick="this.classList.toggle('on')" type="button"></button>
+    </div>
+    <div class="effect-item">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#111827;display:flex;align-items:center;">Animated hook <span class="eff-badge badge-premium">PREMIUM</span></div>
+        <div style="font-size:13px;color:#6b7280;margin-top:3px;">Generate a 5-second motion video for the first scene to hook viewers instantly.</div>
+      </div>
+      <button class="toggle" onclick="this.classList.toggle('on')" type="button"></button>
+    </div>
+
+    <div class="wiz-nav">
+      <button class="btn-back" onclick="go(5)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg> Back</button>
+      <button class="btn-next" onclick="go(7)">Continue <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+  </div>
+
+  <!-- ── STEP 7: Connect Social Accounts ────────────────────────────────── -->
+  <div id="step-7" class="wiz-step" style="display:none;">
+    <h2 class="step-title">Connect Social Accounts <span class="step-badge">Step 7 of 8</span></h2>
+    <p class="step-sub">Connect and select the social media accounts where you want to publish your content</p>
+
+    <!-- Connected YouTube accounts (loaded dynamically) -->
+    <div id="s7-accounts">
+      <div style="text-align:center;padding:24px 0;color:#9ca3af;font-size:14px;">Loading…</div>
+    </div>
+
+    <!-- Connect YouTube button -->
+    <button id="s7-yt-btn" onclick="connectYouTube()" type="button"
+      style="display:flex;align-items:center;gap:10px;width:100%;padding:13px 18px;border:1.5px solid #e5e7eb;border-radius:12px;background:#fff;cursor:pointer;font-size:14px;font-weight:600;color:#111827;margin-bottom:10px;transition:border-color .15s;">
+      <svg width="22" height="22" viewBox="0 0 24 24"><path fill="#ef4444" d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+      + Connect YouTube Account
+    </button>
+
+    <!-- Coming soon platforms -->
+    <button type="button" disabled
+      style="display:flex;align-items:center;gap:10px;width:100%;padding:13px 18px;border:1.5px solid #f3f4f6;border-radius:12px;background:#fafafa;cursor:not-allowed;font-size:14px;font-weight:600;color:#9ca3af;margin-bottom:10px;">
+      <svg width="22" height="22" viewBox="0 0 24 24"><defs><radialGradient id="ig1" cx="30%" cy="107%"><stop offset="0%" stop-color="#fdf497"/><stop offset="5%" stop-color="#fdf497"/><stop offset="45%" stop-color="#fd5949"/><stop offset="60%" stop-color="#d6249f"/><stop offset="90%" stop-color="#285AEB"/></radialGradient></defs><path fill="url(#ig1)" d="M12 2.163c3.204 0 3.584.012 4.85.07 1.366.062 2.633.334 3.608 1.308.975.975 1.246 2.242 1.308 3.608.058 1.266.07 1.646.07 4.85s-.012 3.584-.07 4.85c-.062 1.366-.334 2.633-1.308 3.608-.975.975-2.242 1.246-3.608 1.308-1.266.058-1.646.07-4.85.07s-3.584-.012-4.85-.07c-1.366-.062-2.633-.334-3.608-1.308C2.497 19.483 2.226 18.216 2.164 16.85 2.106 15.584 2.094 15.204 2.094 12s.012-3.584.07-4.85c.062-1.366.334-2.633 1.308-3.608C4.447 2.497 5.714 2.226 7.08 2.164 8.346 2.106 8.726 2.094 12 2.094zm0-2.163c-3.259 0-3.667.014-4.947.072-1.613.074-3.067.372-4.204 1.508C1.712 2.716 1.414 4.17 1.34 5.783 1.282 7.063 1.268 7.471 1.268 12c0 4.529.014 4.937.072 6.217.074 1.613.372 3.067 1.508 4.204 1.137 1.136 2.591 1.434 4.204 1.508 1.28.058 1.688.072 4.948.072s3.667-.014 4.947-.072c1.613-.074 3.067-.372 4.204-1.508 1.136-1.137 1.434-2.591 1.508-4.204.058-1.28.072-1.688.072-6.217 0-4.529-.014-4.937-.072-6.217-.074-1.613-.372-3.067-1.508-4.204C19.214 1.412 17.76 1.114 16.147 1.04 14.867.982 14.459.968 12 .968z"/><circle fill="url(#ig1)" cx="12" cy="12" r="3.2"/><circle fill="url(#ig1)" cx="18.406" cy="5.594" r="1.44"/></svg>
+      + Connect Instagram
+      <span style="margin-left:auto;font-size:11px;font-weight:700;background:#f3f4f6;color:#9ca3af;padding:2px 8px;border-radius:99px;">Coming soon</span>
+    </button>
+
+    <button type="button" disabled
+      style="display:flex;align-items:center;gap:10px;width:100%;padding:13px 18px;border:1.5px solid #f3f4f6;border-radius:12px;background:#fafafa;cursor:not-allowed;font-size:14px;font-weight:600;color:#9ca3af;margin-bottom:20px;">
+      <svg width="22" height="22" viewBox="0 0 24 24"><path fill="#1877F2" d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.513c-1.491 0-1.956.93-1.956 1.874v2.25h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/></svg>
+      + Connect Facebook
+      <span style="margin-left:auto;font-size:11px;font-weight:700;background:#f3f4f6;color:#9ca3af;padding:2px 8px;border-radius:99px;">Coming soon</span>
+    </button>
+
+    <p id="s7-error" style="display:none;color:#ef4444;font-size:13px;margin-bottom:12px;padding:10px 14px;background:#fef2f2;border-radius:8px;border:1px solid #fee2e2;"></p>
+    <p style="text-align:center;font-size:14px;color:#7c3aed;">You can connect your social media accounts later.</p>
+
+    <div class="wiz-nav">
+      <button class="btn-back" onclick="go(6)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg> Back</button>
+      <button class="btn-next" onclick="go(8)">Continue <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+  </div>
+
+  <!-- ── STEP 8: Series Details ──────────────────────────────────────────── -->
+  <div id="step-8" class="wiz-step" style="display:none;">
+    <h2 class="step-title">Series Details <span class="step-badge">Step 8 of 8</span></h2>
+    <p class="step-sub">Finalize your series details and posting schedule</p>
+    <div id="s8err" class="err-box"></div>
+
+    <div style="margin-bottom:20px;">
+      <label class="wiz-label">Series Name</label>
+      <input type="text" id="seriesName" class="wiz-input" placeholder="Enter a name for your series" maxlength="200" />
+    </div>
+
+    <div style="margin-bottom:20px;">
+      <label class="wiz-label" style="display:flex;align-items:center;gap:6px;">
+        Video Duration
+        <svg width="14" height="14" fill="none" stroke="#9ca3af" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+      </label>
+      <select id="durSel" class="wiz-select">
+        <option value="30-40">30-40 seconds</option>
+        <option value="60-70">60-70 seconds</option>
+      </select>
+    </div>
+
+    <div style="margin-bottom:20px;">
+      <label class="wiz-label">Publish time:</label>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <input type="time" id="pubTime" class="wiz-input" value="12:00" style="width:auto;min-width:140px;" />
+        <span style="font-size:13px;color:#9ca3af;">(Your local time)</span>
+      </div>
+    </div>
+
+    <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:12px 16px;font-size:13px;color:#0369a1;margin-bottom:4px;">
+      <strong>Note:</strong> Videos will be generated 6 hours before the scheduled publish time so you have time to review them.
+    </div>
+
+    <div class="wiz-nav">
+      <button class="btn-back" onclick="go(7)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg> Back</button>
+      <button class="btn-next" id="createBtn" onclick="handleCreate()">
+        <span id="createBtnTxt">Create Series</span>
+        <span id="createBtnIco"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></span>
+      </button>
+    </div>
+  </div>
+
+</div><!-- /max-width -->
+</div><!-- /reel-wizard -->
+
+<script>
+const S = { step:1, niche:'', voice:'alloy', music:[], art:'cinematic', cap:'bold-stroke' };
+
+function updProg(n) {
+  for(let i=0;i<8;i++) {
+    document.getElementById('seg'+i).classList.toggle('done', i < n);
+  }
+}
+
+function go(n) {
+  // Validate step 1
+  if (S.step===1 && n>1) {
+    const isCustom = document.getElementById('p1b').style.display !== 'none';
+    if (isCustom) {
+      S.niche = document.getElementById('customNiche').value.trim();
+      if (!S.niche || S.niche.length < 3) { showErr('s1err','Please describe your niche (at least 3 characters).'); return; }
+    } else if (!S.niche) { showErr('s1err','Please select a niche to continue.'); return; }
+    hideErr('s1err');
+  }
+  document.getElementById('step-'+S.step).style.display = 'none';
+  S.step = n;
+  document.getElementById('step-'+n).style.display = 'block';
+  updProg(n);
+  window.scrollTo({top:0,behavior:'smooth'});
+  if (n === 7) loadSocialAccounts();
+}
+
+function sTab(step, panel) {
+  const panels = step===1 ? ['p1a','p1b'] : ['p3a','p3b'];
+  const tabs    = step===1 ? ['t1a','t1b'] : ['t3a','t3b'];
+  const idx     = panel==='a' ? 0 : 1;
+  panels.forEach((p,i) => document.getElementById(p).style.display = i===idx?'block':'none');
+  tabs.forEach((t,i)   => document.getElementById(t).classList.toggle('active', i===idx));
+}
+
+function pickNiche(n) {
+  document.querySelectorAll('.niche-item').forEach(el => el.classList.remove('selected'));
+  document.querySelector('[data-niche="'+n+'"]').classList.add('selected');
+  S.niche = n; hideErr('s1err');
+}
+function pickVoice(v) {
+  document.querySelectorAll('.voice-item').forEach(el => el.classList.remove('selected'));
+  document.querySelector('[data-voice="'+v+'"]').classList.add('selected');
+  S.voice = v;
+}
+function toggleMusic(id) {
+  const el = document.querySelector('[data-music="'+id+'"]');
+  el.classList.toggle('selected');
+  const i = S.music.indexOf(id);
+  if(i===-1) S.music.push(id); else S.music.splice(i,1);
+}
+function pickArt(id) {
+  document.querySelectorAll('.art-item').forEach(el => el.classList.remove('selected'));
+  document.querySelector('[data-art="'+id+'"]').classList.add('selected');
+  S.art = id;
+}
+function pickCap(id) {
+  document.querySelectorAll('.cap-item').forEach(el => el.classList.remove('selected'));
+  document.querySelector('[data-cap="'+id+'"]').classList.add('selected');
+  S.cap = id;
+}
+function cc(inputId, countId, max) {
+  document.getElementById(countId).textContent = document.getElementById(inputId).value.length + '/' + max;
+}
+function showErr(id, msg) { const el=document.getElementById(id); el.textContent=msg; el.style.display='block'; }
+function hideErr(id)       { const el=document.getElementById(id); if(el) el.style.display='none'; }
+
+async function handleCreate() {
+  const name  = document.getElementById('seriesName').value.trim();
+  const topic = name || S.niche;
+  if (!topic || topic.length < 3) { showErr('s8err','Please enter a series name.'); return; }
+  hideErr('s8err');
+
+  const btn = document.getElementById('createBtn');
+  document.getElementById('createBtnTxt').textContent = 'Creating…';
+  document.getElementById('createBtnIco').innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:spin 1s linear infinite"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>';
+  btn.disabled = true;
+
+  try {
+    const res  = await fetch('/reels/generate', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ topic, voice:S.voice }) });
+    const data = await res.json();
+    if (res.status === 402) { window.location.href = data.redirect || '/reels/pricing'; return; }
+    if (!res.ok || data.error) throw new Error(data.error || 'Server error. Please try again.');
+    window.location.href = '/reels/loading/' + data.reel_id;
+  } catch(err) {
+    showErr('s8err', err.message);
+    document.getElementById('createBtnTxt').textContent = 'Create Series';
+    document.getElementById('createBtnIco').innerHTML = '<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>';
+    btn.disabled = false;
+  }
+}
+
+// ── Step 7: Social account helpers ───────────────────────────────────────────
+
+const YT_ICON = `<svg width="20" height="20" viewBox="0 0 24 24"><path fill="#ef4444" d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>`;
+
+async function loadSocialAccounts() {
+  const container = document.getElementById('s7-accounts');
+  try {
+    const res  = await fetch('/api/reels/social-accounts');
+    const data = await res.json();
+    const accounts = data.accounts || [];
+
+    if (accounts.length === 0) {
+      container.innerHTML = '';
+      return;
+    }
+
+    container.innerHTML = accounts.map(a => `
+      <div class="social-item" style="margin-bottom:10px;" id="sa-${a.id}">
+        ${a.channel_thumb
+          ? `<img src="${a.channel_thumb}" width="32" height="32" style="border-radius:50%;object-fit:cover;flex-shrink:0;" />`
+          : YT_ICON
+        }
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:14px;font-weight:600;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(a.channel_name || 'YouTube Channel')}</div>
+          <div style="font-size:12px;color:#9ca3af;">YouTube · Connected</div>
+        </div>
+        <span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#16a34a;font-weight:600;background:#f0fdf4;padding:3px 10px;border-radius:99px;">
+          <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          Connected
+        </span>
+        <button onclick="disconnectAccount(${a.id})" type="button"
+          style="border:none;background:none;cursor:pointer;color:#9ca3af;font-size:12px;padding:4px 6px;border-radius:6px;transition:color .15s;"
+          title="Disconnect">✕</button>
+      </div>
+    `).join('');
+  } catch (e) {
+    container.innerHTML = '';
+  }
+}
+
+function connectYouTube() {
+  // Save wizard state to sessionStorage so we can restore after OAuth redirect
+  sessionStorage.setItem('wizState', JSON.stringify(S));
+  window.location.href = '/auth/youtube';
+}
+
+async function disconnectAccount(id) {
+  if (!confirm('Disconnect this account?')) return;
+  try {
+    await fetch(`/api/reels/social-accounts/${id}`, { method: 'DELETE' });
+    document.getElementById('sa-' + id)?.remove();
+  } catch (e) { /* silent */ }
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const qp = new URLSearchParams(window.location.search);
+
+  // Restore wizard state saved before YouTube OAuth redirect
+  const savedState = sessionStorage.getItem('wizState');
+  if (savedState) {
+    try { Object.assign(S, JSON.parse(savedState)); } catch(e) {}
+    sessionStorage.removeItem('wizState');
+  }
+
+  const stepParam = parseInt(qp.get('step'), 10);
+
+  if (stepParam === 7 || qp.get('ytConnected') || qp.get('ytError')) {
+    // Return from YouTube OAuth — go back to step 7
+    go(7);
+    loadSocialAccounts();
+    if (qp.get('ytError')) {
+      const errEl = document.getElementById('s7-error');
+      errEl.textContent = 'Could not connect YouTube. Please try again.';
+      errEl.style.display = 'block';
+    }
+  } else {
+    updProg(1);
+    const tp = qp.get('topic');
+    if (tp) {
+      const match = document.querySelector('[data-niche="'+tp+'"]');
+      if (match) { pickNiche(tp); }
+      else { sTab(1,'b'); document.getElementById('customNiche').value=tp; cc('customNiche','cc1',5000); S.niche=tp; }
+    }
+  }
+
+});
+</script>
+
+<%- include('../partials/footer') %>

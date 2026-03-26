@@ -23,8 +23,10 @@ import { TEMPLATES, getTemplateById } from "./config/templates-config.js";
 import QRCode from "qrcode";
 import { getFieldsForTemplate, isPhotoTemplate } from "./config/template-fields.js";
 import adminRouter from "./routes/admin.js";
+import reelsRouter from "./routes/reels.js";
 import { removeBackgroundFromImageBase64 } from "remove.bg";
 import compression from "compression";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 let _removeBackground = null;
 async function getRemoveBg() {
   if (!_removeBackground) {
@@ -77,6 +79,17 @@ if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
 }
 
 const app = express();
+
+// ── PaySetu transaction rate limiter (per user IP, 10 requests / minute) ──
+const paysetuLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  keyGenerator: (req) => req.user?.id ? String(req.user.id) : ipKeyGenerator(req),
+  message: { success: false, message: "Too many requests. Please wait a minute and try again." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // ---------- MySQL ----------
 const pool = mysql.createPool({
   uri: process.env.DATABASE_URL,
@@ -261,10 +274,10 @@ await db.query(`
     // ── Homepage editable content defaults ───────────────────────────────────
     const homepageDefaults = [
       ['homepage_hero', JSON.stringify({
-        tag:       "AI-Powered Resume Studio",
-        headline:  "Build a job-ready resume in minutes, not hours.",
-        subtitle:  "SmrAI-Studio helps you create clean, modern resumes with AI guidance, professional layouts, and instant download as PDF or JPG.",
-        trustText: "No design skills needed · 8 professional templates · AI-powered content",
+        tag:       "Smart Digital Services Platform",
+        headline:  "All Your Digital Needs<br><span class=\"smr-grad\">In One Smart Platform</span>",
+        subtitle:  "Pay bills, recharge mobile, create professional resumes, edit photos, and apply for services — all from one powerful dashboard.",
+        trustText: "✦ &nbsp; 50K+ Users &nbsp;·&nbsp; 5+ services &nbsp;·&nbsp; 1 login",
       })],
       ['homepage_services', JSON.stringify({
         title:    "What you can do with SmrAI-Studio",
@@ -303,10 +316,18 @@ await db.query(`
       })],
     ];
     for (const [key, value] of homepageDefaults) {
-      await db.query(
-        `INSERT IGNORE INTO admin_settings (\`key\`, value) VALUES (?,?)`,
-        [key, value]
-      );
+      if (key === 'homepage_hero') {
+        // Always keep hero text in sync with latest defaults
+        await db.query(
+          `INSERT INTO admin_settings (\`key\`, value) VALUES (?,?) ON DUPLICATE KEY UPDATE value=VALUES(value)`,
+          [key, value]
+        );
+      } else {
+        await db.query(
+          `INSERT IGNORE INTO admin_settings (\`key\`, value) VALUES (?,?)`,
+          [key, value]
+        );
+      }
     }
 
     /* ── Admin Template Builder: dynamic templates created via admin panel ── */
@@ -528,6 +549,189 @@ await db.query(`
       )
     `);
 
+    /* ── AI Reels ── */
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS reels (
+        id            INT AUTO_INCREMENT PRIMARY KEY,
+        user_id       INT,
+        topic         TEXT,
+        script        TEXT,
+        title         VARCHAR(500),
+        hashtags      TEXT,
+        caption       TEXT,
+        video_url     TEXT,
+        audio_url     TEXT,
+        status        ENUM('processing','completed','failed') DEFAULT 'processing',
+        error_message TEXT,
+        created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX (user_id),
+        INDEX (status)
+      )
+    `);
+    // Migrate existing reels table if columns don't exist yet
+    await db.query(`ALTER TABLE reels ADD COLUMN title VARCHAR(500)`).catch(() => {});
+    await db.query(`ALTER TABLE reels ADD COLUMN hashtags TEXT`).catch(() => {});
+    await db.query(`ALTER TABLE reels ADD COLUMN caption TEXT`).catch(() => {});
+
+    /* ── Reel Subscriptions ── */
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS reel_subscriptions (
+        id                   INT AUTO_INCREMENT PRIMARY KEY,
+        user_id              INT NOT NULL,
+        plan_name            VARCHAR(50) DEFAULT 'Starter',
+        razorpay_order_id    VARCHAR(255),
+        razorpay_payment_id  VARCHAR(255) UNIQUE,
+        razorpay_signature   TEXT,
+        amount               DECIMAL(10,2) DEFAULT 199.00,
+        status               ENUM('active','inactive') DEFAULT 'active',
+        current_period_end   DATE NOT NULL,
+        created_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX (user_id),
+        INDEX (status)
+      )
+    `);
+
+    /* ── Reel Usage (weekly counter) ── */
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS reel_usage (
+        id                INT AUTO_INCREMENT PRIMARY KEY,
+        user_id           INT NOT NULL,
+        videos_generated  INT DEFAULT 0,
+        week_start        DATE NOT NULL,
+        UNIQUE KEY uq_user_week (user_id, week_start)
+      )
+    `);
+
+    /* ── Auto Post Log ── */
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS auto_posts (
+        id               INT AUTO_INCREMENT PRIMARY KEY,
+        reel_id          INT NOT NULL,
+        user_id          INT NOT NULL,
+        social_account_id INT NOT NULL,
+        platform         VARCHAR(50) NOT NULL,
+        platform_post_id VARCHAR(255),
+        platform_url     TEXT,
+        status           ENUM('pending','posted','failed') DEFAULT 'pending',
+        error_message    TEXT,
+        created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX (reel_id), INDEX (user_id)
+      )
+    `);
+
+    /* ── Social Accounts (YouTube / Instagram / Facebook OAuth) ── */
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS social_accounts (
+        id             INT AUTO_INCREMENT PRIMARY KEY,
+        user_id        INT NOT NULL,
+        platform       ENUM('youtube','instagram','facebook','tiktok') NOT NULL,
+        channel_id     VARCHAR(255) NOT NULL,
+        channel_name   VARCHAR(500),
+        channel_thumb  TEXT,
+        access_token   TEXT,
+        refresh_token  TEXT,
+        token_expiry   BIGINT,
+        created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_user_channel (user_id, channel_id),
+        INDEX (user_id)
+      )
+    `);
+
+
+    // ── PaySetu: wallet topup idempotency ref ─────────────────────────────────
+    await db.query(`ALTER TABLE wallet_transactions ADD COLUMN external_ref VARCHAR(100) NULL`).catch(() => {});
+
+    // ── PaySetu: Recharge transactions ────────────────────────────────────────
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS recharge_transactions (
+        id           INT AUTO_INCREMENT PRIMARY KEY,
+        user_id      INT NOT NULL,
+        type         ENUM('mobile','dth') NOT NULL,
+        mobile       VARCHAR(20) NOT NULL,
+        operator     VARCHAR(50) NOT NULL,
+        amount       DECIMAL(10,2) NOT NULL,
+        status       ENUM('pending','success','failed') DEFAULT 'pending',
+        external_ref VARCHAR(100),
+        created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX (user_id)
+      )
+    `).catch(() => {});
+
+    // ── PaySetu: BBPS transactions ────────────────────────────────────────────
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS bbps_transactions (
+        id              INT AUTO_INCREMENT PRIMARY KEY,
+        user_id         INT NOT NULL,
+        biller_id       VARCHAR(50) NOT NULL,
+        biller_name     VARCHAR(100),
+        category        VARCHAR(50),
+        customer_number VARCHAR(50) NOT NULL,
+        amount          DECIMAL(10,2) NOT NULL,
+        status          ENUM('pending','success','failed') DEFAULT 'pending',
+        external_ref    VARCHAR(100),
+        created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX (user_id)
+      )
+    `).catch(() => {});
+
+    // ── PaySetu: Billers catalog ──────────────────────────────────────────────
+    // Migrate existing tables to include 'mobile' category
+    await db.query(
+      `ALTER TABLE billers MODIFY COLUMN category ENUM('mobile','electricity','water','gas','broadband','dth','other') NOT NULL`
+    ).catch(() => {});
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS billers (
+        id        INT AUTO_INCREMENT PRIMARY KEY,
+        biller_id VARCHAR(50) UNIQUE NOT NULL,
+        name      VARCHAR(100) NOT NULL,
+        category  ENUM('mobile','electricity','water','gas','broadband','dth','other') NOT NULL,
+        is_active TINYINT(1) DEFAULT 1
+      )
+    `).catch(() => {});
+    await db.query(`
+      INSERT IGNORE INTO billers (biller_id, name, category) VALUES
+      ('AIRTEL_PREPAID','Airtel Prepaid','mobile'),
+      ('JIO_PREPAID','Jio Prepaid','mobile'),
+      ('VI_PREPAID','Vi (Vodafone Idea) Prepaid','mobile'),
+      ('BSNL_PREPAID','BSNL Prepaid','mobile'),
+      ('TATA_POWER_MUM','Tata Power Mumbai','electricity'),
+      ('BSES_RAJDHANI','BSES Rajdhani Power','electricity'),
+      ('MSEDCL','MSEDCL Maharashtra','electricity'),
+      ('BEST_MUMBAI','BEST Mumbai','electricity'),
+      ('JAIPUR_VIDYUT','Jaipur Vidyut Vitran','electricity'),
+      ('DJB_WATER','Delhi Jal Board','water'),
+      ('BWSSB','BWSSB Bangalore','water'),
+      ('MGL','Mahanagar Gas Mumbai','gas'),
+      ('IGL','Indraprastha Gas Delhi','gas'),
+      ('AIRTEL_BB','Airtel Xstream Fiber','broadband'),
+      ('JIOFIBER','JioFiber','broadband'),
+      ('BSNL_BB','BSNL Broadband','broadband'),
+      ('TATAPLAY','Tata Play (DTH)','dth'),
+      ('DISHTV','Dish TV','dth'),
+      ('AIRTEL_DTH','Airtel Digital TV','dth'),
+      ('SUNTV_DTH','Sun Direct DTH','dth')
+    `).catch(() => {});
+
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS recharge_api_providers (
+        id           INT AUTO_INCREMENT PRIMARY KEY,
+        provider_key VARCHAR(50) UNIQUE NOT NULL,
+        display_name VARCHAR(100) NOT NULL,
+        api_key      VARCHAR(500) NULL,
+        api_secret   VARCHAR(500) NULL,
+        is_active    TINYINT(1) DEFAULT 0,
+        updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `).catch(() => {});
+    await db.query(`
+      INSERT IGNORE INTO recharge_api_providers (provider_key, display_name) VALUES
+      ('femoney24',    'femoney24 Recharge API'),
+      ('paysprint',    'PaySprint'),
+      ('cyrus',        'Cyrus Recharge'),
+      ('easyrecharge', 'EasyRecharge / RAPI'),
+      ('setu',         'Setu (BBPS Only)')
+    `).catch(() => {});
+
   } catch (err) {
     console.error('[initDb] FAILED:', err.message);
   }
@@ -624,6 +828,12 @@ const uploadDir = path.join(__dirname, "public", "uploads");
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
+
+// Create directories for AI Reels output
+['public/videos', 'public/audio', 'public/videos/temp'].forEach((dir) => {
+  const fullPath = path.join(__dirname, dir);
+  if (!fs.existsSync(fullPath)) fs.mkdirSync(fullPath, { recursive: true });
+});
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -2759,6 +2969,232 @@ app.get("/investor/history", ensureInvestor, async (req, res) => {
 // ── Admin panel ──────────────────────────────────────────────────────────────
 app.use("/admin", ensureAdmin, adminRouter(db));
 
+// ── AI Reel Generator ─────────────────────────────────────────────────────────
+app.use("/reels", ensureAuthenticated, reelsRouter(db));
+
+// ── Reel Subscription Payments ────────────────────────────────────────────────
+
+/** GET /api/reels/subscription/status */
+app.get("/api/reels/subscription/status", ensureAuthenticated, async (req, res) => {
+  try {
+    const subRes = await db.query(
+      `SELECT current_period_end FROM reel_subscriptions
+       WHERE user_id = ? AND status = 'active' AND current_period_end >= CURDATE()
+       ORDER BY current_period_end DESC LIMIT 1`,
+      [req.user.id]
+    );
+    const subscribed = subRes.rows.length > 0;
+    const periodEnd  = subscribed ? subRes.rows[0].current_period_end : null;
+
+    const weekStart = (() => {
+      const d = new Date(); const day = d.getDay();
+      d.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
+      return d.toISOString().split('T')[0];
+    })();
+    const usageRes = await db.query(
+      `SELECT videos_generated FROM reel_usage WHERE user_id = ? AND week_start = ?`,
+      [req.user.id, weekStart]
+    );
+    const videosThisWeek = usageRes.rows[0]?.videos_generated || 0;
+
+    res.json({ subscribed, videosThisWeek, weeklyLimit: 3, periodEnd });
+  } catch (err) {
+    res.status(500).json({ subscribed: false, videosThisWeek: 0, weeklyLimit: 3, periodEnd: null });
+  }
+});
+
+/** POST /api/reels/payment/create-order */
+app.post("/api/reels/payment/create-order", ensureAuthenticated, async (req, res) => {
+  try {
+    // Block if already subscribed
+    const existing = await db.query(
+      `SELECT id FROM reel_subscriptions
+       WHERE user_id = ? AND status = 'active' AND current_period_end >= CURDATE() LIMIT 1`,
+      [req.user.id]
+    );
+    if (existing.rows.length) {
+      return res.json({ success: false, message: "You already have an active subscription." });
+    }
+
+    const order = await getRazorpay().orders.create({
+      amount:   19900,   // ₹199 in paise
+      currency: "INR",
+      receipt:  "reel_sub_" + req.user.id + "_" + Date.now(),
+    });
+
+    res.json({
+      success:  true,
+      orderId:  order.id,
+      amount:   order.amount,
+      currency: order.currency,
+      key:      process.env.RAZORPAY_KEY_ID,
+    });
+  } catch (err) {
+    console.error("[Reels Payment] create-order error:", err.message);
+    res.status(500).json({ success: false, message: "Could not create payment order." });
+  }
+});
+
+/** POST /api/reels/payment/verify */
+app.post("/api/reels/payment/verify", ensureAuthenticated, async (req, res) => {
+  try {
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return res.status(400).json({ success: false, message: "Missing payment fields." });
+    }
+
+    // Verify HMAC signature
+    const hmac = crypto.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET);
+    hmac.update(razorpay_order_id + "|" + razorpay_payment_id);
+    if (hmac.digest("hex") !== razorpay_signature) {
+      return res.status(400).json({ success: false, message: "Invalid payment signature." });
+    }
+
+    // Duplicate-payment guard
+    const dup = await db.query(
+      `SELECT id FROM reel_subscriptions WHERE razorpay_payment_id = ?`,
+      [razorpay_payment_id]
+    );
+    if (dup.rows.length) return res.json({ success: true });
+
+    // Activate subscription (+30 days)
+    const periodEnd = new Date();
+    periodEnd.setDate(periodEnd.getDate() + 30);
+    const periodEndStr = periodEnd.toISOString().split('T')[0];
+
+    await db.query(
+      `INSERT INTO reel_subscriptions
+         (user_id, plan_name, razorpay_order_id, razorpay_payment_id, razorpay_signature, amount, status, current_period_end)
+       VALUES (?, 'Starter', ?, ?, ?, 199.00, 'active', ?)`,
+      [req.user.id, razorpay_order_id, razorpay_payment_id, razorpay_signature, periodEndStr]
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("[Reels Payment] verify error:", err.message);
+    res.status(500).json({ success: false, message: "Subscription activation failed." });
+  }
+});
+
+// ── Social Accounts: YouTube OAuth ───────────────────────────────────────────
+
+/** GET /auth/youtube — start YouTube OAuth consent flow */
+app.get("/auth/youtube", ensureAuthenticated, (req, res) => {
+  const clientId    = process.env.GOOGLE_CLIENT_ID;
+  const redirectUri = process.env.APP_URL
+    ? `${process.env.APP_URL}/auth/youtube/callback`
+    : `${req.protocol}://${req.get("host")}/auth/youtube/callback`;
+
+  const scopes = [
+    "openid",
+    "email",
+    "profile",
+    "https://www.googleapis.com/auth/youtube.readonly",
+    "https://www.googleapis.com/auth/youtube.upload",
+  ].join(" ");
+
+  const params = new URLSearchParams({
+    client_id:     clientId,
+    redirect_uri:  redirectUri,
+    response_type: "code",
+    scope:         scopes,
+    access_type:   "offline",
+    prompt:        "consent select_account",
+    state:         req.user.id.toString(),
+  });
+
+  res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
+});
+
+/** GET /auth/youtube/callback — exchange code, fetch channel, save */
+app.get("/auth/youtube/callback", ensureAuthenticated, async (req, res) => {
+  const { code, error } = req.query;
+  if (error || !code) return res.redirect("/reels/create?step=7&ytError=1");
+
+  const redirectUri = process.env.APP_URL
+    ? `${process.env.APP_URL}/auth/youtube/callback`
+    : `${req.protocol}://${req.get("host")}/auth/youtube/callback`;
+
+  try {
+    // Exchange code for tokens
+    const tokenRes = await axios.post(
+      "https://oauth2.googleapis.com/token",
+      new URLSearchParams({
+        code,
+        client_id:     process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        redirect_uri:  redirectUri,
+        grant_type:    "authorization_code",
+      }).toString(),
+      { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+    );
+    const { access_token, refresh_token, expires_in } = tokenRes.data;
+    const tokenExpiry = Date.now() + (expires_in || 3600) * 1000;
+
+    // Fetch YouTube channel info
+    const ytRes = await axios.get(
+      "https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true",
+      { headers: { Authorization: `Bearer ${access_token}` } }
+    );
+    const channel = ytRes.data.items?.[0];
+    if (!channel) return res.redirect("/reels/create?step=7&ytError=noChannel");
+
+    const channelId    = channel.id;
+    const channelName  = channel.snippet.title;
+    const channelThumb = channel.snippet.thumbnails?.default?.url || "";
+
+    // Upsert into social_accounts
+    await db.query(
+      `INSERT INTO social_accounts
+         (user_id, platform, channel_id, channel_name, channel_thumb, access_token, refresh_token, token_expiry)
+       VALUES (?, 'youtube', ?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE
+         channel_name  = VALUES(channel_name),
+         channel_thumb = VALUES(channel_thumb),
+         access_token  = VALUES(access_token),
+         refresh_token = COALESCE(VALUES(refresh_token), refresh_token),
+         token_expiry  = VALUES(token_expiry)`,
+      [req.user.id, channelId, channelName, channelThumb, access_token, refresh_token || null, tokenExpiry]
+    );
+
+    res.redirect("/reels/create?step=7&ytConnected=1");
+  } catch (err) {
+    console.error("[YouTube OAuth] callback error:", err.response?.data || err.message);
+    res.redirect("/reels/create?step=7&ytError=1");
+  }
+});
+
+/** GET /api/reels/social-accounts — list connected accounts */
+app.get("/api/reels/social-accounts", ensureAuthenticated, async (req, res) => {
+  try {
+    const { rows } = await db.query(
+      `SELECT id, platform, channel_id, channel_name, channel_thumb
+       FROM social_accounts WHERE user_id = ? ORDER BY created_at ASC`,
+      [req.user.id]
+    );
+    res.json({ accounts: rows });
+  } catch (err) {
+    console.error("[Social Accounts] list error:", err.message);
+    res.status(500).json({ error: "Failed to load accounts" });
+  }
+});
+
+/** DELETE /api/reels/social-accounts/:id — disconnect an account */
+app.delete("/api/reels/social-accounts/:id", ensureAuthenticated, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!id) return res.status(400).json({ error: "Invalid ID" });
+  try {
+    await db.query(
+      "DELETE FROM social_accounts WHERE id = ? AND user_id = ?",
+      [id, req.user.id]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error("[Social Accounts] delete error:", err.message);
+    res.status(500).json({ error: "Failed to disconnect account" });
+  }
+});
+
 // ── REST: message history for a request ──────────────────────────────────────
 app.get("/api/request/:id/messages", ensureAuthenticated, async (req, res) => {
   const requestId = parseInt(req.params.id, 10);
@@ -3870,3 +4306,697 @@ if (existing.rows.length > 0) {
 });
 
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// PAYSETU MODULE — Wallet Top-up | Mobile/DTH Recharge | BBPS Bill Payment
+// All routes use existing ensureAuthenticated, db.query, getRazorpay, wallet_balance
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── Mock external service helpers ─────────────────────────────────────────────
+
+async function mockRechargeApi(mobile, operator, amount, type) {
+  await new Promise(r => setTimeout(r, 300 + Math.random() * 500));
+  return Math.random() < 0.8
+    ? { success: true,  ref: `RCH_${Date.now()}_${Math.random().toString(36).slice(2, 8).toUpperCase()}` }
+    : { success: false, error: "Operator timeout. Please try again." };
+}
+
+// ── Provider-aware recharge (femoney24 or mock fallback) ──────────────────────
+
+async function callRechargeApi(mobile, operator, amount, type, clientId) {
+  const prov = await db.query(
+    "SELECT provider_key, api_key FROM recharge_api_providers WHERE is_active=1 LIMIT 1"
+  ).catch(() => ({ rows: [] }));
+
+  const p = prov.rows[0];
+  if (!p || !p.api_key) {
+    return mockRechargeApi(mobile, operator, amount, type);
+  }
+
+  if (p.provider_key === 'femoney24') {
+    const opCode = FEMONEY24_OP_CODES[operator];
+    if (!opCode) return { success: false, error: `Unsupported operator: ${operator}` };
+
+    const url = `https://femoney24.com/RechargeApi/Recharge.aspx` +
+      `?Apitoken=${encodeURIComponent(p.api_key)}` +
+      `&Amount=${amount}&OperatorCode=${opCode}` +
+      `&Number=${mobile}&ClientId=${clientId}`;
+
+    const resp = await fetch(url, { signal: AbortSignal.timeout(15000) });
+    const data = await resp.json();
+
+    if (data.STATUS === 'SUCCESS') {
+      return { success: true,  ref: String(data.TRANSACTIONID), pending: false };
+    } else if (data.STATUS === 'IN PROCESS') {
+      return { success: true,  ref: String(data.TRANSACTIONID), pending: true };
+    } else {
+      return { success: false, error: data.MESSAGE || 'Recharge failed at provider' };
+    }
+  }
+
+  // Unknown provider — fall back to mock
+  return mockRechargeApi(mobile, operator, amount, type);
+}
+
+async function mockBbpsApi(billerId, customerNumber, amount) {
+  await new Promise(r => setTimeout(r, 300 + Math.random() * 500));
+  return Math.random() < 0.8
+    ? { success: true,  ref: `BBPS_${Date.now()}_${Math.random().toString(36).slice(2, 8).toUpperCase()}` }
+    : { success: false, error: "BBPS provider unavailable." };
+}
+
+async function mockFetchBill(billerId, customerNumber) {
+  await new Promise(r => setTimeout(r, 200 + Math.random() * 300));
+  const seed = parseInt(customerNumber.slice(-4)) || 1234;
+  const amount = 500 + (seed % 9500);
+  const daysUntilDue = 3 + (seed % 10);
+  const dueDate = new Date(Date.now() + daysUntilDue * 86400000).toISOString().slice(0, 10);
+  return { found: true, amount, dueDate, daysUntilDue, consumerName: `Consumer ${customerNumber.slice(-4)}` };
+}
+
+// ── femoney24 operator code map ────────────────────────────────────────────────
+
+const FEMONEY24_OP_CODES = {
+  'Jio':            26,
+  'Airtel':          3,
+  'Vi (Vodafone)':   2,
+  'BSNL':            5,
+  'Tata Play':      31,
+  'Dish TV':        35,
+  'Airtel DTH':     34,
+  'Sun Direct':     36,
+  'Videocon D2H':   33,
+};
+
+// ── Mock recharge plans ────────────────────────────────────────────────────────
+
+const RECHARGE_PLANS = {
+  mobile: {
+    airtel: [
+      { amount: 179, validity: "28 days", description: "2GB/day + Unlimited calls" },
+      { amount: 299, validity: "28 days", description: "2.5GB/day + Unlimited calls" },
+      { amount: 399, validity: "56 days", description: "2.5GB/day + Unlimited calls" },
+      { amount: 599, validity: "84 days", description: "2GB/day + Unlimited calls" },
+    ],
+    jio: [
+      { amount: 149, validity: "24 days", description: "1GB/day + Unlimited calls" },
+      { amount: 249, validity: "28 days", description: "1.5GB/day + Unlimited calls" },
+      { amount: 349, validity: "56 days", description: "2GB/day + Unlimited calls" },
+      { amount: 599, validity: "84 days", description: "2.5GB/day + Unlimited calls" },
+    ],
+    vi: [
+      { amount: 179, validity: "28 days", description: "1.5GB/day + Unlimited calls" },
+      { amount: 299, validity: "28 days", description: "2GB/day + Unlimited calls" },
+      { amount: 399, validity: "56 days", description: "2GB/day + Unlimited calls" },
+    ],
+    bsnl: [
+      { amount: 107, validity: "18 days", description: "1GB/day + Unlimited calls" },
+      { amount: 187, validity: "28 days", description: "1GB/day + Unlimited calls" },
+      { amount: 397, validity: "80 days", description: "2GB/day + Unlimited calls" },
+    ],
+  },
+  dth: {
+    tataplay: [
+      { amount: 153, validity: "30 days", description: "Basic SD Pack" },
+      { amount: 259, validity: "30 days", description: "Popular SD Pack" },
+      { amount: 399, validity: "30 days", description: "HD Pack" },
+    ],
+    dishtv: [
+      { amount: 149, validity: "30 days", description: "Economy Pack" },
+      { amount: 249, validity: "30 days", description: "Super Family Pack" },
+      { amount: 349, validity: "30 days", description: "Super HD Pack" },
+    ],
+    airtel_dth: [
+      { amount: 153, validity: "30 days", description: "Basic Pack" },
+      { amount: 299, validity: "30 days", description: "Value Pack" },
+      { amount: 499, validity: "30 days", description: "Premium HD Pack" },
+    ],
+  },
+};
+
+// ── Wallet Top-up: Create Razorpay order ──────────────────────────────────────
+
+app.post("/api/wallet/topup/create-order", ensureAuthenticated, async (req, res) => {
+  try {
+    const amount = parseFloat(req.body.amount);
+    if (!amount || amount < 10 || amount > 50000) {
+      return res.status(400).json({ success: false, message: "Amount must be between ₹10 and ₹50,000." });
+    }
+
+    const rzp = getRazorpay();
+    const order = await rzp.orders.create({
+      amount: Math.round(amount * 100),
+      currency: "INR",
+      receipt: `wtopup_${Date.now()}`,
+      notes: { purpose: "wallet_topup", user_id: String(req.user.id) },
+    });
+
+    return res.json({
+      success: true,
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      key: process.env.RAZORPAY_KEY_ID,
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: "Unable to create top-up order." });
+  }
+});
+
+// ── Wallet Top-up: Verify payment + credit wallet ─────────────────────────────
+
+app.post("/api/wallet/topup/verify", ensureAuthenticated, async (req, res) => {
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature, amount } = req.body || {};
+  if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !amount) {
+    return res.status(400).json({ success: false, message: "Missing payment details." });
+  }
+
+  try {
+    // Verify HMAC-SHA256 signature
+    const hmac = crypto.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET);
+    hmac.update(`${razorpay_order_id}|${razorpay_payment_id}`);
+    if (hmac.digest("hex") !== razorpay_signature) {
+      return res.status(400).json({ success: false, message: "Invalid payment signature." });
+    }
+
+    // Idempotency: don't double-credit same payment
+    const existing = await db.query(
+      "SELECT id FROM wallet_transactions WHERE external_ref = ? AND user_id = ?",
+      [razorpay_payment_id, req.user.id]
+    );
+    if (existing.rows.length > 0) {
+      const balRow = await db.query("SELECT wallet_balance FROM users WHERE id = ?", [req.user.id]);
+      return res.json({ success: true, balance: parseFloat(balRow.rows[0]?.wallet_balance) || 0 });
+    }
+
+    const creditAmount = parseFloat(amount);
+    if (!creditAmount || creditAmount <= 0) {
+      return res.status(400).json({ success: false, message: "Invalid amount." });
+    }
+
+    // Credit wallet
+    await db.query(
+      "UPDATE users SET wallet_balance = wallet_balance + ? WHERE id = ?",
+      [creditAmount, req.user.id]
+    );
+    await db.query(
+      "INSERT INTO wallet_transactions (user_id, amount, type, reason, external_ref) VALUES (?, ?, 'credit', 'wallet_topup', ?)",
+      [req.user.id, creditAmount, razorpay_payment_id]
+    );
+
+    const balRow = await db.query("SELECT wallet_balance FROM users WHERE id = ?", [req.user.id]);
+    return res.json({
+      success: true,
+      message: `₹${creditAmount} added to your wallet.`,
+      balance: parseFloat(balRow.rows[0]?.wallet_balance) || 0,
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: "Top-up verification failed." });
+  }
+});
+
+// ── Recharge: Get plans ───────────────────────────────────────────────────────
+
+app.get("/api/recharge/plans", ensureAuthenticated, (req, res) => {
+  const type     = (req.query.type     || "mobile").toLowerCase();
+  const operator = (req.query.operator || "").toLowerCase();
+
+  const typeGroup = RECHARGE_PLANS[type];
+  if (!typeGroup) {
+    return res.status(400).json({ success: false, message: "Invalid type. Use: mobile, dth" });
+  }
+
+  if (operator && typeGroup[operator]) {
+    return res.json({ success: true, plans: typeGroup[operator] });
+  }
+
+  // Return all operators if no specific one requested
+  return res.json({ success: true, plans: typeGroup });
+});
+
+// ── Recharge: Process mobile/DTH recharge ────────────────────────────────────
+
+app.post("/api/recharge", ensureAuthenticated, paysetuLimiter, async (req, res) => {
+  const { mobile, operator, amount: rawAmount, type } = req.body || {};
+
+  // Input validation
+  if (!mobile || !/^\d{10,15}$/.test(String(mobile).trim())) {
+    return res.status(400).json({ success: false, message: "Enter a valid mobile/DTH number." });
+  }
+  if (!operator || !String(operator).trim()) {
+    return res.status(400).json({ success: false, message: "Operator is required." });
+  }
+  if (!["mobile", "dth"].includes(String(type || "").toLowerCase())) {
+    return res.status(400).json({ success: false, message: "Type must be mobile or dth." });
+  }
+  const amount = parseFloat(rawAmount);
+  if (!amount || amount <= 0 || amount > 10000) {
+    return res.status(400).json({ success: false, message: "Amount must be between ₹1 and ₹10,000." });
+  }
+
+  const userId = req.user.id;
+
+  try {
+    // Atomic deduction: only succeeds if wallet has sufficient balance
+    const deducted = await db.query(
+      "UPDATE users SET wallet_balance = wallet_balance - ? WHERE id = ? AND wallet_balance >= ?",
+      [amount, userId, amount]
+    );
+    if (deducted.rowCount === 0) {
+      return res.status(400).json({ success: false, message: "Insufficient wallet balance." });
+    }
+
+    // Log wallet debit
+    await db.query(
+      "INSERT INTO wallet_transactions (user_id, amount, type, reason) VALUES (?, ?, 'debit', 'recharge')",
+      [userId, amount]
+    );
+
+    // Insert pending transaction
+    const txn = await db.query(
+      "INSERT INTO recharge_transactions (user_id, type, mobile, operator, amount, status) VALUES (?, ?, ?, ?, ?, 'pending')",
+      [userId, type.toLowerCase(), String(mobile).trim(), String(operator).trim(), amount]
+    );
+    const txnId = txn.insertId;
+
+    // Call recharge API (real provider if configured, else mock fallback)
+    const apiResult = await callRechargeApi(mobile, operator, amount, type, txnId);
+
+    if (apiResult.success) {
+      // IN PROCESS — keep pending status; callback will update later
+      if (!apiResult.pending) {
+        await db.query(
+          "UPDATE recharge_transactions SET status = 'success', external_ref = ? WHERE id = ?",
+          [apiResult.ref, txnId]
+        );
+      } else {
+        await db.query(
+          "UPDATE recharge_transactions SET external_ref = ? WHERE id = ?",
+          [apiResult.ref, txnId]
+        );
+      }
+      const balRow = await db.query("SELECT wallet_balance FROM users WHERE id = ?", [userId]);
+      return res.json({
+        success: true,
+        pending: !!apiResult.pending,
+        message: apiResult.pending ? "Recharge submitted! Awaiting confirmation from operator." : "Recharge successful!",
+        ref: apiResult.ref,
+        balance: parseFloat(balRow.rows[0]?.wallet_balance) || 0,
+      });
+    } else {
+      // Recharge failed — refund wallet
+      await db.query(
+        "UPDATE recharge_transactions SET status = 'failed' WHERE id = ?",
+        [txnId]
+      );
+      await db.query(
+        "UPDATE users SET wallet_balance = wallet_balance + ? WHERE id = ?",
+        [amount, userId]
+      );
+      await db.query(
+        "INSERT INTO wallet_transactions (user_id, amount, type, reason, ref_id) VALUES (?, ?, 'credit', 'recharge_refund', ?)",
+        [userId, amount, txnId]
+      );
+      const balRow = await db.query("SELECT wallet_balance FROM users WHERE id = ?", [userId]);
+      return res.status(502).json({
+        success: false,
+        message: apiResult.error || "Recharge failed. Amount refunded to wallet.",
+        balance: parseFloat(balRow.rows[0]?.wallet_balance) || 0,
+      });
+    }
+  } catch (err) {
+    return res.status(500).json({ success: false, message: "Recharge service unavailable." });
+  }
+});
+
+// ── Recharge: History ─────────────────────────────────────────────────────────
+
+app.get("/api/recharge/history", ensureAuthenticated, async (req, res) => {
+  try {
+    const rows = await db.query(
+      "SELECT * FROM recharge_transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT 20",
+      [req.user.id]
+    );
+    return res.json({ success: true, history: rows.rows });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: "Could not fetch recharge history." });
+  }
+});
+
+// ── BBPS: List billers ────────────────────────────────────────────────────────
+
+app.get("/api/bbps/billers", ensureAuthenticated, async (req, res) => {
+  try {
+    const category = req.query.category ? String(req.query.category).toLowerCase() : null;
+    const valid = ["mobile", "electricity", "water", "gas", "broadband", "dth", "other"];
+
+    let rows;
+    if (category && valid.includes(category)) {
+      rows = await db.query(
+        "SELECT biller_id, name, category FROM billers WHERE category = ? AND is_active = 1 ORDER BY name",
+        [category]
+      );
+    } else {
+      rows = await db.query(
+        "SELECT biller_id, name, category FROM billers WHERE is_active = 1 ORDER BY category, name"
+      );
+    }
+
+    return res.json({ success: true, billers: rows.rows });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: "Could not fetch billers." });
+  }
+});
+
+// ── BBPS: Fetch pending bill ──────────────────────────────────────────────────
+
+app.post("/api/bbps/fetch-bill", ensureAuthenticated, paysetuLimiter, async (req, res) => {
+  const { biller_id, customer_number } = req.body || {};
+  if (!biller_id || !customer_number) {
+    return res.status(400).json({ success: false, message: "biller_id and customer_number are required." });
+  }
+
+  try {
+    // Verify biller exists
+    const biller = await db.query(
+      "SELECT name, category FROM billers WHERE biller_id = ? AND is_active = 1",
+      [String(biller_id).trim()]
+    );
+    if (!biller.rows.length) {
+      return res.status(404).json({ success: false, message: "Biller not found." });
+    }
+
+    const bill = await mockFetchBill(biller_id, String(customer_number).trim());
+    return res.json({
+      success: true,
+      biller: biller.rows[0],
+      bill,
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: "Could not fetch bill details." });
+  }
+});
+
+// ── BBPS: Pay bill ────────────────────────────────────────────────────────────
+
+app.post("/api/bbps/pay", ensureAuthenticated, paysetuLimiter, async (req, res) => {
+  const { biller_id, customer_number, amount: rawAmount } = req.body || {};
+
+  if (!biller_id || !String(biller_id).trim()) {
+    return res.status(400).json({ success: false, message: "biller_id is required." });
+  }
+  if (!customer_number || !String(customer_number).trim()) {
+    return res.status(400).json({ success: false, message: "customer_number is required." });
+  }
+  const amount = parseFloat(rawAmount);
+  if (!amount || amount <= 0 || amount > 100000) {
+    return res.status(400).json({ success: false, message: "Amount must be between ₹1 and ₹1,00,000." });
+  }
+
+  const userId = req.user.id;
+
+  try {
+    // Look up biller
+    const billerRow = await db.query(
+      "SELECT name, category FROM billers WHERE biller_id = ? AND is_active = 1",
+      [String(biller_id).trim()]
+    );
+    if (!billerRow.rows.length) {
+      return res.status(404).json({ success: false, message: "Biller not found." });
+    }
+    const { name: billerName, category } = billerRow.rows[0];
+
+    // Atomic wallet deduction
+    const deducted = await db.query(
+      "UPDATE users SET wallet_balance = wallet_balance - ? WHERE id = ? AND wallet_balance >= ?",
+      [amount, userId, amount]
+    );
+    if (deducted.rowCount === 0) {
+      return res.status(400).json({ success: false, message: "Insufficient wallet balance." });
+    }
+
+    // Log wallet debit
+    await db.query(
+      "INSERT INTO wallet_transactions (user_id, amount, type, reason) VALUES (?, ?, 'debit', 'bbps_payment')",
+      [userId, amount]
+    );
+
+    // Insert pending BBPS transaction
+    const txn = await db.query(
+      `INSERT INTO bbps_transactions
+        (user_id, biller_id, biller_name, category, customer_number, amount, status)
+       VALUES (?, ?, ?, ?, ?, ?, 'pending')`,
+      [userId, String(biller_id).trim(), billerName, category, String(customer_number).trim(), amount]
+    );
+    const txnId = txn.insertId;
+
+    // Call mock BBPS API
+    const apiResult = await mockBbpsApi(biller_id, customer_number, amount);
+
+    if (apiResult.success) {
+      await db.query(
+        "UPDATE bbps_transactions SET status = 'success', external_ref = ? WHERE id = ?",
+        [apiResult.ref, txnId]
+      );
+      const balRow = await db.query("SELECT wallet_balance FROM users WHERE id = ?", [userId]);
+      return res.json({
+        success: true,
+        message: "Bill payment successful!",
+        ref: apiResult.ref,
+        balance: parseFloat(balRow.rows[0]?.wallet_balance) || 0,
+      });
+    } else {
+      // Payment failed — refund wallet
+      await db.query(
+        "UPDATE bbps_transactions SET status = 'failed' WHERE id = ?",
+        [txnId]
+      );
+      await db.query(
+        "UPDATE users SET wallet_balance = wallet_balance + ? WHERE id = ?",
+        [amount, userId]
+      );
+      await db.query(
+        "INSERT INTO wallet_transactions (user_id, amount, type, reason, ref_id) VALUES (?, ?, 'credit', 'bbps_refund', ?)",
+        [userId, amount, txnId]
+      );
+      const balRow = await db.query("SELECT wallet_balance FROM users WHERE id = ?", [userId]);
+      return res.status(502).json({
+        success: false,
+        message: apiResult.error || "Bill payment failed. Amount refunded to wallet.",
+        balance: parseFloat(balRow.rows[0]?.wallet_balance) || 0,
+      });
+    }
+  } catch (err) {
+    return res.status(500).json({ success: false, message: "BBPS service unavailable." });
+  }
+});
+
+// ── BBPS: History ─────────────────────────────────────────────────────────────
+
+app.get("/api/bbps/history", ensureAuthenticated, async (req, res) => {
+  try {
+    const rows = await db.query(
+      "SELECT * FROM bbps_transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT 20",
+      [req.user.id]
+    );
+    return res.json({ success: true, history: rows.rows });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: "Could not fetch bill payment history." });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── PaySetu Page Routes ───────────────────────────────────────────────────────
+app.get('/paysetu', ensureAuthenticated, (req, res) => {
+  res.render('paysetu/index', { currentUser: req.user });
+});
+app.get('/paysetu/recharge', ensureAuthenticated, (req, res) => {
+  res.render('paysetu/recharge', { currentUser: req.user });
+});
+app.get('/paysetu/bbps', ensureAuthenticated, (req, res) => {
+  res.render('paysetu/bbps', { currentUser: req.user });
+});
+app.get('/paysetu/wallet-topup', ensureAuthenticated, (req, res) => {
+  res.render('paysetu/wallet-topup', { currentUser: req.user });
+});
+app.get('/paysetu/history', ensureAuthenticated, (req, res) => {
+  res.render('paysetu/history', { currentUser: req.user });
+});
+app.get('/paysetu/set-pin', ensureAuthenticated, (req, res) => {
+  res.render('paysetu/set-pin', { currentUser: req.user });
+});
+
+app.get('/paysetu/support', ensureAuthenticated, (req, res) => {
+  res.render('paysetu/support', { currentUser: req.user });
+});
+
+app.get('/paysetu/settings', ensureAuthenticated, async (req, res) => {
+  try {
+    const profileRes = await db.query('SELECT phone FROM user_profiles WHERE user_id = ?', [req.user.id]);
+    res.render('paysetu/settings', { currentUser: req.user, psPhone: profileRes.rows[0]?.phone || null });
+  } catch {
+    res.render('paysetu/settings', { currentUser: req.user, psPhone: null });
+  }
+});
+
+// ── femoney24 Recharge Callback ───────────────────────────────────────────────
+// femoney24 hits: GET /paysetu/recharge/callback?secret=<PAYSETU_CALLBACK_SECRET>&STATUS=&TRANSACTIONID=&CLIENTID=
+// Register this full URL (with secret) in femoney24's admin dashboard.
+app.get("/paysetu/recharge/callback", async (req, res) => {
+  // ── Secret token guard (constant-time comparison to prevent timing attacks) ──
+  const expectedSecret = process.env.PAYSETU_CALLBACK_SECRET;
+  if (!expectedSecret) {
+    console.error("[callback] PAYSETU_CALLBACK_SECRET not set — rejecting all callback requests.");
+    return res.status(403).send("UNAUTHORIZED");
+  }
+  const incoming = String(req.query.secret || "");
+  const expected = String(expectedSecret);
+  const lenMatch = incoming.length === expected.length;
+  const safeMatch = lenMatch && crypto.timingSafeEqual(Buffer.from(incoming), Buffer.from(expected));
+  if (!safeMatch) {
+    console.warn("[callback] Rejected — bad or missing secret. IP:", req.ip);
+    return res.status(403).send("UNAUTHORIZED");
+  }
+
+  const { STATUS, TRANSACTIONID, CLIENTID } = req.query;
+  if (!CLIENTID || !STATUS) return res.send("MISSING_PARAMS");
+
+  const txnId = parseInt(CLIENTID);
+  if (!txnId) return res.send("INVALID_CLIENTID");
+
+  try {
+    const txnRow = await db.query(
+      "SELECT id, user_id, amount, status FROM recharge_transactions WHERE id=?", [txnId]
+    );
+    const txn = txnRow.rows[0];
+    if (!txn) return res.send("TXN_NOT_FOUND");
+
+    if (STATUS === 'SUCCESS' && txn.status !== 'success') {
+      await db.query(
+        "UPDATE recharge_transactions SET status='success', external_ref=? WHERE id=?",
+        [String(TRANSACTIONID || ''), txnId]
+      );
+    } else if ((STATUS === 'FAILURE' || STATUS === 'REFUND') && txn.status !== 'failed') {
+      await db.query(
+        "UPDATE recharge_transactions SET status='failed' WHERE id=?", [txnId]
+      );
+      // Refund wallet only if it was debited (status was pending/success)
+      if (txn.status !== 'success') {
+        await db.query(
+          "UPDATE users SET wallet_balance = wallet_balance + ? WHERE id=?",
+          [txn.amount, txn.user_id]
+        );
+        await db.query(
+          "INSERT INTO wallet_transactions (user_id, amount, type, reason, ref_id) VALUES (?, ?, 'credit', 'recharge_refund', ?)",
+          [txn.user_id, txn.amount, String(TRANSACTIONID || txnId)]
+        );
+      }
+    }
+    return res.send("OK");
+  } catch (err) {
+    return res.send("ERROR");
+  }
+});
+
+// ── Pending Recharge Poller ───────────────────────────────────────────────────
+// Runs every 5 minutes. Checks femoney24 status for any recharge stuck in 'pending'
+// for more than 10 minutes and resolves it (success or refund).
+
+async function pollPendingRecharges() {
+  try {
+    const prov = await db.query(
+      "SELECT provider_key, api_key FROM recharge_api_providers WHERE is_active=1 AND provider_key='femoney24' LIMIT 1"
+    ).catch(() => ({ rows: [] }));
+    const p = prov.rows[0];
+    if (!p || !p.api_key) return; // No active femoney24 provider
+
+    const stale = await db.query(
+      "SELECT id, user_id, amount FROM recharge_transactions WHERE status='pending' AND created_at < DATE_SUB(NOW(), INTERVAL 10 MINUTE)"
+    );
+    if (!stale.rows.length) return;
+
+    console.log(`[poller] Checking ${stale.rows.length} stale pending recharge(s)…`);
+
+    for (const txn of stale.rows) {
+      try {
+        const url = `https://femoney24.com/RechargeApi/rechargestatus.aspx` +
+          `?Apitoken=${encodeURIComponent(p.api_key)}&ClientId=${txn.id}`;
+        const data = await fetch(url, { signal: AbortSignal.timeout(10000) }).then(r => r.json());
+
+        if (data.STATUS !== 'SUCCESS') continue; // outer STATUS=SUCCESS means API call worked
+
+        const rs = data.RECHARGESTATUS;
+        if (rs === 'SUCCESS') {
+          await db.query(
+            "UPDATE recharge_transactions SET status='success', external_ref=? WHERE id=?",
+            [data.OPERATORID || '', txn.id]
+          );
+          console.log(`[poller] txn ${txn.id} → SUCCESS`);
+        } else if (rs === 'FAILURE' || rs === 'TRANSACTION NOT FOUND') {
+          await db.query("UPDATE recharge_transactions SET status='failed' WHERE id=?", [txn.id]);
+          await db.query(
+            "UPDATE users SET wallet_balance = wallet_balance + ? WHERE id=?",
+            [txn.amount, txn.user_id]
+          );
+          await db.query(
+            "INSERT INTO wallet_transactions (user_id, amount, type, reason, ref_id) VALUES (?,?,'credit','recharge_refund',?)",
+            [txn.user_id, txn.amount, String(txn.id)]
+          );
+          console.log(`[poller] txn ${txn.id} → FAILED — wallet refunded ₹${txn.amount}`);
+        }
+        // rs === 'IN PROCESS' → leave pending, will check again next cycle
+      } catch (e) {
+        console.error(`[poller] txn ${txn.id} error:`, e.message);
+      }
+    }
+  } catch (e) {
+    console.error("[poller] error:", e.message);
+  }
+}
+
+// Start polling 2 min after boot (give server time to fully init), then every 5 min
+setTimeout(() => {
+  pollPendingRecharges();
+  setInterval(pollPendingRecharges, 5 * 60 * 1000);
+}, 2 * 60 * 1000);
+
+// ── Wallet PIN Routes ─────────────────────────────────────────────────────────
+// Ensure wallet_pin column exists (safe to run on every start)
+(async () => {
+  try {
+    await db.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS wallet_pin VARCHAR(255) NULL');
+  } catch (_) {}
+})();
+
+app.post('/api/user/pin/set', ensureAuthenticated, async (req, res) => {
+  const { pin } = req.body;
+  if (!pin || !/^\d{4}$/.test(pin)) {
+    return res.json({ success: false, message: 'PIN must be exactly 4 digits.' });
+  }
+  try {
+    const hash = await bcrypt.hash(pin, 10);
+    await db.query('UPDATE users SET wallet_pin = ? WHERE id = ?', [hash, req.user.id]);
+    return res.json({ success: true });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: 'Could not save PIN.' });
+  }
+});
+
+app.post('/api/user/pin/verify', ensureAuthenticated, async (req, res) => {
+  const { pin } = req.body;
+  if (!pin || !/^\d{4}$/.test(pin)) {
+    return res.json({ success: false, message: 'Invalid PIN format.' });
+  }
+  try {
+    const result = await db.query('SELECT wallet_pin FROM users WHERE id = ?', [req.user.id]);
+    const row = result.rows ? result.rows[0] : result[0];
+    if (!row || !row.wallet_pin) {
+      return res.json({ success: false, message: 'no_pin' });
+    }
+    const match = await bcrypt.compare(pin, row.wallet_pin);
+    if (match) return res.json({ success: true });
+    return res.json({ success: false, message: 'Incorrect PIN. Please try again.' });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: 'Verification error.' });
+  }
+});

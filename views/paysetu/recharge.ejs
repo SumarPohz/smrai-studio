@@ -1,0 +1,1080 @@
+<%- include('../partials/header') %>
+
+<style>
+  :root {
+    --ds-bg: #f5f6fa;
+    --ds-white: #ffffff;
+    --ds-border: #e0e3ea;
+    --ds-blue: #1a2b6b;
+    --ds-blue-light: #eef2ff;
+    --ds-orange: #f97316;
+    --ds-green: #16a34a;
+    --ds-red: #dc2626;
+    --ds-muted: #64748b;
+    --ds-radius: 10px;
+  }
+
+  body { background: var(--ds-bg) !important; }
+
+  .ds-page {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px 20px 48px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  /* ── Two-column grid ── */
+  .ds-layout {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 768px) {
+    .ds-layout { grid-template-columns: 1fr; }
+    .ds-sidebar { display: none; }
+  }
+
+  /* ── Section card ── */
+  .ds-card {
+    background: var(--ds-white);
+    border-radius: var(--ds-radius);
+    padding: 20px 24px;
+    box-shadow: 0 1px 6px rgba(26,43,107,0.07);
+    margin-bottom: 16px;
+  }
+  .ds-card-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ds-blue);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  /* ── Service type tabs ── */
+  .ds-type-tabs {
+    display: flex;
+    gap: 0;
+    border: 1.5px solid var(--ds-border);
+    border-radius: 8px;
+    overflow: hidden;
+    width: fit-content;
+  }
+  .ds-type-tab {
+    padding: 9px 24px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ds-muted);
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    transition: all 0.18s;
+  }
+  .ds-type-tab.active {
+    background: var(--ds-blue);
+    color: #fff;
+  }
+  .ds-type-tab:not(.active):hover { background: var(--ds-blue-light); color: var(--ds-blue); }
+
+  /* ── Operator grid ── */
+  .ds-op-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .ds-op-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 14px 20px;
+    border: 2px solid var(--ds-border);
+    border-radius: var(--ds-radius);
+    cursor: pointer;
+    background: #fff;
+    transition: all 0.18s;
+    min-width: 100px;
+  }
+  .ds-op-card:hover { border-color: var(--ds-blue); background: var(--ds-blue-light); }
+  .ds-op-card.selected { border-color: var(--ds-blue); background: var(--ds-blue-light); }
+  .ds-op-logo {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 900;
+    color: #fff;
+    letter-spacing: -1px;
+  }
+  .ds-op-name { font-size: 12px; font-weight: 600; color: #334155; }
+
+  /* ── Operator brand colors ── */
+  .op-jio    { background: #1a2b6b; }
+  .op-airtel { background: #e8001d; }
+  .op-vi     { background: #9b1fe8; }
+  .op-bsnl   { background: #1e7e34; }
+  .op-tata   { background: #e07020; }
+  .op-dish   { background: #0077b6; }
+  .op-adth   { background: #e8001d; }
+
+  /* ── Selected operator badge ── */
+  .ds-op-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ds-blue);
+  }
+  .ds-op-badge .badge-logo {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 900;
+    color: #fff;
+  }
+
+  /* ── Form fields ── */
+  .ds-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin-top: 4px;
+  }
+  @media (max-width: 640px) { .ds-form-row { grid-template-columns: 1fr; } }
+  .ds-field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ds-muted);
+    margin-bottom: 6px;
+  }
+  .ds-input, .ds-select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1.5px solid var(--ds-border);
+    border-radius: 8px;
+    font-size: 14px;
+    color: #1e293b;
+    background: #f8fafc;
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color 0.18s;
+    -webkit-appearance: none;
+  }
+  .ds-input:focus, .ds-select:focus { border-color: var(--ds-blue); background: #fff; }
+  .ds-select-wrap { position: relative; }
+  .ds-select-wrap::after {
+    content: '▾';
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    pointer-events: none;
+  }
+  .ds-input.error { border-color: var(--ds-red); }
+
+  /* ── Plans section ── */
+  .ds-plans-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .ds-plans-title { font-size: 14px; font-weight: 700; color: #334155; }
+  .ds-search-bar {
+    display: flex;
+    align-items: center;
+    border: 1.5px solid var(--ds-border);
+    border-radius: 8px;
+    overflow: hidden;
+    background: #f8fafc;
+  }
+  .ds-search-input {
+    border: none;
+    padding: 8px 12px;
+    font-size: 13px;
+    background: transparent;
+    outline: none;
+    width: 160px;
+    color: #1e293b;
+  }
+  .ds-search-icon { padding: 0 10px; color: #94a3b8; font-size: 14px; }
+
+  /* Category tabs */
+  .ds-cat-tabs {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+    margin-bottom: 12px;
+  }
+  .ds-cat-tabs::-webkit-scrollbar { display: none; }
+  .ds-cat-tab {
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    border: 1.5px solid var(--ds-border);
+    background: #fff;
+    color: var(--ds-muted);
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .ds-cat-tab.active {
+    background: var(--ds-blue);
+    color: #fff;
+    border-color: var(--ds-blue);
+  }
+
+  /* Filter chips */
+  .ds-chips {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .ds-chip {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1.5px solid #e2e8f0;
+    background: #f8fafc;
+    color: #475569;
+    transition: all 0.15s;
+  }
+  .ds-chip.active {
+    background: var(--ds-blue-light);
+    border-color: var(--ds-blue);
+    color: var(--ds-blue);
+  }
+
+  /* Plan grid */
+  .ds-plan-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  @media (max-width: 640px) { .ds-plan-grid { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 400px) { .ds-plan-grid { grid-template-columns: 1fr; } }
+
+  .ds-plan-card {
+    border: 1.5px solid var(--ds-border);
+    border-radius: var(--ds-radius);
+    padding: 14px;
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    background: #fff;
+  }
+  .ds-plan-card:hover { border-color: var(--ds-blue); box-shadow: 0 2px 10px rgba(26,43,107,0.10); }
+  .ds-plan-amt { font-size: 22px; font-weight: 800; color: var(--ds-blue); margin-bottom: 4px; }
+  .ds-plan-validity { font-size: 12px; color: var(--ds-muted); margin-bottom: 4px; }
+  .ds-plan-desc { font-size: 12px; color: #475569; margin-bottom: 12px; line-height: 1.5; }
+  .ds-plan-btn {
+    width: 100%;
+    padding: 8px;
+    border: 1.5px solid var(--ds-blue);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--ds-blue);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .ds-plan-btn:hover { background: var(--ds-blue); color: #fff; }
+
+  .ds-no-plans {
+    text-align: center;
+    padding: 32px;
+    color: var(--ds-muted);
+    font-size: 14px;
+  }
+
+  /* ── Sidebar ── */
+  .ds-sidebar-card {
+    background: var(--ds-white);
+    border-radius: var(--ds-radius);
+    overflow: hidden;
+    box-shadow: 0 1px 6px rgba(26,43,107,0.07);
+  }
+  .ds-sidebar-header {
+    background: var(--ds-blue);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .ds-biller-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid #f1f5f9;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .ds-biller-item:hover { background: #f8fafc; }
+  .ds-biller-item.active { background: #fff7ed; border-left: 3px solid var(--ds-orange); }
+  .ds-biller-item:last-child { border-bottom: none; }
+  .ds-biller-logo {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 900;
+    color: #fff;
+    flex-shrink: 0;
+  }
+  .ds-biller-name { font-size: 13px; font-weight: 600; color: #334155; }
+
+  /* ── Modals ── */
+  .ds-modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 500;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .ds-modal-backdrop.open { display: flex; }
+  .ds-modal {
+    background: #fff;
+    border-radius: 14px;
+    padding: 28px;
+    max-width: 440px;
+    width: 100%;
+    position: relative;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+  }
+  .ds-modal-close {
+    position: absolute;
+    top: 14px; right: 16px;
+    background: none; border: none;
+    font-size: 20px; cursor: pointer; color: #94a3b8;
+    line-height: 1;
+  }
+  .ds-modal-close:hover { color: #1e293b; }
+  .ds-modal-title { font-size: 18px; font-weight: 800; color: var(--ds-blue); margin-bottom: 16px; }
+
+  /* Plan breakdown modal */
+  .bk-amount { font-size: 32px; font-weight: 800; color: var(--ds-blue); margin-bottom: 8px; }
+  .bk-details-title { font-size: 13px; font-weight: 700; color: #64748b; margin: 14px 0 8px; }
+  .bk-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .bk-table td { padding: 8px 12px; border: 1px solid var(--ds-border); }
+  .bk-table td:first-child { color: var(--ds-muted); font-weight: 600; width: 40%; background: #f8fafc; }
+  .bk-table td:last-child { color: #1e293b; font-weight: 600; }
+  .bk-btn {
+    width: 100%;
+    margin-top: 20px;
+    padding: 13px;
+    background: var(--ds-blue);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .bk-btn:hover { opacity: 0.9; }
+
+  /* PIN modal */
+  .pm-sub { font-size: 13px; color: var(--ds-muted); margin-bottom: 20px; }
+  .pm-otp-row {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-bottom: 8px;
+  }
+  .pm-otp-box {
+    width: 56px; height: 56px;
+    border: 2px solid var(--ds-border);
+    border-radius: 10px;
+    font-size: 24px;
+    font-weight: 700;
+    text-align: center;
+    outline: none;
+    transition: border-color 0.18s, box-shadow 0.18s;
+    background: #f8fafc;
+    -webkit-text-security: disc;
+  }
+  .pm-otp-box:focus { border-color: var(--ds-blue); background: #fff; box-shadow: 0 0 0 3px rgba(26,43,107,0.12); }
+  .pm-otp-box.filled { border-color: var(--ds-blue); background: var(--ds-blue-light); }
+  .pm-error { color: var(--ds-red); font-size: 13px; text-align: center; min-height: 18px; margin: 8px 0; }
+  .pm-set-link { text-align: center; font-size: 12px; margin-top: 8px; }
+  .pm-set-link a { color: var(--ds-blue); font-weight: 600; }
+  .pm-btn-row { display: flex; gap: 10px; margin-top: 16px; }
+  .pm-btn {
+    flex: 1; padding: 12px;
+    border-radius: 10px;
+    font-size: 14px; font-weight: 700;
+    cursor: pointer; border: none;
+    transition: opacity 0.2s;
+  }
+  .pm-btn.confirm { background: var(--ds-blue); color: #fff; }
+  .pm-btn.confirm:disabled { opacity: 0.45; cursor: not-allowed; }
+  .pm-btn.cancel { background: #f1f5f9; color: #475569; }
+  .pm-btn.cancel:hover { background: #e2e8f0; }
+
+  /* ── Spinner ── */
+  .ds-spinner-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(255,255,255,0.55); z-index: 600;
+    align-items: center; justify-content: center;
+  }
+  .ds-spinner-overlay.show { display: flex; }
+  .ds-spinner {
+    width: 44px; height: 44px;
+    border: 4px solid #e2e8f0; border-top-color: var(--ds-blue);
+    border-radius: 50%; animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Toast ── */
+  .ds-toast {
+    position: fixed; bottom: 28px; left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: #1e293b; color: #fff;
+    padding: 12px 22px; border-radius: 10px;
+    font-size: 14px; font-weight: 500;
+    z-index: 700; opacity: 0; transition: all 0.3s;
+    white-space: nowrap; max-width: 90vw; text-align: center;
+  }
+  .ds-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .ds-toast.success { background: var(--ds-green); }
+  .ds-toast.error { background: var(--ds-red); }
+
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20%,60%  { transform: translateX(-7px); }
+    40%,80%  { transform: translateX(7px); }
+  }
+  .shake { animation: shake 0.35s ease; }
+
+  /* ── DTH amount card button ── */
+  .ds-btn-recharge {
+    width: 100%;
+    padding: 12px;
+    background: var(--ds-blue);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .ds-btn-recharge:disabled { opacity: 0.4; cursor: not-allowed; }
+  .ds-btn-recharge:not(:disabled):hover { opacity: 0.88; }
+  .ds-amount-prefix-wrap { position: relative; }
+  .ds-amount-prefix { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-weight: 700; color: #64748b; pointer-events: none; }
+  .ds-amount-prefix-wrap .ds-input { padding-left: 26px; }
+
+  /* ── Wallet strip ── */
+  .ds-wallet-strip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--ds-blue-light);
+    border: 1px solid #c7d2fe;
+    border-radius: 8px;
+    padding: 10px 16px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ds-blue);
+  }
+
+  /* ── Mobile overrides ── */
+  @media (max-width: 768px) {
+    .ds-page { padding: 10px 10px 60px; }
+
+    /* Wallet strip */
+    .ds-wallet-strip { padding: 7px 12px; font-size: 11px; margin-bottom: 10px; border-radius: 6px; }
+
+    /* Cards */
+    .ds-card { padding: 12px 14px; margin-bottom: 10px; border-radius: 8px; }
+    .ds-card-title { font-size: 13px; margin-bottom: 10px; }
+
+    /* Service type tabs */
+    .ds-type-tabs { width: 100%; }
+    .ds-type-tab { padding: 7px 0; font-size: 12px; flex: 1; text-align: center; }
+
+    /* Operator grid — 4 per row on mobile */
+    .ds-op-grid { gap: 8px; margin-top: 10px; }
+    .ds-op-card { padding: 10px 8px; min-width: 0; flex: 1 1 calc(25% - 8px); gap: 4px; border-radius: 8px; }
+    .ds-op-logo { width: 36px; height: 36px; font-size: 13px; }
+    .ds-op-name { font-size: 10px; }
+
+    /* Form */
+    .ds-field label { font-size: 11px; margin-bottom: 4px; }
+    .ds-input, .ds-select { padding: 8px 10px; font-size: 13px; }
+
+    /* Plans */
+    .ds-plans-header { gap: 6px; margin-bottom: 8px; }
+    .ds-plans-title { font-size: 12px; }
+    .ds-search-input { width: 120px; font-size: 12px; padding: 6px 8px; }
+    .ds-cat-tab { padding: 5px 12px; font-size: 11px; }
+    .ds-chip { padding: 3px 9px; font-size: 11px; }
+    .ds-chips { gap: 5px; margin-bottom: 10px; }
+    .ds-plan-grid { gap: 8px; }
+    .ds-plan-card { padding: 10px; }
+    .ds-plan-amt { font-size: 17px; margin-bottom: 2px; }
+    .ds-plan-validity { font-size: 11px; margin-bottom: 2px; }
+    .ds-plan-desc { font-size: 11px; margin-bottom: 8px; line-height: 1.4; }
+    .ds-plan-btn { padding: 6px; font-size: 11px; }
+  }
+</style>
+
+<div class="ds-page">
+
+  <!-- Wallet balance strip -->
+  <div class="ds-wallet-strip">
+    <span>💰 Wallet Balance</span>
+    <span id="ds-bal">Loading…</span>
+  </div>
+
+  <div class="ds-layout">
+
+    <!-- ── Main Panel ── -->
+    <div class="ds-main">
+
+      <!-- Step 1: Service Type -->
+      <div class="ds-card">
+        <div class="ds-card-title">Services</div>
+        <div class="ds-type-tabs">
+          <button class="ds-type-tab active" id="tab-mobile" onclick="setType('mobile')">Mobile Prepaid</button>
+          <button class="ds-type-tab" id="tab-dth" onclick="setType('dth')">DTH Prepaid</button>
+        </div>
+
+        <!-- Operator grid -->
+        <div class="ds-op-grid" id="op-grid"></div>
+      </div>
+
+      <!-- Step 2: Form (hidden until operator selected) -->
+      <div class="ds-card" id="form-card" style="display:none;">
+        <div class="ds-card-title">
+          <span id="form-title">Mobile Prepaid Recharge</span>
+          <span id="op-badge" class="ds-op-badge"></span>
+        </div>
+        <div class="ds-form-row">
+          <div class="ds-field">
+            <label id="num-label">Mobile Number</label>
+            <input class="ds-input" id="num-input" type="tel" inputmode="numeric"
+                   placeholder="e.g. 9876543210" maxlength="15" oninput="onNumberInput()" />
+          </div>
+          <div class="ds-field">
+            <label id="confirm-label">Confirm Mobile Number</label>
+            <input class="ds-input" id="confirm-input" type="tel" inputmode="numeric"
+                   placeholder="e.g. 9876543210" maxlength="15" oninput="onConfirmInput()" />
+          </div>
+          <div class="ds-field">
+            <label>Region</label>
+            <div class="ds-select-wrap">
+              <select class="ds-select" id="region-select">
+                <option value="">All Circle</option>
+                <option>Andhra Pradesh</option>
+                <option>Delhi</option>
+                <option>Gujarat</option>
+                <option>Karnataka</option>
+                <option>Kerala</option>
+                <option>Maharashtra</option>
+                <option>Punjab</option>
+                <option>Rajasthan</option>
+                <option>Tamil Nadu</option>
+                <option>Uttar Pradesh</option>
+                <option>West Bengal</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:8px;font-size:12px;color:var(--ds-red);display:none;" id="num-error">Numbers do not match.</div>
+      </div>
+
+      <!-- Step 3b: DTH Custom Amount (hidden until valid DTH number) -->
+      <div class="ds-card" id="dth-amount-card" style="display:none;">
+        <div class="ds-card-title">Enter Recharge Amount</div>
+        <div class="ds-field">
+          <label>Amount (₹)</label>
+          <div class="ds-amount-prefix-wrap">
+            <span class="ds-amount-prefix">₹</span>
+            <input class="ds-input" id="dth-amount-input" type="number" inputmode="numeric"
+                   min="10" max="50000" placeholder="e.g. 200" oninput="onDthAmountInput()" />
+          </div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:5px;">Min ₹10 · Max ₹50,000</div>
+        </div>
+        <button class="ds-btn-recharge" id="dth-recharge-btn" disabled
+                onclick="openDthPinModal()" style="margin-top:14px;">
+          🔐 Recharge Now
+        </button>
+      </div>
+
+      <!-- Step 3: Plans (hidden until valid mobile number) -->
+      <div class="ds-card" id="plans-card" style="display:none;">
+        <div class="ds-plans-header">
+          <div class="ds-plans-title">Plans Made for You</div>
+          <div class="ds-search-bar">
+            <span class="ds-search-icon">🔍</span>
+            <input class="ds-search-input" type="text" placeholder="Search Plans…" id="plan-search" oninput="filterPlans()" />
+          </div>
+        </div>
+
+        <!-- Category tabs -->
+        <div class="ds-cat-tabs" id="cat-tabs">
+          <button class="ds-cat-tab active" data-cat="all" onclick="setCat('all')">Popular Plans</button>
+          <button class="ds-cat-tab" data-cat="data" onclick="setCat('data')">Data Plans</button>
+          <button class="ds-cat-tab" data-cat="voice" onclick="setCat('voice')">Voice Plans</button>
+          <button class="ds-cat-tab" data-cat="long" onclick="setCat('long')">Long Validity</button>
+        </div>
+
+        <!-- Filter chips -->
+        <div class="ds-chips" id="filter-chips">
+          <button class="ds-chip active" data-filter="all" onclick="setChip('all')">All</button>
+          <button class="ds-chip" data-filter="u199" onclick="setChip('u199')">≤ ₹199</button>
+          <button class="ds-chip" data-filter="200-499" onclick="setChip('200-499')">₹200–₹499</button>
+          <button class="ds-chip" data-filter="o500" onclick="setChip('o500')">≥ ₹500</button>
+          <button class="ds-chip" data-filter="28d" onclick="setChip('28d')">28 Days</button>
+          <button class="ds-chip" data-filter="84d" onclick="setChip('84d')">84 Days</button>
+          <button class="ds-chip" data-filter="365d" onclick="setChip('365d')">365 Days</button>
+        </div>
+
+        <!-- Plan grid -->
+        <div class="ds-plan-grid" id="plan-grid"></div>
+      </div>
+
+    </div>
+
+    <!-- ── Sidebar ── -->
+    <div class="ds-sidebar">
+      <div class="ds-sidebar-card" id="sidebar-billers">
+        <div class="ds-sidebar-header">
+          <span id="sidebar-title">Telecom Billers</span>
+        </div>
+        <div id="sidebar-list"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Plan Breakdown Modal ── -->
+<div class="ds-modal-backdrop" id="bk-modal">
+  <div class="ds-modal">
+    <button class="ds-modal-close" onclick="closeBkModal()">×</button>
+    <div class="ds-modal-title">Plan Breakdown</div>
+    <div class="bk-amount" id="bk-amount"></div>
+    <div class="bk-details-title">Plan Details:</div>
+    <div id="bk-desc" style="font-size:13px;color:#475569;margin-bottom:6px;"></div>
+    <table class="bk-table" id="bk-table"></table>
+    <button class="bk-btn" onclick="openPinModal()">Recharge Now</button>
+  </div>
+</div>
+
+<!-- ── PIN Modal ── -->
+<div class="ds-modal-backdrop" id="pin-modal">
+  <div class="ds-modal">
+    <button class="ds-modal-close" onclick="closePinModal()">×</button>
+    <div class="ds-modal-title">🔐 Enter Wallet PIN</div>
+    <div class="pm-sub">Authorize wallet deduction with your 4-digit PIN</div>
+    <div class="pm-otp-row" id="pm-row">
+      <input class="pm-otp-box" type="password" inputmode="numeric" maxlength="1" data-idx="0" />
+      <input class="pm-otp-box" type="password" inputmode="numeric" maxlength="1" data-idx="1" />
+      <input class="pm-otp-box" type="password" inputmode="numeric" maxlength="1" data-idx="2" />
+      <input class="pm-otp-box" type="password" inputmode="numeric" maxlength="1" data-idx="3" />
+    </div>
+    <div class="pm-error" id="pm-error"></div>
+    <div class="pm-set-link" id="pm-set-link" style="display:none;">
+      Haven't set a PIN? <a href="/paysetu/set-pin">Generate PIN →</a>
+    </div>
+    <div class="pm-btn-row">
+      <button class="pm-btn cancel" onclick="closePinModal()">Cancel</button>
+      <button class="pm-btn confirm" id="pm-confirm-btn" disabled onclick="confirmPin()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Spinner & Toast -->
+<div class="ds-spinner-overlay" id="spinner"><div class="ds-spinner"></div></div>
+<div class="ds-toast" id="toast"></div>
+
+<script>
+  const OPERATORS = {
+    mobile: [
+      { id: 'Jio',         label: 'Jio',          cls: 'op-jio',    abbr: 'JIO' },
+      { id: 'Airtel',      label: 'Airtel',        cls: 'op-airtel', abbr: 'AIR' },
+      { id: 'Vi (Vodafone)', label: 'Vi',          cls: 'op-vi',     abbr: 'Vi'  },
+      { id: 'BSNL',        label: 'BSNL',          cls: 'op-bsnl',   abbr: 'BSN' },
+    ],
+    dth: [
+      { id: 'Tata Play',   label: 'Tata Play',     cls: 'op-tata',   abbr: 'TP'  },
+      { id: 'Dish TV',     label: 'Dish TV',       cls: 'op-dish',   abbr: 'DTH' },
+      { id: 'Airtel DTH',  label: 'Airtel DTH',    cls: 'op-adth',   abbr: 'AIR' },
+    ],
+  };
+
+  let currentType = 'mobile';
+  let selectedOp = null;
+  let allPlans = [];
+  let filteredPlans = [];
+  let currentCat = 'all';
+  let currentChip = 'all';
+  let pendingPlan = null;
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const urlType = new URLSearchParams(location.search).get('type') || 'mobile';
+    setType(urlType, false);
+    loadBalance();
+  });
+
+  /* ── Type toggle ── */
+  function setType(t, resetForm = true) {
+    currentType = t;
+    selectedOp = null;
+    document.getElementById('tab-mobile').classList.toggle('active', t === 'mobile');
+    document.getElementById('tab-dth').classList.toggle('active', t === 'dth');
+    document.getElementById('sidebar-title').textContent = t === 'mobile' ? 'Telecom Billers' : 'DTH Billers';
+    renderOpGrid();
+    renderSidebar();
+    if (resetForm) {
+      hideForm(); hidePlans(); hideDthCard();
+    }
+  }
+
+  /* ── Operator grid ── */
+  function renderOpGrid() {
+    const grid = document.getElementById('op-grid');
+    grid.innerHTML = OPERATORS[currentType].map(op => `
+      <div class="ds-op-card${selectedOp && selectedOp.id === op.id ? ' selected' : ''}"
+           onclick="selectOp(${JSON.stringify(op).replace(/"/g, '&quot;')})">
+        <div class="ds-op-logo ${op.cls}">${op.abbr}</div>
+        <div class="ds-op-name">${op.label}</div>
+      </div>`).join('');
+  }
+
+  function selectOp(op) {
+    selectedOp = op;
+    renderOpGrid();
+    renderSidebar();
+    showForm();
+    hidePlans();
+    hideDthCard();
+    document.getElementById('num-input').value = '';
+    document.getElementById('confirm-input').value = '';
+    document.getElementById('dth-amount-input').value = '';
+    document.getElementById('num-error').style.display = 'none';
+    allPlans = []; filteredPlans = [];
+  }
+
+  /* ── Sidebar ── */
+  function renderSidebar() {
+    const list = document.getElementById('sidebar-list');
+    list.innerHTML = OPERATORS[currentType].map(op => `
+      <div class="ds-biller-item${selectedOp && selectedOp.id === op.id ? ' active' : ''}"
+           onclick="selectOp(${JSON.stringify(op).replace(/"/g, '&quot;')})">
+        <div class="ds-biller-logo ${op.cls}">${op.abbr}</div>
+        <div class="ds-biller-name">${op.label}</div>
+      </div>`).join('');
+  }
+
+  /* ── Form ── */
+  function showForm() {
+    const card = document.getElementById('form-card');
+    card.style.display = 'block';
+    const isMobile = currentType === 'mobile';
+    document.getElementById('form-title').textContent = isMobile ? 'Mobile Prepaid Recharge' : 'DTH Prepaid Recharge';
+    document.getElementById('num-label').textContent = isMobile ? 'Mobile Number' : 'Subscriber ID';
+    document.getElementById('confirm-label').textContent = isMobile ? 'Confirm Mobile Number' : 'Confirm Subscriber ID';
+    document.getElementById('num-input').placeholder = isMobile ? 'e.g. 9876543210' : 'e.g. 1234567890';
+    document.getElementById('confirm-input').placeholder = isMobile ? 'e.g. 9876543210' : 'e.g. 1234567890';
+    // Badge
+    document.getElementById('op-badge').innerHTML = `
+      <div class="badge-logo ${selectedOp.cls}">${selectedOp.abbr}</div>
+      <span>${selectedOp.label}</span>`;
+  }
+  function hideForm() { document.getElementById('form-card').style.display = 'none'; }
+
+  /* ── Number validation → fetch plans ── */
+  function onNumberInput() {
+    const n = document.getElementById('num-input').value.trim();
+    const c = document.getElementById('confirm-input').value.trim();
+    validate(n, c);
+  }
+  function onConfirmInput() {
+    const n = document.getElementById('num-input').value.trim();
+    const c = document.getElementById('confirm-input').value.trim();
+    validate(n, c);
+  }
+  function validate(n, c) {
+    const errEl = document.getElementById('num-error');
+    if (c && n !== c) { errEl.style.display = 'block'; hidePlans(); hideDthCard(); return; }
+    errEl.style.display = 'none';
+    if (n.length >= 6 && c === n) {
+      if (currentType === 'mobile') { hideDthCard(); fetchPlans(); }
+      else { hidePlans(); showDthAmountCard(); }
+    } else {
+      hidePlans(); hideDthCard();
+    }
+  }
+
+  async function fetchPlans() {
+    if (!selectedOp) return;
+    showSpinner(true);
+    try {
+      const r = await fetch(`/api/recharge/plans?type=${currentType}&operator=${encodeURIComponent(selectedOp.id)}`);
+      const d = await r.json();
+      showSpinner(false);
+      if (d.success && d.plans.length) {
+        allPlans = d.plans;
+        currentCat = 'all'; currentChip = 'all';
+        resetFilters();
+        applyFilters();
+        showPlans();
+      } else {
+        hidePlans();
+      }
+    } catch { showSpinner(false); hidePlans(); }
+  }
+
+  function showPlans() { document.getElementById('plans-card').style.display = 'block'; }
+  function hidePlans() { document.getElementById('plans-card').style.display = 'none'; }
+  function showDthAmountCard() {
+    document.getElementById('dth-amount-card').style.display = 'block';
+    document.getElementById('dth-amount-input').value = '';
+    document.getElementById('dth-recharge-btn').disabled = true;
+    setTimeout(() => document.getElementById('dth-amount-input').focus(), 100);
+  }
+  function hideDthCard() { document.getElementById('dth-amount-card').style.display = 'none'; }
+  function onDthAmountInput() {
+    const v = parseFloat(document.getElementById('dth-amount-input').value);
+    document.getElementById('dth-recharge-btn').disabled = !(v >= 10 && v <= 50000);
+  }
+  function openDthPinModal() {
+    const amt = parseFloat(document.getElementById('dth-amount-input').value);
+    if (!amt || amt < 10) return;
+    pendingPlan = { amount: amt, validity: '—', description: `${selectedOp.label} DTH Recharge` };
+    openPinModal();
+  }
+
+  /* ── Category & chip filters ── */
+  function setCat(cat) {
+    currentCat = cat;
+    document.querySelectorAll('.ds-cat-tab').forEach(t => t.classList.toggle('active', t.dataset.cat === cat));
+    applyFilters();
+  }
+  function setChip(chip) {
+    currentChip = chip;
+    document.querySelectorAll('.ds-chip').forEach(c => c.classList.toggle('active', c.dataset.filter === chip));
+    applyFilters();
+  }
+  function resetFilters() {
+    document.querySelectorAll('.ds-cat-tab').forEach(t => t.classList.toggle('active', t.dataset.cat === 'all'));
+    document.querySelectorAll('.ds-chip').forEach(c => c.classList.toggle('active', c.dataset.filter === 'all'));
+  }
+
+  function applyFilters() {
+    const search = (document.getElementById('plan-search').value || '').toLowerCase();
+    let plans = allPlans.filter(p => {
+      // Category
+      const desc = (p.description || '').toLowerCase();
+      const val = (p.validity || '').toLowerCase();
+      if (currentCat === 'data' && !desc.includes('gb') && !desc.includes('data')) return false;
+      if (currentCat === 'voice' && !desc.includes('call') && !desc.includes('voice')) return false;
+      if (currentCat === 'long' && !val.includes('90') && !val.includes('365') && !val.includes('year') && !val.includes('annual')) return false;
+      // Chip
+      const amt = parseFloat(p.amount);
+      if (currentChip === 'u199'    && amt > 199) return false;
+      if (currentChip === '200-499' && (amt < 200 || amt > 499)) return false;
+      if (currentChip === 'o500'    && amt < 500) return false;
+      if (currentChip === '28d' && !val.includes('28')) return false;
+      if (currentChip === '84d' && !val.includes('84') && !val.includes('90')) return false;
+      if (currentChip === '365d' && !val.includes('365') && !val.includes('year') && !val.includes('annual')) return false;
+      // Search
+      if (search && !desc.includes(search) && !String(p.amount).includes(search) && !val.includes(search)) return false;
+      return true;
+    });
+    filteredPlans = plans;
+    renderPlans(plans);
+  }
+
+  function filterPlans() { applyFilters(); }
+
+  function renderPlans(plans) {
+    const grid = document.getElementById('plan-grid');
+    if (!plans.length) {
+      grid.innerHTML = '<div class="ds-no-plans">No plans found for this filter.</div>';
+      return;
+    }
+    grid.innerHTML = plans.map((p, i) => `
+      <div class="ds-plan-card">
+        <div class="ds-plan-amt">₹ ${p.amount}</div>
+        <div class="ds-plan-validity">Validity: ${p.validity}</div>
+        <div class="ds-plan-desc">${p.description}</div>
+        <button class="ds-plan-btn" onclick="openBkModal(${i})">Recharge</button>
+      </div>`).join('');
+  }
+
+  /* ── Plan Breakdown Modal ── */
+  function openBkModal(idx) {
+    pendingPlan = filteredPlans[idx];
+    document.getElementById('bk-amount').textContent = '₹ ' + pendingPlan.amount;
+    document.getElementById('bk-desc').textContent = pendingPlan.description;
+    const rows = [
+      ['Amount',   '₹ ' + pendingPlan.amount],
+      ['Validity', pendingPlan.validity],
+      ['Details',  pendingPlan.description],
+    ];
+    document.getElementById('bk-table').innerHTML = rows.map(([k,v]) =>
+      `<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+    document.getElementById('bk-modal').classList.add('open');
+  }
+  function closeBkModal() { document.getElementById('bk-modal').classList.remove('open'); }
+
+  /* ── PIN Modal ── */
+  function openPinModal() {
+    closeBkModal();
+    clearPinInputs();
+    document.getElementById('pm-error').textContent = '';
+    document.getElementById('pm-set-link').style.display = 'none';
+    document.getElementById('pin-modal').classList.add('open');
+    setTimeout(() => document.querySelector('#pm-row .pm-otp-box').focus(), 100);
+  }
+  function closePinModal() {
+    document.getElementById('pin-modal').classList.remove('open');
+    clearPinInputs();
+  }
+  function clearPinInputs() {
+    document.querySelectorAll('#pm-row .pm-otp-box').forEach(b => {
+      b.value = ''; b.classList.remove('filled');
+    });
+    document.getElementById('pm-confirm-btn').disabled = true;
+  }
+
+  // OTP box wiring
+  document.addEventListener('DOMContentLoaded', () => {
+    const boxes = document.querySelectorAll('#pm-row .pm-otp-box');
+    boxes.forEach((box, i) => {
+      box.addEventListener('input', e => {
+        const v = e.target.value.replace(/\D/g, '');
+        e.target.value = v.slice(-1);
+        e.target.classList.toggle('filled', !!e.target.value);
+        if (v && i < boxes.length - 1) boxes[i + 1].focus();
+        const pin = Array.from(boxes).map(b => b.value).join('');
+        document.getElementById('pm-confirm-btn').disabled = pin.length < 4;
+      });
+      box.addEventListener('keydown', e => {
+        if (e.key === 'Backspace' && !box.value && i > 0) {
+          boxes[i - 1].value = '';
+          boxes[i - 1].classList.remove('filled');
+          boxes[i - 1].focus();
+          document.getElementById('pm-confirm-btn').disabled = true;
+        }
+      });
+    });
+  });
+
+  async function confirmPin() {
+    const boxes = document.querySelectorAll('#pm-row .pm-otp-box');
+    const pin = Array.from(boxes).map(b => b.value).join('');
+    if (pin.length < 4) return;
+    document.getElementById('pm-confirm-btn').disabled = true;
+    document.getElementById('pm-error').textContent = '';
+    showSpinner(true);
+    try {
+      const r = await fetch('/api/user/pin/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin })
+      });
+      const d = await r.json();
+      showSpinner(false);
+      if (d.success) {
+        closePinModal();
+        doRecharge();
+      } else if (d.message === 'no_pin') {
+        document.getElementById('pm-error').textContent = "No PIN set. Please generate one first.";
+        document.getElementById('pm-set-link').style.display = 'block';
+        document.getElementById('pm-confirm-btn').disabled = false;
+      } else {
+        document.getElementById('pm-error').textContent = d.message || 'Incorrect PIN.';
+        document.getElementById('pm-row').classList.add('shake');
+        setTimeout(() => document.getElementById('pm-row').classList.remove('shake'), 400);
+        clearPinInputs();
+      }
+    } catch {
+      showSpinner(false);
+      document.getElementById('pm-error').textContent = 'Network error. Try again.';
+      document.getElementById('pm-confirm-btn').disabled = false;
+    }
+  }
+
+  /* ── Execute Recharge ── */
+  async function doRecharge() {
+    const mobile = document.getElementById('num-input').value.trim();
+    if (!mobile || !selectedOp || !pendingPlan) return;
+    showSpinner(true);
+    try {
+      const r = await fetch('/api/recharge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mobile, operator: selectedOp.id, amount: pendingPlan.amount, type: currentType })
+      });
+      const d = await r.json();
+      showSpinner(false);
+      if (d.success) {
+        showToast(`✅ Recharge successful! Ref: ${d.ref}`, 'success');
+        updateBalance(d.balance);
+        pendingPlan = null;
+      } else {
+        showToast(`❌ ${d.message || 'Recharge failed'}`, 'error');
+      }
+    } catch { showSpinner(false); showToast('❌ Network error. Try again.', 'error'); }
+  }
+
+  /* ── Helpers ── */
+  async function loadBalance() {
+    try {
+      const r = await fetch('/api/wallet/balance');
+      const d = await r.json();
+      if (d.balance !== undefined) updateBalance(d.balance);
+    } catch {}
+  }
+  function updateBalance(bal) {
+    document.getElementById('ds-bal').textContent = '₹' + Number(bal).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function showSpinner(v) { document.getElementById('spinner').classList.toggle('show', v); }
+  function showToast(msg, type = '') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'ds-toast show' + (type ? ' ' + type : '');
+    setTimeout(() => t.classList.remove('show'), 4000);
+  }
+</script>
+
+<%- include('../partials/footer') %>

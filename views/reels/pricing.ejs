@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #09090b;
+      color: #e4e4e7;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── Navbar ──────────────────────────────────────────────────────────── */
+    .rp-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 2rem;
+      border-bottom: 1px solid #27272a;
+      position: sticky;
+      top: 0;
+      background: #09090b;
+      z-index: 10;
+    }
+    .rp-nav-logo {
+      font-size: 1.15rem; font-weight: 700; color: #fff;
+      text-decoration: none; display: flex; align-items: center; gap: 0.5rem;
+    }
+    .rp-nav-logo span { color: #a78bfa; }
+    .rp-nav-links { display: flex; align-items: center; gap: 1.25rem; }
+    .rp-nav-links a {
+      color: #a1a1aa; text-decoration: none;
+      font-size: 0.875rem; transition: color 0.2s;
+    }
+    .rp-nav-links a:hover { color: #fff; }
+
+    /* ── Two-column layout ───────────────────────────────────────────────── */
+    .rp-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      min-height: calc(100vh - 65px);
+      align-items: stretch;
+    }
+    @media (max-width: 860px) {
+      .rp-layout { grid-template-columns: 1fr; }
+      .rp-right  { order: -1; min-height: 60vw; max-height: 70vw; }
+    }
+
+    /* ── LEFT: pricing ───────────────────────────────────────────────────── */
+    .rp-left {
+      padding: 3.5rem 3rem 4rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      border-right: 1px solid #18181b;
+    }
+    @media (max-width: 860px) { .rp-left { padding: 2.5rem 1.5rem 3rem; border-right: none; } }
+
+    .rp-badge {
+      display: inline-block;
+      background: rgba(124,58,237,0.18);
+      color: #a78bfa;
+      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.07em;
+      text-transform: uppercase;
+      padding: 0.28rem 0.8rem;
+      border-radius: 99px;
+      border: 1px solid rgba(124,58,237,0.3);
+      margin-bottom: 1.1rem;
+      width: fit-content;
+    }
+    .rp-heading {
+      font-size: clamp(1.7rem, 3vw, 2.4rem);
+      font-weight: 800; color: #fff; line-height: 1.2;
+      margin-bottom: 0.65rem;
+    }
+    .rp-heading span { color: #a78bfa; }
+    .rp-sub {
+      color: #71717a; font-size: 0.9rem; line-height: 1.65;
+      margin-bottom: 2rem; max-width: 380px;
+    }
+
+    /* subscribed banner */
+    .rp-subscribed-info {
+      background: rgba(124,58,237,0.08);
+      border: 1px solid rgba(124,58,237,0.2);
+      border-radius: 0.75rem;
+      padding: 0.85rem 1.1rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.85rem; color: #a78bfa;
+    }
+    .rp-subscribed-info strong { color: #c4b5fd; }
+
+    /* card */
+    .rp-card {
+      background: #18181b;
+      border: 1px solid #3f3f46;
+      border-radius: 1.1rem;
+      padding: 1.75rem 1.75rem 2rem;
+      position: relative; overflow: hidden;
+    }
+    .rp-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, #7c3aed, #a78bfa);
+    }
+    .rp-plan-row {
+      display: flex; align-items: flex-start;
+      justify-content: space-between; margin-bottom: 1.1rem;
+    }
+    .rp-plan-name  { font-size: 1rem; font-weight: 700; color: #fff; }
+    .rp-plan-tag   { font-size: 0.78rem; color: #71717a; margin-top: 0.18rem; }
+    .rp-price-val  { font-size: 1.85rem; font-weight: 800; color: #fff; line-height: 1; text-align: right; }
+    .rp-price-per  { font-size: 0.73rem; color: #71717a; text-align: right; margin-top: 0.18rem; }
+    .rp-divider    { border: none; border-top: 1px solid #27272a; margin: 1rem 0; }
+    .rp-features   { list-style: none; display: flex; flex-direction: column; gap: 0.55rem; margin-bottom: 1.5rem; }
+    .rp-features li { display: flex; align-items: center; gap: 0.55rem; font-size: 0.875rem; color: #d4d4d8; background: transparent; border: none; border-radius: 0; padding: 0; margin: 0; box-shadow: none; }
+    .rp-features li .ck {
+      width: 17px; height: 17px;
+      background: rgba(124,58,237,0.2); border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; color: #a78bfa; font-size: 0.6rem;
+    }
+    .rp-btn {
+      width: 100%; padding: 0.85rem;
+      background: linear-gradient(135deg, #7c3aed, #6d28d9);
+      color: #fff; font-size: 0.95rem; font-weight: 700;
+      border: none; border-radius: 0.65rem; cursor: pointer;
+      transition: opacity 0.2s, transform 0.15s;
+    }
+    .rp-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+    .rp-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .rp-already {
+      display: flex; align-items: center; gap: 0.6rem;
+      background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.25);
+      border-radius: 0.65rem; padding: 0.85rem 1.1rem;
+      color: #86efac; font-size: 0.875rem; font-weight: 500;
+    }
+    .rp-note { text-align: center; color: #52525b; font-size: 0.75rem; margin-top: 0.75rem; }
+    .rp-back { display: inline-block; margin-top: 1.5rem; color: #52525b; font-size: 0.82rem; text-decoration: none; }
+    .rp-back:hover { color: #a1a1aa; }
+
+    /* ── RIGHT: video preview ────────────────────────────────────────────── */
+    .rp-right {
+      position: relative;
+      background: #0c0c0e;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    /* subtle gradient overlay */
+    .rp-right::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse at 60% 40%, rgba(124,58,237,0.12) 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+    .rp-phone-wrap {
+      position: relative; z-index: 1;
+      width: clamp(180px, 28vw, 280px);
+    }
+    /* phone frame */
+    .rp-phone {
+      background: #000;
+      border: 3px solid #27272a;
+      border-radius: 2rem;
+      overflow: hidden;
+      aspect-ratio: 9/16;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.7), 0 0 0 1px #3f3f46;
+      position: relative;
+    }
+    .rp-phone video {
+      width: 100%; height: 100%;
+      object-fit: cover; display: block;
+    }
+    /* play overlay label */
+    .rp-preview-label {
+      text-align: center;
+      margin-top: 1rem;
+      font-size: 0.78rem;
+      color: #52525b;
+      letter-spacing: 0.04em;
+    }
+    /* no-video placeholder */
+    .rp-phone-placeholder {
+      width: 100%; height: 100%;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 12px; background: #111113;
+      color: #3f3f46;
+    }
+    .rp-phone-placeholder svg { opacity: 0.4; }
+    .rp-phone-placeholder span { font-size: 11px; text-align: center; padding: 0 16px; line-height: 1.5; }
+
+    /* ── Spinner ─────────────────────────────────────────────────────────── */
+    .rp-spinner {
+      display: inline-block; width: 17px; height: 17px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff; border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle; margin-right: 4px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Toast ───────────────────────────────────────────────────────────── */
+    #rp-toast {
+      position: fixed; bottom: 1.5rem; left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #27272a; color: #fff;
+      padding: 0.7rem 1.25rem; border-radius: 0.5rem;
+      font-size: 0.875rem; transition: transform 0.3s;
+      z-index: 999; white-space: nowrap;
+    }
+    #rp-toast.show  { transform: translateX(-50%) translateY(0); }
+    #rp-toast.error { background: #7f1d1d; }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="rp-nav">
+    <a href="/reels" class="rp-nav-logo">SmrAI <span>Reels</span></a>
+    <div class="rp-nav-links">
+      <a href="/reels/create">Create</a>
+      <a href="/reels">Gallery</a>
+      <% if (currentUser) { %><a href="/dashboard">Dashboard</a><% } %>
+    </div>
+  </nav>
+
+  <!-- Two-column body -->
+  <div class="rp-layout">
+
+    <!-- ── LEFT: Pricing ─────────────────────────────────────────────────── -->
+    <div class="rp-left">
+
+      <div class="rp-badge">Simple Pricing</div>
+      <h1 class="rp-heading">Unlock <span>Unlimited</span><br/>Reel Creation</h1>
+      <p class="rp-sub">
+        Your free preview is ready to watch. Subscribe to download the HD MP4
+        and get 3 new AI-generated reels every week — auto-posted to your social accounts.
+      </p>
+
+      <% if (isSubscribed && periodEnd) { %>
+      <div class="rp-subscribed-info">
+        ✅ Starter plan active until <strong><%= new Date(periodEnd).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) %></strong>.
+        You've used <strong><%= videosThisWeek %>/3</strong> videos this week.
+      </div>
+      <% } %>
+
+      <div class="rp-card">
+        <div class="rp-plan-row">
+          <div>
+            <div class="rp-plan-name">Starter Plan</div>
+            <div class="rp-plan-tag">3 videos/week · Auto-post included</div>
+          </div>
+          <div>
+            <div class="rp-price-val">₹199</div>
+            <div class="rp-price-per">per month</div>
+          </div>
+        </div>
+
+        <hr class="rp-divider" />
+
+        <ul class="rp-features">
+          <li><span class="ck">✓</span> 3 AI-generated reels per week</li>
+          <li><span class="ck">✓</span> Auto-post to YouTube, Instagram &amp; Facebook</li>
+          <li><span class="ck">✓</span> GPT-4o script + 6 AI voices</li>
+          <li><span class="ck">✓</span> Stock footage sourced automatically</li>
+          <li><span class="ck">✓</span> Auto captions &amp; hashtags</li>
+          <li><span class="ck">✓</span> HD MP4 download (1080×1920)</li>
+        </ul>
+
+        <% if (isSubscribed) { %>
+          <div class="rp-already">
+            <span>🎉</span> You're already subscribed — enjoy creating reels!
+          </div>
+          <p class="rp-note">Renews automatically each month · Cancel anytime</p>
+        <% } else { %>
+          <button class="rp-btn" id="rp-pay-btn" onclick="startPayment()">
+            ⚡ Subscribe Now — ₹199/month
+          </button>
+          <p class="rp-note">Secure payment via Razorpay · Cancel anytime</p>
+        <% } %>
+      </div>
+
+      <% if (isSubscribed) { %>
+        <a href="/reels/create" class="rp-back">← Back to Create</a>
+      <% } else { %>
+        <a href="/reels" class="rp-back">← Not now, go back</a>
+      <% } %>
+
+    </div>
+
+    <!-- ── RIGHT: Video preview ───────────────────────────────────────────── -->
+    <div class="rp-right">
+      <div class="rp-phone-wrap">
+        <div class="rp-phone">
+          <% if (previewVideo && previewVideo.video_url) { %>
+            <video
+              autoplay muted loop playsinline
+              src="<%= previewVideo.video_url %>"
+            ></video>
+          <% } else { %>
+            <div class="rp-phone-placeholder">
+              <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.069A1 1 0 0121 8.87v6.26a1 1 0 01-1.447.894L15 14M4 8a2 2 0 012-2h9a2 2 0 012 2v8a2 2 0 01-2 2H6a2 2 0 01-2-2V8z"/>
+              </svg>
+              <span>Your reel preview<br/>will appear here</span>
+            </div>
+          <% } %>
+        </div>
+        <p class="rp-preview-label">
+          <% if (previewVideo && previewVideo.title) { %>
+            <%= previewVideo.title %>
+          <% } else { %>
+            Free preview reel
+          <% } %>
+        </p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Toast -->
+  <div id="rp-toast"></div>
+
+  <% if (!isSubscribed) { %>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <script>
+    const RAZORPAY_KEY = '<%= razorpayKey %>';
+
+    function showToast(msg, isError = false) {
+      const t = document.getElementById('rp-toast');
+      t.textContent = msg;
+      t.className = isError ? 'error show' : 'show';
+      setTimeout(() => t.className = '', 3500);
+    }
+
+    async function startPayment() {
+      const btn = document.getElementById('rp-pay-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="rp-spinner"></span> Creating order…';
+
+      let order;
+      try {
+        const res  = await fetch('/api/reels/payment/create-order', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.error || 'Failed to create order.', true); reset(); return; }
+        order = data;
+      } catch (e) { showToast('Network error. Please try again.', true); reset(); return; }
+
+      const options = {
+        key:         RAZORPAY_KEY,
+        amount:      order.amount,
+        currency:    order.currency,
+        name:        'SmrAI Studio',
+        description: 'Reels Starter Plan — ₹199/month',
+        order_id:    order.orderId,
+        handler: async function(response) {
+          btn.innerHTML = '<span class="rp-spinner"></span> Verifying…';
+          try {
+            const vRes  = await fetch('/api/reels/payment/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_order_id:   response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature:  response.razorpay_signature,
+              }),
+            });
+            const vData = await vRes.json();
+            if (vRes.ok && vData.success) {
+              showToast('🎉 Subscription activated!');
+              setTimeout(() => window.location.href = '/reels/create', 1200);
+            } else {
+              showToast(vData.error || 'Verification failed.', true); reset();
+            }
+          } catch(e) { showToast('Verification error. Contact support.', true); reset(); }
+        },
+        prefill: {
+          name:  '<%= currentUser ? (currentUser.name  || "") : "" %>',
+          email: '<%= currentUser ? (currentUser.email || "") : "" %>',
+        },
+        theme: { color: '#7c3aed' },
+        modal: { ondismiss: reset },
+      };
+
+      function reset() {
+        btn.disabled = false;
+        btn.textContent = '⚡ Subscribe Now — ₹199/month';
+      }
+
+      const rzp = new Razorpay(options);
+      rzp.on('payment.failed', function(r) { showToast('Payment failed: ' + (r.error.description || ''), true); reset(); });
+      rzp.open();
+    }
+  </script>
+  <% } %>
+
+</body>
+</html>

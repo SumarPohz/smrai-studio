@@ -1,0 +1,277 @@
+<%- include('../partials/header', { title: 'Crafting Your Reel… — SmrAI Studio' }) %>
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+  #reels-app {
+    --accent:  #7c3aed;
+    --accent2: #a855f7;
+    --surface: rgba(255,255,255,0.04);
+    --border:  rgba(255,255,255,0.08);
+    min-height: 100vh;
+    background: #09090b;
+    color: #f4f4f5;
+  }
+  .glass-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 16px;
+  }
+  .orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(120px);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* NProgress-style top bar */
+  #nprogress {
+    position: fixed;
+    top: 0; left: 0;
+    width: 0%;
+    height: 3px;
+    background: linear-gradient(90deg, #7c3aed, #ec4899, #a855f7);
+    z-index: 9999;
+    transition: width 0.4s ease;
+    border-radius: 0 2px 2px 0;
+    box-shadow: 0 0 10px rgba(168,85,247,0.6);
+  }
+
+  /* Orbiting spinner */
+  .spinner-wrap {
+    position: relative;
+    width: 80px; height: 80px;
+    margin: 0 auto 28px;
+  }
+  .spinner-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    animation: orbit 1.4s linear infinite;
+  }
+  .spinner-ring:nth-child(1) { border-top-color: #7c3aed; animation-duration: 1.2s; }
+  .spinner-ring:nth-child(2) { inset: 10px; border-right-color: #a855f7; animation-duration: 1.6s; animation-direction: reverse; }
+  .spinner-ring:nth-child(3) { inset: 22px; border-bottom-color: #ec4899; animation-duration: 1s; }
+  @keyframes orbit { to { transform: rotate(360deg); } }
+
+  /* Steps */
+  .step-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .step-row:last-child { border-bottom: none; }
+  .step-dot {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.12);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+    transition: all 0.4s;
+  }
+  .step-row.done   .step-dot { background: rgba(34,197,94,0.15); border-color: #22c55e; color: #22c55e; }
+  .step-row.active .step-dot { border-color: var(--accent2); animation: pulse-ring 1.5s infinite; }
+  .step-row.pending .step-dot { color: #3f3f46; }
+  @keyframes pulse-ring {
+    0%,100% { box-shadow: 0 0 0 0 rgba(168,85,247,0.4); }
+    50%      { box-shadow: 0 0 0 6px rgba(168,85,247,0); }
+  }
+  .step-title   { font-size: 14px; font-weight: 500; color: #e4e4e7; }
+  .step-sub     { font-size: 12px; color: #52525b; margin-top: 1px; }
+  .step-row.done   .step-title { color: #a1a1aa; }
+  .step-row.active .step-title { color: #c4b5fd; }
+
+  /* Tip ticker */
+  .tip-box { font-size: 13px; color: #52525b; text-align: center; min-height: 20px; transition: opacity 0.5s; }
+
+  /* Failed state */
+  .error-card {
+    background: rgba(239,68,68,0.08);
+    border: 1px solid rgba(239,68,68,0.25);
+    border-radius: 16px;
+    padding: 32px;
+    text-align: center;
+  }
+  .btn-retry {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    border-radius: 10px;
+    color: white; font-weight: 600; font-size: 15px;
+    text-decoration: none;
+    margin-top: 16px;
+    transition: opacity 0.2s;
+  }
+  .btn-retry:hover { opacity: 0.85; }
+</style>
+
+<!-- NProgress bar -->
+<div id="nprogress"></div>
+
+<div id="reels-app" style="padding-top: 70px; padding-bottom: 60px;">
+
+  <div class="orb" style="width:400px;height:400px;background:#7c3aed;opacity:0.10;top:-80px;left:-100px;"></div>
+  <div class="orb" style="width:350px;height:350px;background:#a855f7;opacity:0.08;bottom:0;right:-80px;"></div>
+
+  <div style="position:relative;z-index:1;max-width:480px;margin:0 auto;padding:40px 16px;">
+
+    <!-- Failed state (hidden) -->
+    <div id="failedState" style="display:none;">
+      <div class="error-card">
+        <div style="font-size:48px;margin-bottom:12px;">😔</div>
+        <h2 style="font-size:22px;font-weight:700;color:#fca5a5;margin-bottom:8px;">Generation Failed</h2>
+        <p id="failedMsg" style="color:#71717a;font-size:14px;line-height:1.6;">Something went wrong during reel generation.</p>
+        <a href="/reels/create" class="btn-retry">← Try Again</a>
+      </div>
+    </div>
+
+    <!-- Processing state -->
+    <div id="processingState">
+
+      <!-- Spinner -->
+      <div class="spinner-wrap">
+        <div class="spinner-ring"></div>
+        <div class="spinner-ring"></div>
+        <div class="spinner-ring"></div>
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:22px;">🎬</div>
+      </div>
+
+      <!-- Title -->
+      <div class="text-center mb-8">
+        <h2 style="font-size:22px;font-weight:700;color:#f4f4f5;margin-bottom:6px;">Crafting Your Reel…</h2>
+        <p style="font-size:14px;color:#52525b;">This usually takes about 60–90 seconds</p>
+      </div>
+
+      <!-- Steps card -->
+      <div class="glass-card p-5 mb-6">
+        <div class="step-row pending" id="step-0">
+          <div class="step-dot">✍️</div>
+          <div>
+            <div class="step-title">Writing Script</div>
+            <div class="step-sub">GPT-4.1 Mini crafting your story</div>
+          </div>
+        </div>
+        <div class="step-row pending" id="step-1">
+          <div class="step-dot">🎙️</div>
+          <div>
+            <div class="step-title">Generating Voice</div>
+            <div class="step-sub">Converting script to audio</div>
+          </div>
+        </div>
+        <div class="step-row pending" id="step-2">
+          <div class="step-dot">🎥</div>
+          <div>
+            <div class="step-title">Sourcing Videos</div>
+            <div class="step-sub">Fetching HD clips from Pexels</div>
+          </div>
+        </div>
+        <div class="step-row pending" id="step-3">
+          <div class="step-dot">⚡</div>
+          <div>
+            <div class="step-title">Merging & Exporting</div>
+            <div class="step-sub">FFmpeg compiling final reel</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Rotating tip -->
+      <div class="tip-box" id="tipBox">💡 Tip: Specific topics produce better reels than generic ones</div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const REEL_ID = <%= reelId %>;
+const POLL_MS = 3000;
+let pollTimer, tipTimer, ticks = 0;
+
+const TIPS = [
+  '💡 Tip: Short, punchy scripts perform best on TikTok and Reels',
+  '🎙️ Try "Nova" or "Shimmer" voices for lifestyle content',
+  '📈 Reels under 45 seconds get 3x more views on average',
+  '🔥 Posting 3–5 reels per week grows channels 10x faster',
+  '🎯 Niche content outperforms broad content every time',
+];
+let tipIndex = 0;
+
+function rotateTip() {
+  const el = document.getElementById('tipBox');
+  el.style.opacity = '0';
+  setTimeout(() => {
+    tipIndex = (tipIndex + 1) % TIPS.length;
+    el.textContent = TIPS[tipIndex];
+    el.style.opacity = '1';
+  }, 500);
+}
+
+function setStepState(index, state) {
+  const el = document.getElementById(`step-${index}`);
+  if (!el) return;
+  el.className = `step-row ${state}`;
+  if (state === 'done') el.querySelector('.step-dot').innerHTML = '✓';
+}
+
+function animateSteps() {
+  // Roughly: step changes every ~22s (7–8 polls × 3s)
+  const step = Math.min(Math.floor(ticks / 7), 3);
+  for (let i = 0; i < 4; i++) {
+    if (i < step)      setStepState(i, 'done');
+    else if (i === step) setStepState(i, 'active');
+    else                setStepState(i, 'pending');
+  }
+}
+
+function animateProgress() {
+  // Slowly advance the NProgress bar up to ~85% while processing
+  const bar = document.getElementById('nprogress');
+  const pct = Math.min(15 + ticks * 3, 85);
+  bar.style.width = pct + '%';
+}
+
+async function poll() {
+  ticks++;
+  animateSteps();
+  animateProgress();
+
+  try {
+    const res  = await fetch(`/reels/${REEL_ID}/status`);
+    const data = await res.json();
+
+    if (data.status === 'completed') {
+      clearInterval(pollTimer);
+      clearInterval(tipTimer);
+      // Complete the progress bar
+      document.getElementById('nprogress').style.width = '100%';
+      setTimeout(() => { window.location.href = `/reels/result/${REEL_ID}`; }, 400);
+      return;
+    }
+
+    if (data.status === 'failed') {
+      clearInterval(pollTimer);
+      clearInterval(tipTimer);
+      document.getElementById('nprogress').style.background = '#ef4444';
+      document.getElementById('processingState').style.display = 'none';
+      document.getElementById('failedState').style.display = 'block';
+      document.getElementById('failedMsg').textContent = data.error_message || 'An unexpected error occurred.';
+    }
+  } catch (e) {
+    console.warn('[Poll] error:', e.message);
+  }
+}
+
+// Kick off
+setStepState(0, 'active');
+document.getElementById('nprogress').style.width = '8%';
+poll();
+pollTimer = setInterval(poll, POLL_MS);
+tipTimer  = setInterval(rotateTip, 8000);
+</script>
+
+<%- include('../partials/footer') %>

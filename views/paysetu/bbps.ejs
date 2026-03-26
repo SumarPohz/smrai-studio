@@ -1,0 +1,626 @@
+<%- include('../partials/header') %>
+
+<style>
+  :root {
+    --ps-blue: #1e4db7;
+    --ps-orange: #f97316;
+    --ps-green: #16a34a;
+    --ps-red: #dc2626;
+    --ps-bg: #f0f4ff;
+  }
+
+  .ps-wrap {
+    max-width: 480px;
+    margin: 0 auto;
+    background: var(--ps-bg);
+    min-height: 100vh;
+    padding-bottom: 80px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  /* ── Header ── */
+  .ps-header {
+    background: linear-gradient(135deg, var(--ps-blue) 0%, #2563eb 100%);
+    padding: 16px 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: #fff;
+  }
+  .ps-back-btn {
+    background: rgba(255,255,255,0.18);
+    border: none;
+    color: #fff;
+    font-size: 20px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+  .ps-header-title { font-size: 18px; font-weight: 700; flex: 1; }
+  .ps-balance-chip {
+    background: rgba(255,255,255,0.18);
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  /* ── Category Tabs ── */
+  .ps-cat-tabs {
+    background: #fff;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 0 8px;
+  }
+  .ps-cat-tabs::-webkit-scrollbar { display: none; }
+  .ps-cat-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 12px 14px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #94a3b8;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    background: none;
+    border-left: none;
+    border-right: none;
+    border-top: none;
+  }
+  .ps-cat-tab .cat-icon { font-size: 22px; }
+  .ps-cat-tab.active {
+    color: var(--ps-blue);
+    border-bottom-color: var(--ps-blue);
+  }
+
+  /* ── Body ── */
+  .ps-body { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+
+  /* ── Form Card ── */
+  .ps-form-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 2px 8px rgba(30,77,183,0.07);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .ps-label { font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 4px; }
+  .ps-input, .ps-select {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 15px;
+    color: #1e293b;
+    background: #f8fafc;
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color 0.2s;
+    -webkit-appearance: none;
+  }
+  .ps-input:focus, .ps-select:focus { border-color: var(--ps-blue); background: #fff; }
+  .ps-select-wrap { position: relative; }
+  .ps-select-wrap::after {
+    content: '▾';
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    pointer-events: none;
+  }
+
+  /* ── Fetch Button ── */
+  .ps-btn-fetch {
+    background: #eff6ff;
+    color: var(--ps-blue);
+    border: 2px solid var(--ps-blue);
+    border-radius: 10px;
+    padding: 12px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    width: 100%;
+    transition: background 0.2s;
+  }
+  .ps-btn-fetch:active { background: #dbeafe; }
+  .ps-btn-fetch:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* ── Bill Card ── */
+  .ps-bill-card {
+    display: none;
+    background: #fffbeb;
+    border: 1.5px solid #fcd34d;
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+  .ps-bill-card.visible { display: block; }
+  .ps-bill-badge {
+    display: inline-block;
+    background: #fef3c7;
+    color: #92400e;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+  }
+  .ps-bill-consumer { font-size: 13px; color: #64748b; margin-bottom: 6px; }
+  .ps-bill-amount { font-size: 28px; font-weight: 800; color: #1e293b; margin-bottom: 4px; }
+  .ps-bill-due { font-size: 13px; font-weight: 600; }
+  .ps-bill-due.urgent { color: var(--ps-red); }
+  .ps-bill-due.soon { color: var(--ps-orange); }
+  .ps-bill-due.ok { color: var(--ps-green); }
+
+  /* ── Spinner ── */
+  .ps-spinner-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(255,255,255,0.6);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+  }
+  .ps-spinner-overlay.show { display: flex; }
+  .ps-spinner {
+    width: 44px; height: 44px;
+    border: 4px solid #e2e8f0;
+    border-top-color: var(--ps-blue);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Toast ── */
+  .ps-toast {
+    position: fixed;
+    bottom: 88px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: #1e293b;
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    z-index: 300;
+    opacity: 0;
+    transition: all 0.3s;
+    white-space: nowrap;
+    max-width: 90vw;
+    text-align: center;
+  }
+  .ps-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .ps-toast.success { background: var(--ps-green); }
+  .ps-toast.error { background: var(--ps-red); }
+
+  /* ── Bottom Bar ── */
+  .ps-bottom-bar {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 480px;
+    background: #fff;
+    border-top: 1px solid #e2e8f0;
+    padding: 10px 16px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 100;
+    box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
+  }
+  .ps-bottom-bal { flex: 1; font-size: 12px; color: #64748b; }
+  .ps-bottom-bal strong { display: block; font-size: 15px; color: #1e293b; }
+  .ps-btn-pay {
+    background: var(--ps-blue);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    padding: 13px 28px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .ps-btn-pay:disabled { opacity: 0.5; cursor: not-allowed; }
+  .ps-btn-pay:active:not(:disabled) { opacity: 0.85; }
+
+  /* ── PIN Modal ── */
+  .pm-backdrop {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45); z-index: 500;
+    align-items: center; justify-content: center; padding: 20px;
+  }
+  .pm-backdrop.open { display: flex; }
+  .pm-modal {
+    background: #fff; border-radius: 16px;
+    padding: 28px; max-width: 340px; width: 100%;
+    position: relative; box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+  }
+  .pm-close {
+    position: absolute; top: 14px; right: 16px;
+    background: none; border: none; font-size: 20px; cursor: pointer; color: #94a3b8;
+  }
+  .pm-title { font-size: 17px; font-weight: 800; color: #1e4db7; margin-bottom: 4px; }
+  .pm-sub { font-size: 13px; color: #64748b; margin-bottom: 20px; }
+  .pm-otp-row { display: flex; gap: 10px; justify-content: center; margin-bottom: 8px; }
+  .pm-otp-box {
+    width: 52px; height: 52px; border: 2px solid #e2e8f0;
+    border-radius: 10px; font-size: 22px; font-weight: 700;
+    text-align: center; outline: none;
+    transition: border-color 0.18s; background: #f8fafc;
+    -webkit-text-security: disc;
+  }
+  .pm-otp-box:focus { border-color: #1e4db7; background: #fff; }
+  .pm-otp-box.filled { border-color: #1e4db7; background: #eff6ff; }
+  .pm-error { color: var(--ps-red); font-size: 12px; text-align: center; min-height: 16px; margin: 6px 0; }
+  .pm-set-link { text-align: center; font-size: 12px; margin-top: 6px; }
+  .pm-set-link a { color: #1e4db7; font-weight: 600; }
+  .pm-btn-row { display: flex; gap: 10px; margin-top: 16px; }
+  .pm-btn { flex:1; padding: 12px; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; border: none; }
+  .pm-btn.confirm { background: #1e4db7; color: #fff; }
+  .pm-btn.confirm:disabled { opacity: 0.45; cursor: not-allowed; }
+  .pm-btn.cancel { background: #f1f5f9; color: #475569; }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20%,60% { transform: translateX(-6px); }
+    40%,80% { transform: translateX(6px); }
+  }
+  .shake { animation: shake 0.35s ease; }
+</style>
+
+<div class="ps-wrap">
+
+  <!-- Header -->
+  <div class="ps-header">
+    <button class="ps-back-btn" onclick="history.back()">←</button>
+    <span class="ps-header-title">Bill Payment</span>
+    <div class="ps-balance-chip">₹<span id="ps-bal">—</span></div>
+  </div>
+
+  <!-- Category Tabs -->
+  <div class="ps-cat-tabs" id="cat-tabs">
+    <button class="ps-cat-tab" data-cat="electricity" onclick="setCategory('electricity')">
+      <span class="cat-icon">⚡</span>Electricity
+    </button>
+    <button class="ps-cat-tab" data-cat="water" onclick="setCategory('water')">
+      <span class="cat-icon">💧</span>Water
+    </button>
+    <button class="ps-cat-tab" data-cat="gas" onclick="setCategory('gas')">
+      <span class="cat-icon">🔥</span>Gas
+    </button>
+    <button class="ps-cat-tab" data-cat="broadband" onclick="setCategory('broadband')">
+      <span class="cat-icon">🌐</span>Broadband
+    </button>
+    <button class="ps-cat-tab" data-cat="dth" onclick="setCategory('dth')">
+      <span class="cat-icon">📺</span>DTH
+    </button>
+    <button class="ps-cat-tab" data-cat="other" onclick="setCategory('other')">
+      <span class="cat-icon">⚙️</span>Other
+    </button>
+  </div>
+
+  <div class="ps-body">
+
+    <!-- Form -->
+    <div class="ps-form-card">
+      <div>
+        <div class="ps-label">Biller</div>
+        <div class="ps-select-wrap">
+          <select class="ps-select" id="biller-select" onchange="onBillerChange()">
+            <option value="">Select Biller</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <div class="ps-label">Consumer / Account Number</div>
+        <input class="ps-input" id="consumer-input" type="text" inputmode="numeric"
+               placeholder="Enter consumer number" oninput="onConsumerInput()" />
+      </div>
+      <button class="ps-btn-fetch" id="fetch-btn" disabled onclick="fetchBill()">
+        🔍 Fetch Bill
+      </button>
+    </div>
+
+    <!-- Bill Card -->
+    <div class="ps-bill-card" id="bill-card">
+      <div class="ps-bill-badge">Pending Bill</div>
+      <div class="ps-bill-consumer" id="bill-consumer"></div>
+      <div class="ps-bill-amount" id="bill-amount"></div>
+      <div class="ps-bill-due" id="bill-due"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Bottom Bar -->
+<div class="ps-bottom-bar">
+  <div class="ps-bottom-bal">
+    Wallet Balance<strong>₹<span id="ps-bal-bottom">—</span></strong>
+  </div>
+  <button class="ps-btn-pay" id="pay-btn" disabled onclick="openBbpsPinModal()">
+    Pay Bill
+  </button>
+</div>
+
+<!-- PIN Modal -->
+<div class="pm-backdrop" id="pm-backdrop">
+  <div class="pm-modal">
+    <button class="pm-close" onclick="closeBbpsPinModal()">×</button>
+    <div class="pm-title">🔐 Enter Wallet PIN</div>
+    <div class="pm-sub">Authorize this payment with your 4-digit PIN</div>
+    <div class="pm-otp-row" id="pm-row">
+      <input class="pm-otp-box" type="password" inputmode="numeric" maxlength="1" data-idx="0" />
+      <input class="pm-otp-box" type="password" inputmode="numeric" maxlength="1" data-idx="1" />
+      <input class="pm-otp-box" type="password" inputmode="numeric" maxlength="1" data-idx="2" />
+      <input class="pm-otp-box" type="password" inputmode="numeric" maxlength="1" data-idx="3" />
+    </div>
+    <div class="pm-error" id="pm-error"></div>
+    <div class="pm-set-link" id="pm-set-link" style="display:none;">
+      Haven't set a PIN? <a href="/paysetu/set-pin">Set PIN now →</a>
+    </div>
+    <div class="pm-btn-row">
+      <button class="pm-btn cancel" onclick="closeBbpsPinModal()">Cancel</button>
+      <button class="pm-btn confirm" id="pm-confirm-btn" disabled onclick="confirmBbpsPin()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Spinner -->
+<div class="ps-spinner-overlay" id="spinner"><div class="ps-spinner"></div></div>
+<div class="ps-toast" id="toast"></div>
+
+<script>
+  let currentCategory = 'electricity';
+  let fetchedBill = null;
+  let selectedBillerId = null;
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const urlCat = new URLSearchParams(location.search).get('category') || 'electricity';
+    setCategory(urlCat);
+    loadBalance();
+  });
+
+  function setCategory(cat) {
+    currentCategory = cat;
+    fetchedBill = null;
+    hideBillCard();
+    document.querySelectorAll('.ps-cat-tab').forEach(t => {
+      t.classList.toggle('active', t.dataset.cat === cat);
+    });
+    // Scroll active tab into view
+    const activeTab = document.querySelector(`.ps-cat-tab[data-cat="${cat}"]`);
+    if (activeTab) activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    loadBillers(cat);
+  }
+
+  async function loadBillers(cat) {
+    const sel = document.getElementById('biller-select');
+    sel.innerHTML = '<option value="">Loading…</option>';
+    try {
+      const r = await fetch(`/api/bbps/billers?category=${cat}`);
+      const d = await r.json();
+      sel.innerHTML = '<option value="">Select Biller</option>';
+      if (d.success) {
+        d.billers.forEach(b => {
+          const o = document.createElement('option');
+          o.value = b.biller_id; o.textContent = b.name; sel.appendChild(o);
+        });
+      }
+    } catch { sel.innerHTML = '<option value="">Error loading billers</option>'; }
+    updateFetchBtn();
+  }
+
+  function onBillerChange() {
+    selectedBillerId = document.getElementById('biller-select').value || null;
+    fetchedBill = null;
+    hideBillCard();
+    updateFetchBtn();
+  }
+
+  function onConsumerInput() {
+    fetchedBill = null;
+    hideBillCard();
+    updateFetchBtn();
+  }
+
+  function updateFetchBtn() {
+    const biller = document.getElementById('biller-select').value;
+    const consumer = document.getElementById('consumer-input').value.trim();
+    document.getElementById('fetch-btn').disabled = !(biller && consumer.length >= 4);
+    document.getElementById('pay-btn').disabled = !fetchedBill;
+  }
+
+  async function fetchBill() {
+    const biller_id = document.getElementById('biller-select').value;
+    const customer_number = document.getElementById('consumer-input').value.trim();
+    if (!biller_id || !customer_number) return;
+    showSpinner(true);
+    try {
+      const r = await fetch('/api/bbps/fetch-bill', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ biller_id, customer_number })
+      });
+      const d = await r.json();
+      showSpinner(false);
+      if (d.success && d.bill && d.bill.found) {
+        fetchedBill = d.bill;
+        fetchedBill.biller_id = biller_id;
+        fetchedBill.customer_number = customer_number;
+        showBillCard(d.bill, d.biller);
+      } else {
+        hideBillCard();
+        showToast('⚠️ No bill found for this consumer number.', 'error');
+      }
+    } catch { showSpinner(false); showToast('❌ Network error. Try again.', 'error'); }
+  }
+
+  function showBillCard(bill, biller) {
+    document.getElementById('bill-consumer').textContent = (bill.consumerName || 'Consumer') + ' · ' + biller.name;
+    document.getElementById('bill-amount').textContent = '₹' + Number(bill.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+    const dueEl = document.getElementById('bill-due');
+    const days = bill.daysUntilDue;
+    let cls = 'ok', txt = '';
+    if (days <= 0) { cls = 'urgent'; txt = '🔴 Overdue!'; }
+    else if (days <= 3) { cls = 'urgent'; txt = `🔴 Due in ${days} day${days > 1 ? 's' : ''}`; }
+    else if (days <= 7) { cls = 'soon'; txt = `🟠 Due in ${days} days`; }
+    else { cls = 'ok'; txt = `🟢 Due: ${bill.dueDate}`; }
+    dueEl.className = `ps-bill-due ${cls}`;
+    dueEl.textContent = txt;
+    document.getElementById('bill-card').classList.add('visible');
+    document.getElementById('pay-btn').disabled = false;
+  }
+
+  function hideBillCard() {
+    document.getElementById('bill-card').classList.remove('visible');
+    document.getElementById('pay-btn').disabled = true;
+  }
+
+  async function payBill() {
+    if (!fetchedBill) return;
+    showSpinner(true);
+    try {
+      const r = await fetch('/api/bbps/pay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          biller_id: fetchedBill.biller_id,
+          customer_number: fetchedBill.customer_number,
+          amount: fetchedBill.amount
+        })
+      });
+      const d = await r.json();
+      showSpinner(false);
+      if (d.success) {
+        showToast(`✅ Bill paid! Ref: ${d.ref}`, 'success');
+        updateBalanceDisplay(d.balance);
+        fetchedBill = null;
+        hideBillCard();
+        document.getElementById('consumer-input').value = '';
+        document.getElementById('biller-select').value = '';
+      } else {
+        showToast(`❌ ${d.message || 'Payment failed'}`, 'error');
+      }
+    } catch { showSpinner(false); showToast('❌ Network error. Try again.', 'error'); }
+  }
+
+  async function loadBalance() {
+    try {
+      const r = await fetch('/api/wallet/balance');
+      const d = await r.json();
+      if (d.balance !== undefined) updateBalanceDisplay(d.balance);
+    } catch {}
+  }
+
+  function updateBalanceDisplay(bal) {
+    const fmt = Number(bal).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    document.getElementById('ps-bal').textContent = fmt;
+    document.getElementById('ps-bal-bottom').textContent = fmt;
+  }
+
+  function showSpinner(v) { document.getElementById('spinner').classList.toggle('show', v); }
+
+  function showToast(msg, type = '') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'ps-toast show' + (type ? ' ' + type : '');
+    setTimeout(() => t.classList.remove('show'), 3500);
+  }
+
+  // ── PIN Modal ──────────────────────────────────────────────────────────────
+  (() => {
+    const boxes = document.querySelectorAll('#pm-row .pm-otp-box');
+    boxes.forEach((box, i) => {
+      box.addEventListener('input', e => {
+        const v = e.target.value.replace(/\D/g, '');
+        e.target.value = v.slice(-1);
+        e.target.classList.toggle('filled', !!e.target.value);
+        if (v && i < boxes.length - 1) boxes[i + 1].focus();
+        const pin = Array.from(boxes).map(b => b.value).join('');
+        document.getElementById('pm-confirm-btn').disabled = pin.length < 4;
+      });
+      box.addEventListener('keydown', e => {
+        if (e.key === 'Backspace' && !box.value && i > 0) {
+          boxes[i - 1].value = '';
+          boxes[i - 1].classList.remove('filled');
+          boxes[i - 1].focus();
+          document.getElementById('pm-confirm-btn').disabled = true;
+        }
+      });
+    });
+  })();
+
+  function openBbpsPinModal() {
+    clearBbpsPin();
+    document.getElementById('pm-error').textContent = '';
+    document.getElementById('pm-set-link').style.display = 'none';
+    document.getElementById('pm-backdrop').classList.add('open');
+    setTimeout(() => document.querySelector('#pm-row .pm-otp-box').focus(), 80);
+  }
+  function closeBbpsPinModal() {
+    document.getElementById('pm-backdrop').classList.remove('open');
+    clearBbpsPin();
+  }
+  function clearBbpsPin() {
+    document.querySelectorAll('#pm-row .pm-otp-box').forEach(b => { b.value = ''; b.classList.remove('filled'); });
+    document.getElementById('pm-confirm-btn').disabled = true;
+  }
+
+  async function confirmBbpsPin() {
+    const pin = Array.from(document.querySelectorAll('#pm-row .pm-otp-box')).map(b => b.value).join('');
+    if (pin.length < 4) return;
+    document.getElementById('pm-confirm-btn').disabled = true;
+    document.getElementById('pm-error').textContent = '';
+    showSpinner(true);
+    try {
+      const r = await fetch('/api/user/pin/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin })
+      });
+      const d = await r.json();
+      showSpinner(false);
+      if (d.success) {
+        closeBbpsPinModal();
+        payBill();
+      } else if (d.message === 'no_pin') {
+        document.getElementById('pm-error').textContent = "You haven't set a wallet PIN yet.";
+        document.getElementById('pm-set-link').style.display = 'block';
+        document.getElementById('pm-confirm-btn').disabled = false;
+      } else {
+        document.getElementById('pm-error').textContent = d.message || 'Incorrect PIN.';
+        document.getElementById('pm-row').classList.add('shake');
+        setTimeout(() => document.getElementById('pm-row').classList.remove('shake'), 400);
+        clearBbpsPin();
+      }
+    } catch {
+      showSpinner(false);
+      document.getElementById('pm-error').textContent = 'Network error. Try again.';
+      document.getElementById('pm-confirm-btn').disabled = false;
+    }
+  }
+</script>
+
+<%- include('../partials/footer') %>

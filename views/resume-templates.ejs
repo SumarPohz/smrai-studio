@@ -1,5 +1,91 @@
 <%- include("partials/header") %>
 
+<!-- Blob animation background -->
+<div class="home-bg-scene" aria-hidden="true">
+  <div class="hblob hblob-1"></div>
+  <div class="hblob hblob-2"></div>
+  <div class="hblob hblob-3"></div>
+  <div class="hblob hblob-4"></div>
+  <div class="hblob-grid"></div>
+</div>
+
+<%
+  var _rtImgs = RESUME_TEMPLATES.filter(t => t.previewImage && !t.previewImage.includes('placeholder')).map(t => t.previewImage);
+  if (_rtImgs.length === 0) _rtImgs = ['/images/hero-photo.png'];
+  var _rtJson = JSON.stringify(_rtImgs);
+%>
+
+<section class="hero">
+  <div class="hero-content">
+    <p class="hero-tag">AI-Powered Resume Studio</p>
+    <h1>Build a job-ready resume in minutes, not hours.</h1>
+
+    <!-- Mobile-only card -->
+    <div class="hero-illustration hero-illustration-inline">
+      <div class="hero-card">
+        <div class="hero-card-header">
+          <span class="badge">Live Preview</span>
+          <span class="dot-group"><span></span><span></span><span></span></span>
+        </div>
+        <div class="hero-card-body">
+          <div class="hero-gallery" data-images="<%= _rtJson %>">
+            <div class="hcg-track">
+              <% var _mn = _rtImgs.length > 3 ? 4 : _rtImgs.length; %>
+              <% for (var _mi = 0; _mi < _mn; _mi++) { %>
+              <div class="hcg-item"><img src="<%= _rtImgs[_mi] %>" alt="Resume preview"
+                   onerror="this.style.background='linear-gradient(135deg,#3b82f6,#22c55e)';this.src='';this.onerror=null;"></div>
+              <% } %>
+            </div>
+          </div>
+        </div>
+        <div class="hero-card-footer">
+          <span class="pill">PDF</span>
+          <span class="pill">JPG</span>
+          <span class="pill accent">1-Click Download</span>
+        </div>
+      </div>
+    </div>
+
+    <p class="hero-subtitle">SmrAI-Studio helps you create clean, modern resumes with AI guidance, professional layouts, and instant download as PDF or JPG.</p>
+
+    <div class="hero-actions">
+      <a href="#templates-grid" class="btn-primary hero-btn-lg">Browse Templates</a>
+      <a href="/photo-editor" class="hero-btn-photo">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        SmrPhoto Editor
+      </a>
+    </div>
+
+    <p class="hero-trust">No design skills needed · 8 professional templates · AI-powered content</p>
+  </div>
+
+  <!-- Desktop illustration card -->
+  <div class="hero-illustration">
+    <div class="hero-card">
+      <div class="hero-card-header">
+        <span class="badge">Live Preview</span>
+        <span class="dot-group"><span></span><span></span><span></span></span>
+      </div>
+      <div class="hero-card-body">
+        <div class="hero-gallery" data-images="<%= _rtJson %>">
+          <div class="hcg-track">
+            <% var _dn = _rtImgs.length > 3 ? 4 : _rtImgs.length; %>
+            <% for (var _di = 0; _di < _dn; _di++) { %>
+            <div class="hcg-item"><img src="<%= _rtImgs[_di] %>" alt="Resume preview"
+                 onerror="this.style.background='linear-gradient(135deg,#3b82f6,#22c55e)';this.src='';this.onerror=null;"></div>
+            <% } %>
+          </div>
+        </div>
+      </div>
+      <div class="hero-card-footer">
+        <span class="pill">PDF</span>
+        <span class="pill">JPG</span>
+        <span class="pill accent">1-Click Download</span>
+      </div>
+    </div>
+  </div>
+</section>
+
 <section class="templates-hero">
   <h1>Worried about making a professional resume?</h1>
   <p class="templates-subtitle">
@@ -29,7 +115,7 @@
   </div>
 </section>
 
-<section class="templates-grid-section">
+<section class="templates-grid-section" id="templates-grid">
   <div class="templates-grid">
     <% RESUME_TEMPLATES.forEach((tmpl, index) => { %>
       <article class="template-card" data-category="<%= tmpl.category || 'experienced' %>">
@@ -108,6 +194,48 @@
     </div>
   </div>
 </section>
+
+<style>
+  .home-bg-scene { position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden; }
+  .hblob-grid { position:absolute;inset:0;background-image:radial-gradient(circle,rgba(99,102,241,0.07) 1px,transparent 1px);background-size:30px 30px; }
+  .hblob { position:absolute;border-radius:50%;filter:blur(110px);animation:hblobDrift ease-in-out infinite alternate; }
+  .hblob-1 { width:580px;height:580px;background:radial-gradient(circle at 40% 40%,#3b82f6,#1d4ed8);opacity:.18;top:-180px;left:-160px;animation-duration:18s; }
+  .hblob-2 { width:480px;height:480px;background:radial-gradient(circle at 60% 40%,#06b6d4,#0ea5e9);opacity:.14;top:-80px;right:-120px;animation-duration:22s;animation-delay:-7s; }
+  .hblob-3 { width:420px;height:420px;background:radial-gradient(circle at 50% 60%,#6366f1,#8b5cf6);opacity:.12;bottom:-100px;left:30%;animation-duration:26s;animation-delay:-13s; }
+  .hblob-4 { width:320px;height:320px;background:radial-gradient(circle at 50% 50%,#10b981,#059669);opacity:.10;top:40%;right:5%;animation-duration:20s;animation-delay:-5s; }
+  @keyframes hblobDrift {
+    0%   { transform:translate(0px,0px) scale(1); }
+    33%  { transform:translate(30px,-35px) scale(1.04); }
+    66%  { transform:translate(-25px,20px) scale(0.97); }
+    100% { transform:translate(15px,40px) scale(1.02); }
+  }
+  .hero, .templates-hero, .templates-grid-section, .features-section, nav, header, footer, .navbar, .site-footer { position:relative;z-index:1; }
+</style>
+
+<script>
+  document.querySelectorAll('.hero-gallery').forEach(function(gallery) {
+    var images = JSON.parse(gallery.getAttribute('data-images') || '[]');
+    if (images.length <= 3) return;
+    var track = gallery.querySelector('.hcg-track');
+    if (!track) return;
+    var cur = 3;
+    setInterval(function() {
+      var firstItem = track.firstElementChild;
+      if (!firstItem || !firstItem.offsetWidth) return;
+      var shift = firstItem.offsetWidth + 5;
+      track.style.transition = 'transform 0.4s cubic-bezier(0.4,0,0.2,1)';
+      track.style.transform  = 'translateX(-' + shift + 'px)';
+      setTimeout(function() {
+        track.style.transition = 'none';
+        track.style.transform  = 'translateX(0)';
+        track.appendChild(track.firstElementChild);
+        cur = (cur + 1) % images.length;
+        track.lastElementChild.querySelector('img').src = images[cur];
+        void track.offsetWidth;
+      }, 440);
+    }, 1000);
+  });
+</script>
 
 <script>
   (function () {

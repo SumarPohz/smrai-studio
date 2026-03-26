@@ -1,0 +1,241 @@
+<%- include('../partials/header') %>
+
+<style>
+  :root {
+    --ps-blue: #1a2b6b;
+    --ps-orange: #f97316;
+    --ps-green: #16a34a;
+    --ps-red: #dc2626;
+    --ps-bg: #f5f6fa;
+  }
+
+  .sp-wrap {
+    max-width: 420px;
+    margin: 60px auto;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    padding: 0 16px 40px;
+  }
+
+  .sp-card {
+    background: #fff;
+    border-radius: 14px;
+    padding: 36px 32px;
+    box-shadow: 0 4px 24px rgba(26,43,107,0.10);
+  }
+
+  .sp-icon { font-size: 40px; text-align: center; margin-bottom: 12px; }
+  .sp-title {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--ps-blue);
+    text-align: center;
+    margin-bottom: 6px;
+  }
+  .sp-sub {
+    font-size: 13px;
+    color: #64748b;
+    text-align: center;
+    margin-bottom: 28px;
+  }
+
+  .sp-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+  }
+
+  /* 4-digit OTP boxes */
+  .sp-otp-row {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-bottom: 24px;
+  }
+  .sp-otp-box {
+    width: 56px;
+    height: 56px;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 24px;
+    font-weight: 700;
+    text-align: center;
+    color: var(--ps-blue);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    background: #f8fafc;
+    -webkit-text-security: disc;
+    letter-spacing: 0;
+  }
+  .sp-otp-box:focus {
+    border-color: var(--ps-blue);
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(26,43,107,0.12);
+  }
+  .sp-otp-box.filled { border-color: var(--ps-blue); background: #eff6ff; }
+
+  .sp-divider {
+    border: none;
+    border-top: 1px solid #f1f5f9;
+    margin: 4px 0 24px;
+  }
+
+  .sp-btn {
+    width: 100%;
+    padding: 14px;
+    background: var(--ps-orange);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    box-shadow: 0 4px 12px rgba(249,115,22,0.3);
+  }
+  .sp-btn:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+  .sp-btn:active:not(:disabled) { opacity: 0.85; }
+
+  .sp-error {
+    color: var(--ps-red);
+    font-size: 13px;
+    text-align: center;
+    margin-top: 10px;
+    min-height: 18px;
+  }
+  .sp-success {
+    color: var(--ps-green);
+    font-size: 14px;
+    font-weight: 600;
+    text-align: center;
+    margin-top: 10px;
+    display: none;
+  }
+
+  .sp-back {
+    text-align: center;
+    margin-top: 16px;
+    font-size: 13px;
+  }
+  .sp-back a { color: var(--ps-blue); font-weight: 600; text-decoration: none; }
+
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20%,60% { transform: translateX(-6px); }
+    40%,80% { transform: translateX(6px); }
+  }
+  .shake { animation: shake 0.4s ease; }
+</style>
+
+<div class="sp-wrap">
+  <div class="sp-card">
+    <div class="sp-icon">🔐</div>
+    <div class="sp-title">Set Wallet PIN</div>
+    <div class="sp-sub">Create a 4-digit PIN to authorize all wallet payments</div>
+
+    <div class="sp-label">Enter New PIN</div>
+    <div class="sp-otp-row" id="pin-row">
+      <input class="sp-otp-box" type="password" inputmode="numeric" maxlength="1" data-index="0" />
+      <input class="sp-otp-box" type="password" inputmode="numeric" maxlength="1" data-index="1" />
+      <input class="sp-otp-box" type="password" inputmode="numeric" maxlength="1" data-index="2" />
+      <input class="sp-otp-box" type="password" inputmode="numeric" maxlength="1" data-index="3" />
+    </div>
+
+    <div class="sp-label">Confirm PIN</div>
+    <div class="sp-otp-row" id="confirm-row">
+      <input class="sp-otp-box" type="password" inputmode="numeric" maxlength="1" data-index="0" />
+      <input class="sp-otp-box" type="password" inputmode="numeric" maxlength="1" data-index="1" />
+      <input class="sp-otp-box" type="password" inputmode="numeric" maxlength="1" data-index="2" />
+      <input class="sp-otp-box" type="password" inputmode="numeric" maxlength="1" data-index="3" />
+    </div>
+
+    <div class="sp-error" id="sp-error"></div>
+    <div class="sp-success" id="sp-success">✅ PIN set successfully! Redirecting…</div>
+
+    <hr class="sp-divider" />
+
+    <button class="sp-btn" id="save-btn" disabled onclick="savePin()">Save PIN</button>
+  </div>
+  <div class="sp-back"><a href="/paysetu">← Back to PaySetu</a></div>
+</div>
+
+<script>
+  function setupOtpRow(rowId, onComplete) {
+    const boxes = document.querySelectorAll(`#${rowId} .sp-otp-box`);
+    boxes.forEach((box, i) => {
+      box.addEventListener('input', (e) => {
+        const val = e.target.value.replace(/\D/g, '');
+        e.target.value = val.slice(-1);
+        e.target.classList.toggle('filled', !!e.target.value);
+        if (val && i < boxes.length - 1) boxes[i + 1].focus();
+        checkComplete();
+      });
+      box.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace' && !box.value && i > 0) {
+          boxes[i - 1].focus();
+          boxes[i - 1].value = '';
+          boxes[i - 1].classList.remove('filled');
+          checkComplete();
+        }
+      });
+      box.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const text = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 4);
+        boxes.forEach((b, j) => {
+          b.value = text[j] || '';
+          b.classList.toggle('filled', !!b.value);
+        });
+        checkComplete();
+      });
+    });
+  }
+
+  function getPin(rowId) {
+    return Array.from(document.querySelectorAll(`#${rowId} .sp-otp-box`)).map(b => b.value).join('');
+  }
+
+  function checkComplete() {
+    const pin = getPin('pin-row');
+    const confirm = getPin('confirm-row');
+    document.getElementById('save-btn').disabled = !(pin.length === 4 && confirm.length === 4);
+  }
+
+  async function savePin() {
+    const pin = getPin('pin-row');
+    const confirm = getPin('confirm-row');
+    const errEl = document.getElementById('sp-error');
+    errEl.textContent = '';
+    if (pin !== confirm) {
+      errEl.textContent = 'PINs do not match. Please try again.';
+      document.getElementById('confirm-row').classList.add('shake');
+      setTimeout(() => document.getElementById('confirm-row').classList.remove('shake'), 400);
+      return;
+    }
+    document.getElementById('save-btn').disabled = true;
+    try {
+      const r = await fetch('/api/user/pin/set', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin })
+      });
+      const d = await r.json();
+      if (d.success) {
+        document.getElementById('sp-success').style.display = 'block';
+        setTimeout(() => { window.location.href = '/paysetu'; }, 1500);
+      } else {
+        errEl.textContent = d.message || 'Failed to save PIN.';
+        document.getElementById('save-btn').disabled = false;
+      }
+    } catch {
+      errEl.textContent = 'Network error. Try again.';
+      document.getElementById('save-btn').disabled = false;
+    }
+  }
+
+  setupOtpRow('pin-row');
+  setupOtpRow('confirm-row');
+</script>
+
+<%- include('../partials/footer') %>

@@ -1,0 +1,371 @@
+<%- include('../partials/header') %>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+<style>
+  :root {
+    --ps-blue: #1e4db7;
+    --ps-orange: #f97316;
+    --ps-green: #16a34a;
+    --ps-red: #dc2626;
+    --ps-bg: #f0f4ff;
+  }
+
+  .ps-wrap {
+    max-width: 480px;
+    margin: 0 auto;
+    background: var(--ps-bg);
+    min-height: 100vh;
+    padding-bottom: 80px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  /* ── Header ── */
+  .ps-header {
+    background: linear-gradient(135deg, var(--ps-blue) 0%, #2563eb 100%);
+    padding: 16px 16px 32px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: #fff;
+  }
+  .ps-back-btn {
+    background: rgba(255,255,255,0.18);
+    border: none;
+    color: #fff;
+    font-size: 20px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+  .ps-header-title { font-size: 18px; font-weight: 700; flex: 1; }
+
+  /* ── Balance Card ── */
+  .ps-balance-card {
+    background: #fff;
+    border-radius: 20px;
+    margin: -20px 16px 0;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(30,77,183,0.12);
+    position: relative;
+    z-index: 2;
+  }
+  .ps-balance-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 6px;
+  }
+  .ps-balance-amount {
+    font-size: 36px;
+    font-weight: 800;
+    color: var(--ps-blue);
+    letter-spacing: -1px;
+  }
+
+  /* ── Body ── */
+  .ps-body { padding: 20px 16px; display: flex; flex-direction: column; gap: 16px; }
+
+  /* ── Quick Chips ── */
+  .ps-chips-label { font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 8px; }
+  .ps-chips {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .ps-chip {
+    background: #fff;
+    border: 2px solid #e2e8f0;
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #334155;
+    cursor: pointer;
+    transition: all 0.18s;
+  }
+  .ps-chip:active, .ps-chip.selected {
+    border-color: var(--ps-blue);
+    background: #eff6ff;
+    color: var(--ps-blue);
+  }
+
+  /* ── Amount Input Card ── */
+  .ps-input-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 2px 8px rgba(30,77,183,0.07);
+  }
+  .ps-amount-row {
+    display: flex;
+    align-items: center;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .ps-amount-row:focus-within { border-color: var(--ps-blue); }
+  .ps-currency-badge {
+    padding: 12px 14px;
+    background: #f1f5f9;
+    font-size: 18px;
+    font-weight: 700;
+    color: #64748b;
+    border-right: 1.5px solid #e2e8f0;
+  }
+  .ps-amount-input {
+    flex: 1;
+    border: none;
+    padding: 14px 14px;
+    font-size: 22px;
+    font-weight: 700;
+    color: #1e293b;
+    outline: none;
+    background: transparent;
+  }
+  .ps-amount-input::placeholder { color: #cbd5e1; font-weight: 400; font-size: 16px; }
+  .ps-amount-hint { font-size: 11.5px; color: #94a3b8; margin-top: 6px; }
+
+  /* ── Add Money Button ── */
+  .ps-btn-addmoney {
+    background: var(--ps-orange);
+    color: #fff;
+    border: none;
+    border-radius: 14px;
+    padding: 16px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    width: 100%;
+    transition: opacity 0.2s;
+    box-shadow: 0 4px 14px rgba(249,115,22,0.35);
+  }
+  .ps-btn-addmoney:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+  .ps-btn-addmoney:active:not(:disabled) { opacity: 0.85; }
+
+  /* ── Spinner ── */
+  .ps-spinner-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(255,255,255,0.6);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+  }
+  .ps-spinner-overlay.show { display: flex; }
+  .ps-spinner {
+    width: 44px; height: 44px;
+    border: 4px solid #e2e8f0;
+    border-top-color: var(--ps-blue);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Toast ── */
+  .ps-toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: #1e293b;
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    z-index: 300;
+    opacity: 0;
+    transition: all 0.3s;
+    white-space: nowrap;
+    max-width: 90vw;
+    text-align: center;
+  }
+  .ps-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .ps-toast.success { background: var(--ps-green); }
+  .ps-toast.error { background: var(--ps-red); }
+
+  /* ── Info Note ── */
+  .ps-note {
+    background: #f0f9ff;
+    border-left: 3px solid #38bdf8;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 12px;
+    color: #0369a1;
+    line-height: 1.5;
+  }
+</style>
+
+<div class="ps-wrap">
+
+  <!-- Header -->
+  <div class="ps-header">
+    <button class="ps-back-btn" onclick="history.back()">←</button>
+    <span class="ps-header-title">Add Money</span>
+  </div>
+
+  <!-- Balance Card -->
+  <div class="ps-balance-card">
+    <div class="ps-balance-label">Current Balance</div>
+    <div class="ps-balance-amount" id="ps-bal">₹—</div>
+  </div>
+
+  <div class="ps-body">
+
+    <!-- Quick chips -->
+    <div>
+      <div class="ps-chips-label">Quick Add</div>
+      <div class="ps-chips">
+        <button class="ps-chip" onclick="setAmount(100)">₹100</button>
+        <button class="ps-chip" onclick="setAmount(200)">₹200</button>
+        <button class="ps-chip" onclick="setAmount(500)">₹500</button>
+        <button class="ps-chip" onclick="setAmount(1000)">₹1000</button>
+        <button class="ps-chip" onclick="setAmount(2000)">₹2000</button>
+      </div>
+    </div>
+
+    <!-- Amount Input -->
+    <div class="ps-input-card">
+      <div class="ps-amount-row">
+        <div class="ps-currency-badge">₹</div>
+        <input class="ps-amount-input" type="number" id="amount-input"
+               min="10" max="50000" placeholder="Enter amount"
+               oninput="onAmountInput()" />
+      </div>
+      <div class="ps-amount-hint">Min ₹10 · Max ₹50,000 per transaction</div>
+    </div>
+
+    <!-- Note -->
+    <div class="ps-note">
+      💡 Money added to your PaySetu wallet can be used for recharges and bill payments.
+    </div>
+
+    <!-- Button -->
+    <button class="ps-btn-addmoney" id="addmoney-btn" disabled onclick="startTopup()">
+      💳 Add Money
+    </button>
+
+  </div>
+</div>
+
+<!-- Spinner -->
+<div class="ps-spinner-overlay" id="spinner"><div class="ps-spinner"></div></div>
+<div class="ps-toast" id="toast"></div>
+
+<script>
+  // User info from server for Razorpay prefill
+  const userEmail = '<%= currentUser && currentUser.email ? currentUser.email : "" %>';
+  const userName  = '<%= currentUser && currentUser.name ? currentUser.name : "" %>';
+
+  document.addEventListener('DOMContentLoaded', loadBalance);
+
+  function setAmount(amt) {
+    document.querySelectorAll('.ps-chip').forEach(c => c.classList.remove('selected'));
+    event.target.classList.add('selected');
+    document.getElementById('amount-input').value = amt;
+    updateBtn();
+  }
+
+  function onAmountInput() {
+    document.querySelectorAll('.ps-chip').forEach(c => c.classList.remove('selected'));
+    updateBtn();
+  }
+
+  function updateBtn() {
+    const val = parseInt(document.getElementById('amount-input').value);
+    document.getElementById('addmoney-btn').disabled = !(val >= 10 && val <= 50000);
+  }
+
+  async function startTopup() {
+    const amount = parseInt(document.getElementById('amount-input').value);
+    if (!amount || amount < 10 || amount > 50000) return;
+    showSpinner(true);
+    try {
+      const r = await fetch('/api/wallet/topup/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount })
+      });
+      const d = await r.json();
+      showSpinner(false);
+      if (!d.success) { showToast('❌ ' + (d.message || 'Could not create order'), 'error'); return; }
+      openRazorpay({ orderId: d.orderId, amount, key: d.key });
+    } catch { showSpinner(false); showToast('❌ Network error. Try again.', 'error'); }
+  }
+
+  function openRazorpay({ orderId, amount, key }) {
+    const options = {
+      key,
+      amount: amount * 100,
+      currency: 'INR',
+      name: 'PaySetu Wallet',
+      description: 'Wallet Top-up',
+      order_id: orderId,
+      prefill: { name: userName, email: userEmail },
+      theme: { color: '#1e4db7' },
+      handler: async (response) => {
+        showSpinner(true);
+        try {
+          const r = await fetch('/api/wallet/topup/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              amount
+            })
+          });
+          const d = await r.json();
+          showSpinner(false);
+          if (d.success) {
+            updateBalanceDisplay(d.balance);
+            showToast(`✅ ₹${amount} added to wallet!`, 'success');
+            document.getElementById('amount-input').value = '';
+            document.querySelectorAll('.ps-chip').forEach(c => c.classList.remove('selected'));
+            updateBtn();
+          } else {
+            showToast('❌ ' + (d.message || 'Verification failed'), 'error');
+          }
+        } catch { showSpinner(false); showToast('❌ Verification error. Contact support.', 'error'); }
+      },
+      modal: { ondismiss: () => showToast('Payment cancelled.', '') }
+    };
+    const rzp = new Razorpay(options);
+    rzp.open();
+  }
+
+  async function loadBalance() {
+    try {
+      const r = await fetch('/api/wallet/balance');
+      const d = await r.json();
+      if (d.balance !== undefined) updateBalanceDisplay(d.balance);
+    } catch {}
+  }
+
+  function updateBalanceDisplay(bal) {
+    document.getElementById('ps-bal').textContent = '₹' + Number(bal).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function showSpinner(v) { document.getElementById('spinner').classList.toggle('show', v); }
+
+  function showToast(msg, type = '') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'ps-toast show' + (type ? ' ' + type : '');
+    setTimeout(() => t.classList.remove('show'), 4000);
+  }
+</script>
+
+<%- include('../partials/footer') %>

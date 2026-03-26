@@ -4,6 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
 import { TEMPLATES } from "../config/templates-config.js";
+import bcrypt from 'bcrypt';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -29,7 +30,7 @@ const adImgStorage = multer.diskStorage({
 });
 const adUpload = multer({ storage: adImgStorage, limits: { fileSize: 5 * 1024 * 1024 } });
 
-const ADMIN_SECTIONS = ["overview","users","activity","requests","pricing","templates","homepage","ads","coupons","apikeys","investors","wallet","subscriptions"];
+const ADMIN_SECTIONS = ["overview","users","activity","requests","pricing","templates","homepage","ads","coupons","apikeys","investors","wallet","subscriptions","paysetu"];
 
 // Map API path prefixes → section key (for write-guard)
 const SECTION_API_MAP = [
@@ -44,6 +45,7 @@ const SECTION_API_MAP = [
   { prefix: "/api/investment",       section: "investors" },
   { prefix: "/api/env-settings",     section: "apikeys"   },
   { prefix: "/api/wallet",           section: "wallet"    },
+  { prefix: "/api/paysetu",          section: "paysetu"   },
 ];
 
 export default function adminRouter(db) {
@@ -73,7 +75,7 @@ export default function adminRouter(db) {
   // ── GET /admin — server-rendered dashboard with stats ──────────────────────
   router.get("/", async (req, res) => {
     try {
-      const [users, resumes, downloads, revenue, aiUse, active24h, myInv, myProfile, companyRow] = await Promise.all([
+      const [users, resumes, downloads, revenue, aiUse, active24h, myInv, myProfile, companyRow, psVolume] = await Promise.all([
         db.query("SELECT COUNT(*) AS count FROM users"),
         db.query("SELECT COUNT(*) AS count FROM resumes"),
         db.query("SELECT COUNT(*) AS count FROM resume_events WHERE kind = 'download'"),
@@ -83,6 +85,7 @@ export default function adminRouter(db) {
         db.query("SELECT * FROM investments WHERE user_id=? ORDER BY created_at DESC LIMIT 1", [req.user.id]),
         db.query("SELECT full_name, profile_image_url FROM user_profiles WHERE user_id=?", [req.user.id]),
         db.query("SELECT value FROM admin_settings WHERE `key`='company_name'"),
+        db.query("SELECT COALESCE(SUM(amount),0) AS total FROM (SELECT amount FROM recharge_transactions WHERE status='success' UNION ALL SELECT amount FROM bbps_transactions WHERE status='success') AS ps"),
       ]);
 
       const isSubAdmin = req.user.role === "subadmin";
@@ -97,6 +100,7 @@ export default function adminRouter(db) {
           totalDownloads: +downloads.rows[0].count,
           totalRevenue:   Math.round(+revenue.rows[0].total / 100), // paise → rupees
           aiRequests:     +aiUse.rows[0].count,
+          paysetuVolume:  Math.round(+psVolume.rows[0].total),
         },
         myInvestment: myInv.rows[0] || null,
         myProfile:    myProfile.rows[0] || null,
@@ -120,7 +124,7 @@ export default function adminRouter(db) {
 
       const sql = `
         SELECT
-          u.id, u.name, u.email, u.role, u.is_active, u.created_at,
+          u.id, u.name, u.email, u.role, u.is_active, u.created_at, u.wallet_balance,
           up.full_name, up.phone, up.location, up.profile_image_url,
           (SELECT COUNT(*) FROM resumes        WHERE user_id = u.id)                           AS resume_count,
           (SELECT COUNT(*) FROM resume_events  WHERE user_id = u.id AND kind = 'download')     AS download_count,
@@ -163,7 +167,7 @@ export default function adminRouter(db) {
 
       const [userRes, profileRes, countsRes] = await Promise.all([
         db.query(
-          "SELECT id, name, email, role, is_active, created_at, EXISTS(SELECT 1 FROM investments WHERE user_id=?) AS has_investment FROM users WHERE id = ?",
+          "SELECT id, name, email, role, is_active, created_at, wallet_balance, EXISTS(SELECT 1 FROM investments WHERE user_id=?) AS has_investment FROM users WHERE id = ?",
           [id, id]
         ),
         db.query("SELECT * FROM user_profiles WHERE user_id = ?", [id]),
@@ -201,6 +205,7 @@ export default function adminRouter(db) {
           total_paid:        Math.round(+counts.total_paid / 100),
           last_active:       counts.last_active || null,
           created_at:        userRes.rows[0].created_at || null,
+          wallet_balance:    parseFloat(userRes.rows[0].wallet_balance) || 0,
         },
       });
     } catch (err) {
@@ -304,6 +309,34 @@ export default function adminRouter(db) {
     } catch (err) {
       res.status(500).json({ success: false });
     }
+  });
+
+  // ── POST /admin/api/user/:id/set-password — admin changes user password ──
+  router.post("/api/user/:id/set-password", async (req, res) => {
+    if (req.user.role !== "admin") return res.status(403).json({ success: false, message: "Admin only" });
+    const id = parseInt(req.params.id);
+    const { password } = req.body || {};
+    if (!id) return res.json({ success: false, message: "Invalid user." });
+    if (!password || password.length < 6) return res.json({ success: false, message: "Password must be at least 6 characters." });
+    try {
+      const hash = await bcrypt.hash(password, 10);
+      await db.query("UPDATE users SET password = ? WHERE id = ?", [hash, id]);
+      res.json({ success: true, message: "Password updated successfully." });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+  });
+
+  // ── POST /admin/api/user/:id/set-pin — admin sets wallet PIN for user ─────
+  router.post("/api/user/:id/set-pin", async (req, res) => {
+    if (req.user.role !== "admin") return res.status(403).json({ success: false, message: "Admin only" });
+    const id = parseInt(req.params.id);
+    const pin = String(req.body.pin || "").trim();
+    if (!id) return res.json({ success: false, message: "Invalid user." });
+    if (!/^\d{4}$/.test(pin)) return res.json({ success: false, message: "PIN must be exactly 4 digits." });
+    try {
+      const hash = await bcrypt.hash(pin, 10);
+      await db.query("UPDATE users SET wallet_pin = ? WHERE id = ?", [hash, id]);
+      res.json({ success: true, message: "Wallet PIN set successfully." });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
   });
 
   // ── DELETE /admin/api/activity — clear logs by period ────────────────────
@@ -1628,6 +1661,250 @@ export default function adminRouter(db) {
         totalRevenue: totalRevenue.rows[0].total,
         planBreakdown: planBreakdown.rows,
       });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+  });
+
+  // ── PaySetu Admin Routes ─────────────────────────────────────────────────────
+
+  // GET /admin/api/paysetu/stats
+  router.get("/api/paysetu/stats", async (req, res) => {
+    try {
+      const [rcTotal, rcSuccess, rcFailed, rcVolume, bbpsTotal, bbpsSuccess, bbpsFailed, bbpsVolume, billers] = await Promise.all([
+        db.query("SELECT COUNT(*) AS c FROM recharge_transactions"),
+        db.query("SELECT COUNT(*) AS c FROM recharge_transactions WHERE status='success'"),
+        db.query("SELECT COUNT(*) AS c FROM recharge_transactions WHERE status='failed'"),
+        db.query("SELECT COALESCE(SUM(amount),0) AS t FROM recharge_transactions WHERE status='success'"),
+        db.query("SELECT COUNT(*) AS c FROM bbps_transactions"),
+        db.query("SELECT COUNT(*) AS c FROM bbps_transactions WHERE status='success'"),
+        db.query("SELECT COUNT(*) AS c FROM bbps_transactions WHERE status='failed'"),
+        db.query("SELECT COALESCE(SUM(amount),0) AS t FROM bbps_transactions WHERE status='success'"),
+        db.query("SELECT COUNT(*) AS c FROM billers WHERE is_active=1"),
+      ]);
+      res.json({
+        success: true,
+        recharge:  { total: +rcTotal.rows[0].c,   success: +rcSuccess.rows[0].c,  failed: +rcFailed.rows[0].c,  volume: Math.round(+rcVolume.rows[0].t) },
+        bbps:      { total: +bbpsTotal.rows[0].c, success: +bbpsSuccess.rows[0].c, failed: +bbpsFailed.rows[0].c, volume: Math.round(+bbpsVolume.rows[0].t) },
+        billers:   +billers.rows[0].c,
+      });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+  });
+
+  // GET /admin/api/paysetu/transactions — unified paginated list
+  router.get("/api/paysetu/transactions", async (req, res) => {
+    try {
+      const page   = Math.max(1, parseInt(req.query.page)  || 1);
+      const limit  = Math.min(50, parseInt(req.query.limit) || 20);
+      const offset = (page - 1) * limit;
+      const filter = req.query.filter || "all"; // all | recharge | bbps | failed
+      const search = req.query.search || "";
+
+      let rows = [], total = 0;
+      const likeSearch = `%${search}%`;
+
+      if (filter === "bbps") {
+        const where = search ? "AND (u.name LIKE ? OR u.email LIKE ? OR t.biller_name LIKE ? OR t.customer_number LIKE ?)" : "";
+        const params = search ? [likeSearch, likeSearch, likeSearch, likeSearch] : [];
+        const countRes = await db.query(`SELECT COUNT(*) AS c FROM bbps_transactions t JOIN users u ON u.id=t.user_id ${where ? 'WHERE '+where.slice(4) : ''}`, params);
+        total = +countRes.rows[0].c;
+        const res2 = await db.query(
+          `SELECT t.*, u.name AS user_name, u.email AS user_email, 'bbps' AS txn_type FROM bbps_transactions t JOIN users u ON u.id=t.user_id ${where ? 'WHERE '+where.slice(4) : ''} ORDER BY t.created_at DESC LIMIT ? OFFSET ?`,
+          [...params, limit, offset]
+        );
+        rows = res2.rows;
+      } else if (filter === "recharge") {
+        const where = search ? "AND (u.name LIKE ? OR u.email LIKE ? OR t.operator LIKE ? OR t.mobile LIKE ?)" : "";
+        const params = search ? [likeSearch, likeSearch, likeSearch, likeSearch] : [];
+        const countRes = await db.query(`SELECT COUNT(*) AS c FROM recharge_transactions t JOIN users u ON u.id=t.user_id ${where ? 'WHERE '+where.slice(4) : ''}`, params);
+        total = +countRes.rows[0].c;
+        const res2 = await db.query(
+          `SELECT t.*, u.name AS user_name, u.email AS user_email, 'recharge' AS txn_type FROM recharge_transactions t JOIN users u ON u.id=t.user_id ${where ? 'WHERE '+where.slice(4) : ''} ORDER BY t.created_at DESC LIMIT ? OFFSET ?`,
+          [...params, limit, offset]
+        );
+        rows = res2.rows;
+      } else if (filter === "failed") {
+        const rcWhere = search ? "AND (u.name LIKE ? OR u.email LIKE ? OR t.operator LIKE ?)" : "";
+        const rcParams = search ? [likeSearch, likeSearch, likeSearch] : [];
+        const bbWhere = search ? "AND (u.name LIKE ? OR u.email LIKE ? OR t.biller_name LIKE ?)" : "";
+        const bbParams = search ? [likeSearch, likeSearch, likeSearch] : [];
+        const [rcRes, bbRes] = await Promise.all([
+          db.query(`SELECT t.*, u.name AS user_name, u.email AS user_email, 'recharge' AS txn_type FROM recharge_transactions t JOIN users u ON u.id=t.user_id WHERE t.status='failed' ${rcWhere} ORDER BY t.created_at DESC LIMIT ?`, [...rcParams, limit]),
+          db.query(`SELECT t.*, u.name AS user_name, u.email AS user_email, 'bbps' AS txn_type FROM bbps_transactions t JOIN users u ON u.id=t.user_id WHERE t.status='failed' ${bbWhere} ORDER BY t.created_at DESC LIMIT ?`, [...bbParams, limit]),
+        ]);
+        rows = [...rcRes.rows, ...bbRes.rows].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, limit);
+        total = rows.length;
+      } else {
+        // all — union
+        const [rcRes, bbRes] = await Promise.all([
+          db.query("SELECT t.*, u.name AS user_name, u.email AS user_email, 'recharge' AS txn_type FROM recharge_transactions t JOIN users u ON u.id=t.user_id ORDER BY t.created_at DESC LIMIT ?", [limit]),
+          db.query("SELECT t.*, u.name AS user_name, u.email AS user_email, 'bbps' AS txn_type FROM bbps_transactions t JOIN users u ON u.id=t.user_id ORDER BY t.created_at DESC LIMIT ?", [limit]),
+        ]);
+        rows = [...rcRes.rows, ...bbRes.rows].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, limit);
+        const [rcCount, bbCount] = await Promise.all([
+          db.query("SELECT COUNT(*) AS c FROM recharge_transactions"),
+          db.query("SELECT COUNT(*) AS c FROM bbps_transactions"),
+        ]);
+        total = +rcCount.rows[0].c + +bbCount.rows[0].c;
+      }
+
+      res.json({ success: true, rows, total, page, limit });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+  });
+
+  // POST /admin/api/paysetu/refund — manual wallet refund for a failed transaction
+  router.post("/api/paysetu/refund", async (req, res) => {
+    try {
+      const { txn_id, txn_type, reason } = req.body;
+      if (!txn_id || !txn_type || !['recharge','bbps'].includes(txn_type)) {
+        return res.json({ success: false, message: 'Invalid request.' });
+      }
+      const table = txn_type === 'recharge' ? 'recharge_transactions' : 'bbps_transactions';
+      const txnRes = await db.query(`SELECT * FROM ${table} WHERE id=?`, [txn_id]);
+      const txn = txnRes.rows[0];
+      if (!txn) return res.json({ success: false, message: 'Transaction not found.' });
+      if (txn.status !== 'failed') return res.json({ success: false, message: 'Only failed transactions can be manually refunded.' });
+
+      // Credit wallet
+      await db.query("UPDATE users SET wallet_balance = wallet_balance + ? WHERE id = ?", [txn.amount, txn.user_id]);
+      await db.query("INSERT INTO wallet_transactions (user_id, amount, type, reason) VALUES (?,?,?,?)", [txn.user_id, txn.amount, 'credit', reason || `Admin refund for ${txn_type} txn #${txn_id}`]);
+      await db.query(`UPDATE ${table} SET status='failed', external_ref=CONCAT(IFNULL(external_ref,''),'[admin_refunded]') WHERE id=?`, [txn_id]);
+
+      res.json({ success: true, message: `₹${txn.amount} refunded to user #${txn.user_id}` });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+  });
+
+  // POST /admin/api/paysetu/reset-pin — clear wallet PIN for a user
+  router.post("/api/paysetu/reset-pin", async (req, res) => {
+    try {
+      const { user_id } = req.body;
+      if (!user_id) return res.json({ success: false, message: 'user_id required.' });
+      await db.query("UPDATE users SET wallet_pin = NULL WHERE id = ?", [user_id]);
+      res.json({ success: true, message: `Wallet PIN cleared for user #${user_id}. They must set a new PIN on next payment.` });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+  });
+
+  // GET /admin/api/paysetu/billers — list all billers
+  router.get("/api/paysetu/billers", async (req, res) => {
+    try {
+      const rows = await db.query("SELECT * FROM billers ORDER BY category, name");
+      res.json({ success: true, billers: rows.rows });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+  });
+
+  // POST /admin/api/paysetu/billers — add biller
+  router.post("/api/paysetu/billers", async (req, res) => {
+    try {
+      const { biller_id, name, category } = req.body;
+      if (!biller_id || !name || !category) return res.json({ success: false, message: 'biller_id, name, and category are required.' });
+      await db.query("INSERT INTO billers (biller_id, name, category) VALUES (?,?,?)", [biller_id.trim().toUpperCase(), name.trim(), category]);
+      res.json({ success: true });
+    } catch (err) {
+      if (err.message?.includes('Duplicate')) return res.json({ success: false, message: 'Biller ID already exists.' });
+      res.status(500).json({ success: false, message: err.message });
+    }
+  });
+
+  // PUT /admin/api/paysetu/billers/:id — update biller
+  router.put("/api/paysetu/billers/:id", async (req, res) => {
+    try {
+      const { name, category } = req.body;
+      await db.query("UPDATE billers SET name=?, category=? WHERE id=?", [name, category, req.params.id]);
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+  });
+
+  // PATCH /admin/api/paysetu/billers/:id/toggle — toggle is_active
+  router.patch("/api/paysetu/billers/:id/toggle", async (req, res) => {
+    try {
+      await db.query("UPDATE billers SET is_active = NOT is_active WHERE id=?", [req.params.id]);
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+  });
+
+  // DELETE /admin/api/paysetu/billers/:id
+  router.delete("/api/paysetu/billers/:id", async (req, res) => {
+    try {
+      await db.query("DELETE FROM billers WHERE id=?", [req.params.id]);
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+  });
+
+  // ── Recharge API Providers ────────────────────────────────────────────────────
+
+  // GET /admin/api/paysetu/providers — list all with masked keys
+  router.get("/api/paysetu/providers", async (req, res) => {
+    try {
+      const rows = await db.query(
+        "SELECT id, provider_key, display_name, api_key, api_secret, is_active FROM recharge_api_providers ORDER BY id"
+      );
+      const providers = rows.rows.map(p => ({
+        id:           p.id,
+        provider_key: p.provider_key,
+        display_name: p.display_name,
+        is_active:    p.is_active,
+        has_key:      !!p.api_key,
+        has_secret:   !!p.api_secret,
+        api_key_masked:    p.api_key    ? p.api_key.slice(0,6)    + "••••••" + p.api_key.slice(-4)    : null,
+        api_secret_masked: p.api_secret ? p.api_secret.slice(0,4) + "••••••" + p.api_secret.slice(-2) : null,
+      }));
+      res.json({ success: true, providers });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+  });
+
+  // PUT /admin/api/paysetu/providers/:id — save API key + secret
+  router.put("/api/paysetu/providers/:id", async (req, res) => {
+    try {
+      const { api_key, api_secret } = req.body || {};
+      await db.query(
+        "UPDATE recharge_api_providers SET api_key=?, api_secret=? WHERE id=?",
+        [api_key || null, api_secret || null, req.params.id]
+      );
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+  });
+
+  // PATCH /admin/api/paysetu/providers/:id/toggle — activate one, deactivate all others
+  router.patch("/api/paysetu/providers/:id/toggle", async (req, res) => {
+    try {
+      const activate = req.body.active === true || req.body.active === 1;
+      if (activate) {
+        await db.query("UPDATE recharge_api_providers SET is_active=0");
+        await db.query("UPDATE recharge_api_providers SET is_active=1 WHERE id=?", [req.params.id]);
+      } else {
+        await db.query("UPDATE recharge_api_providers SET is_active=0 WHERE id=?", [req.params.id]);
+      }
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+  });
+
+  // GET /admin/api/paysetu/callback-url — return the URL admin must register with femoney24
+  router.get("/api/paysetu/callback-url", (req, res) => {
+    const secret = process.env.PAYSETU_CALLBACK_SECRET || null;
+    const base   = process.env.APP_URL || `${req.protocol}://${req.get("host")}`;
+    const url    = secret
+      ? `${base}/paysetu/recharge/callback?secret=${secret}`
+      : `${base}/paysetu/recharge/callback`;
+    res.json({ url, secretSet: !!secret });
+  });
+
+  // GET /admin/api/paysetu/provider-balance — check active provider wallet balance
+  router.get("/api/paysetu/provider-balance", async (req, res) => {
+    try {
+      const prov = await db.query(
+        "SELECT provider_key, api_key FROM recharge_api_providers WHERE is_active=1 LIMIT 1"
+      );
+      const p = prov.rows[0];
+      if (!p || !p.api_key) {
+        return res.json({ success: false, message: "No active provider configured." });
+      }
+      if (p.provider_key === 'femoney24') {
+        const url = `http://femoney24.com/RechargeApi/Balance.aspx?Apitoken=${encodeURIComponent(p.api_key)}`;
+        const data = await fetch(url, { signal: AbortSignal.timeout(10000) }).then(r => r.json());
+        if (data.STATUS === 'SUCCESS') {
+          return res.json({ success: true, balance: data.MESSAGE, provider: 'femoney24' });
+        }
+        return res.json({ success: false, message: data.MESSAGE || 'Balance check failed' });
+      }
+      return res.json({ success: false, message: "Balance check not supported for this provider." });
     } catch (err) { res.status(500).json({ success: false, message: err.message }); }
   });
 

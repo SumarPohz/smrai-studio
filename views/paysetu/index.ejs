@@ -1,0 +1,519 @@
+<%- include('../partials/header') %>
+
+<style>
+  :root {
+    --ps-blue:   #1e4db7;
+    --ps-orange: #f97316;
+    --ps-green:  #16a34a;
+    --ps-red:    #dc2626;
+    --ps-bg:     #eef2fb;
+  }
+
+  body { background: var(--ps-bg) !important; }
+
+  .ps-page {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 0 0 70px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+  }
+
+  /* ── 1. Greeting Header ── */
+  .ps-header {
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid #eef2fb;
+  }
+  .ps-header-left { display: flex; align-items: center; gap: 10px; }
+  .ps-avatar {
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    background: var(--ps-blue);
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .ps-header-greeting { font-size: 11px; color: #64748b; }
+  .ps-header-name     { font-size: 14px; font-weight: 700; color: #1e293b; margin-top: 1px; }
+  .ps-header-chat {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    background: var(--ps-blue);
+    color: #fff;
+    font-size: 17px;
+    display: flex; align-items: center; justify-content: center;
+    text-decoration: none;
+    flex-shrink: 0;
+  }
+
+  /* ── 2. Hero Banner Slider ── */
+  .ps-slider-wrap {
+    margin: 12px 12px 0;
+    border-radius: 14px;
+    overflow: hidden;
+    position: relative;
+    height: 150px;
+  }
+  .ps-slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    pointer-events: none;
+  }
+  .ps-slide.active { opacity: 1; pointer-events: auto; }
+  .ps-slide-1 { background: linear-gradient(135deg, #1e4db7 0%, #2563eb 60%, #3b82f6 100%); }
+  .ps-slide-2 { background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 60%, #a78bfa 100%); }
+  .ps-slide-3 { background: linear-gradient(135deg, #065f46 0%, #059669 60%, #34d399 100%); }
+  .ps-slide-content { color: #fff; }
+  .ps-slide-tag  { font-size: 10px; font-weight: 700; letter-spacing: 1px; opacity: 0.8; text-transform: uppercase; margin-bottom: 6px; }
+  .ps-slide-h1   { font-size: 18px; font-weight: 800; line-height: 1.25; margin-bottom: 8px; }
+  .ps-slide-sub  { font-size: 11px; opacity: 0.85; }
+  .ps-slide-badge {
+    margin-top: 10px;
+    display: inline-block;
+    background: rgba(255,255,255,0.2);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+
+  /* Slider dots */
+  .ps-dots {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    padding: 8px 0 0;
+  }
+  .ps-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #cbd5e1;
+    transition: background 0.3s, width 0.3s;
+    cursor: pointer;
+  }
+  .ps-dot.active { background: var(--ps-blue); width: 18px; border-radius: 3px; }
+
+  /* ── 3. Quick Actions Row ── */
+  .ps-quick-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 12px 12px 0;
+  }
+  .ps-quick-pill {
+    background: #fff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 11px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    color: #1e293b;
+    font-size: 13px;
+    font-weight: 600;
+    transition: background 0.15s;
+    cursor: pointer;
+  }
+  .ps-quick-pill:active { background: #f1f5f9; }
+  .ps-quick-pill span { font-size: 16px; }
+
+  /* ── 4. Marquee ── */
+  .ps-marquee-wrap {
+    margin: 12px 12px 0;
+    background: #dbeafe;
+    border-radius: 8px;
+    padding: 7px 12px;
+    overflow: hidden;
+  }
+  .ps-marquee-inner {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    animation: ps-scroll 20s linear infinite;
+    font-size: 11.5px;
+    color: #1e40af;
+    font-weight: 500;
+  }
+  @keyframes ps-scroll {
+    0%   { transform: translateX(100%); }
+    100% { transform: translateX(-100%); }
+  }
+
+  /* ── 5. Service Grid ── */
+  .ps-services-card {
+    margin: 12px 12px 0;
+    background: #fff;
+    border-radius: 16px;
+    padding: 16px 12px;
+    box-shadow: 0 2px 12px rgba(30,77,183,0.06);
+  }
+  .ps-services-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 14px;
+  }
+  .ps-svc-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+  }
+  .ps-svc-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 4px;
+    text-decoration: none;
+    color: #334155;
+    cursor: pointer;
+    border-radius: 10px;
+    transition: background 0.15s;
+    border: none;
+    background: none;
+    font-family: inherit;
+    width: 100%;
+  }
+  .ps-svc-item:active { background: #f1f5f9; }
+  .ps-svc-icon-wrap {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    background: #f1f5f9;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+  }
+  .ps-svc-label {
+    font-size: 10.5px;
+    font-weight: 500;
+    text-align: center;
+    line-height: 1.3;
+    color: #475569;
+  }
+
+  /* ── 6. Promo Footer Banner ── */
+  .ps-promo-banner {
+    margin: 12px 12px 0;
+    background: linear-gradient(135deg, #1e3a8a 0%, #1e4db7 100%);
+    border-radius: 14px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: #fff;
+  }
+  .ps-promo-left .ps-promo-h { font-size: 13px; font-weight: 800; margin-bottom: 4px; }
+  .ps-promo-left .ps-promo-s { font-size: 10.5px; opacity: 0.8; }
+  .ps-promo-badge {
+    background: rgba(255,255,255,0.15);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  /* Wallet Balance strip */
+  .ps-balance-strip {
+    margin: 12px 12px 0;
+    background: #fff;
+    border-radius: 12px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 8px rgba(30,77,183,0.06);
+  }
+  .ps-balance-strip-label { font-size: 13px; color: #475569; font-weight: 500; }
+  .ps-balance-strip-val   { font-size: 15px; font-weight: 800; color: var(--ps-blue); }
+
+  /* ── 7. Bottom Tab Bar ── */
+  .ps-tabs {
+    display: none;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: #fff;
+    border-top: 1px solid #e2e8f0;
+    z-index: 200;
+    box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
+  }
+  @media (max-width: 768px) { .ps-tabs { display: flex; } }
+  .ps-tab {
+    flex: 1;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 3px;
+    padding: 9px 0 7px;
+    text-decoration: none;
+    color: #94a3b8;
+    font-size: 10px; font-weight: 500;
+    transition: color 0.15s;
+    border: none; background: none; cursor: pointer; font-family: inherit;
+  }
+  .ps-tab.active { color: var(--ps-blue); }
+  .ps-tab .tab-icon { font-size: 19px; line-height: 1; }
+
+  /* ── Coming soon toast ── */
+  .ps-cs-toast {
+    position: fixed;
+    bottom: 78px; left: 50%; transform: translateX(-50%);
+    background: #1e293b;
+    color: #fff;
+    border-radius: 20px;
+    padding: 8px 20px;
+    font-size: 13px;
+    font-weight: 600;
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    white-space: nowrap;
+  }
+  .ps-cs-toast.show { opacity: 1; }
+
+  /* ── Desktop overrides ── */
+  @media (min-width: 769px) {
+    .ps-page { max-width: 960px; padding-bottom: 24px; }
+    .ps-header { max-width: 960px; margin: 0 auto; border-radius: 0 0 16px 16px; }
+    .ps-slider-wrap { height: 200px; margin: 16px 0 0; }
+    .ps-quick-row  { margin: 16px 0 0; }
+    .ps-marquee-wrap  { margin: 16px 0 0; }
+    .ps-services-card { margin: 16px 0 0; }
+    .ps-promo-banner  { margin: 16px 0 0; }
+    .ps-balance-strip { margin: 16px 0 0; }
+    .ps-svc-grid { gap: 8px; }
+    .ps-svc-icon-wrap { width: 56px; height: 56px; font-size: 26px; }
+    .ps-svc-label { font-size: 12px; }
+    .ps-slide-h1 { font-size: 22px; }
+  }
+</style>
+
+<div class="ps-page">
+
+  <!-- 1. Greeting Header -->
+  <div class="ps-header">
+    <div class="ps-header-left">
+      <div class="ps-avatar" id="ps-avatar-init"></div>
+      <div>
+        <div class="ps-header-greeting" id="ps-greeting">Good Afternoon,</div>
+        <div class="ps-header-name"><%= currentUser.name || currentUser.email.split('@')[0] %></div>
+      </div>
+    </div>
+    <a class="ps-header-chat" href="/paysetu/support" title="Help & Support">💬</a>
+  </div>
+
+  <!-- 2. Hero Banner Slider -->
+  <div class="ps-slider-wrap">
+    <div class="ps-slide ps-slide-1 active">
+      <div class="ps-slide-content">
+        <div class="ps-slide-tag">Instant Payments</div>
+        <div class="ps-slide-h1">Pay Your Electricity<br>Bill in Seconds</div>
+        <div class="ps-slide-sub">Fast, secure, and stress-free.</div>
+        <div class="ps-slide-badge">ONE TAP. ZERO DELAYS.</div>
+      </div>
+    </div>
+    <div class="ps-slide ps-slide-2">
+      <div class="ps-slide-content">
+        <div class="ps-slide-tag">Mobile Recharge</div>
+        <div class="ps-slide-h1">Recharge Any Mobile<br>in Seconds</div>
+        <div class="ps-slide-sub">Jio, Airtel, Vi, BSNL — all covered.</div>
+        <div class="ps-slide-badge">BEST PLANS AVAILABLE</div>
+      </div>
+    </div>
+    <div class="ps-slide ps-slide-3">
+      <div class="ps-slide-content">
+        <div class="ps-slide-tag">SmrAI PaySetu</div>
+        <div class="ps-slide-h1">Fast. Safe.<br>Hassle-Free Payments</div>
+        <div class="ps-slide-sub">Your all-in-one bill payment hub.</div>
+        <div class="ps-slide-badge">PAY ALL BILLS HERE</div>
+      </div>
+    </div>
+  </div>
+  <div class="ps-dots">
+    <div class="ps-dot active" onclick="goSlide(0)"></div>
+    <div class="ps-dot"        onclick="goSlide(1)"></div>
+    <div class="ps-dot"        onclick="goSlide(2)"></div>
+  </div>
+
+  <!-- Wallet Balance Strip -->
+  <div class="ps-balance-strip">
+    <span class="ps-balance-strip-label">💰 Wallet Balance</span>
+    <span class="ps-balance-strip-val" id="ps-bal">₹—</span>
+  </div>
+
+  <!-- 3. Quick Action Row -->
+  <div class="ps-quick-row">
+    <button class="ps-quick-pill" onclick="comingSoon('Refer & Earn')">
+      <span>🏷️</span> Refer &amp; Earn
+    </button>
+    <a class="ps-quick-pill" href="/paysetu/history">
+      <span>📊</span> Balance &amp; History
+    </a>
+  </div>
+
+  <!-- 4. Marquee -->
+  <div class="ps-marquee-wrap">
+    <div class="ps-marquee-inner">
+      📢&nbsp; No transaction charges on wallet payments &nbsp;•&nbsp; Top up wallet and pay bills instantly &nbsp;•&nbsp; Recharge any mobile in seconds &nbsp;•&nbsp; Fast. Safe. Hassle-Free. &nbsp;•&nbsp; SmrAI PaySetu — Your Digital Payment Hub &nbsp;•&nbsp;
+    </div>
+  </div>
+
+  <!-- 5. Service Grid -->
+  <div class="ps-services-card">
+    <div class="ps-services-title">Recharge And Bills</div>
+    <div class="ps-svc-grid">
+
+      <a class="ps-svc-item" href="/paysetu/recharge?type=mobile">
+        <div class="ps-svc-icon-wrap">📱</div>
+        <span class="ps-svc-label">Prepaid</span>
+      </a>
+
+      <a class="ps-svc-item" href="/paysetu/recharge?type=dth">
+        <div class="ps-svc-icon-wrap">📡</div>
+        <span class="ps-svc-label">DTH</span>
+      </a>
+
+      <button class="ps-svc-item" onclick="comingSoon('Redeem Code')">
+        <div class="ps-svc-icon-wrap">🎫</div>
+        <span class="ps-svc-label">Redeem Code</span>
+      </button>
+
+      <button class="ps-svc-item" onclick="comingSoon('FasTag')">
+        <div class="ps-svc-icon-wrap">🏷️</div>
+        <span class="ps-svc-label">FasTag</span>
+      </button>
+
+      <a class="ps-svc-item" href="/paysetu/bbps?category=electricity">
+        <div class="ps-svc-icon-wrap">⚡</div>
+        <span class="ps-svc-label">Electricity</span>
+      </a>
+
+      <button class="ps-svc-item" onclick="comingSoon('Postpaid')">
+        <div class="ps-svc-icon-wrap">📞</div>
+        <span class="ps-svc-label">Postpaid</span>
+      </button>
+
+      <button class="ps-svc-item" onclick="comingSoon('Landline')">
+        <div class="ps-svc-icon-wrap">☎️</div>
+        <span class="ps-svc-label">Landline</span>
+      </button>
+
+      <a class="ps-svc-item" href="/paysetu/bbps?category=gas">
+        <div class="ps-svc-icon-wrap">🔥</div>
+        <span class="ps-svc-label">Gas Bill</span>
+      </a>
+
+      <a class="ps-svc-item" href="/paysetu/bbps?category=water">
+        <div class="ps-svc-icon-wrap">💧</div>
+        <span class="ps-svc-label">Water Bill</span>
+      </a>
+
+      <button class="ps-svc-item" onclick="comingSoon('Insurance')">
+        <div class="ps-svc-icon-wrap">🛡️</div>
+        <span class="ps-svc-label">Insurance</span>
+      </button>
+
+      <a class="ps-svc-item" href="/paysetu/bbps?category=broadband">
+        <div class="ps-svc-icon-wrap">📶</div>
+        <span class="ps-svc-label">Broadband</span>
+      </a>
+
+      <a class="ps-svc-item" href="/paysetu/bbps">
+        <div class="ps-svc-icon-wrap">🏦</div>
+        <span class="ps-svc-label">Pay Bills</span>
+      </a>
+
+    </div>
+  </div>
+
+  <!-- 6. Promo Footer Banner -->
+  <div class="ps-promo-banner">
+    <div class="ps-promo-left">
+      <div class="ps-promo-h">Fast. Safe. Hassle-Free</div>
+      <div class="ps-promo-s">Pay all your bills in one place.<br>Powered by SmrAI PaySetu.</div>
+    </div>
+    <div class="ps-promo-badge">🚀 Try Now</div>
+  </div>
+
+</div><!-- .ps-page -->
+
+<!-- Coming Soon Toast -->
+<div class="ps-cs-toast" id="psToast"></div>
+
+<!-- 7. Bottom Tab Bar (mobile only) -->
+<div class="ps-tabs">
+  <a class="ps-tab active" href="/paysetu">
+    <span class="tab-icon">🏠</span>Home
+  </a>
+  <a class="ps-tab" href="/paysetu/history">
+    <span class="tab-icon">📋</span>Reports
+  </a>
+  <a class="ps-tab" href="/paysetu/support">
+    <span class="tab-icon">🎧</span>Support
+  </a>
+  <a class="ps-tab" href="/paysetu/settings">
+    <span class="tab-icon">⚙️</span>Settings
+  </a>
+</div>
+
+<script>
+  // Greeting
+  (function() {
+    const h = new Date().getHours();
+    const g = h < 12 ? 'Good Morning,' : h < 17 ? 'Good Afternoon,' : 'Good Evening,';
+    document.getElementById('ps-greeting').textContent = g;
+
+    const name = '<%= (currentUser.name || currentUser.email || "U")[0].toUpperCase() %>';
+    document.getElementById('ps-avatar-init').textContent = name;
+  })();
+
+  // Wallet balance
+  (async () => {
+    try {
+      const r = await fetch('/api/wallet/balance');
+      const d = await r.json();
+      if (d.balance !== undefined) {
+        document.getElementById('ps-bal').textContent = '₹' + Number(d.balance).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+    } catch { document.getElementById('ps-bal').textContent = '₹0.00'; }
+  })();
+
+  // Banner slider
+  let currentSlide = 0;
+  const slides = document.querySelectorAll('.ps-slide');
+  const dots   = document.querySelectorAll('.ps-dot');
+
+  function goSlide(n) {
+    slides[currentSlide].classList.remove('active');
+    dots[currentSlide].classList.remove('active');
+    currentSlide = n % slides.length;
+    slides[currentSlide].classList.add('active');
+    dots[currentSlide].classList.add('active');
+  }
+
+  setInterval(() => goSlide(currentSlide + 1), 3000);
+
+  // Coming soon toast
+  let _csTimer = null;
+  function comingSoon(name) {
+    const t = document.getElementById('psToast');
+    t.textContent = (name || 'This feature') + ' — Coming Soon! 🚀';
+    t.classList.add('show');
+    clearTimeout(_csTimer);
+    _csTimer = setTimeout(() => t.classList.remove('show'), 2500);
+  }
+</script>
+
+<%- include('../partials/footer') %>

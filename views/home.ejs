@@ -9,92 +9,95 @@
   <div class="hblob-grid"></div>
 </div>
 
-<div class="page-container">
+<!-- ── Full-width Multi-Service Hero ─────────────────────────────────── -->
+<section class="smr-hero" aria-label="SmrAI Studio platform">
+  <div class="smr-hero-inner">
 
-  <!-- ── Hero ─────────────────────────────────────────────────────────────── -->
-  <%
-  var _heroImgs = (hp_hero.heroImages && hp_hero.heroImages.length)
-    ? hp_hero.heroImages
-    : (hp_hero.heroImage ? [hp_hero.heroImage] : ['/images/hero-photo.png']);
-  var _heroJson = JSON.stringify(_heroImgs);
-  %>
-  <section class="hero">
-    <div class="hero-content">
-      <p class="hero-tag"><%= hp_hero.tag || 'AI-Powered Resume Studio' %></p>
-      <h1><%- hp_hero.headline || 'Build a job-ready resume in minutes, not hours.' %></h1>
+    <!-- Left: Text -->
+    <div class="smr-hero-content">
 
-      <!-- Mobile-only card -->
-      <div class="hero-illustration hero-illustration-inline">
-        <div class="hero-card">
-          <div class="hero-card-header">
-            <span class="badge">Live Preview</span>
-            <span class="dot-group"><span></span><span></span><span></span></span>
-          </div>
-          <div class="hero-card-body">
-            <div class="hero-gallery" data-images="<%= _heroJson %>">
-              <div class="hcg-track">
-                <% var _mn = _heroImgs.length > 3 ? 4 : _heroImgs.length; %>
-                <% for (var _mi = 0; _mi < _mn; _mi++) { %>
-                <div class="hcg-item"><img src="<%= _heroImgs[_mi] %>" alt="Profile"
-                     onerror="this.style.background='linear-gradient(135deg,#3b82f6,#22c55e)';this.src='';this.onerror=null;"></div>
-                <% } %>
-              </div>
-            </div>
-          </div>
-          <div class="hero-card-footer">
-            <span class="pill">PDF</span>
-            <span class="pill">JPG</span>
-            <span class="pill accent">1-Click Download</span>
-          </div>
-        </div>
+      <div class="smr-badge">
+        <span class="smr-badge-dot"></span>
+        <%= hp_hero.tag || "Smart Digital Services Platform" %>
       </div>
 
-      <p class="hero-subtitle"><%- hp_hero.subtitle || '' %></p>
+      <h1 class="smr-h1">
+        <%- hp_hero.headline || 'All Your Digital Needs<br><span class="smr-grad">In One Smart Platform</span>' %>
+      </h1>
 
-      <div class="hero-actions">
+      <p class="smr-sub">
+        <%- hp_hero.subtitle || 'Pay bills, recharge mobile, create professional resumes, edit photos, and apply for services — all from one powerful dashboard.' %>
+      </p>
+
+      <div class="smr-actions">
         <% if (currentUser) { %>
-          <a href="/resume-templates" class="btn-primary hero-btn-lg">Start Building Resume</a>
-          <a href="/photo-editor" class="hero-btn-photo">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-            SmrPhoto Editor
-          </a>
+          <a href="/paysetu" class="smr-btn-primary">Explore Services <span class="smr-arrow">→</span></a>
+          <a href="/resume-templates" class="smr-btn-ghost">Build Resume</a>
         <% } else { %>
-          <a href="/register" class="btn-primary hero-btn-lg">Get Started Free</a>
-          <a href="/login" class="btn-ghost hero-btn">Log in</a>
+          <a href="/register" class="smr-btn-primary">Get Started Free <span class="smr-arrow">→</span></a>
+          <a href="/login" class="smr-btn-ghost">Log in</a>
         <% } %>
       </div>
 
-      <p class="hero-trust"><%- hp_hero.trustText || '' %></p>
-    </div>
-
-    <!-- Desktop illustration card -->
-    <div class="hero-illustration">
-      <div class="hero-card">
-        <div class="hero-card-header">
-          <span class="badge">Live Preview</span>
-          <span class="dot-group"><span></span><span></span><span></span></span>
-        </div>
-        <div class="hero-card-body">
-          <div class="hero-gallery" data-images="<%= _heroJson %>">
-            <div class="hcg-track">
-              <% var _dn = _heroImgs.length > 3 ? 4 : _heroImgs.length; %>
-              <% for (var _di = 0; _di < _dn; _di++) { %>
-              <div class="hcg-item"><img src="<%= _heroImgs[_di] %>" alt="Profile"
-                   onerror="this.style.background='linear-gradient(135deg,#3b82f6,#22c55e)';this.src='';this.onerror=null;"></div>
-              <% } %>
-            </div>
-          </div>
-        </div>
-        <div class="hero-card-footer">
-          <span class="pill">PDF</span>
-          <span class="pill">JPG</span>
-          <span class="pill accent">1-Click Download</span>
-        </div>
+      <div class="smr-chips">
+        <a href="/resume-templates"    class="smr-chip smr-chip-indigo">📄 Resume</a>
+        <a href="/paysetu"             class="smr-chip smr-chip-orange">💳 PaySetu</a>
+        <a href="/application-builder" class="smr-chip smr-chip-purple">📋 Applications</a>
+        <a href="/photo-editor"        class="smr-chip smr-chip-green">🖼️ Photo Editor</a>
+        <a href="/reels"               class="smr-chip smr-chip-red">🎬 Reels</a>
       </div>
-    </div>
-  </section>
 
-  <!-- ── Services ──────────────────────────────────────────────────────────── -->
+      <p class="smr-trust">
+        <%- hp_hero.trustText || '✦ &nbsp; 50K+ Users &nbsp;·&nbsp; 5+ services &nbsp;·&nbsp; 1 login' %>
+      </p>
+    </div>
+
+    <!-- Right: Service cards -->
+    <div class="smr-hero-art" aria-hidden="true">
+      <a href="/resume-templates" class="smr-card smr-card-indigo">
+        <div class="smr-card-icon-wrap smr-iw-indigo">📄</div>
+        <div>
+          <div class="smr-card-title">Resume Builder</div>
+          <div class="smr-card-sub">8 templates · PDF + JPG</div>
+        </div>
+        <div class="smr-card-arrow">→</div>
+      </a>
+
+      <a href="/paysetu" class="smr-card smr-card-orange">
+        <div class="smr-card-icon-wrap smr-iw-orange">💳</div>
+        <div>
+          <div class="smr-card-title">PaySetu</div>
+          <div class="smr-card-sub">Recharge &amp; Pay Bills</div>
+        </div>
+        <div class="smr-card-arrow">→</div>
+      </a>
+
+      <a href="/application-builder" class="smr-card smr-card-purple">
+        <div class="smr-card-icon-wrap smr-iw-purple">📋</div>
+        <div>
+          <div class="smr-card-title">Applications</div>
+          <div class="smr-card-sub">Govt forms &amp; docs</div>
+        </div>
+        <div class="smr-card-arrow">→</div>
+      </a>
+
+      <a href="/photo-editor" class="smr-card smr-card-green">
+        <div class="smr-card-icon-wrap smr-iw-green">🖼️</div>
+        <div>
+          <div class="smr-card-title">Photo Tools</div>
+          <div class="smr-card-sub">BG Remove &amp; Editor</div>
+        </div>
+        <div class="smr-card-arrow">→</div>
+      </a>
+    </div>
+
+  </div>
+</section>
+
+<!-- ── Rest of page ───────────────────────────────────────────────────── -->
+<div class="page-container">
+
+  <!-- ── Services ──────────────────────────────────────────────────────── -->
   <section class="services-section">
     <h2><%= (hp_services.title) || 'What you can do with SmrAI-Studio' %></h2>
     <p class="section-subtitle"><%= (hp_services.subtitle) || '' %></p>
@@ -133,19 +136,17 @@
       <a href="<%= sidebarAd.link_url %>" target="_blank" rel="noopener noreferrer sponsored">
         <img src="<%= sidebarAd.image_url %>" alt="<%= sidebarAd.title || 'Advertisement' %>">
       </a>
-    <% } else { %>
-      <% if (locals.adsEnabled && locals.adsensePublisherId && locals.homepageAdSlot) { %>
+    <% } else if (locals.adsEnabled && locals.adsensePublisherId && locals.homepageAdSlot) { %>
       <ins class="adsbygoogle" style="display:block"
            data-ad-client="<%= locals.adsensePublisherId %>"
            data-ad-slot="<%= locals.homepageAdSlot %>"
            data-ad-format="auto" data-full-width-responsive="true"></ins>
       <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
-      <% } %>
     <% } %>
   </div>
   <% } %>
 
-  <!-- ── Features ──────────────────────────────────────────────────────────── -->
+  <!-- ── Features ──────────────────────────────────────────────────────── -->
   <section class="features-section">
     <h2><%= (hp_features.title) || 'Our Main Features' %></h2>
     <p class="section-subtitle"><%= (hp_features.subtitle) || '' %></p>
@@ -162,7 +163,7 @@
     </div>
   </section>
 
-  <!-- ── Testimonials ───────────────────────────────────────────────────────── -->
+  <!-- ── Testimonials ───────────────────────────────────────────────────── -->
   <section class="testimonials-section">
     <h2><%= (hp_testimonials.title) || 'Your Success, Our Inspiration' %></h2>
     <p class="section-subtitle"><%= (hp_testimonials.subtitle) || '' %></p>
@@ -182,75 +183,306 @@
     </div>
   </section>
 
-</div>
+</div><!-- /.page-container -->
 
 <style>
-  /* ── Home page 3D background ── */
-  .home-bg-scene {
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-    overflow: hidden;
-  }
+/* ── Blob background (home only) ───────────────────────────────────── */
+.home-bg-scene {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.hblob-grid {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(99,102,241,0.07) 1px, transparent 1px);
+  background-size: 30px 30px;
+}
+.hblob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(110px);
+  animation: hblobDrift ease-in-out infinite alternate;
+}
+.hblob-1 { width:580px;height:580px;background:radial-gradient(circle at 40% 40%,#3b82f6,#1d4ed8);opacity:.18;top:-180px;left:-160px;animation-duration:18s; }
+.hblob-2 { width:480px;height:480px;background:radial-gradient(circle at 60% 40%,#06b6d4,#0ea5e9);opacity:.14;top:-80px;right:-120px;animation-duration:22s;animation-delay:-7s; }
+.hblob-3 { width:420px;height:420px;background:radial-gradient(circle at 50% 60%,#6366f1,#8b5cf6);opacity:.12;bottom:-100px;left:30%;animation-duration:26s;animation-delay:-13s; }
+.hblob-4 { width:320px;height:320px;background:radial-gradient(circle at 50% 50%,#10b981,#059669);opacity:.10;top:40%;right:5%;animation-duration:20s;animation-delay:-5s; }
+@keyframes hblobDrift {
+  0%   { transform: translate(0px,   0px)  scale(1);    }
+  33%  { transform: translate(30px, -35px) scale(1.04); }
+  66%  { transform: translate(-25px, 20px) scale(0.97); }
+  100% { transform: translate(15px,  40px) scale(1.02); }
+}
 
-  .hblob-grid {
-    position: absolute;
-    inset: 0;
-    background-image: radial-gradient(circle, rgba(99,102,241,0.07) 1px, transparent 1px);
-    background-size: 30px 30px;
-  }
+/* z-index stacking */
+.smr-hero,
+.page-container, nav, header, footer, .navbar, .site-footer {
+  position: relative;
+  z-index: 1;
+}
 
-  .hblob {
-    position: absolute;
-    border-radius: 50%;
-    filter: blur(110px);
-    animation: hblobDrift ease-in-out infinite alternate;
-  }
+/* ── Hero ──────────────────────────────────────────────────────────── */
+.smr-hero {
+  background: transparent;
+  padding: 88px 32px 96px;
+}
 
-  .hblob-1 { width:580px;height:580px;background:radial-gradient(circle at 40% 40%,#3b82f6,#1d4ed8);opacity:.18;top:-180px;left:-160px;animation-duration:18s; }
-  .hblob-2 { width:480px;height:480px;background:radial-gradient(circle at 60% 40%,#06b6d4,#0ea5e9);opacity:.14;top:-80px;right:-120px;animation-duration:22s;animation-delay:-7s; }
-  .hblob-3 { width:420px;height:420px;background:radial-gradient(circle at 50% 60%,#6366f1,#8b5cf6);opacity:.12;bottom:-100px;left:30%;animation-duration:26s;animation-delay:-13s; }
-  .hblob-4 { width:320px;height:320px;background:radial-gradient(circle at 50% 50%,#10b981,#059669);opacity:.10;top:40%;right:5%;animation-duration:20s;animation-delay:-5s; }
+.smr-hero-inner {
+  max-width: 1240px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 72px;
+}
 
-  @keyframes hblobDrift {
-    0%   { transform: translate(0px,   0px)  scale(1);    }
-    33%  { transform: translate(30px, -35px) scale(1.04); }
-    66%  { transform: translate(-25px, 20px) scale(0.97); }
-    100% { transform: translate(15px,  40px) scale(1.02); }
-  }
+/* ── Left ── */
+.smr-hero-content { flex: 1; min-width: 0; }
 
-  .page-container, nav, header, footer, .navbar, .site-footer {
-    position: relative;
-    z-index: 1;
-  }
+.smr-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #ede9fe;
+  border: 1px solid #c4b5fd;
+  color: #5b21b6;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  border-radius: 999px;
+  padding: 6px 16px;
+  margin-bottom: 24px;
+}
+.smr-badge-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 6px #22c55e;
+  flex-shrink: 0;
+}
+
+.smr-h1 {
+  font-size: clamp(2.2rem, 4.5vw, 3.6rem);
+  font-weight: 900;
+  color: #0f172a;
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+  margin: 0 0 20px;
+}
+.smr-grad {
+  background: linear-gradient(90deg, #4f46e5 0%, #7c3aed 50%, #0ea5e9 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.smr-sub {
+  font-size: 1.05rem;
+  color: #475569;
+  line-height: 1.75;
+  max-width: 500px;
+  margin: 0 0 34px;
+}
+
+.smr-actions {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 26px;
+}
+
+.smr-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 28px;
+  background: linear-gradient(135deg, #4f46e5, #3b82f6);
+  color: #fff !important;
+  font-weight: 700;
+  font-size: 0.95rem;
+  border-radius: 999px;
+  text-decoration: none !important;
+  box-shadow: 0 6px 24px rgba(79,70,229,0.35);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.smr-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 36px rgba(79,70,229,0.45);
+}
+.smr-arrow { transition: transform 0.2s; }
+.smr-btn-primary:hover .smr-arrow { transform: translateX(4px); }
+
+.smr-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  padding: 14px 28px;
+  background: #fff;
+  color: #1e293b !important;
+  font-weight: 600;
+  font-size: 0.95rem;
+  border-radius: 999px;
+  text-decoration: none !important;
+  border: 1.5px solid #e2e8f0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.smr-btn-ghost:hover {
+  border-color: #4f46e5;
+  box-shadow: 0 4px 16px rgba(79,70,229,0.12);
+}
+
+/* Service chips */
+.smr-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+.smr-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none !important;
+  border: 1.5px solid transparent;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.smr-chip:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+.smr-chip-indigo { background: #ede9fe; border-color: #c4b5fd; color: #4f46e5; }
+.smr-chip-orange { background: #fff7ed; border-color: #fed7aa; color: #ea580c; }
+.smr-chip-purple { background: #faf5ff; border-color: #e9d5ff; color: #7c3aed; }
+.smr-chip-green  { background: #f0fdf4; border-color: #bbf7d0; color: #16a34a; }
+.smr-chip-red    { background: #fff1f2; border-color: #fecdd3; color: #e11d48; }
+
+.smr-trust {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  margin: 0;
+}
+
+/* ── Right: Cards ── */
+.smr-hero-art {
+  flex-shrink: 0;
+  width: 420px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  position: relative;
+  z-index: 2;
+}
+
+.smr-card {
+  border-radius: 22px;
+  padding: 22px 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-decoration: none !important;
+  border: 1.5px solid transparent;
+  transition: transform 0.22s, box-shadow 0.22s;
+  position: relative;
+  overflow: hidden;
+}
+.smr-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity 0.22s;
+  background: rgba(255,255,255,0.25);
+  pointer-events: none;
+}
+.smr-card:hover { transform: translateY(-7px); }
+.smr-card:hover::before { opacity: 1; }
+
+/* Per-card gradient backgrounds */
+.smr-card-indigo {
+  background: linear-gradient(145deg, #ede9fe 0%, #ddd6fe 60%, #c4b5fd 100%);
+  border-color: #c4b5fd;
+  box-shadow: 0 4px 20px rgba(109,40,217,0.12);
+}
+.smr-card-indigo:hover { box-shadow: 0 14px 40px rgba(109,40,217,0.22); }
+
+.smr-card-orange {
+  background: linear-gradient(145deg, #fff7ed 0%, #fed7aa 60%, #fdba74 100%);
+  border-color: #fdba74;
+  box-shadow: 0 4px 20px rgba(234,88,12,0.10);
+}
+.smr-card-orange:hover { box-shadow: 0 14px 40px rgba(234,88,12,0.20); }
+
+.smr-card-purple {
+  background: linear-gradient(145deg, #faf5ff 0%, #e9d5ff 60%, #d8b4fe 100%);
+  border-color: #d8b4fe;
+  box-shadow: 0 4px 20px rgba(124,58,237,0.10);
+}
+.smr-card-purple:hover { box-shadow: 0 14px 40px rgba(124,58,237,0.20); }
+
+.smr-card-green {
+  background: linear-gradient(145deg, #f0fdf4 0%, #bbf7d0 60%, #86efac 100%);
+  border-color: #86efac;
+  box-shadow: 0 4px 20px rgba(22,163,74,0.10);
+}
+.smr-card-green:hover { box-shadow: 0 14px 40px rgba(22,163,74,0.20); }
+
+.smr-card-icon-wrap {
+  width: 46px; height: 46px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.65);
+  backdrop-filter: blur(4px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.smr-card-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #0f172a;
+}
+.smr-card-sub {
+  font-size: 11.5px;
+  color: #475569;
+  margin-top: 1px;
+}
+.smr-card-arrow {
+  margin-top: auto;
+  font-size: 15px;
+  color: rgba(0,0,0,0.2);
+  transition: color 0.2s, transform 0.2s;
+}
+.smr-card:hover .smr-card-arrow {
+  color: rgba(0,0,0,0.55);
+  transform: translateX(5px);
+}
+
+/* ── Responsive ── */
+@media (max-width: 960px) {
+  .smr-hero { padding: 72px 24px 80px; }
+  .smr-hero-inner { gap: 48px; }
+  .smr-hero-art { width: 360px; }
+}
+@media (max-width: 768px) {
+  .smr-hero { padding: 56px 20px 72px; }
+  .smr-hero-inner { flex-direction: column; gap: 40px; }
+  .smr-hero-art { width: 100%; }
+  .smr-h1 { font-size: 2.1rem; }
+}
+@media (max-width: 480px) {
+  .smr-h1 { font-size: 1.85rem; }
+  .smr-actions { flex-direction: column; }
+  .smr-btn-primary, .smr-btn-ghost { justify-content: center; }
+  .smr-hero-art { gap: 10px; }
+  .smr-card { padding: 16px 12px; }
+}
 </style>
 
-<script>
-document.querySelectorAll('.hero-gallery').forEach(function(gallery) {
-  var images = JSON.parse(gallery.getAttribute('data-images') || '[]');
-  if (images.length <= 3) return;
-  var track = gallery.querySelector('.hcg-track');
-  if (!track) return;
-  var cur = 3;
-
-  setInterval(function() {
-    var firstItem = track.firstElementChild;
-    if (!firstItem || !firstItem.offsetWidth) return; // skip if hidden
-    var shift = firstItem.offsetWidth + 5; // item width + gap
-
-    track.style.transition = 'transform 0.4s cubic-bezier(0.4,0,0.2,1)';
-    track.style.transform  = 'translateX(-' + shift + 'px)';
-
-    setTimeout(function() {
-      track.style.transition = 'none';
-      track.style.transform  = 'translateX(0)';
-      track.appendChild(track.firstElementChild);
-      cur = (cur + 1) % images.length;
-      track.lastElementChild.querySelector('img').src = images[cur];
-      void track.offsetWidth; // force reflow so transition:none registers
-    }, 440);
-  }, 1000);
-});
-</script>
 <%- include("partials/footer") %>

@@ -87,6 +87,11 @@
         <i class="fas fa-bolt"></i> Subscriptions
       </a>
       <% } %>
+      <% if (_p('paysetu')) { %>
+      <a href="#paysetu" class="adm-nav-link" data-section="paysetu">
+        <i class="fas fa-satellite-dish"></i> PaySetu
+      </a>
+      <% } %>
       <a href="/dashboard" class="adm-nav-link adm-nav-back">
         <i class="fas fa-arrow-left"></i> Back to App
       </a>
@@ -247,6 +252,13 @@
             <div class="adm-stat-label">Revenue</div>
           </div>
         </div>
+        <div class="adm-stat-card" style="--adm-card-delay:0.28s">
+          <div class="adm-stat-icon" style="background:#fef3c7;color:#d97706"><i class="fas fa-satellite-dish"></i></div>
+          <div class="adm-stat-text">
+            <div class="adm-stat-num" data-target="<%= stats.paysetuVolume %>" data-prefix="₹">₹0</div>
+            <div class="adm-stat-label">PaySetu Volume</div>
+          </div>
+        </div>
         <div class="adm-stat-card" style="--adm-card-delay:0.30s" data-detail="ai">
           <div class="adm-stat-icon adm-icon-pink"><i class="fas fa-robot"></i></div>
           <div class="adm-stat-text">
@@ -288,11 +300,12 @@
                 <th>Resumes</th>
                 <th>Downloads</th>
                 <th>Revenue</th>
+                <th>Wallet</th>
                 <th>Last Active</th>
               </tr>
             </thead>
             <tbody id="usersBody">
-              <tr><td colspan="7" class="adm-loading">Loading users…</td></tr>
+              <tr><td colspan="8" class="adm-loading">Loading users…</td></tr>
             </tbody>
           </table>
         </div>
@@ -1576,6 +1589,191 @@
       </div>
     </div><!-- /subscriptions -->
 
+    <!-- ── Section: PaySetu ─────────────────────────────────────────────────── -->
+    <div id="paysetu" class="adm-section-page" hidden>
+      <div class="adm-section-header">
+        <h2><i class="fas fa-satellite-dish"></i> PaySetu</h2>
+        <p class="adm-section-desc">Transactions overview, failed monitor, biller management, PIN resets &amp; manual refunds.</p>
+      </div>
+
+      <!-- Stats row -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem;margin-bottom:1.5rem">
+        <div class="adm-stat-card" style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:1rem 1.25rem">
+          <div style="font-size:1.4rem;font-weight:800;color:#0f766e" id="psStatRcTotal">—</div>
+          <div style="font-size:0.76rem;color:#6b7280;margin-top:0.2rem">Total Recharges</div>
+        </div>
+        <div class="adm-stat-card" style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:1rem 1.25rem">
+          <div style="font-size:1.4rem;font-weight:800;color:#6366f1" id="psStatRcVol">—</div>
+          <div style="font-size:0.76rem;color:#6b7280;margin-top:0.2rem">Recharge Volume</div>
+        </div>
+        <div class="adm-stat-card" style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:1rem 1.25rem">
+          <div style="font-size:1.4rem;font-weight:800;color:#0f766e" id="psStatBbTotal">—</div>
+          <div style="font-size:0.76rem;color:#6b7280;margin-top:0.2rem">Total Bills Paid</div>
+        </div>
+        <div class="adm-stat-card" style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:1rem 1.25rem">
+          <div style="font-size:1.4rem;font-weight:800;color:#6366f1" id="psStatBbVol">—</div>
+          <div style="font-size:0.76rem;color:#6b7280;margin-top:0.2rem">Bills Volume</div>
+        </div>
+        <div class="adm-stat-card" style="background:#fff;border:1px solid #fca5a5;border-radius:12px;padding:1rem 1.25rem">
+          <div style="font-size:1.4rem;font-weight:800;color:#dc2626" id="psStatFailed">—</div>
+          <div style="font-size:0.76rem;color:#6b7280;margin-top:0.2rem">Failed Txns</div>
+        </div>
+        <div class="adm-stat-card" style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:1rem 1.25rem">
+          <div style="font-size:1.4rem;font-weight:800;color:#f59e0b" id="psStatBillers">—</div>
+          <div style="font-size:0.76rem;color:#6b7280;margin-top:0.2rem">Active Billers</div>
+        </div>
+      </div>
+
+      <!-- Transactions Tab -->
+      <div class="adm-ads-form-card" style="margin-bottom:1rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:0.75rem;margin-bottom:0.85rem;flex-wrap:wrap">
+          <div style="font-size:0.85rem;font-weight:700;color:#374151"><i class="fas fa-list"></i> Transactions</div>
+          <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center">
+            <select id="psTxnFilter" onchange="loadPsTxns(1)" style="padding:0.35rem 0.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:0.8rem;background:#fff">
+              <option value="all">All</option>
+              <option value="recharge">Recharges</option>
+              <option value="bbps">Bill Payments</option>
+              <option value="failed">Failed Only</option>
+            </select>
+            <input type="text" id="psTxnSearch" placeholder="Search user/operator…" oninput="loadPsTxns(1)"
+              style="padding:0.35rem 0.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:0.8rem;width:180px">
+          </div>
+        </div>
+        <div id="psTxnTable" style="font-size:0.85rem;color:#6b7280">Loading…</div>
+        <div id="psTxnPager" style="display:flex;gap:0.4rem;justify-content:center;margin-top:0.75rem;flex-wrap:wrap"></div>
+      </div>
+
+      <!-- Biller Management -->
+      <div class="adm-ads-form-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:0.75rem;margin-bottom:0.85rem;flex-wrap:wrap">
+          <div style="font-size:0.85rem;font-weight:700;color:#374151"><i class="fas fa-building"></i> Biller Management</div>
+          <button onclick="openPsBillerModal()" style="padding:0.35rem 0.8rem;background:#0891b2;color:#fff;border:none;border-radius:6px;font-size:0.8rem;cursor:pointer;font-weight:600">
+            + Add Biller
+          </button>
+        </div>
+        <div id="psBillerTable" style="font-size:0.85rem;color:#6b7280">Loading…</div>
+      </div>
+
+      <!-- Recharge API Providers -->
+      <div class="adm-ads-form-card" style="margin-top:1rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:0.75rem;margin-bottom:0.85rem;flex-wrap:wrap">
+          <div>
+            <div style="font-size:0.85rem;font-weight:700;color:#374151"><i class="fas fa-plug"></i> Recharge API Providers</div>
+            <div style="font-size:0.75rem;color:#9ca3af;margin-top:0.2rem">Only one provider can be active at a time. Keys are stored securely in the database.</div>
+          </div>
+          <button onclick="checkProviderBalance()" style="padding:0.35rem 0.8rem;background:#0f766e;color:#fff;border:none;border-radius:6px;font-size:0.8rem;cursor:pointer;font-weight:600" id="psBalanceBtn">
+            💰 Check Balance
+          </button>
+        </div>
+        <div id="psLowBalAlert" style="display:none;margin-bottom:0.75rem;padding:0.65rem 0.85rem;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;font-size:0.83rem;color:#991b1b;font-weight:600">
+          ⚠️ <span id="psLowBalMsg"></span>
+        </div>
+        <div id="psProviderBalanceDisplay" style="display:none;margin-bottom:0.75rem;padding:0.6rem 0.85rem;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:0.85rem;color:#166534;font-weight:600"></div>
+        <div id="psCallbackUrlBox" style="display:none;margin-bottom:0.85rem;padding:0.65rem 0.85rem;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;font-size:0.8rem;color:#1e40af">
+          <div style="font-weight:700;margin-bottom:0.35rem">📋 Register this Callback URL with femoney24:</div>
+          <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap">
+            <code id="psCallbackUrlText" style="font-size:0.78rem;word-break:break-all;flex:1"></code>
+            <button onclick="copyCallbackUrl()" style="padding:0.25rem 0.65rem;background:#1d4ed8;color:#fff;border:none;border-radius:5px;font-size:0.75rem;cursor:pointer;white-space:nowrap" id="psCopyUrlBtn">Copy</button>
+          </div>
+          <div id="psCallbackSecretWarn" style="display:none;margin-top:0.4rem;color:#b45309;font-size:0.75rem">⚠️ PAYSETU_CALLBACK_SECRET not set in .env — callback URL is unprotected!</div>
+        </div>
+        <div id="psProviderTable" style="font-size:0.85rem;color:#6b7280">Loading…</div>
+      </div>
+
+    </div><!-- /paysetu -->
+
+    <!-- PaySetu: Refund Modal -->
+    <div id="psRefundModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">
+      <div style="background:#fff;border-radius:16px;padding:1.5rem;max-width:380px;width:90%;position:relative">
+        <h3 style="margin:0 0 0.25rem;font-size:1rem">Manual Refund</h3>
+        <p id="psRefundDetail" style="font-size:0.8rem;color:#6b7280;margin-bottom:1rem"></p>
+        <div style="margin-bottom:0.75rem">
+          <label style="font-size:0.78rem;color:#374151;font-weight:600;display:block;margin-bottom:0.3rem">Reason (optional)</label>
+          <input type="text" id="psRefundReason" placeholder="e.g. Provider failure" style="width:100%;padding:0.5rem 0.65rem;border:1px solid #d1d5db;border-radius:8px;font-size:0.88rem;box-sizing:border-box">
+        </div>
+        <div style="display:flex;gap:0.5rem">
+          <button onclick="submitPsRefund()" style="flex:1;padding:0.6rem;background:#0891b2;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer" id="psRefundBtn">Refund Wallet</button>
+          <button onclick="document.getElementById('psRefundModal').style.display='none'" style="flex:1;padding:0.6rem;background:#f3f4f6;color:#374151;border:none;border-radius:8px;font-weight:600;cursor:pointer">Cancel</button>
+        </div>
+        <div id="psRefundErr" style="color:#dc2626;font-size:0.78rem;margin-top:0.5rem"></div>
+      </div>
+    </div>
+
+    <!-- PaySetu: Reset PIN Modal -->
+    <div id="psPinModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">
+      <div style="background:#fff;border-radius:16px;padding:1.5rem;max-width:360px;width:90%;position:relative">
+        <h3 style="margin:0 0 0.25rem;font-size:1rem">Reset Wallet PIN</h3>
+        <p id="psPinDetail" style="font-size:0.8rem;color:#6b7280;margin-bottom:1.25rem"></p>
+        <div style="background:#fef9c3;border:1px solid #fcd34d;border-radius:8px;padding:0.75rem;font-size:0.8rem;color:#92400e;margin-bottom:1rem">
+          ⚠️ This will clear the user's PIN. They must set a new one before their next payment.
+        </div>
+        <div style="display:flex;gap:0.5rem">
+          <button onclick="submitPsPinReset()" style="flex:1;padding:0.6rem;background:#dc2626;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer" id="psPinBtn">Clear PIN</button>
+          <button onclick="document.getElementById('psPinModal').style.display='none'" style="flex:1;padding:0.6rem;background:#f3f4f6;color:#374151;border:none;border-radius:8px;font-weight:600;cursor:pointer">Cancel</button>
+        </div>
+        <div id="psPinErr" style="color:#dc2626;font-size:0.78rem;margin-top:0.5rem"></div>
+      </div>
+    </div>
+
+    <!-- PaySetu: Add/Edit Biller Modal -->
+    <div id="psBillerModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">
+      <div style="background:#fff;border-radius:16px;padding:1.5rem;max-width:400px;width:90%;position:relative">
+        <h3 id="psBillerModalTitle" style="margin:0 0 1rem;font-size:1rem">Add Biller</h3>
+        <input type="hidden" id="psBillerEditId" value="">
+        <div style="margin-bottom:0.75rem">
+          <label style="font-size:0.78rem;font-weight:600;color:#374151;display:block;margin-bottom:0.3rem">Biller ID (unique key)</label>
+          <input type="text" id="psBillerId" placeholder="e.g. TATA_POWER_MUM" style="width:100%;padding:0.5rem 0.65rem;border:1px solid #d1d5db;border-radius:8px;font-size:0.88rem;box-sizing:border-box">
+        </div>
+        <div style="margin-bottom:0.75rem">
+          <label style="font-size:0.78rem;font-weight:600;color:#374151;display:block;margin-bottom:0.3rem">Biller Name</label>
+          <input type="text" id="psBillerName" placeholder="e.g. Tata Power Mumbai" style="width:100%;padding:0.5rem 0.65rem;border:1px solid #d1d5db;border-radius:8px;font-size:0.88rem;box-sizing:border-box">
+        </div>
+        <div style="margin-bottom:1rem">
+          <label style="font-size:0.78rem;font-weight:600;color:#374151;display:block;margin-bottom:0.3rem">Category</label>
+          <select id="psBillerCat" style="width:100%;padding:0.5rem 0.65rem;border:1px solid #d1d5db;border-radius:8px;font-size:0.88rem;box-sizing:border-box;-webkit-appearance:none">
+            <option value="electricity">Electricity</option>
+            <option value="water">Water</option>
+            <option value="gas">Gas</option>
+            <option value="broadband">Broadband</option>
+            <option value="dth">DTH</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:0.5rem">
+          <button onclick="submitPsBiller()" style="flex:1;padding:0.6rem;background:#0891b2;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer" id="psBillerBtn">Save</button>
+          <button onclick="document.getElementById('psBillerModal').style.display='none'" style="flex:1;padding:0.6rem;background:#f3f4f6;color:#374151;border:none;border-radius:8px;font-weight:600;cursor:pointer">Cancel</button>
+        </div>
+        <div id="psBillerErr" style="color:#dc2626;font-size:0.78rem;margin-top:0.5rem"></div>
+      </div>
+    </div>
+
+    <!-- PaySetu: Configure API Provider Modal -->
+    <div id="psProviderModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">
+      <div style="background:#fff;border-radius:16px;padding:1.5rem;max-width:420px;width:90%;position:relative">
+        <h3 style="margin:0 0 0.25rem;font-size:1rem;font-weight:800">Configure API Provider</h3>
+        <p id="psProviderModalName" style="font-size:0.8rem;color:#6b7280;margin-bottom:1rem"></p>
+        <input type="hidden" id="psProviderModalId" value="">
+        <div style="margin-bottom:0.75rem">
+          <label style="font-size:0.78rem;font-weight:600;color:#374151;display:block;margin-bottom:0.3rem">API Key</label>
+          <input type="text" id="psProviderKey" placeholder="Paste your API key here"
+            style="width:100%;padding:0.5rem 0.65rem;border:1px solid #d1d5db;border-radius:8px;font-size:0.85rem;box-sizing:border-box;font-family:monospace">
+        </div>
+        <div style="margin-bottom:1rem">
+          <label style="font-size:0.78rem;font-weight:600;color:#374151;display:block;margin-bottom:0.3rem">API Secret <span style="font-weight:400;color:#9ca3af">(optional — only if provider requires it)</span></label>
+          <input type="text" id="psProviderSecret" placeholder="Paste your API secret here"
+            style="width:100%;padding:0.5rem 0.65rem;border:1px solid #d1d5db;border-radius:8px;font-size:0.85rem;box-sizing:border-box;font-family:monospace">
+        </div>
+        <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:0.65rem 0.75rem;font-size:0.78rem;color:#0369a1;margin-bottom:1rem">
+          💡 Leave fields blank to clear the saved key. Keys are stored in your database — not in environment variables.
+        </div>
+        <div style="display:flex;gap:0.5rem">
+          <button onclick="submitPsProvider()" style="flex:1;padding:0.6rem;background:#1a2b6b;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer" id="psProviderSaveBtn">Save Keys</button>
+          <button onclick="document.getElementById('psProviderModal').style.display='none'" style="flex:1;padding:0.6rem;background:#f3f4f6;color:#374151;border:none;border-radius:8px;font-weight:600;cursor:pointer">Cancel</button>
+        </div>
+        <div id="psProviderErr" style="color:#dc2626;font-size:0.78rem;margin-top:0.5rem"></div>
+      </div>
+    </div>
+
     <!-- Wallet Adjust Modal -->
     <div id="walAdjustModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">
       <div style="background:#fff;border-radius:16px;padding:1.5rem;max-width:380px;width:90%;position:relative">
@@ -1835,6 +2033,44 @@
     <div id="userModalBody"></div>
   </div>
 </div>
+
+<!-- Admin: Change User Password Modal -->
+<div id="adminPwdModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:10000;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:14px;padding:1.5rem 1.75rem;width:340px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,0.2)">
+    <h3 style="font-size:1rem;font-weight:800;margin:0 0 0.25rem;color:#111">Change Password</h3>
+    <p style="font-size:0.78rem;color:#6b7280;margin:0 0 1rem">Set a new password for this user. Min 6 characters.</p>
+    <input type="password" id="adminPwdInput" placeholder="New password"
+      style="width:100%;border:1.5px solid #d1d5db;border-radius:8px;padding:0.6rem 0.75rem;font-size:0.9rem;outline:none;box-sizing:border-box;margin-bottom:0.5rem" />
+    <p id="adminPwdErr" style="font-size:0.75rem;color:#dc2626;min-height:1.2em;margin:0 0 0.75rem"></p>
+    <div style="display:flex;gap:0.6rem">
+      <button onclick="document.getElementById('adminPwdModal').style.display='none'"
+        style="flex:1;padding:0.5rem;border:1.5px solid #d1d5db;border-radius:8px;background:#fff;color:#374151;font-size:0.85rem;cursor:pointer">Cancel</button>
+      <button onclick="submitAdminPwd()"
+        style="flex:2;padding:0.5rem;background:#7c3aed;color:#fff;border:none;border-radius:8px;font-size:0.85rem;font-weight:700;cursor:pointer">Save Password</button>
+    </div>
+  </div>
+</div>
+
+<!-- Admin: Set User Wallet PIN Modal -->
+<div id="adminPinModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:10000;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:14px;padding:1.5rem 1.75rem;width:320px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,0.2)">
+    <h3 style="font-size:1rem;font-weight:800;margin:0 0 0.25rem;color:#111">Set Wallet PIN</h3>
+    <p style="font-size:0.78rem;color:#6b7280;margin:0 0 1rem">Set a 4-digit wallet PIN for this user.</p>
+    <div style="display:flex;gap:0.5rem;justify-content:center;margin-bottom:0.5rem">
+      <input type="tel" maxlength="1" class="adm-pin-box" style="width:46px;height:52px;text-align:center;font-size:1.4rem;font-weight:700;border:2px solid #d1d5db;border-radius:10px;outline:none" />
+      <input type="tel" maxlength="1" class="adm-pin-box" style="width:46px;height:52px;text-align:center;font-size:1.4rem;font-weight:700;border:2px solid #d1d5db;border-radius:10px;outline:none" />
+      <input type="tel" maxlength="1" class="adm-pin-box" style="width:46px;height:52px;text-align:center;font-size:1.4rem;font-weight:700;border:2px solid #d1d5db;border-radius:10px;outline:none" />
+      <input type="tel" maxlength="1" class="adm-pin-box" style="width:46px;height:52px;text-align:center;font-size:1.4rem;font-weight:700;border:2px solid #d1d5db;border-radius:10px;outline:none" />
+    </div>
+    <p id="adminPinErr" style="font-size:0.75rem;color:#dc2626;min-height:1.2em;margin:0 0 0.75rem;text-align:center"></p>
+    <div style="display:flex;gap:0.6rem">
+      <button onclick="document.getElementById('adminPinModal').style.display='none'"
+        style="flex:1;padding:0.5rem;border:1.5px solid #d1d5db;border-radius:8px;background:#fff;color:#374151;font-size:0.85rem;cursor:pointer">Cancel</button>
+      <button onclick="submitAdminPin()"
+        style="flex:2;padding:0.5rem;background:#d97706;color:#fff;border:none;border-radius:8px;font-size:0.85rem;font-weight:700;cursor:pointer">Set PIN</button>
+    </div>
+  </div>
+</div>
 <% } %>
 
 <!-- Socket.io + Chart.js -->
@@ -1884,6 +2120,7 @@ function showSection(id) {
     if (id === "apikeys")                    { /* values never pre-loaded for security */ }
     if (id === "investors")                  { loadInvestors(); }
     if (id === "wallet")                     { loadWalletUsers(1); }
+    if (id === "paysetu" && !psLoaded)       { loadPsStats(); loadPsTxns(1); loadPsBillers(); loadPsProviders(); psLoaded = true; }
   }, 120);
 }
 
@@ -2035,7 +2272,7 @@ async function loadUsers(page, q) {
     if (!data.success) return;
 
     const tbody = document.getElementById("usersBody");
-    tbody.innerHTML = data.users.length ? "" : `<tr><td colspan="7" class="adm-loading">No users found.</td></tr>`;
+    tbody.innerHTML = data.users.length ? "" : `<tr><td colspan="8" class="adm-loading">No users found.</td></tr>`;
 
     data.users.forEach(u => {
       const tr = document.createElement("tr");
@@ -2052,6 +2289,7 @@ async function loadUsers(page, q) {
         <td>${u.resume_count}</td>
         <td>${u.download_count}</td>
         <td>₹${Math.round(u.total_paid / 100)}</td>
+        <td>₹${parseFloat(u.wallet_balance||0).toFixed(2)}</td>
         <td class="adm-muted">${fmtDate(u.last_active)}</td>
       `;
       if (!isSubAdmin) {
@@ -2066,7 +2304,7 @@ async function loadUsers(page, q) {
   } catch (err) {
     console.error("loadUsers error:", err);
     document.getElementById("usersBody").innerHTML =
-      `<tr><td colspan="7" class="adm-loading" style="color:#ef4444">Failed to load users. Check console.</td></tr>`;
+      `<tr><td colspan="8" class="adm-loading" style="color:#ef4444">Failed to load users. Check console.</td></tr>`;
   }
 }
 
@@ -2134,6 +2372,7 @@ async function openUserModal(uid) {
         <div class="adm-modal-stat"><span class="adm-modal-stat-num">${u.downloads}</span><span class="adm-modal-stat-label">Downloads</span></div>
         <div class="adm-modal-stat"><span class="adm-modal-stat-num">${u.ai_uses}</span><span class="adm-modal-stat-label">AI Uses</span></div>
         <div class="adm-modal-stat"><span class="adm-modal-stat-num">₹${u.total_paid}</span><span class="adm-modal-stat-label">Revenue</span></div>
+        <div class="adm-modal-stat"><span class="adm-modal-stat-num" id="modalWalletBal">₹${(u.wallet_balance||0).toFixed(2)}</span><span class="adm-modal-stat-label">Wallet</span></div>
       </div>
 
       <div class="adm-modal-actions">
@@ -2152,6 +2391,18 @@ async function openUserModal(uid) {
         </button>
         <button class="adm-delete-user-btn" id="deleteUserBtn" data-uid="${u.id}" data-name="${(u.full_name||u.name||u.email||"User").replace(/"/g,"&quot;")}">
           <i class="fas fa-trash-alt"></i> Delete
+        </button>
+        <button onclick="openWalletAdjust(${u.id},'${(u.full_name||u.name||u.email||'User').replace(/'/g,"\\'")}');closeModal()"
+          style="padding:0.45rem 0.9rem;background:#0891b2;color:#fff;border:none;border-radius:8px;font-size:0.8rem;font-weight:600;cursor:pointer">
+          <i class="fas fa-wallet"></i> Adjust Wallet
+        </button>
+        <button onclick="openAdminPwdModal(${u.id})"
+          style="padding:0.45rem 0.9rem;background:#7c3aed;color:#fff;border:none;border-radius:8px;font-size:0.8rem;font-weight:600;cursor:pointer">
+          <i class="fas fa-key"></i> Change Password
+        </button>
+        <button onclick="openAdminPinModal(${u.id})"
+          style="padding:0.45rem 0.9rem;background:#d97706;color:#fff;border:none;border-radius:8px;font-size:0.8rem;font-weight:600;cursor:pointer">
+          <i class="fas fa-lock"></i> Set PIN
         </button>
       </div>
 
@@ -2291,6 +2542,67 @@ function closeModal() {
   const m = document.getElementById("userModal");
   if (m) m.hidden = true;
   document.body.style.overflow = "";
+}
+
+// ── Admin: Change Password + Set PIN helpers ────────────────────────────────
+let _adminPwdUserId = null, _adminPinUserId = null;
+
+function openAdminPwdModal(uid) {
+  _adminPwdUserId = uid;
+  document.getElementById('adminPwdInput').value = '';
+  document.getElementById('adminPwdErr').textContent = '';
+  document.getElementById('adminPwdModal').style.display = 'flex';
+  setTimeout(() => document.getElementById('adminPwdInput').focus(), 50);
+}
+
+async function submitAdminPwd() {
+  const pwd = document.getElementById('adminPwdInput').value.trim();
+  const err = document.getElementById('adminPwdErr');
+  if (pwd.length < 6) { err.textContent = "Min 6 characters."; return; }
+  err.textContent = '';
+  const res  = await fetch(`/admin/api/user/${_adminPwdUserId}/set-password`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ password: pwd })
+  });
+  const data = await res.json();
+  if (data.success) {
+    document.getElementById('adminPwdModal').style.display = 'none';
+    showAdmToast("Password updated successfully.");
+  } else {
+    err.textContent = data.message || "Failed.";
+  }
+}
+
+function openAdminPinModal(uid) {
+  _adminPinUserId = uid;
+  document.querySelectorAll('#adminPinModal .adm-pin-box').forEach(b => b.value = '');
+  document.getElementById('adminPinErr').textContent = '';
+  document.getElementById('adminPinModal').style.display = 'flex';
+  const boxes = document.querySelectorAll('#adminPinModal .adm-pin-box');
+  boxes.forEach((box, i) => {
+    box.oninput = () => { if (box.value && i < 3) boxes[i+1].focus(); };
+    box.onkeydown = e => { if (e.key === 'Backspace' && !box.value && i > 0) { e.preventDefault(); boxes[i-1].focus(); } };
+  });
+  setTimeout(() => boxes[0].focus(), 50);
+}
+
+async function submitAdminPin() {
+  const boxes = document.querySelectorAll('#adminPinModal .adm-pin-box');
+  const pin   = Array.from(boxes).map(b => b.value).join('');
+  const err   = document.getElementById('adminPinErr');
+  if (!/^\d{4}$/.test(pin)) { err.textContent = "Enter all 4 digits."; return; }
+  err.textContent = '';
+  const res  = await fetch(`/admin/api/user/${_adminPinUserId}/set-pin`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ pin })
+  });
+  const data = await res.json();
+  if (data.success) {
+    document.getElementById('adminPinModal').style.display = 'none';
+    showAdmToast("Wallet PIN set successfully.");
+  } else {
+    err.textContent = data.message || "Failed.";
+  }
 }
 
 // ── Promote-to-admin investor sub-form helpers (global scope) ───────────────
@@ -5397,6 +5709,379 @@ async function saveBgrProvider(useFree) {
     if (d.success) { setBgrProviderUI(d.provider); showAdmToast("Provider saved"); }
     else alert("Save failed: " + (d.error || 'unknown error'));
   } catch(e) { alert("Save failed: " + e.message); }
+}
+
+// ── PaySetu Admin ────────────────────────────────────────────────────────────
+let psLoaded = false;
+let _psTxnPage = 1;
+let _psRefundId = null, _psRefundType = null, _psRefundAmt = 0, _psRefundUser = '';
+let _psPinUserId = null;
+let _psBillerEditId = null;
+
+const CAT_ICONS_ADMIN = { electricity:'⚡', water:'💧', gas:'🔥', broadband:'🌐', dth:'📺', other:'⚙️' };
+
+async function loadPsStats() {
+  try {
+    const d = await fetch('/admin/api/paysetu/stats').then(r => r.json());
+    if (!d.success) return;
+    document.getElementById('psStatRcTotal').textContent = d.recharge.total.toLocaleString('en-IN');
+    document.getElementById('psStatRcVol').textContent   = '₹' + d.recharge.volume.toLocaleString('en-IN');
+    document.getElementById('psStatBbTotal').textContent = d.bbps.total.toLocaleString('en-IN');
+    document.getElementById('psStatBbVol').textContent   = '₹' + d.bbps.volume.toLocaleString('en-IN');
+    document.getElementById('psStatFailed').textContent  = (d.recharge.failed + d.bbps.failed).toLocaleString('en-IN');
+    document.getElementById('psStatBillers').textContent = d.billers.toLocaleString('en-IN');
+  } catch(_) {}
+}
+
+async function loadPsTxns(page) {
+  if (page) _psTxnPage = page;
+  const filter = document.getElementById('psTxnFilter').value;
+  const search = document.getElementById('psTxnSearch').value;
+  const el = document.getElementById('psTxnTable');
+  el.innerHTML = '<p style="color:#9ca3af;text-align:center;padding:1rem">Loading…</p>';
+  try {
+    const d = await fetch(`/admin/api/paysetu/transactions?page=${_psTxnPage}&limit=20&filter=${filter}&search=${encodeURIComponent(search)}`).then(r => r.json());
+    if (!d.success || !d.rows.length) {
+      el.innerHTML = '<p style="color:#9ca3af;text-align:center;padding:1.5rem">No transactions found.</p>';
+      document.getElementById('psTxnPager').innerHTML = '';
+      return;
+    }
+    const rows = d.rows.map(t => {
+      const isRc = t.txn_type === 'recharge';
+      const desc = isRc ? (t.operator + ' · ' + t.mobile) : (t.biller_name + ' · ' + t.customer_number);
+      const typeLabel = isRc ? '📱 Recharge' : '🧾 Bill';
+      const statusColor = t.status === 'success' ? '#16a34a' : t.status === 'failed' ? '#dc2626' : '#f59e0b';
+      const date = new Date(t.created_at).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'2-digit'});
+      const refundBtn = t.status === 'failed'
+        ? `<button onclick="openPsRefundModal(${t.id},'${t.txn_type}',${t.amount},'${(t.user_name||'').replace(/'/g,"\\'")} (${t.user_email||''})')" style="padding:0.25rem 0.55rem;background:#f97316;color:#fff;border:none;border-radius:5px;font-size:0.72rem;cursor:pointer;margin-right:0.3rem">Refund</button>` : '';
+      const pinBtn = `<button onclick="openPsPinModal(${t.user_id},'${(t.user_name||'User').replace(/'/g,"\\'")} (${t.user_email||''})')" style="padding:0.25rem 0.55rem;background:#6366f1;color:#fff;border:none;border-radius:5px;font-size:0.72rem;cursor:pointer">Reset PIN</button>`;
+      return `<tr style="border-bottom:1px solid #f3f4f6">
+        <td style="padding:0.5rem 0.45rem;white-space:nowrap">${typeLabel}</td>
+        <td style="padding:0.5rem 0.45rem">
+          <div style="font-weight:600;font-size:0.82rem">${t.user_name||'—'}</div>
+          <div style="font-size:0.72rem;color:#9ca3af">${t.user_email||''}</div>
+        </td>
+        <td style="padding:0.5rem 0.45rem;font-size:0.8rem">${desc}</td>
+        <td style="padding:0.5rem 0.45rem;font-weight:700;color:#1e293b">₹${Number(t.amount).toFixed(0)}</td>
+        <td style="padding:0.5rem 0.45rem"><span style="font-size:0.72rem;font-weight:700;color:${statusColor};text-transform:uppercase">${t.status}</span></td>
+        <td style="padding:0.5rem 0.45rem;font-size:0.75rem;color:#9ca3af">${date}</td>
+        <td style="padding:0.5rem 0.45rem">${refundBtn}${pinBtn}</td>
+      </tr>`;
+    }).join('');
+    el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:0.83rem">
+      <thead><tr style="border-bottom:2px solid #f3f4f6">
+        <th style="text-align:left;padding:0.4rem 0.45rem;font-size:0.72rem;color:#9ca3af;font-weight:600">TYPE</th>
+        <th style="text-align:left;padding:0.4rem 0.45rem;font-size:0.72rem;color:#9ca3af;font-weight:600">USER</th>
+        <th style="text-align:left;padding:0.4rem 0.45rem;font-size:0.72rem;color:#9ca3af;font-weight:600">DETAIL</th>
+        <th style="text-align:left;padding:0.4rem 0.45rem;font-size:0.72rem;color:#9ca3af;font-weight:600">AMOUNT</th>
+        <th style="text-align:left;padding:0.4rem 0.45rem;font-size:0.72rem;color:#9ca3af;font-weight:600">STATUS</th>
+        <th style="text-align:left;padding:0.4rem 0.45rem;font-size:0.72rem;color:#9ca3af;font-weight:600">DATE</th>
+        <th style="text-align:left;padding:0.4rem 0.45rem;font-size:0.72rem;color:#9ca3af;font-weight:600">ACTIONS</th>
+      </tr></thead><tbody>${rows}</tbody></table>`;
+    // Pagination
+    const totalPages = Math.ceil(d.total / 20);
+    const pager = document.getElementById('psTxnPager');
+    pager.innerHTML = '';
+    for (let p = 1; p <= Math.min(totalPages, 10); p++) {
+      const btn = document.createElement('button');
+      btn.textContent = p;
+      btn.style.cssText = `padding:0.3rem 0.6rem;border:1px solid #d1d5db;border-radius:6px;cursor:pointer;font-size:0.78rem;background:${p===_psTxnPage?'#0891b2':'#fff'};color:${p===_psTxnPage?'#fff':'#374151'}`;
+      btn.onclick = () => loadPsTxns(p);
+      pager.appendChild(btn);
+    }
+  } catch(e) { el.innerHTML = `<p style="color:#dc2626">Error: ${e.message}</p>`; }
+}
+
+// Refund Modal
+function openPsRefundModal(id, type, amount, userLabel) {
+  _psRefundId = id; _psRefundType = type; _psRefundAmt = amount; _psRefundUser = userLabel;
+  document.getElementById('psRefundDetail').textContent = `Refund ₹${amount} to: ${userLabel} (Txn #${id})`;
+  document.getElementById('psRefundReason').value = '';
+  document.getElementById('psRefundErr').textContent = '';
+  document.getElementById('psRefundModal').style.display = 'flex';
+}
+async function submitPsRefund() {
+  const btn = document.getElementById('psRefundBtn');
+  btn.disabled = true; btn.textContent = 'Refunding…';
+  document.getElementById('psRefundErr').textContent = '';
+  try {
+    const d = await fetch('/admin/api/paysetu/refund', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ txn_id: _psRefundId, txn_type: _psRefundType, reason: document.getElementById('psRefundReason').value })
+    }).then(r => r.json());
+    if (d.success) {
+      showAdmToast('✅ ' + d.message, 'success');
+      document.getElementById('psRefundModal').style.display = 'none';
+      loadPsTxns(); loadPsStats();
+    } else { document.getElementById('psRefundErr').textContent = d.message || 'Failed'; }
+  } catch(e) { document.getElementById('psRefundErr').textContent = e.message; }
+  finally { btn.disabled = false; btn.textContent = 'Refund Wallet'; }
+}
+
+// PIN Reset Modal
+function openPsPinModal(userId, userLabel) {
+  _psPinUserId = userId;
+  document.getElementById('psPinDetail').textContent = `User: ${userLabel}`;
+  document.getElementById('psPinErr').textContent = '';
+  document.getElementById('psPinModal').style.display = 'flex';
+}
+async function submitPsPinReset() {
+  const btn = document.getElementById('psPinBtn');
+  btn.disabled = true; btn.textContent = 'Clearing…';
+  try {
+    const d = await fetch('/admin/api/paysetu/reset-pin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: _psPinUserId })
+    }).then(r => r.json());
+    if (d.success) {
+      showAdmToast('✅ ' + d.message, 'success');
+      document.getElementById('psPinModal').style.display = 'none';
+    } else { document.getElementById('psPinErr').textContent = d.message || 'Failed'; }
+  } catch(e) { document.getElementById('psPinErr').textContent = e.message; }
+  finally { btn.disabled = false; btn.textContent = 'Clear PIN'; }
+}
+
+// Billers
+async function loadPsBillers() {
+  const el = document.getElementById('psBillerTable');
+  try {
+    const d = await fetch('/admin/api/paysetu/billers').then(r => r.json());
+    if (!d.success || !d.billers.length) { el.innerHTML = '<p style="color:#9ca3af;text-align:center;padding:1rem">No billers found.</p>'; return; }
+    const rows = d.billers.map(b => {
+      const icon = CAT_ICONS_ADMIN[b.category] || '⚙️';
+      const statusStyle = b.is_active ? 'color:#16a34a;font-weight:700' : 'color:#dc2626;font-weight:700';
+      return `<tr style="border-bottom:1px solid #f3f4f6">
+        <td style="padding:0.5rem 0.45rem">${icon} ${b.name}</td>
+        <td style="padding:0.5rem 0.45rem;font-size:0.75rem;color:#9ca3af;font-family:monospace">${b.biller_id}</td>
+        <td style="padding:0.5rem 0.45rem;font-size:0.78rem;text-transform:capitalize">${b.category}</td>
+        <td style="padding:0.5rem 0.45rem;font-size:0.78rem;${statusStyle}">${b.is_active ? 'Active' : 'Disabled'}</td>
+        <td style="padding:0.5rem 0.45rem">
+          <button onclick="openPsBillerEditModal(${b.id},'${b.biller_id}','${b.name.replace(/'/g,"\\'")}','${b.category}')" style="padding:0.25rem 0.55rem;background:#6366f1;color:#fff;border:none;border-radius:5px;font-size:0.72rem;cursor:pointer;margin-right:0.3rem">Edit</button>
+          <button onclick="togglePsBiller(${b.id})" style="padding:0.25rem 0.55rem;background:${b.is_active?'#f59e0b':'#16a34a'};color:#fff;border:none;border-radius:5px;font-size:0.72rem;cursor:pointer;margin-right:0.3rem">${b.is_active?'Disable':'Enable'}</button>
+          <button onclick="deletePsBiller(${b.id},'${b.name.replace(/'/g,"\\'")}') " style="padding:0.25rem 0.55rem;background:#dc2626;color:#fff;border:none;border-radius:5px;font-size:0.72rem;cursor:pointer">Delete</button>
+        </td>
+      </tr>`;
+    }).join('');
+    el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:0.83rem">
+      <thead><tr style="border-bottom:2px solid #f3f4f6">
+        <th style="text-align:left;padding:0.4rem 0.45rem;font-size:0.72rem;color:#9ca3af;font-weight:600">BILLER</th>
+        <th style="text-align:left;padding:0.4rem 0.45rem;font-size:0.72rem;color:#9ca3af;font-weight:600">ID</th>
+        <th style="text-align:left;padding:0.4rem 0.45rem;font-size:0.72rem;color:#9ca3af;font-weight:600">CATEGORY</th>
+        <th style="text-align:left;padding:0.4rem 0.45rem;font-size:0.72rem;color:#9ca3af;font-weight:600">STATUS</th>
+        <th style="text-align:left;padding:0.4rem 0.45rem;font-size:0.72rem;color:#9ca3af;font-weight:600">ACTIONS</th>
+      </tr></thead><tbody>${rows}</tbody></table>`;
+  } catch(e) { el.innerHTML = `<p style="color:#dc2626">Error: ${e.message}</p>`; }
+}
+
+function openPsBillerModal() {
+  _psBillerEditId = null;
+  document.getElementById('psBillerModalTitle').textContent = 'Add Biller';
+  document.getElementById('psBillerId').value = '';
+  document.getElementById('psBillerId').disabled = false;
+  document.getElementById('psBillerName').value = '';
+  document.getElementById('psBillerCat').value = 'electricity';
+  document.getElementById('psBillerErr').textContent = '';
+  document.getElementById('psBillerModal').style.display = 'flex';
+}
+function openPsBillerEditModal(id, billerId, name, cat) {
+  _psBillerEditId = id;
+  document.getElementById('psBillerModalTitle').textContent = 'Edit Biller';
+  document.getElementById('psBillerId').value = billerId;
+  document.getElementById('psBillerId').disabled = true;
+  document.getElementById('psBillerName').value = name;
+  document.getElementById('psBillerCat').value = cat;
+  document.getElementById('psBillerErr').textContent = '';
+  document.getElementById('psBillerModal').style.display = 'flex';
+}
+async function submitPsBiller() {
+  const btn = document.getElementById('psBillerBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  document.getElementById('psBillerErr').textContent = '';
+  try {
+    const isEdit = !!_psBillerEditId;
+    const url = isEdit ? `/admin/api/paysetu/billers/${_psBillerEditId}` : '/admin/api/paysetu/billers';
+    const method = isEdit ? 'PUT' : 'POST';
+    const body = {
+      biller_id: document.getElementById('psBillerId').value.trim(),
+      name: document.getElementById('psBillerName').value.trim(),
+      category: document.getElementById('psBillerCat').value,
+    };
+    const d = await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) }).then(r => r.json());
+    if (d.success) {
+      showAdmToast(isEdit ? '✅ Biller updated' : '✅ Biller added', 'success');
+      document.getElementById('psBillerModal').style.display = 'none';
+      loadPsBillers(); loadPsStats();
+    } else { document.getElementById('psBillerErr').textContent = d.message || 'Failed'; }
+  } catch(e) { document.getElementById('psBillerErr').textContent = e.message; }
+  finally { btn.disabled = false; btn.textContent = 'Save'; }
+}
+async function togglePsBiller(id) {
+  try {
+    const d = await fetch(`/admin/api/paysetu/billers/${id}/toggle`, { method:'PATCH' }).then(r => r.json());
+    if (d.success) { showAdmToast('✅ Biller status updated'); loadPsBillers(); loadPsStats(); }
+    else showAdmToast('Failed: ' + d.message, 'error');
+  } catch(e) { showAdmToast(e.message, 'error'); }
+}
+async function deletePsBiller(id, name) {
+  if (!confirm(`Delete biller "${name}"? This cannot be undone.`)) return;
+  try {
+    const d = await fetch(`/admin/api/paysetu/billers/${id}`, { method:'DELETE' }).then(r => r.json());
+    if (d.success) { showAdmToast('🗑️ Biller deleted'); loadPsBillers(); loadPsStats(); }
+    else showAdmToast('Failed: ' + d.message, 'error');
+  } catch(e) { showAdmToast(e.message, 'error'); }
+}
+
+// ── Recharge API Providers ────────────────────────────────────────────────────
+
+async function loadPsProviders() {
+  const el = document.getElementById('psProviderTable');
+
+  // Auto-fetch callback URL and show it
+  fetch('/admin/api/paysetu/callback-url').then(r => r.json()).then(d => {
+    const box = document.getElementById('psCallbackUrlBox');
+    document.getElementById('psCallbackUrlText').textContent = d.url;
+    document.getElementById('psCallbackSecretWarn').style.display = d.secretSet ? 'none' : 'block';
+    box.style.display = 'block';
+  }).catch(() => {});
+
+  // Auto-check balance for low-balance alert (silently)
+  fetch('/admin/api/paysetu/provider-balance').then(r => r.json()).then(d => {
+    if (d.success) {
+      const LOW_THRESHOLD = 500;
+      const bal = parseFloat(String(d.balance).replace(/,/g, ''));
+      const alert = document.getElementById('psLowBalAlert');
+      if (!isNaN(bal) && bal < LOW_THRESHOLD) {
+        document.getElementById('psLowBalMsg').textContent =
+          `Provider wallet balance is low: ₹${d.balance}. Top up your femoney24 account to avoid recharge failures.`;
+        alert.style.display = 'block';
+      } else {
+        alert.style.display = 'none';
+      }
+    }
+  }).catch(() => {});
+
+  try {
+    const d = await fetch('/admin/api/paysetu/providers').then(r => r.json());
+    if (!d.success) { el.innerHTML = '<p style="color:#dc2626">Failed to load providers.</p>'; return; }
+    const rows = d.providers.map(p => {
+      const activeBadge = p.is_active
+        ? `<span style="background:#dcfce7;color:#16a34a;padding:0.2rem 0.55rem;border-radius:20px;font-size:0.72rem;font-weight:700">● Active</span>`
+        : `<span style="background:#f3f4f6;color:#9ca3af;padding:0.2rem 0.55rem;border-radius:20px;font-size:0.72rem;font-weight:600">○ Inactive</span>`;
+      const keyDisplay = p.has_key
+        ? `<span style="font-family:monospace;font-size:0.78rem;color:#374151">${p.api_key_masked}</span>`
+        : `<span style="color:#d1d5db;font-size:0.78rem;font-style:italic">Not set</span>`;
+      const toggleBtn = p.is_active
+        ? `<button onclick="togglePsProvider(${p.id},false)" style="padding:0.25rem 0.55rem;background:#f59e0b;color:#fff;border:none;border-radius:5px;font-size:0.72rem;cursor:pointer">Deactivate</button>`
+        : `<button onclick="togglePsProvider(${p.id},true)" style="padding:0.25rem 0.55rem;background:#16a34a;color:#fff;border:none;border-radius:5px;font-size:0.72rem;cursor:pointer${p.has_key ? '' : ';opacity:0.45;cursor:not-allowed'}" ${p.has_key ? '' : 'disabled title="Set API key first"'}>Activate</button>`;
+      return `<tr style="border-bottom:1px solid #f3f4f6">
+        <td style="padding:0.55rem 0.45rem;font-weight:600;color:#1a2b6b">${p.display_name}</td>
+        <td style="padding:0.55rem 0.45rem">${keyDisplay}</td>
+        <td style="padding:0.55rem 0.45rem">${activeBadge}</td>
+        <td style="padding:0.55rem 0.45rem;white-space:nowrap">
+          <button onclick="openPsProviderModal(${p.id},'${p.display_name}')" style="padding:0.25rem 0.55rem;background:#6366f1;color:#fff;border:none;border-radius:5px;font-size:0.72rem;cursor:pointer;margin-right:0.3rem">Configure</button>
+          ${toggleBtn}
+        </td>
+      </tr>`;
+    }).join('');
+    el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:0.83rem">
+      <thead><tr style="border-bottom:2px solid #f3f4f6">
+        <th style="text-align:left;padding:0.4rem 0.45rem;font-size:0.72rem;color:#9ca3af;font-weight:600">PROVIDER</th>
+        <th style="text-align:left;padding:0.4rem 0.45rem;font-size:0.72rem;color:#9ca3af;font-weight:600">API KEY</th>
+        <th style="text-align:left;padding:0.4rem 0.45rem;font-size:0.72rem;color:#9ca3af;font-weight:600">STATUS</th>
+        <th style="text-align:left;padding:0.4rem 0.45rem;font-size:0.72rem;color:#9ca3af;font-weight:600">ACTIONS</th>
+      </tr></thead><tbody>${rows}</tbody></table>`;
+  } catch(e) { el.innerHTML = `<p style="color:#dc2626">Error: ${e.message}</p>`; }
+}
+
+function openPsProviderModal(id, name) {
+  document.getElementById('psProviderModalId').value = id;
+  document.getElementById('psProviderModalName').textContent = `Provider: ${name}`;
+  document.getElementById('psProviderKey').value = '';
+  document.getElementById('psProviderSecret').value = '';
+  document.getElementById('psProviderErr').textContent = '';
+  document.getElementById('psProviderModal').style.display = 'flex';
+  setTimeout(() => document.getElementById('psProviderKey').focus(), 100);
+}
+
+async function submitPsProvider() {
+  const btn = document.getElementById('psProviderSaveBtn');
+  const id  = document.getElementById('psProviderModalId').value;
+  const api_key    = document.getElementById('psProviderKey').value.trim();
+  const api_secret = document.getElementById('psProviderSecret').value.trim();
+  document.getElementById('psProviderErr').textContent = '';
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const d = await fetch(`/admin/api/paysetu/providers/${id}`, {
+      method: 'PUT',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ api_key: api_key || null, api_secret: api_secret || null })
+    }).then(r => r.json());
+    if (d.success) {
+      showAdmToast('✅ API keys saved');
+      document.getElementById('psProviderModal').style.display = 'none';
+      loadPsProviders();
+    } else { document.getElementById('psProviderErr').textContent = d.message || 'Failed to save'; }
+  } catch(e) { document.getElementById('psProviderErr').textContent = e.message; }
+  finally { btn.disabled = false; btn.textContent = 'Save Keys'; }
+}
+
+function copyCallbackUrl() {
+  const url = document.getElementById('psCallbackUrlText').textContent;
+  navigator.clipboard.writeText(url).then(() => {
+    const btn = document.getElementById('psCopyUrlBtn');
+    btn.textContent = 'Copied!'; btn.style.background = '#16a34a';
+    setTimeout(() => { btn.textContent = 'Copy'; btn.style.background = '#1d4ed8'; }, 2000);
+  }).catch(() => showAdmToast('Could not copy — please copy manually.', 'error'));
+}
+
+async function checkProviderBalance() {
+  const btn = document.getElementById('psBalanceBtn');
+  const display = document.getElementById('psProviderBalanceDisplay');
+  btn.disabled = true; btn.textContent = 'Checking…';
+  display.style.display = 'none';
+  try {
+    const d = await fetch('/admin/api/paysetu/provider-balance').then(r => r.json());
+    if (d.success) {
+      const LOW_THRESHOLD = 500;
+      const bal = parseFloat(String(d.balance).replace(/,/g, ''));
+      const isLow = !isNaN(bal) && bal < LOW_THRESHOLD;
+      display.textContent = `💰 Provider Balance (${d.provider}): ₹${d.balance}${isLow ? ' — ⚠️ LOW' : ''}`;
+      display.style.background = isLow ? '#fef9c3' : '#f0fdf4';
+      display.style.borderColor = isLow ? '#fcd34d' : '#bbf7d0';
+      display.style.color      = isLow ? '#92400e' : '#166534';
+      // Also update the alert banner
+      const alert = document.getElementById('psLowBalAlert');
+      if (isLow) {
+        document.getElementById('psLowBalMsg').textContent =
+          `Provider wallet balance is low: ₹${d.balance}. Top up your femoney24 account to avoid recharge failures.`;
+        alert.style.display = 'block';
+      } else { alert.style.display = 'none'; }
+    } else {
+      display.textContent = '⚠️ ' + (d.message || 'Could not fetch balance');
+      display.style.background = '#fef9c3'; display.style.borderColor = '#fcd34d'; display.style.color = '#92400e';
+    }
+    display.style.display = 'block';
+  } catch(e) {
+    display.textContent = '❌ Error: ' + e.message;
+    display.style.display = 'block';
+  }
+  finally { btn.disabled = false; btn.textContent = '💰 Check Balance'; }
+}
+
+async function togglePsProvider(id, activate) {
+  try {
+    const d = await fetch(`/admin/api/paysetu/providers/${id}/toggle`, {
+      method: 'PATCH',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ active: activate })
+    }).then(r => r.json());
+    if (d.success) {
+      showAdmToast(activate ? '✅ Provider activated' : '✅ Provider deactivated');
+      loadPsProviders();
+    } else showAdmToast('Failed: ' + d.message, 'error');
+  } catch(e) { showAdmToast(e.message, 'error'); }
 }
 </script>
 

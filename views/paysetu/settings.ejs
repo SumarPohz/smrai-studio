@@ -1,0 +1,393 @@
+<%- include('../partials/header') %>
+
+<style>
+  :root {
+    --ps-blue:   #1e4db7;
+    --ps-orange: #f97316;
+    --ps-green:  #16a34a;
+    --ps-red:    #dc2626;
+    --ps-bg:     #eef2fb;
+  }
+
+  body { background: var(--ps-bg) !important; }
+
+  .ps-page {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 0 0 80px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+  }
+
+  /* ── Top bar ── */
+  .ps-topbar {
+    background: #fff;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid #eef2fb;
+  }
+  .ps-back-btn {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: #f1f5f9;
+    display: flex; align-items: center; justify-content: center;
+    text-decoration: none;
+    font-size: 16px; color: #1e293b;
+    flex-shrink: 0;
+  }
+  .ps-topbar-title { font-size: 16px; font-weight: 700; color: #1e293b; }
+
+  /* ── Profile card ── */
+  .ps-profile-card {
+    margin: 16px 12px 0;
+    background: #fff;
+    border-radius: 16px;
+    padding: 18px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    box-shadow: 0 2px 10px rgba(30,77,183,0.06);
+  }
+  .ps-profile-avatar {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    background: #e2e8f0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px;
+    flex-shrink: 0;
+  }
+  .ps-profile-name  { font-size: 15px; font-weight: 700; color: #1e293b; }
+  .ps-profile-phone { font-size: 12.5px; color: #475569; margin-top: 2px; }
+  .ps-profile-email { font-size: 12px; color: #94a3b8; margin-top: 1px; }
+
+  /* ── Section label ── */
+  .ps-section-label {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: #94a3b8;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin: 16px 12px 6px;
+  }
+
+  /* ── List card ── */
+  .ps-list-card {
+    margin: 0 12px;
+    background: #fff;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(30,77,183,0.06);
+  }
+  .ps-list-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+    border: none;
+    background: none;
+    width: 100%;
+    font-family: inherit;
+    text-align: left;
+    transition: background 0.12s;
+  }
+  .ps-list-item:not(:last-child) {
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .ps-list-item:active { background: #f8fafc; }
+  .ps-item-icon {
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    background: #f1f5f9;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 19px;
+    flex-shrink: 0;
+  }
+  .ps-item-body { flex: 1; min-width: 0; }
+  .ps-item-title { font-size: 13.5px; font-weight: 600; color: #1e293b; }
+  .ps-item-sub   { font-size: 11.5px; color: #94a3b8; margin-top: 2px; }
+  .ps-item-chevron { font-size: 13px; color: #cbd5e1; flex-shrink: 0; }
+
+  /* ── Logout card ── */
+  .ps-logout-card {
+    margin: 0 12px;
+    background: #fff;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(30,77,183,0.06);
+  }
+  .ps-logout-btn {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    text-decoration: none;
+    color: #1e293b;
+    width: 100%;
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 600;
+    border: none;
+    background: none;
+    cursor: pointer;
+    text-align: left;
+  }
+  .ps-logout-btn:active { background: #fef2f2; }
+  .ps-logout-icon {
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    background: #f1f5f9;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 19px;
+  }
+
+  /* ── Social media ── */
+  .ps-social-wrap {
+    margin: 20px 12px 0;
+    text-align: center;
+  }
+  .ps-social-label {
+    font-size: 12px;
+    color: #94a3b8;
+    font-weight: 500;
+    margin-bottom: 12px;
+  }
+  .ps-social-row {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+  }
+  .ps-social-btn {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 19px;
+    text-decoration: none;
+    transition: transform 0.15s;
+  }
+  .ps-social-btn:active { transform: scale(0.92); }
+  .ps-social-ig  { background: linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); }
+  .ps-social-yt  { background: #ff0000; }
+  .ps-social-x   { background: #1c1c1c; }
+  .ps-social-fb  { background: #1877f2; }
+  .ps-social-tg  { background: #229ED9; }
+
+  /* ── Bottom Tab Bar ── */
+  .ps-tabs {
+    display: none;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: #fff;
+    border-top: 1px solid #e2e8f0;
+    z-index: 200;
+    box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
+  }
+  @media (max-width: 768px) { .ps-tabs { display: flex; } }
+  .ps-tab {
+    flex: 1;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 3px;
+    padding: 9px 0 7px;
+    text-decoration: none;
+    color: #94a3b8;
+    font-size: 10px; font-weight: 500;
+    transition: color 0.15s;
+  }
+  .ps-tab.active { color: var(--ps-blue); }
+  .ps-tab .tab-icon { font-size: 19px; line-height: 1; }
+
+  @media (min-width: 769px) {
+    .ps-page { max-width: 960px; }
+    .ps-profile-card,
+    .ps-list-card,
+    .ps-logout-card,
+    .ps-social-wrap { max-width: 520px; margin-left: auto; margin-right: auto; }
+    .ps-section-label { max-width: 520px; margin-left: auto; margin-right: auto; padding: 0; }
+  }
+</style>
+
+<div class="ps-page">
+
+  <!-- Top bar -->
+  <div class="ps-topbar">
+    <a class="ps-back-btn" href="/paysetu">&#8592;</a>
+    <span class="ps-topbar-title">Settings</span>
+  </div>
+
+  <!-- Profile card -->
+  <div class="ps-profile-card">
+    <div class="ps-profile-avatar">👤</div>
+    <div>
+      <div class="ps-profile-name"><%= currentUser.name || currentUser.email.split('@')[0] %></div>
+      <% if (psPhone) { %>
+        <div class="ps-profile-phone">+91 <%= psPhone %></div>
+      <% } %>
+      <div class="ps-profile-email"><%= currentUser.email %></div>
+    </div>
+  </div>
+
+  <!-- GENERAL SETTINGS -->
+  <div class="ps-section-label">General Settings</div>
+  <div class="ps-list-card">
+
+    <a class="ps-list-item" href="/dashboard">
+      <div class="ps-item-icon">👤</div>
+      <div class="ps-item-body">
+        <div class="ps-item-title">Profile Settings</div>
+        <div class="ps-item-sub">Name, Email Id</div>
+      </div>
+      <span class="ps-item-chevron">›</span>
+    </a>
+
+    <button class="ps-list-item" onclick="comingSoon('Theme Settings')">
+      <div class="ps-item-icon">🎨</div>
+      <div class="ps-item-body">
+        <div class="ps-item-title">Theme Settings</div>
+        <div class="ps-item-sub">Dark, Light, System</div>
+      </div>
+      <span class="ps-item-chevron">›</span>
+    </button>
+
+    <a class="ps-list-item" href="/paysetu/set-pin">
+      <div class="ps-item-icon">🔐</div>
+      <div class="ps-item-body">
+        <div class="ps-item-title">Security Settings</div>
+        <div class="ps-item-sub">App Lock, Wallet PIN</div>
+      </div>
+      <span class="ps-item-chevron">›</span>
+    </a>
+
+    <button class="ps-list-item" onclick="comingSoon('KYC / Upgrade Account')">
+      <div class="ps-item-icon">🪪</div>
+      <div class="ps-item-body">
+        <div class="ps-item-title">KYC / Upgrade Account</div>
+        <div class="ps-item-sub">Identity Verification</div>
+      </div>
+      <span class="ps-item-chevron">›</span>
+    </button>
+
+    <a class="ps-list-item" href="/paysetu/history">
+      <div class="ps-item-icon">🛍️</div>
+      <div class="ps-item-body">
+        <div class="ps-item-title">Transactions History</div>
+        <div class="ps-item-sub">Recharge, Bill, etc.</div>
+      </div>
+      <span class="ps-item-chevron">›</span>
+    </a>
+
+    <a class="ps-list-item" href="/paysetu/support">
+      <div class="ps-item-icon">🎧</div>
+      <div class="ps-item-body">
+        <div class="ps-item-title">24x7 Help &amp; Support</div>
+        <div class="ps-item-sub">Support, FAQ</div>
+      </div>
+      <span class="ps-item-chevron">›</span>
+    </a>
+
+    <button class="ps-list-item" onclick="comingSoon('Refer & Earn')">
+      <div class="ps-item-icon">🔗</div>
+      <div class="ps-item-body">
+        <div class="ps-item-title">Refer &amp; Earn</div>
+        <div class="ps-item-sub">Cashback every time</div>
+      </div>
+      <span class="ps-item-chevron">›</span>
+    </button>
+
+  </div>
+
+  <!-- REVIEW & POLICY -->
+  <div class="ps-section-label">Review &amp; Policy</div>
+  <div class="ps-list-card">
+
+    <a class="ps-list-item" href="/terms" target="_blank">
+      <div class="ps-item-icon">📄</div>
+      <div class="ps-item-body">
+        <div class="ps-item-title">Terms &amp; Conditions</div>
+      </div>
+      <span class="ps-item-chevron">›</span>
+    </a>
+
+    <a class="ps-list-item" href="/privacy" target="_blank">
+      <div class="ps-item-icon">🛡️</div>
+      <div class="ps-item-body">
+        <div class="ps-item-title">Privacy Policy</div>
+      </div>
+      <span class="ps-item-chevron">›</span>
+    </a>
+
+    <a class="ps-list-item" href="/refund-policy" target="_blank">
+      <div class="ps-item-icon">📃</div>
+      <div class="ps-item-body">
+        <div class="ps-item-title">Refund Policy</div>
+      </div>
+      <span class="ps-item-chevron">›</span>
+    </a>
+
+    <button class="ps-list-item" onclick="comingSoon('Rate & Review')">
+      <div class="ps-item-icon">⭐</div>
+      <div class="ps-item-body">
+        <div class="ps-item-title">Rate &amp; Review</div>
+      </div>
+      <span class="ps-item-chevron">›</span>
+    </button>
+
+  </div>
+
+  <!-- Logout -->
+  <div class="ps-section-label" style="margin-top:16px">&nbsp;</div>
+  <div class="ps-logout-card">
+    <a class="ps-logout-btn" href="/logout">
+      <div class="ps-logout-icon">🚪</div>
+      Logout
+    </a>
+  </div>
+
+  <!-- Social Media -->
+  <div class="ps-social-wrap">
+    <div class="ps-social-label">Follow Us On Social Media</div>
+    <div class="ps-social-row">
+      <a class="ps-social-btn ps-social-ig" href="#" target="_blank" title="Instagram">📸</a>
+      <a class="ps-social-btn ps-social-yt" href="#" target="_blank" title="YouTube">▶️</a>
+      <a class="ps-social-btn ps-social-x"  href="#" target="_blank" title="X (Twitter)" style="color:#fff;font-size:14px;font-weight:800">𝕏</a>
+      <a class="ps-social-btn ps-social-fb" href="#" target="_blank" title="Facebook" style="color:#fff;font-size:18px;font-weight:800">f</a>
+      <a class="ps-social-btn ps-social-tg" href="#" target="_blank" title="Telegram">✈️</a>
+    </div>
+  </div>
+
+</div>
+
+<!-- Coming Soon Toast -->
+<div id="psToast" style="position:fixed;bottom:78px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;border-radius:20px;padding:8px 20px;font-size:13px;font-weight:600;z-index:9999;pointer-events:none;opacity:0;transition:opacity 0.2s;white-space:nowrap"></div>
+
+<!-- Bottom Tab Bar (mobile only) -->
+<div class="ps-tabs">
+  <a class="ps-tab" href="/paysetu">
+    <span class="tab-icon">🏠</span>Home
+  </a>
+  <a class="ps-tab" href="/paysetu/history">
+    <span class="tab-icon">📋</span>Reports
+  </a>
+  <a class="ps-tab" href="/paysetu/support">
+    <span class="tab-icon">🎧</span>Support
+  </a>
+  <a class="ps-tab active" href="/paysetu/settings">
+    <span class="tab-icon">⚙️</span>Settings
+  </a>
+</div>
+
+<script>
+  let _csTimer = null;
+  function comingSoon(name) {
+    const t = document.getElementById('psToast');
+    t.textContent = (name || 'This feature') + ' — Coming Soon! 🚀';
+    t.style.opacity = '1';
+    clearTimeout(_csTimer);
+    _csTimer = setTimeout(() => t.style.opacity = '0', 2500);
+  }
+</script>
+
+<%- include('../partials/footer') %>
