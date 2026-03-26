@@ -5073,7 +5073,8 @@ app.get("/paysetu/recharge/callback", async (req, res) => {
     return res.status(403).send("UNAUTHORIZED");
   }
 
-  const { STATUS, TRANSACTIONID, CLIENTID } = req.query;
+  const { STATUS, TRANSACTIONID, OPERATORID, CLIENTID, MESSAGE } = req.query;
+  console.log(`[callback] STATUS=${STATUS} TXN=${TRANSACTIONID} OP=${OPERATORID} CLIENT=${CLIENTID} MSG=${MESSAGE}`);
   if (!CLIENTID || !STATUS) return res.send("MISSING_PARAMS");
 
   const txnId = parseInt(CLIENTID);
@@ -5095,8 +5096,8 @@ app.get("/paysetu/recharge/callback", async (req, res) => {
       await db.query(
         "UPDATE recharge_transactions SET status='failed' WHERE id=?", [txnId]
       );
-      // Refund wallet only if it was debited (status was pending/success)
-      if (txn.status !== 'success') {
+      // Refund wallet for pending or success states (provider reversed the recharge)
+      if (txn.status === 'pending' || txn.status === 'success') {
         await db.query(
           "UPDATE users SET wallet_balance = wallet_balance + ? WHERE id=?",
           [txn.amount, txn.user_id]

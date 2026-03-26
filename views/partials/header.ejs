@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <!-- ── Primary SEO ── -->
-  <title><%= locals.pageTitle || 'SmrAI-Studio – Free AI Resume Builder | Download PDF & JPG' %></title>
-  <meta name="description"  content="<%= locals.pageDescription || 'Build a professional resume in minutes with AI. Choose from 8+ templates, get AI writing suggestions, and download as A4 PDF or JPG instantly. Free to try — trusted by job seekers in India.' %>">
-  <meta name="keywords"     content="AI resume builder, free resume maker India, resume builder online, professional CV maker, resume templates download, PDF resume builder, AI CV generator, job application letter, background remover free">
+  <title><%= locals.pageTitle || 'Sumar\'s Studio' %></title>
+  <meta name="description"  content="<%= locals.pageDescription || 'All Your Digital Needs In One Smart Platform.' %>">
+  <meta name="keywords"     content="Pay bills, recharge mobile, create professional resumes, edit photos, and apply for services — all from one powerful dashboard.">
   <meta name="author"       content="Sumar Pohsnem">
   <meta name="robots"       content="index, follow">
   <meta name="theme-color"  content="#0f172a">
@@ -21,8 +21,8 @@
   <link rel="apple-touch-icon" sizes="180x180"                href="/images/apple-touch-icon.png">
 
   <!-- ── Open Graph (Facebook, WhatsApp, LinkedIn) ── -->
-  <meta property="og:title"        content="<%= locals.ogTitle       || 'SmrAI-Studio – AI Resume Builder' %>">
-  <meta property="og:description"  content="<%= locals.ogDescription || 'Create professional resumes with AI voice input and smart suggestions. Download A4 JPG or PDF instantly.' %>">
+  <meta property="og:title"        content="<%= locals.ogTitle       || 'Sumar\'s Studio' %>">
+  <meta property="og:description"  content="<%= locals.ogDescription || 'All Your Digital Needs In One Smart Platform. Pay bills, recharge mobile, create professional resumes, edit photos, and apply for services — all from one powerful dashboard.' %>">
   <meta property="og:image"        content="<%= locals.ogImage       || 'https://smraistudio.sumarpohz.com/images/meta.png' %>">
   <meta property="og:image:width"  content="1200">
   <meta property="og:image:height" content="630">
@@ -31,8 +31,8 @@
 
   <!-- ── Twitter Card ── -->
   <meta name="twitter:card"        content="summary_large_image">
-  <meta name="twitter:title"       content="<%= locals.ogTitle       || 'SmrAI-Studio – AI Resume Builder' %>">
-  <meta name="twitter:description" content="<%= locals.ogDescription || 'AI-powered resume builder with voice input and smart content enhancement.' %>">
+  <meta name="twitter:title"       content="<%= locals.ogTitle       || 'Sumar\'s Studio' %>">
+  <meta name="twitter:description" content="<%= locals.ogDescription || 'All Your Digital Needs In One Smart Platform. Pay bills, recharge mobile, create professional resumes, edit photos, and apply for services — all from one powerful dashboard.' %>">
   <meta name="twitter:image"       content="<%= locals.ogImage       || 'https://smraistudio.sumarpohz.com/images/meta.png' %>">
 
   <!-- ── Structured Data (JSON-LD) ── -->
@@ -40,10 +40,10 @@
   {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    "name": "SmrAI-Studio",
+    "name": "Sumar's Studio",
     "applicationCategory": "BusinessApplication",
     "operatingSystem": "Web, Android",
-    "description": "AI-powered resume builder with 8+ professional templates, voice input, smart suggestions, PDF & JPG download, background remover, and application letter generator.",
+    "description": "All Your Digital Needs In One Smart Platform. Pay bills, recharge mobile, create professional resumes, edit photos, and apply for services — all from one powerful dashboard.",
     "url": "https://smraistudio.sumarpohz.com/",
     "applicationCategory": "ProductivityApplication",
     "offers": {
@@ -484,7 +484,7 @@
           sidebarWalletLoaded = true;
           fetch("/api/wallet/balance").then(function(r){ return r.json(); }).then(function(d) {
             var el = document.getElementById("sidebarWalletAmt");
-            if (el) el.textContent = "₹" + (d.balance || 0).toFixed(0);
+            if (el) { const usable = Math.max(0, (d.balance || 0) - (d.cap || 0)); el.textContent = "₹" + usable.toFixed(0); }
           }).catch(function(){});
           fetch("/api/subscription/status").then(function(r){ return r.json(); }).then(function(d) {
             var badge = document.getElementById("sidebarSubBadge");

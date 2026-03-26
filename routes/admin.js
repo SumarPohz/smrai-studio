@@ -1908,9 +1908,16 @@ export default function adminRouter(db) {
       }
       if (p.provider_key === 'femoney24') {
         const url = `http://femoney24.com/RechargeApi/Balance.aspx?Apitoken=${encodeURIComponent(p.api_key)}`;
-        const data = await fetch(url, { signal: AbortSignal.timeout(10000) }).then(r => r.json());
+        const raw = await fetch(url, { signal: AbortSignal.timeout(10000) }).then(r => r.text());
+        let data;
+        try { data = JSON.parse(raw); } catch (_) {
+          return res.status(502).json({ success: false, message: 'femoney24 returned non-JSON response.' });
+        }
         if (data.STATUS === 'SUCCESS') {
-          return res.json({ success: true, balance: data.MESSAGE, provider: 'femoney24' });
+          // MESSAGE is formatted like "1,970.10" — strip commas for numeric use
+          const balanceStr = String(data.MESSAGE || '0').replace(/,/g, '');
+          const balanceNum = parseFloat(balanceStr) || 0;
+          return res.json({ success: true, balance: `₹${balanceNum.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, balanceRaw: balanceNum, provider: 'femoney24' });
         }
         return res.json({ success: false, message: data.MESSAGE || 'Balance check failed' });
       }
@@ -1970,6 +1977,94 @@ export default function adminRouter(db) {
       await db.query("DELETE FROM recharge_plans WHERE id=?", [req.params.id]);
       res.json({ success: true });
     } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+  });
+
+  // ── Check live status of a pending recharge via femoney24 ───────────────────
+  router.post("/api/recharge-transactions/:id/check-status", async (req, res) => {
+    try {
+      const txRow = await db.query(
+        "SELECT * FROM recharge_transactions WHERE id=?",
+        [req.params.id]
+      );
+      if (!txRow.rows.length) return res.status(404).json({ success: false, message: "Transaction not found." });
+      const txn = txRow.rows[0];
+
+      // Get active femoney24 provider
+      const prov = await db.query(
+        "SELECT api_key FROM recharge_api_providers WHERE provider_key='femoney24' AND is_active=1 LIMIT 1"
+      );
+      if (!prov.rows.length || !prov.rows[0].api_key) {
+        return res.status(400).json({ success: false, message: "femoney24 not configured or not active." });
+      }
+      const apiKey = prov.rows[0].api_key;
+
+      const url = `http://femoney24.com/RechargeApi/rechargestatus.aspx?Apitoken=${encodeURIComponent(apiKey)}&ClientId=${txn.id}`;
+      const raw  = await fetch(url, { signal: AbortSignal.timeout(10000) }).then(r => r.text());
+      let data;
+      try { data = JSON.parse(raw); } catch (_) {
+        return res.status(502).json({ success: false, message: "femoney24 returned non-JSON response.", raw: raw.slice(0, 200) });
+      }
+
+      const rStatus = data.RECHARGESTATUS; // SUCCESS | FAILURE | IN PROCESS
+
+      if (rStatus === 'SUCCESS') {
+        await db.query(
+          "UPDATE recharge_transactions SET status='success', external_ref=? WHERE id=?",
+          [data.OPERATORID || String(txn.id), txn.id]
+        );
+        return res.json({ success: true, rechargeStatus: 'success', message: 'Transaction marked SUCCESS. Wallet already deducted.' });
+      }
+
+      if (rStatus === 'FAILURE' || data.MESSAGE === 'TRANSACTION NOT FOUND') {
+        if (txn.status === 'pending') {
+          // Refund only if not already refunded
+          await db.query("UPDATE recharge_transactions SET status='failed' WHERE id=?", [txn.id]);
+          await db.query("UPDATE users SET wallet_balance = wallet_balance + ? WHERE id=?", [txn.amount, txn.user_id]);
+          await db.query(
+            "INSERT INTO wallet_transactions (user_id, amount, type, reason, ref_id) VALUES (?,?,'credit','recharge_refund',?)",
+            [txn.user_id, txn.amount, txn.id]
+          );
+          return res.json({ success: true, rechargeStatus: 'failed', message: `Transaction FAILED. ₹${txn.amount} refunded to user.` });
+        }
+        return res.json({ success: true, rechargeStatus: 'failed', message: `Transaction FAILED (status was already: ${txn.status}).` });
+      }
+
+      // IN PROCESS — still pending
+      return res.json({ success: true, rechargeStatus: 'pending', message: 'Transaction still IN PROCESS at operator.' });
+
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+  });
+
+  // ── Raise complaint with femoney24 for a transaction ────────────────────────
+  router.post("/api/recharge-transactions/:id/complain", async (req, res) => {
+    try {
+      const { message } = req.body || {};
+      const txRow = await db.query("SELECT * FROM recharge_transactions WHERE id=?", [req.params.id]);
+      if (!txRow.rows.length) return res.status(404).json({ success: false, message: "Transaction not found." });
+
+      const prov = await db.query(
+        "SELECT api_key FROM recharge_api_providers WHERE provider_key='femoney24' AND is_active=1 LIMIT 1"
+      );
+      if (!prov.rows.length || !prov.rows[0].api_key) {
+        return res.status(400).json({ success: false, message: "femoney24 not configured or not active." });
+      }
+
+      const url = `http://femoney24.com/RechargeApi/complain.aspx` +
+        `?Apitoken=${encodeURIComponent(prov.rows[0].api_key)}` +
+        `&ClientId=${req.params.id}` +
+        `&Message=${encodeURIComponent(message || '')}`;
+
+      const raw = await fetch(url, { signal: AbortSignal.timeout(10000) }).then(r => r.text());
+      let data;
+      try { data = JSON.parse(raw); } catch (_) {
+        return res.status(502).json({ success: false, message: "femoney24 returned non-JSON response." });
+      }
+
+      if (data.STATUS === 'SUCCESS') {
+        return res.json({ success: true, message: data.MESSAGE || 'Complaint registered successfully.' });
+      }
+      return res.json({ success: false, message: data.MESSAGE || 'Complaint failed.' });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
   });
 
   // ── Resolve stuck pending recharge transaction (mark failed + refund) ────────

@@ -1827,6 +1827,23 @@
 
     </div><!-- /plans -->
 
+    <!-- PaySetu: Complain Modal -->
+    <div id="psComplainModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">
+      <div style="background:#fff;border-radius:16px;padding:1.5rem;max-width:380px;width:90%;position:relative">
+        <h3 style="margin:0 0 0.25rem;font-size:1rem">Raise Complaint</h3>
+        <p id="psComplainDetail" style="font-size:0.8rem;color:#6b7280;margin-bottom:1rem"></p>
+        <div style="margin-bottom:0.85rem">
+          <label style="font-size:0.78rem;font-weight:700;color:#374151;display:block;margin-bottom:4px">Message (optional)</label>
+          <textarea id="psComplainMessage" rows="3" placeholder="Describe the issue…" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:8px;font-size:0.83rem;resize:vertical;box-sizing:border-box"></textarea>
+        </div>
+        <p id="psComplainErr" style="font-size:0.78rem;color:#dc2626;margin-bottom:0.5rem"></p>
+        <div style="display:flex;gap:0.5rem">
+          <button id="psComplainBtn" onclick="submitComplain()" style="flex:1;padding:0.6rem;background:#f59e0b;color:#fff;border:none;border-radius:8px;font-size:0.85rem;font-weight:700;cursor:pointer">Submit Complaint</button>
+          <button onclick="document.getElementById('psComplainModal').style.display='none'" style="flex:1;padding:0.6rem;background:#f3f4f6;color:#374151;border:none;border-radius:8px;font-size:0.85rem;cursor:pointer">Cancel</button>
+        </div>
+      </div>
+    </div>
+
     <!-- PaySetu: Refund Modal -->
     <div id="psRefundModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">
       <div style="background:#fff;border-radius:16px;padding:1.5rem;max-width:380px;width:90%;position:relative">
@@ -5900,7 +5917,7 @@ async function loadPsTxns(page) {
       const refundBtn = t.status === 'failed'
         ? `<button onclick="openPsRefundModal(${t.id},'${t.txn_type}',${t.amount},'${(t.user_name||'').replace(/'/g,"\\'")} (${t.user_email||''})')" style="padding:0.25rem 0.55rem;background:#f97316;color:#fff;border:none;border-radius:5px;font-size:0.72rem;cursor:pointer;margin-right:0.3rem">Refund</button>`
         : (t.status === 'pending' && t.txn_type === 'recharge')
-        ? `<button onclick="forceRefundPending(${t.id})" style="padding:0.25rem 0.55rem;background:#dc2626;color:#fff;border:none;border-radius:5px;font-size:0.72rem;cursor:pointer;margin-right:0.3rem">Force Refund</button>` : '';
+        ? `<button onclick="checkRechargeTxnStatus(${t.id},this)" style="padding:0.25rem 0.55rem;background:#0891b2;color:#fff;border:none;border-radius:5px;font-size:0.72rem;cursor:pointer;margin-right:0.3rem">Check Status</button><button onclick="openComplainModal(${t.id})" style="padding:0.25rem 0.55rem;background:#f59e0b;color:#fff;border:none;border-radius:5px;font-size:0.72rem;cursor:pointer;margin-right:0.3rem">Complain</button><button onclick="forceRefundPending(${t.id})" style="padding:0.25rem 0.55rem;background:#dc2626;color:#fff;border:none;border-radius:5px;font-size:0.72rem;cursor:pointer;margin-right:0.3rem">Force Refund</button>` : '';
       const pinBtn = `<button onclick="openPsPinModal(${t.user_id},'${(t.user_name||'User').replace(/'/g,"\\'")} (${t.user_email||''})')" style="padding:0.25rem 0.55rem;background:#6366f1;color:#fff;border:none;border-radius:5px;font-size:0.72rem;cursor:pointer">Reset PIN</button>`;
       return `<tr style="border-bottom:1px solid #f3f4f6">
         <td style="padding:0.5rem 0.45rem;white-space:nowrap">${typeLabel}</td>
@@ -5937,6 +5954,52 @@ async function loadPsTxns(page) {
       pager.appendChild(btn);
     }
   } catch(e) { el.innerHTML = `<p style="color:#dc2626">Error: ${e.message}</p>`; }
+}
+
+// Check live status of a pending recharge via femoney24
+async function checkRechargeTxnStatus(id, btn) {
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Checking…';
+  try {
+    const d = await fetch(`/admin/api/recharge-transactions/${id}/check-status`, { method: 'POST' }).then(r => r.json());
+    if (d.success) {
+      const color = d.rechargeStatus === 'success' ? 'success' : d.rechargeStatus === 'failed' ? 'error' : '';
+      showAdmToast(d.message, color);
+      if (d.rechargeStatus !== 'pending') loadPsTxns();
+    } else {
+      showAdmToast(d.message || 'Status check failed', 'error');
+    }
+  } catch(e) { showAdmToast(e.message, 'error'); }
+  btn.disabled = false; btn.textContent = orig;
+}
+
+// Complaint modal
+let _psComplainId = null;
+function openComplainModal(id) {
+  _psComplainId = id;
+  document.getElementById('psComplainDetail').textContent = `Transaction #${id}`;
+  document.getElementById('psComplainMessage').value = '';
+  document.getElementById('psComplainErr').textContent = '';
+  document.getElementById('psComplainModal').style.display = 'flex';
+}
+async function submitComplain() {
+  const btn = document.getElementById('psComplainBtn');
+  btn.disabled = true; btn.textContent = 'Submitting…';
+  document.getElementById('psComplainErr').textContent = '';
+  try {
+    const d = await fetch(`/admin/api/recharge-transactions/${_psComplainId}/complain`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: document.getElementById('psComplainMessage').value.trim() })
+    }).then(r => r.json());
+    if (d.success) {
+      document.getElementById('psComplainModal').style.display = 'none';
+      showAdmToast('✅ ' + d.message, 'success');
+    } else {
+      document.getElementById('psComplainErr').textContent = d.message || 'Failed to submit complaint.';
+    }
+  } catch(e) { document.getElementById('psComplainErr').textContent = e.message; }
+  btn.disabled = false; btn.textContent = 'Submit Complaint';
 }
 
 // Force-refund a stuck pending recharge
