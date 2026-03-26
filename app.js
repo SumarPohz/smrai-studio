@@ -4631,13 +4631,21 @@ app.get("/api/recharge/plans", ensureAuthenticated, async (req, res) => {
     }
   }
 
+  // Normalize operator IDs to match DB keys
+  const OP_NORMALIZE = {
+    'tata play': 'tataplay', 'dish tv': 'dishtv',
+    'airtel dth': 'airtel_dth', 'vi (vodafone)': 'vi',
+    'vi (vodafone idea)': 'vi'
+  };
+  const normalizedOp = OP_NORMALIZE[operator] || operator;
+
   // All other operators — query DB, fallback to static
-  if (operator) {
+  if (normalizedOp) {
     try {
       const result = await db.query(
         `SELECT amount, validity, description, category FROM recharge_plans
          WHERE type=? AND operator=? AND is_active=1 ORDER BY sort_order, amount`,
-        [type, operator]
+        [type, normalizedOp]
       );
       if (result.rows.length) return res.json({ success: true, plans: result.rows });
     } catch (_) {}

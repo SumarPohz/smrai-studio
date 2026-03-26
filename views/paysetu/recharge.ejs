@@ -627,9 +627,9 @@
           <div class="ds-amount-prefix-wrap">
             <span class="ds-amount-prefix">₹</span>
             <input class="ds-input" id="dth-amount-input" type="number" inputmode="numeric"
-                   min="10" max="50000" placeholder="e.g. 200" oninput="onDthAmountInput()" />
+                   min="200" max="50000" placeholder="e.g. 200" oninput="onDthAmountInput()" />
           </div>
-          <div style="font-size:11px;color:#94a3b8;margin-top:5px;">Min ₹10 · Max ₹50,000</div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:5px;">Min ₹200 · Max ₹50,000</div>
         </div>
         <button class="ds-btn-recharge" id="dth-recharge-btn" disabled
                 onclick="openDthPinModal()" style="margin-top:14px;">
@@ -874,11 +874,11 @@
   function hideDthCard() { document.getElementById('dth-amount-card').style.display = 'none'; }
   function onDthAmountInput() {
     const v = parseFloat(document.getElementById('dth-amount-input').value);
-    document.getElementById('dth-recharge-btn').disabled = !(v >= 10 && v <= 50000);
+    document.getElementById('dth-recharge-btn').disabled = !(v >= 200 && v <= 50000);
   }
   function openDthPinModal() {
     const amt = parseFloat(document.getElementById('dth-amount-input').value);
-    if (!amt || amt < 10) return;
+    if (!amt || amt < 200) return;
     pendingPlan = { amount: amt, validity: '—', description: `${selectedOp.label} DTH Recharge` };
     openPinModal();
   }
