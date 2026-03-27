@@ -1755,7 +1755,12 @@
               <option value="">All</option>
             </select>
           </div>
+          <div style="flex:1;min-width:130px">
+            <label style="font-size:0.78rem;font-weight:700;color:#475569;display:block;margin-bottom:4px">Circle</label>
+            <input type="text" id="plansFilterCircle" placeholder="e.g. All India, Delhi" style="width:100%;padding:0.5rem 0.65rem;border:1px solid #cbd5e1;border-radius:8px;font-size:0.85rem;background:#f8fafc;box-sizing:border-box" oninput="loadPlansTable()">
+          </div>
           <button onclick="openPlanModal()" style="padding:0.55rem 1.1rem;background:#6366f1;color:#fff;border:none;border-radius:8px;font-size:0.85rem;font-weight:700;cursor:pointer;white-space:nowrap">+ Add Plan</button>
+          <button onclick="deleteAllPlans()" style="padding:0.55rem 1.1rem;background:#dc2626;color:#fff;border:none;border-radius:8px;font-size:0.85rem;font-weight:700;cursor:pointer;white-space:nowrap">🗑 Delete All</button>
         </div>
       </div>
 
@@ -1764,10 +1769,10 @@
         <table class="adm-ads-table" style="width:100%">
           <thead>
             <tr>
-              <th>Amount</th><th>Validity</th><th>Description</th><th>Category</th><th>Operator</th><th>Type</th><th>Status</th><th>Actions</th>
+              <th>Amount</th><th>Validity</th><th>Description</th><th>Category</th><th>Circle</th><th>Operator</th><th>Type</th><th>Status</th><th>Actions</th>
             </tr>
           </thead>
-          <tbody id="plansTableBody"><tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:1.5rem">Loading…</td></tr></tbody>
+          <tbody id="plansTableBody"><tr><td colspan="9" style="text-align:center;color:#94a3b8;padding:1.5rem">Loading…</td></tr></tbody>
         </table>
       </div>
 
@@ -1813,7 +1818,11 @@
               <input type="number" id="planFormSort" value="0" min="0" style="width:100%;padding:0.5rem;border:1px solid #cbd5e1;border-radius:8px;font-size:0.85rem;box-sizing:border-box">
             </div>
           </div>
-          <div style="margin-bottom:1rem">
+          <div style="grid-column:1/-1">
+            <label style="font-size:0.78rem;font-weight:700;color:#475569;display:block;margin-bottom:3px">Circle</label>
+            <input type="text" id="planFormCircle" value="All India" placeholder="e.g. All India, Delhi, Mumbai" style="width:100%;padding:0.5rem;border:1px solid #cbd5e1;border-radius:8px;font-size:0.85rem;box-sizing:border-box">
+          </div>
+          <div style="grid-column:1/-1;margin-bottom:1rem">
             <label style="font-size:0.78rem;font-weight:700;color:#475569;display:block;margin-bottom:3px">Description *</label>
             <input type="text" id="planFormDesc" placeholder="e.g. 2GB/day + Unlimited calls" style="width:100%;padding:0.5rem;border:1px solid #cbd5e1;border-radius:8px;font-size:0.85rem;box-sizing:border-box">
           </div>
@@ -6327,26 +6336,29 @@ function planModalOpUpdate() {
 
 async function loadPlansTable() {
   const tbody = document.getElementById('plansTableBody');
-  tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:1rem">Loading…</td></tr>';
-  const type = document.getElementById('plansFilterType').value;
-  const op   = document.getElementById('plansFilterOp').value;
+  tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#94a3b8;padding:1rem">Loading…</td></tr>';
+  const type   = document.getElementById('plansFilterType').value;
+  const op     = document.getElementById('plansFilterOp').value;
+  const circle = (document.getElementById('plansFilterCircle')?.value || '').trim();
   let url = '/admin/api/recharge-plans';
   const params = [];
-  if (type) params.push('type=' + type);
-  if (op)   params.push('operator=' + op);
+  if (type)   params.push('type=' + encodeURIComponent(type));
+  if (op)     params.push('operator=' + encodeURIComponent(op));
+  if (circle) params.push('circle=' + encodeURIComponent(circle));
   if (params.length) url += '?' + params.join('&');
   try {
     const d = await fetch(url).then(r => r.json());
     if (!d.success || !d.plans.length) {
-      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:1.5rem">No plans found.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#94a3b8;padding:1.5rem">No plans found.</td></tr>';
       return;
     }
     tbody.innerHTML = d.plans.map(p => `
       <tr>
         <td><strong>₹${p.amount}</strong></td>
         <td>${p.validity}</td>
-        <td style="max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${p.description}">${p.description}</td>
+        <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${p.description}">${p.description}</td>
         <td><span style="background:#ede9fe;color:#6d28d9;border-radius:99px;padding:2px 9px;font-size:0.72rem;font-weight:700">${p.category}</span></td>
+        <td style="font-size:0.78rem;color:#475569">${p.circle || 'All India'}</td>
         <td style="text-transform:capitalize">${p.operator}</td>
         <td style="text-transform:capitalize">${p.type}</td>
         <td>
@@ -6358,7 +6370,7 @@ async function loadPlansTable() {
           <button onclick="deletePlan(${p.id})" style="padding:3px 10px;background:#fee2e2;color:#dc2626;border:none;border-radius:6px;font-size:0.75rem;font-weight:600;cursor:pointer">Del</button>
         </td>
       </tr>`).join('');
-  } catch(e) { tbody.innerHTML = '<tr><td colspan="8" style="color:#dc2626;padding:1rem">Error loading plans.</td></tr>'; }
+  } catch(e) { tbody.innerHTML = '<tr><td colspan="9" style="color:#dc2626;padding:1rem">Error loading plans.</td></tr>'; }
 }
 
 function openPlanModal(edit) {
@@ -6369,11 +6381,12 @@ function openPlanModal(edit) {
   document.getElementById('planFormType').value = edit ? edit.type : 'mobile';
   planModalOpUpdate();
   if (edit) document.getElementById('planFormOp').value = edit.operator;
-  document.getElementById('planFormAmount').value   = edit ? edit.amount   : '';
-  document.getElementById('planFormValidity').value = edit ? edit.validity : '';
+  document.getElementById('planFormAmount').value   = edit ? edit.amount      : '';
+  document.getElementById('planFormValidity').value = edit ? edit.validity    : '';
   document.getElementById('planFormDesc').value     = edit ? edit.description : '';
-  document.getElementById('planFormCat').value      = edit ? edit.category : 'data';
+  document.getElementById('planFormCat').value      = edit ? edit.category    : 'data';
   document.getElementById('planFormSort').value     = edit ? (edit.sort_order || 0) : 0;
+  document.getElementById('planFormCircle').value   = edit ? (edit.circle || 'All India') : 'All India';
 }
 function closePlanModal() { document.getElementById('planModal').style.display = 'none'; }
 function editPlan(p) { openPlanModal(p); }
@@ -6390,6 +6403,7 @@ async function submitPlanForm() {
     description: document.getElementById('planFormDesc').value.trim(),
     category:    document.getElementById('planFormCat').value,
     sort_order:  document.getElementById('planFormSort').value,
+    circle:      (document.getElementById('planFormCircle').value || 'All India').trim(),
     is_active:   1
   };
   if (!body.amount || !body.validity || !body.description) {
@@ -6421,6 +6435,22 @@ async function deletePlan(id) {
     if (d.success) { loadPlansTable(); showAdmToast('🗑️ Plan deleted'); }
     else showAdmToast('Delete failed', 'error');
   } catch(e) { showAdmToast(e.message,'error'); }
+}
+
+async function deleteAllPlans() {
+  const type = document.getElementById('plansFilterType').value;
+  const op   = document.getElementById('plansFilterOp').value;
+  const scope = [op, type].filter(Boolean).join(' ') || 'ALL';
+  if (!confirm(`⚠️ Permanently delete ${scope} plans from the database?\n\nThis cannot be undone.`)) return;
+  try {
+    const params = [];
+    if (type) params.push('type=' + encodeURIComponent(type));
+    if (op)   params.push('operator=' + encodeURIComponent(op));
+    const url = '/admin/api/recharge-plans' + (params.length ? '?' + params.join('&') : '');
+    const d = await fetch(url, { method: 'DELETE' }).then(r => r.json());
+    if (d.success) { loadPlansTable(); showAdmToast('🗑️ Plans deleted'); }
+    else showAdmToast('Delete failed', 'error');
+  } catch(e) { showAdmToast(e.message, 'error'); }
 }
 
 async function loadDthLimits() {

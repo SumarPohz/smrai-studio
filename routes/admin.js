@@ -1929,12 +1929,13 @@ export default function adminRouter(db) {
 
   router.get("/api/recharge-plans", async (req, res) => {
     try {
-      const { type, operator } = req.query;
+      const { type, operator, circle } = req.query;
       let sql = "SELECT * FROM recharge_plans WHERE 1=1";
       const params = [];
       if (type)     { sql += " AND type=?";     params.push(type); }
       if (operator) { sql += " AND operator=?"; params.push(operator); }
-      sql += " ORDER BY type, operator, sort_order, amount";
+      if (circle)   { sql += " AND circle=?";   params.push(circle); }
+      sql += " ORDER BY type, operator, circle, sort_order, amount";
       const result = await db.query(sql, params);
       res.json({ success: true, plans: result.rows });
     } catch (err) { res.status(500).json({ success: false, error: err.message }); }
@@ -1942,13 +1943,21 @@ export default function adminRouter(db) {
 
   router.post("/api/recharge-plans", async (req, res) => {
     try {
-      const { type, operator, amount, validity, description, category, sort_order } = req.body;
+      const { type, operator, amount, validity, description, category, sort_order, circle } = req.body;
       if (!type || !operator || !amount || !validity || !description) {
         return res.status(400).json({ success: false, error: "type, operator, amount, validity, description are required." });
       }
+      const circleVal = (circle || 'All India').trim();
+      const dup = await db.query(
+        "SELECT id FROM recharge_plans WHERE type=? AND operator=? AND amount=? AND validity=? AND circle=?",
+        [type, operator, parseInt(amount), validity, circleVal]
+      );
+      if (dup.rows.length) {
+        return res.status(409).json({ success: false, error: "A plan with the same type, operator, amount, validity and circle already exists." });
+      }
       const result = await db.query(
-        "INSERT INTO recharge_plans (type, operator, amount, validity, description, category, sort_order) VALUES (?,?,?,?,?,?,?)",
-        [type, operator, parseInt(amount), validity, description, category || "data", parseInt(sort_order) || 0]
+        "INSERT INTO recharge_plans (type, operator, amount, validity, description, category, sort_order, circle) VALUES (?,?,?,?,?,?,?,?)",
+        [type, operator, parseInt(amount), validity, description, category || "data", parseInt(sort_order) || 0, circleVal]
       );
       res.json({ success: true, id: result.insertId });
     } catch (err) { res.status(500).json({ success: false, error: err.message }); }
@@ -1956,10 +1965,10 @@ export default function adminRouter(db) {
 
   router.put("/api/recharge-plans/:id", async (req, res) => {
     try {
-      const { amount, validity, description, category, sort_order, is_active } = req.body;
+      const { amount, validity, description, category, sort_order, is_active, circle } = req.body;
       await db.query(
-        "UPDATE recharge_plans SET amount=?, validity=?, description=?, category=?, sort_order=?, is_active=? WHERE id=?",
-        [parseInt(amount), validity, description, category, parseInt(sort_order) || 0, is_active ? 1 : 0, req.params.id]
+        "UPDATE recharge_plans SET amount=?, validity=?, description=?, category=?, sort_order=?, is_active=?, circle=? WHERE id=?",
+        [parseInt(amount), validity, description, category, parseInt(sort_order) || 0, is_active ? 1 : 0, (circle || 'All India').trim(), req.params.id]
       );
       res.json({ success: true });
     } catch (err) { res.status(500).json({ success: false, error: err.message }); }
@@ -1975,6 +1984,18 @@ export default function adminRouter(db) {
   router.delete("/api/recharge-plans/:id", async (req, res) => {
     try {
       await db.query("DELETE FROM recharge_plans WHERE id=?", [req.params.id]);
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+  });
+
+  router.delete("/api/recharge-plans", async (req, res) => {
+    try {
+      const { type, operator } = req.query;
+      let sql = "DELETE FROM recharge_plans WHERE 1=1";
+      const params = [];
+      if (type)     { sql += " AND type=?";     params.push(type); }
+      if (operator) { sql += " AND operator=?"; params.push(operator); }
+      await db.query(sql, params);
       res.json({ success: true });
     } catch (err) { res.status(500).json({ success: false, error: err.message }); }
   });
