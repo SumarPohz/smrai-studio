@@ -23,15 +23,21 @@
   }
   .btn-cta:hover { background: #6d28d9; transform: translateY(-2px); }
 
-  /* Niche cards */
-  .niche-scroll {
+  /* Niche marquee */
+  .niche-marquee-wrap {
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 8%, #000 92%, transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0%, #000 8%, #000 92%, transparent 100%);
+    padding: 8px 0 16px;
+  }
+  .niche-marquee-track {
     display: flex;
     gap: 14px;
-    overflow-x: auto;
-    padding: 8px 4px 16px;
-    scrollbar-width: none;
+    width: max-content;
+    animation: nicheScroll 22s linear infinite;
   }
-  .niche-scroll::-webkit-scrollbar { display: none; }
+  .niche-marquee-wrap:hover .niche-marquee-track { animation-play-state: paused; }
+  @keyframes nicheScroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
   .niche-card {
     flex-shrink: 0;
     width: 150px;
@@ -67,6 +73,13 @@
     font-weight: 500;
     color: #374151;
   }
+  /* Testimonial marquee — always visible */
+  .reels-testi-desktop { display: none; }
+  .reels-testi-marquee-wrap { display: block; overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 8%, #000 92%, transparent 100%); mask-image: linear-gradient(90deg, transparent 0%, #000 8%, #000 92%, transparent 100%); }
+  .reels-testi-track { display: flex; gap: 16px; width: max-content; animation: reelsTestiScroll 36s linear infinite; }
+  .reels-testi-card { flex-shrink: 0; width: 280px; background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 20px; box-shadow: 0 1px 6px rgba(0,0,0,0.05); }
+  @keyframes reelsTestiScroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+
   /* Stat cards */
   .stat-card {
     background: #f9fafb;
@@ -74,6 +87,58 @@
     border-radius: 16px;
     padding: 24px;
     text-align: center;
+  }
+
+  @media (max-width: 640px) {
+    #reels-landing { padding-top: 0 !important; }
+    .reels-hero-section { padding: 18px 14px 16px !important; }
+    .reels-hero-section h1 { font-size: 1.55rem !important; margin-bottom: 8px !important; }
+    .reels-hero-section p  { font-size: 12px !important; margin-bottom: 12px !important; }
+    .reels-hero-section .reels-platform-row { margin-bottom: 14px !important; gap: 6px !important; }
+    .platform-badge { font-size: 11px; padding: 4px 10px; }
+    .btn-cta { font-size: 13px; padding: 10px 20px; }
+
+    /* Niche cards smaller on mobile */
+    .niche-card { width: 80px; border-radius: 10px; }
+    .niche-label { font-size: 9px; padding: 14px 4px 7px; }
+    .niche-marquee-track { gap: 8px !important; animation-duration: 16s !important; }
+    .reels-niche-section { padding: 0 12px 24px !important; }
+
+    /* Stat cards — always 3 col, compact */
+    .reels-stats-section { padding: 22px 12px !important; }
+    .stat-card { padding: 10px 6px; border-radius: 10px; }
+    .stat-card .stat-num { font-size: 1.2rem !important; }
+    .stat-card .stat-lbl { font-size: 10px !important; margin-top: 2px !important; }
+
+    /* Reduce section dead space */
+    #reels-landing section { padding-bottom: 24px !important; }
+    .reels-testimonials-section { padding: 0 12px 24px !important; }
+    .reels-testimonials-section > div:first-child { margin-bottom: 16px !important; }
+    .reels-testimonials-section h2 { font-size: 1.3rem !important; margin-bottom: 4px !important; }
+    .reels-testimonials-section p { font-size: 12px !important; }
+    /* Testimonials: compact cards on mobile */
+    .reels-testi-track { gap: 10px !important; animation-duration: 24s !important; }
+    .reels-testi-card { width: 200px !important; border-radius: 12px !important; padding: 12px !important; }
+
+    /* Why creators — 3-col compact grid */
+    .reels-why-section { padding: 0 12px 24px !important; }
+    .reels-why-section h2 { font-size: 1.3rem !important; margin-bottom: 6px !important; }
+    .reels-why-section > div > p { font-size: 12px !important; margin-bottom: 14px !important; }
+    .reels-why-grid { display: grid !important; grid-template-columns: 1fr 1fr 1fr !important; gap: 8px !important; flex-wrap: unset; overflow: visible !important; }
+    .reels-why-card { width: auto !important; padding: 10px !important; border-radius: 10px !important; }
+    .reels-why-card > div:first-child { margin-bottom: 6px !important; }
+    .reels-why-card > div:first-child span:first-child { font-size: 10px !important; font-weight: 700; }
+    .reels-why-card > div:first-child span:last-child { font-size: 14px !important; }
+    .reels-why-card p { font-size: 10px !important; line-height: 1.45 !important; margin: 0 !important; }
+
+    /* How it works — always 3 col, compact */
+    .reels-how-section { padding: 28px 12px 36px !important; }
+    .reels-how-section > div > p { font-size: 12px !important; margin-bottom: 24px !important; }
+    .reels-how-grid { gap: 8px !important; margin-bottom: 28px !important; }
+    .reels-how-step { gap: 6px !important; }
+    .reels-how-step .step-num { width: 36px !important; height: 36px !important; font-size: 14px !important; }
+    .reels-how-step .step-title { font-size: 11px !important; }
+    .reels-how-step .step-desc  { font-size: 10px !important; line-height: 1.5 !important; }
   }
   /* Avatar stack */
   .avatar-stack { display: flex; }
@@ -93,10 +158,10 @@
   }
 </style>
 
-<div id="reels-landing" style="padding-top: 70px;">
+<div id="reels-landing" style="padding-top: 70px; box-sizing: border-box;">
 
   <!-- ── HERO ──────────────────────────────────────────────────────────────── -->
-  <section style="text-align:center; padding: 60px 16px 48px; max-width: 680px; margin: 0 auto;">
+  <section class="reels-hero-section" style="text-align:center; padding: 60px 16px 48px; max-width: 680px; margin: 0 auto;">
 
     <!-- Trusted row -->
     <div style="display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:28px;">
@@ -120,7 +185,7 @@
     </p>
 
     <!-- Platform badges -->
-    <div style="display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap; margin-bottom:32px;">
+    <div class="reels-platform-row" style="display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap; margin-bottom:32px;">
       <span style="font-size:13px; color:#9ca3af;">Perfect for</span>
       <span class="platform-badge">▶️ YouTube</span>
       <span class="platform-badge">📸 Instagram</span>
@@ -136,7 +201,7 @@
   </section>
 
   <!-- ── NICHE SHOWCASE ─────────────────────────────────────────────────────── -->
-  <section style="padding: 0 24px 64px; max-width: 1100px; margin: 0 auto;">
+  <section class="reels-niche-section" style="padding: 0 24px 64px; max-width: 1100px; margin: 0 auto;">
 
     <div style="display:flex; align-items:center; gap:8px; margin-bottom:20px; font-size:15px; font-weight:600; color:#374151;">
       Creates reels for any niche
@@ -145,49 +210,64 @@
       </svg>
     </div>
 
-    <div class="niche-scroll">
-      <%
-        const niches = [
-          { label: 'Act of Kindness',  g: 'linear-gradient(160deg,#bae6fd,#7dd3fc,#38bdf8)' },
-          { label: 'Biblical Stories', g: 'linear-gradient(160deg,#1e1b4b,#4338ca,#312e81)' },
-          { label: 'Anime Stories',    g: 'linear-gradient(160deg,#2d1b69,#7c3aed,#a855f7)' },
-          { label: 'Heist',            g: 'linear-gradient(160deg,#111827,#1f2937,#374151)' },
-          { label: 'Mythology',        g: 'linear-gradient(160deg,#451a03,#92400e,#b45309)' },
-          { label: 'Horror',           g: 'linear-gradient(160deg,#0c0a09,#1c1917,#292524)' },
-          { label: 'Finance Tips',     g: 'linear-gradient(160deg,#052e16,#166534,#15803d)' },
-          { label: 'Motivation',       g: 'linear-gradient(160deg,#4a044e,#a21caf,#c026d3)' },
-        ];
-      %>
-      <% niches.forEach(n => { %>
-        <a class="niche-card" href="/reels/create?topic=<%= encodeURIComponent(n.label) %>" title="<%= n.label %>">
-          <div style="width:100%;height:100%;background:<%= n.g %>;"></div>
-          <div class="niche-label"><%= n.label %></div>
-        </a>
-      <% }) %>
+    <%
+      const niches = [
+        { label: 'Act of Kindness',  g: 'linear-gradient(160deg,#bae6fd,#7dd3fc,#38bdf8)', emoji: '🤝', emoji2: '❤️' },
+        { label: 'Biblical Stories', g: 'linear-gradient(160deg,#1e1b4b,#4338ca,#312e81)', emoji: '✝️', emoji2: '📖' },
+        { label: 'Anime Stories',    g: 'linear-gradient(160deg,#2d1b69,#7c3aed,#a855f7)', emoji: '⚔️', emoji2: '🌸' },
+        { label: 'Heist',            g: 'linear-gradient(160deg,#111827,#1f2937,#374151)', emoji: '🕵️', emoji2: '💰' },
+        { label: 'Mythology',        g: 'linear-gradient(160deg,#451a03,#92400e,#b45309)', emoji: '⚡', emoji2: '🏛️' },
+        { label: 'Horror',           g: 'linear-gradient(160deg,#0c0a09,#1c1917,#292524)', emoji: '👻', emoji2: '🩸' },
+        { label: 'Finance Tips',     g: 'linear-gradient(160deg,#052e16,#166534,#15803d)', emoji: '💹', emoji2: '💵' },
+        { label: 'Motivation',       g: 'linear-gradient(160deg,#4a044e,#a21caf,#c026d3)', emoji: '🔥', emoji2: '💪' },
+      ];
+    %>
+    <div class="niche-marquee-wrap">
+      <div class="niche-marquee-track">
+        <% [...niches, ...niches].forEach(n => { %>
+          <% const nicheDb = locals.nicheMap && locals.nicheMap[n.label]; %>
+          <% const nicheVideo = nicheDb && nicheDb.video_url ? nicheDb.video_url : ''; %>
+          <a class="niche-card" href="<%= nicheVideo ? '#' : '/reels/create?topic=' + encodeURIComponent(n.label) %>"
+             title="<%= n.label %>"
+             <% if (nicheVideo) { %>onclick="playYT('<%= nicheVideo %>');return false;"<% } %>>
+            <div style="width:100%;height:100%;background:<%= n.g %>;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;">
+              <% if (nicheVideo) { %>
+              <div style="width:44px;height:44px;background:rgba(255,255,255,0.25);border-radius:50%;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              </div>
+              <% } else { %>
+              <span style="font-size:2rem;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.4));"><%= n.emoji %></span>
+              <span style="font-size:1.3rem;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.3));"><%= n.emoji2 %></span>
+              <% } %>
+            </div>
+            <div class="niche-label"><%= n.label %></div>
+          </a>
+        <% }) %>
+      </div>
     </div>
 
   </section>
 
   <!-- ── STATS STRIP ───────────────────────────────────────────────────────── -->
-  <section style="background:#f9fafb; border-top:1px solid #e5e7eb; border-bottom:1px solid #e5e7eb; padding:48px 24px;">
+  <section class="reels-stats-section" style="background:#f9fafb; border-top:1px solid #e5e7eb; border-bottom:1px solid #e5e7eb; padding:48px 24px;">
     <div style="max-width:760px; margin:0 auto; text-align:center;">
       <h2 style="font-size:clamp(1.6rem,4vw,2.4rem); font-weight:800; color:#111827; margin-bottom:6px;">
         We actually get views
       </h2>
       <p style="color:#7c3aed; font-size:15px; margin-bottom:36px;">Real creators getting results with SmrAI Reels.</p>
 
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="grid grid-cols-3 gap-3">
         <div class="stat-card">
-          <div style="font-size:2rem; font-weight:800; color:#7c3aed;">10K+</div>
-          <div style="font-size:13px; color:#6b7280; margin-top:4px;">Reels Generated</div>
+          <div class="stat-num" style="font-size:2rem; font-weight:800; color:#7c3aed;">10K+</div>
+          <div class="stat-lbl" style="font-size:13px; color:#6b7280; margin-top:4px;">Reels Generated</div>
         </div>
         <div class="stat-card">
-          <div style="font-size:2rem; font-weight:800; color:#7c3aed;">6</div>
-          <div style="font-size:13px; color:#6b7280; margin-top:4px;">AI Voice Options</div>
+          <div class="stat-num" style="font-size:2rem; font-weight:800; color:#7c3aed;">6</div>
+          <div class="stat-lbl" style="font-size:13px; color:#6b7280; margin-top:4px;">AI Voice Options</div>
         </div>
         <div class="stat-card">
-          <div style="font-size:2rem; font-weight:800; color:#7c3aed;">&lt;2 min</div>
-          <div style="font-size:13px; color:#6b7280; margin-top:4px;">Average Generation Time</div>
+          <div class="stat-num" style="font-size:2rem; font-weight:800; color:#7c3aed;">&lt;2 min</div>
+          <div class="stat-lbl" style="font-size:13px; color:#6b7280; margin-top:4px;">Avg. Gen Time</div>
         </div>
       </div>
     </div>
@@ -216,44 +296,50 @@
       <!-- Slides -->
       <div id="carouselTrack" style="display:flex; overflow:hidden; padding:12px 16px;">
         <%
-          const channelSlides = [
-            {
-              channel: 'darktruthdaily',
-              handle: '@darktruthdaily1',
-              videos: [
-                { views:'1.4M', g:'linear-gradient(160deg,#111827,#1f2937,#374151)' },
-                { views:'223K', g:'linear-gradient(160deg,#1e1b4b,#312e81,#4338ca)' },
-                { views:'3,997', g:'linear-gradient(160deg,#0c0a09,#1c1917,#292524)' },
-              ]
-            },
-            {
-              channel: 'motivationhub',
-              handle: '@motivationhub_ai',
-              videos: [
-                { views:'892K', g:'linear-gradient(160deg,#4a044e,#a21caf,#c026d3)' },
-                { views:'541K', g:'linear-gradient(160deg,#052e16,#166534,#15803d)' },
-                { views:'210K', g:'linear-gradient(160deg,#451a03,#92400e,#b45309)' },
-              ]
-            },
+          const gradients = [
+            'linear-gradient(160deg,#4a044e,#a21caf,#c026d3)',
+            'linear-gradient(160deg,#052e16,#166534,#15803d)',
+            'linear-gradient(160deg,#451a03,#92400e,#b45309)',
+            'linear-gradient(160deg,#111827,#1f2937,#374151)',
+            'linear-gradient(160deg,#1e1b4b,#312e81,#4338ca)',
+            'linear-gradient(160deg,#0c0a09,#1c1917,#292524)',
           ];
+          const channelSlides = locals.channelProof && locals.channelProof.length ? locals.channelProof.map(r => ({
+            channel: r.channel_name,
+            handle: r.handle || '',
+            videos: (typeof r.videos === 'string' ? JSON.parse(r.videos||'[]') : r.videos || []),
+          })) : [];
         %>
+        <% if (channelSlides.length === 0) { %>
+        <div style="min-width:100%;padding:2rem;text-align:center;color:#9ca3af;font-size:14px;">
+          No channels added yet. Add them from the admin panel.
+        </div>
+        <% } %>
         <% channelSlides.forEach((slide, si) => { %>
         <div class="carousel-slide" style="min-width:100%; display:<%= si===0 ? 'block' : 'none' %>;">
-          <!-- Video thumbnails row -->
           <div style="display:flex; gap:8px; margin-bottom:14px;">
-            <% slide.videos.forEach(v => { %>
-            <div style="flex:1; aspect-ratio:9/16; border-radius:10px; overflow:hidden; position:relative; background:<%= v.g %>;">
+            <% slide.videos.slice(0,3).forEach((v, vi) => { %>
+            <div onclick="<%= v.url ? 'playYT(\''+v.url+'\')' : '' %>"
+                 style="flex:1; aspect-ratio:9/16; border-radius:10px; overflow:hidden; position:relative; background:<%= gradients[vi % gradients.length] %>; <%= v.url ? 'cursor:pointer;' : '' %>">
+              <% if (v.url) { %>
+              <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
+                <div style="width:36px;height:36px;background:rgba(255,255,255,0.25);border-radius:50%;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                </div>
+              </div>
+              <% } %>
               <% if (si === 0) { %>
                 <div style="position:absolute;top:8px;left:8px;background:#ef4444;color:white;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;">Pinned</div>
               <% } %>
+              <% if (v.views) { %>
               <div style="position:absolute;bottom:8px;left:8px;color:white;font-size:12px;font-weight:600;display:flex;align-items:center;gap:4px;">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                 <%= v.views %>
               </div>
+              <% } %>
             </div>
             <% }) %>
           </div>
-          <!-- Channel info -->
           <div style="display:flex; align-items:center; justify-content:space-between; padding:0 4px 12px;">
             <div style="display:flex; align-items:center; gap:10px;">
               <div style="width:36px;height:36px;border-radius:50%;background:#7c3aed;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:14px;">
@@ -267,7 +353,6 @@
                 <div style="font-size:12px;color:#9ca3af;"><%= slide.handle %></div>
               </div>
             </div>
-            <!-- Dots -->
             <div style="display:flex;gap:5px;">
               <% channelSlides.forEach((_, di) => { %>
                 <div class="carousel-dot" data-index="<%= di %>" style="width:7px;height:7px;border-radius:50%;background:<%= di===si ? '#7c3aed' : '#e5e7eb' %>;cursor:pointer;" onclick="goToSlide(<%= di %>)"></div>
@@ -281,7 +366,7 @@
   </section>
 
   <!-- ── WHY CREATORS CHOOSE US ─────────────────────────────────────────────── -->
-  <section style="padding: 0 24px 80px; max-width: 860px; margin: 0 auto; text-align:center;">
+  <section class="reels-why-section" style="padding: 0 24px 80px; max-width: 860px; margin: 0 auto; text-align:center;">
     <h2 style="font-size:clamp(1.6rem,4vw,2.4rem); font-weight:800; color:#111827; margin-bottom:8px;">
       Why creators choose us
     </h2>
@@ -289,10 +374,10 @@
       See how SmrAI Reels compares to <span style="color:#7c3aed;">traditional content creation</span> methods.
     </p>
 
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div class="reels-why-grid grid grid-cols-1 sm:grid-cols-3 gap-4">
 
       <!-- Card 1: Hiring editors (red) -->
-      <div style="border:1px solid #fecaca; border-radius:16px; padding:24px; text-align:left; background:#fff;">
+      <div class="reels-why-card" style="border:1px solid #fecaca; border-radius:16px; padding:24px; text-align:left; background:#fff;">
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
           <span style="font-size:14px; font-weight:700; color:#111827;">Hiring video editors</span>
           <span style="color:#ef4444; font-size:18px; font-weight:700;">✕</span>
@@ -303,7 +388,7 @@
       </div>
 
       <!-- Card 2: DIY (orange) -->
-      <div style="border:1px solid #fed7aa; border-radius:16px; padding:24px; text-align:left; background:#fff;">
+      <div class="reels-why-card" style="border:1px solid #fed7aa; border-radius:16px; padding:24px; text-align:left; background:#fff;">
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
           <span style="font-size:14px; font-weight:700; color:#111827;">Creating videos yourself</span>
           <span style="color:#f97316; font-size:18px; font-weight:700;">✕</span>
@@ -314,7 +399,7 @@
       </div>
 
       <!-- Card 3: SmrAI (green) -->
-      <div style="border:1px solid #bbf7d0; border-radius:16px; padding:24px; text-align:left; background:#f0fdf4;">
+      <div class="reels-why-card" style="border:1px solid #bbf7d0; border-radius:16px; padding:24px; text-align:left; background:#f0fdf4;">
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
           <span style="font-size:14px; font-weight:700; color:#111827;">SmrAI Reels</span>
           <span style="color:#22c55e; font-size:18px; font-weight:700;">✓</span>
@@ -328,7 +413,7 @@
   </section>
 
   <!-- ── TESTIMONIALS ───────────────────────────────────────────────────────── -->
-  <section style="padding: 0 24px 80px; max-width: 1100px; margin: 0 auto;">
+  <section class="reels-testimonials-section" style="padding: 0 24px 80px; max-width: 1100px; margin: 0 auto;">
     <div style="text-align:center; margin-bottom:36px;">
       <h2 style="font-size:clamp(1.6rem,4vw,2.4rem); font-weight:800; color:#111827; margin-bottom:8px;">
         Hear what they say about us
@@ -338,64 +423,83 @@
 
     <%
       const testimonials = [
-        [
-          { name:'Nana Bandoh',               letter:'N', bg:'#7c3aed', quote:'I went from 0 to 50K followers in 3 months just using this tool. My faceless finance channel basically runs itself now.' },
-          { name:'Cynthia Duncan',             letter:'C', bg:'#db2777', quote:'The AI script quality is insane — it actually sounds like a real person wrote it. My engagement tripled overnight.' },
-          { name:'Third Eye Vision Pictures',  letter:'T', bg:'#0891b2', quote:'We create 5 reels a day across 3 niches. SmrAI does all the heavy lifting — scripts, voice, video. Game changer.' },
-          { name:'Marcus Owusu',               letter:'M', bg:'#d97706', quote:'Tried every tool out there. Nothing comes close to the speed and quality here. My YouTube Shorts are finally popping off.' },
-        ],
-        [
-          { name:'Loyal Earl',   letter:'L', bg:'#059669', quote:'I was skeptical at first but my first reel hit 200K views. Now I post daily without touching the camera at all.' },
-          { name:'Agnes Chen',   letter:'A', bg:'#7c3aed', quote:'The voiceover quality is so realistic. Viewers keep asking what equipment I use — they have no idea it is 100% AI.' },
-          { name:'Josh Wright (Bikr)', letter:'J', bg:'#dc2626', quote:'Running a horror niche channel used to take me 6 hours per video. Now it takes 2 minutes. My life has completely changed.' },
-          { name:'Priya Sharma', letter:'P', bg:'#c026d3', quote:'SmrAI is the only reason I was able to quit my 9-5. Three channels, all fully automated. The income is real.' },
-        ],
+        { name:'Nana Bandoh',              letter:'N', bg:'#7c3aed', quote:'I went from 0 to 50K followers in 3 months just using this tool. My faceless finance channel basically runs itself now.' },
+        { name:'Cynthia Duncan',            letter:'C', bg:'#db2777', quote:'The AI script quality is insane — it actually sounds like a real person wrote it. My engagement tripled overnight.' },
+        { name:'Third Eye Vision Pictures', letter:'T', bg:'#0891b2', quote:'We create 5 reels a day across 3 niches. SmrAI does all the heavy lifting — scripts, voice, video. Game changer.' },
+        { name:'Marcus Owusu',              letter:'M', bg:'#d97706', quote:'Tried every tool out there. Nothing comes close to the speed and quality here. My YouTube Shorts are finally popping off.' },
+        { name:'Loyal Earl',                letter:'L', bg:'#059669', quote:'I was skeptical at first but my first reel hit 200K views. Now I post daily without touching the camera at all.' },
+        { name:'Agnes Chen',                letter:'A', bg:'#7c3aed', quote:'The voiceover quality is so realistic. Viewers keep asking what equipment I use — they have no idea it is 100% AI.' },
+        { name:'Josh Wright (Bikr)',         letter:'J', bg:'#dc2626', quote:'Running a horror niche channel used to take me 6 hours per video. Now it takes 2 minutes. My life has completely changed.' },
+        { name:'Priya Sharma',              letter:'P', bg:'#c026d3', quote:'SmrAI is the only reason I was able to quit my 9-5. Three channels, all fully automated. The income is real.' },
       ];
     %>
 
-    <% testimonials.forEach((row, rowIdx) => { %>
-    <div style="display:flex; gap:16px; overflow-x:auto; padding:4px 2px 12px; scrollbar-width:none; -webkit-overflow-scrolling:touch; margin-bottom:16px;" onmouseover="this.style.cursor='grab'" onmousedown="this.style.cursor='grabbing'" onmouseup="this.style.cursor='grab'">
-      <% row.forEach(t => { %>
-      <div style="flex-shrink:0; width:260px; background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:20px; box-shadow:0 1px 6px rgba(0,0,0,0.05);">
-        <!-- Stars -->
-        <div style="display:flex; gap:2px; margin-bottom:12px;">
-          <% for(let i=0;i<5;i++) { %><span style="color:#f59e0b; font-size:15px;">★</span><% } %>
-        </div>
-        <!-- Quote -->
-        <p style="font-size:13px; color:#374151; line-height:1.65; margin-bottom:16px;">"<%= t.quote %>"</p>
-        <!-- Author -->
-        <div style="display:flex; align-items:center; gap:10px;">
-          <div style="width:36px;height:36px;border-radius:50%;background:<%= t.bg %>;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:14px;flex-shrink:0;">
-            <%= t.letter %>
+    <!-- Desktop: 2-row grid layout -->
+    <div class="reels-testi-desktop">
+      <div style="display:flex; gap:16px; overflow-x:auto; padding:4px 2px 12px; scrollbar-width:none; margin-bottom:16px;">
+        <% testimonials.slice(0,4).forEach(t => { %>
+        <div style="flex-shrink:0; width:260px; background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:20px; box-shadow:0 1px 6px rgba(0,0,0,0.05);">
+          <div style="display:flex; gap:2px; margin-bottom:12px;"><% for(let i=0;i<5;i++) { %><span style="color:#f59e0b; font-size:15px;">★</span><% } %></div>
+          <p style="font-size:13px; color:#374151; line-height:1.65; margin-bottom:16px;">"<%= t.quote %>"</p>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:36px;height:36px;border-radius:50%;background:<%= t.bg %>;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:14px;flex-shrink:0;"><%= t.letter %></div>
+            <div style="font-size:13px; font-weight:600; color:#111827;"><%= t.name %></div>
           </div>
-          <div style="font-size:13px; font-weight:600; color:#111827;"><%= t.name %></div>
         </div>
+        <% }) %>
       </div>
-      <% }) %>
+      <div style="display:flex; gap:16px; overflow-x:auto; padding:4px 2px 12px; scrollbar-width:none;">
+        <% testimonials.slice(4).forEach(t => { %>
+        <div style="flex-shrink:0; width:260px; background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:20px; box-shadow:0 1px 6px rgba(0,0,0,0.05);">
+          <div style="display:flex; gap:2px; margin-bottom:12px;"><% for(let i=0;i<5;i++) { %><span style="color:#f59e0b; font-size:15px;">★</span><% } %></div>
+          <p style="font-size:13px; color:#374151; line-height:1.65; margin-bottom:16px;">"<%= t.quote %>"</p>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:36px;height:36px;border-radius:50%;background:<%= t.bg %>;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:14px;flex-shrink:0;"><%= t.letter %></div>
+            <div style="font-size:13px; font-weight:600; color:#111827;"><%= t.name %></div>
+          </div>
+        </div>
+        <% }) %>
+      </div>
     </div>
-    <% }) %>
+
+    <!-- Mobile: single-row marquee -->
+    <div class="reels-testi-marquee-wrap">
+      <div class="reels-testi-track">
+        <% [...testimonials, ...testimonials].forEach(t => { %>
+        <div class="reels-testi-card">
+          <div style="display:flex; gap:2px; margin-bottom:8px;"><% for(let i=0;i<5;i++) { %><span style="color:#f59e0b; font-size:13px;">★</span><% } %></div>
+          <p style="font-size:11px; color:#374151; line-height:1.55; margin-bottom:10px;">"<%= t.quote %>"</p>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <div style="width:28px;height:28px;border-radius:50%;background:<%= t.bg %>;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:11px;flex-shrink:0;"><%= t.letter %></div>
+            <div style="font-size:11px; font-weight:600; color:#111827;"><%= t.name %></div>
+          </div>
+        </div>
+        <% }) %>
+      </div>
+    </div>
+
   </section>
 
   <!-- ── HOW IT WORKS (FINAL CTA) ──────────────────────────────────────────── -->
-  <section style="background:#f9fafb; border-top:1px solid #e5e7eb; padding: 72px 24px 80px; text-align:center;">
+  <section class="reels-how-section" style="background:#f9fafb; border-top:1px solid #e5e7eb; padding: 72px 24px 80px; text-align:center;">
     <div style="max-width:760px; margin:0 auto;">
       <h2 style="font-size:clamp(1.6rem,4vw,2.4rem); font-weight:800; color:#111827; margin-bottom:8px;">
         How it works
       </h2>
       <p style="font-size:15px; color:#7c3aed; font-weight:600; margin-bottom:48px;">Create faceless videos in three simple steps</p>
 
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-8" style="margin-bottom:52px;">
+      <div class="reels-how-grid grid grid-cols-3 gap-8" style="margin-bottom:52px;">
         <% [
           ['1','Enter your topic','Type any niche or idea — or choose from our quick-start templates.','#7c3aed'],
           ['2','AI builds everything','Script, voice recording, stock clips, captions — fully automated.','#a855f7'],
           ['3','Download & post','One-click MP4 download. Share anywhere in seconds.','#ec4899'],
         ].forEach(s => { %>
-        <div style="display:flex; flex-direction:column; align-items:center; gap:14px;">
-          <div style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,<%= s[3] %>20,<%= s[3] %>40);border:2px solid <%= s[3] %>50;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:<%= s[3] %>;">
+        <div class="reels-how-step" style="display:flex; flex-direction:column; align-items:center; gap:14px;">
+          <div class="step-num" style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,<%= s[3] %>20,<%= s[3] %>40);border:2px solid <%= s[3] %>50;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:<%= s[3] %>;">
             <%= s[0] %>
           </div>
-          <div style="font-size:16px; font-weight:700; color:#111827;"><%= s[1] %></div>
-          <div style="font-size:14px; color:#6b7280; line-height:1.65;"><%= s[2] %></div>
+          <div class="step-title" style="font-size:16px; font-weight:700; color:#111827;"><%= s[1] %></div>
+          <div class="step-desc" style="font-size:14px; color:#6b7280; line-height:1.65;"><%= s[2] %></div>
         </div>
         <% }) %>
       </div>
@@ -409,7 +513,34 @@
 
 </div>
 
+<!-- YouTube player modal -->
+<div id="ytModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:12px">
+  <button onclick="closeYT()" style="position:absolute;top:16px;right:20px;background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:1.4rem;width:38px;height:38px;border-radius:50%;cursor:pointer;">✕</button>
+  <div style="width:min(360px,92vw);aspect-ratio:9/16;border-radius:14px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.6);">
+    <iframe id="ytFrame" src="" frameborder="0" allow="autoplay;encrypted-media" allowfullscreen style="width:100%;height:100%;border:none;"></iframe>
+  </div>
+</div>
+
 <script>
+function ytVideoId(url) {
+  if (!url) return null;
+  const m = url.match(/shorts\/([^?&/]+)/) || url.match(/youtu\.be\/([^?&/]+)/) || url.match(/[?&]v=([^&]+)/);
+  return m ? m[1] : null;
+}
+function playYT(url) {
+  const id = ytVideoId(url);
+  if (!id) return;
+  document.getElementById('ytFrame').src = `https://www.youtube.com/embed/${id}?autoplay=1&rel=0`;
+  document.getElementById('ytModal').style.display = 'flex';
+}
+function closeYT() {
+  document.getElementById('ytFrame').src = '';
+  document.getElementById('ytModal').style.display = 'none';
+}
+document.getElementById('ytModal').addEventListener('click', function(e) {
+  if (e.target === this) closeYT();
+});
+
 let currentSlide = 0;
 const slides = document.querySelectorAll('.carousel-slide');
 

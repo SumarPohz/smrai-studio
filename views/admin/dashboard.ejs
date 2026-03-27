@@ -95,6 +95,9 @@
       <a href="#plans" class="adm-nav-link" data-section="plans">
         <i class="fas fa-list-alt"></i> Recharge Plans
       </a>
+      <a href="#reels" class="adm-nav-link" data-section="reels">
+        <i class="fas fa-film"></i> Reels
+      </a>
       <a href="/dashboard" class="adm-nav-link adm-nav-back">
         <i class="fas fa-arrow-left"></i> Back to App
       </a>
@@ -1838,6 +1841,74 @@
 
     </div><!-- /plans -->
 
+    <!-- ── Section: Reels ───────────────────────────────────────────────────── -->
+    <div id="reels" class="adm-section-page" hidden>
+      <div class="adm-section-header">
+        <h2><i class="fas fa-film"></i> Reels</h2>
+        <p class="adm-section-desc">View, play, download and delete user-generated videos and audio. Deleting frees disk space.</p>
+      </div>
+
+      <!-- ── Channel Proof Manager ── -->
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:1rem 1.25rem;margin-bottom:1.25rem">
+        <div style="font-size:0.78rem;font-weight:700;color:#374151;margin-bottom:0.75rem"><i class="fas fa-tv"></i> Channel Proof (Carousel)</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:0.75rem">
+          <input id="cpChannelName" placeholder="Channel name" style="flex:1;min-width:120px;padding:6px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:0.82rem">
+          <input id="cpHandle" placeholder="@handle" style="flex:1;min-width:100px;padding:6px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:0.82rem">
+        </div>
+        <div id="cpVideoRows" style="display:flex;flex-direction:column;gap:6px;margin-bottom:0.75rem">
+          <div style="display:flex;gap:6px">
+            <input class="cp-video-url" placeholder="YouTube Shorts URL #1" style="flex:1;padding:6px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:0.82rem">
+            <input class="cp-video-views" placeholder="Views (e.g. 1.4M)" style="width:110px;padding:6px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:0.82rem">
+          </div>
+          <div style="display:flex;gap:6px">
+            <input class="cp-video-url" placeholder="YouTube Shorts URL #2" style="flex:1;padding:6px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:0.82rem">
+            <input class="cp-video-views" placeholder="Views (e.g. 223K)" style="width:110px;padding:6px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:0.82rem">
+          </div>
+          <div style="display:flex;gap:6px">
+            <input class="cp-video-url" placeholder="YouTube Shorts URL #3" style="flex:1;padding:6px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:0.82rem">
+            <input class="cp-video-views" placeholder="Views (e.g. 50K)" style="width:110px;padding:6px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:0.82rem">
+          </div>
+        </div>
+        <button onclick="saveChannelProof()" style="padding:7px 18px;background:#7c3aed;color:#fff;border:none;border-radius:8px;font-size:0.82rem;font-weight:700;cursor:pointer">+ Add Channel</button>
+        <div id="cpList" style="margin-top:0.75rem;display:flex;flex-direction:column;gap:6px"></div>
+      </div>
+
+      <!-- ── Niche Video Manager ── -->
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:1rem 1.25rem;margin-bottom:1.25rem">
+        <div style="font-size:0.78rem;font-weight:700;color:#374151;margin-bottom:0.75rem"><i class="fas fa-film"></i> Niche Sample Videos</div>
+        <div id="nicheConfigList" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+
+      <!-- Stats bar -->
+      <div id="reelStats" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:1.25rem"></div>
+
+      <!-- Table -->
+      <div style="overflow-x:auto;border-radius:12px;border:1px solid #e5e7eb">
+        <table style="width:100%;border-collapse:collapse;font-size:0.83rem">
+          <thead>
+            <tr style="background:#f9fafb;border-bottom:1px solid #e5e7eb">
+              <th style="padding:10px 12px;text-align:left;font-weight:700;color:#374151">#</th>
+              <th style="padding:10px 12px;text-align:left;font-weight:700;color:#374151">User</th>
+              <th style="padding:10px 12px;text-align:left;font-weight:700;color:#374151">Topic</th>
+              <th style="padding:10px 12px;text-align:left;font-weight:700;color:#374151">Status</th>
+              <th style="padding:10px 12px;text-align:left;font-weight:700;color:#374151">Created</th>
+              <th style="padding:10px 12px;text-align:left;font-weight:700;color:#374151">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="reelsTableBody">
+            <tr><td colspan="6" style="padding:2rem;text-align:center;color:#9ca3af">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div><!-- /reels -->
+
+    <!-- Reel video player modal -->
+    <div id="reelPlayerModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.82);z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:12px">
+      <button onclick="closeReelPlayer()" style="position:absolute;top:18px;right:22px;background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:1.4rem;width:38px;height:38px;border-radius:50%;cursor:pointer">✕</button>
+      <video id="reelPlayerVideo" controls style="max-width:360px;width:90%;border-radius:12px;background:#000;box-shadow:0 8px 40px rgba(0,0,0,0.6)"></video>
+      <audio id="reelPlayerAudio" controls style="display:none;width:90%;max-width:360px"></audio>
+    </div>
+
     <!-- PaySetu: Complain Modal -->
     <div id="psComplainModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">
       <div style="background:#fff;border-radius:16px;padding:1.5rem;max-width:380px;width:90%;position:relative">
@@ -2294,6 +2365,7 @@ function showSection(id) {
     if (id === "investors")                  { loadInvestors(); }
     if (id === "wallet")                     { loadWalletUsers(1); }
     if (id === "paysetu" && !psLoaded)       { loadPsStats(); loadPsTxns(1); loadPsBillers(); loadPsProviders(); psLoaded = true; }
+    if (id === "reels")                      { loadAdminReels(); loadChannelProof(); loadNicheConfig(); }
   }, 120);
 }
 
@@ -5966,6 +6038,163 @@ async function loadPsTxns(page) {
       pager.appendChild(btn);
     }
   } catch(e) { el.innerHTML = `<p style="color:#dc2626">Error: ${e.message}</p>`; }
+}
+
+// ── Reels Channel Proof ───────────────────────────────────────────────────
+async function loadChannelProof() {
+  const rows = await fetch('/admin/api/reels/channel-proof').then(r => r.json());
+  const el = document.getElementById('cpList');
+  if (!rows.length) { el.innerHTML = '<div style="font-size:0.78rem;color:#9ca3af">No channels added yet.</div>'; return; }
+  el.innerHTML = rows.map(r => {
+    const vids = Array.isArray(r.videos) ? r.videos : (typeof r.videos === 'string' ? JSON.parse(r.videos || '[]') : []);
+    return `<div style="display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;font-size:0.8rem">
+      <div>
+        <strong style="color:#111827">${r.channel_name}</strong>
+        <span style="color:#9ca3af;margin-left:6px">${r.handle||''}</span>
+        <span style="color:#6b7280;margin-left:8px">${vids.length} video(s)</span>
+      </div>
+      <button onclick="deleteChannelProof(${r.id},this)" style="background:#fee2e2;color:#dc2626;border:none;border-radius:6px;padding:3px 10px;font-size:0.75rem;cursor:pointer">🗑</button>
+    </div>`;
+  }).join('');
+}
+
+async function saveChannelProof() {
+  const channel_name = document.getElementById('cpChannelName').value.trim();
+  const handle = document.getElementById('cpHandle').value.trim();
+  if (!channel_name) { showAdmToast('Channel name required', 'error'); return; }
+  const urls = [...document.querySelectorAll('.cp-video-url')].map(i => i.value.trim());
+  const views = [...document.querySelectorAll('.cp-video-views')].map(i => i.value.trim());
+  const videos = urls.map((url, i) => url ? { url, views: views[i] || '' } : null).filter(Boolean);
+  const d = await fetch('/admin/api/reels/channel-proof', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ channel_name, handle, videos })
+  }).then(r => r.json());
+  if (d.success) {
+    showAdmToast('Channel added');
+    document.getElementById('cpChannelName').value = '';
+    document.getElementById('cpHandle').value = '';
+    document.querySelectorAll('.cp-video-url,.cp-video-views').forEach(i => i.value = '');
+    loadChannelProof();
+  } else showAdmToast(d.error || 'Failed', 'error');
+}
+
+async function deleteChannelProof(id, btn) {
+  if (!confirm('Delete this channel entry?')) return;
+  btn.disabled = true;
+  await fetch(`/admin/api/reels/channel-proof/${id}`, { method: 'DELETE' });
+  loadChannelProof();
+}
+
+// ── Reels Niche Config ────────────────────────────────────────────────────
+const _defaultNiches = ['Act of Kindness','Biblical Stories','Anime Stories','Heist','Mythology','Horror','Finance Tips','Motivation'];
+
+async function loadNicheConfig() {
+  const rows = await fetch('/admin/api/reels/niche-config').then(r => r.json());
+  const map = Object.fromEntries(rows.map(r => [r.niche_label, r.video_url || '']));
+  const el = document.getElementById('nicheConfigList');
+  el.innerHTML = _defaultNiches.map(label => `
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:0.8rem;font-weight:600;color:#374151;min-width:130px">${label}</span>
+      <input id="niche_${label.replace(/\s+/g,'_')}" value="${map[label]||''}" placeholder="YouTube Shorts URL" style="flex:1;padding:5px 9px;border:1px solid #d1d5db;border-radius:7px;font-size:0.78rem">
+      <button onclick="saveNicheVideo('${label}')" style="padding:5px 12px;background:#7c3aed;color:#fff;border:none;border-radius:7px;font-size:0.75rem;font-weight:700;cursor:pointer">Save</button>
+    </div>`).join('');
+}
+
+async function saveNicheVideo(label) {
+  const url = document.getElementById('niche_' + label.replace(/\s+/g,'_')).value.trim();
+  const d = await fetch('/admin/api/reels/niche-config', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ niche_label: label, video_url: url })
+  }).then(r => r.json());
+  if (d.success) showAdmToast(`Saved: ${label}`);
+  else showAdmToast(d.error || 'Failed', 'error');
+}
+
+// ── Admin Reels ────────────────────────────────────────────────────────────
+async function loadAdminReels() {
+  const tbody = document.getElementById('reelsTableBody');
+  const statsEl = document.getElementById('reelStats');
+  tbody.innerHTML = '<tr><td colspan="6" style="padding:2rem;text-align:center;color:#9ca3af">Loading…</td></tr>';
+  try {
+    const rows = await fetch('/admin/api/reels').then(r => r.json());
+    const total = rows.length;
+    const completed = rows.filter(r => r.status === 'completed').length;
+    const failed = rows.filter(r => r.status === 'failed').length;
+    statsEl.innerHTML = [
+      ['Total', total, '#6366f1'],
+      ['Completed', completed, '#16a34a'],
+      ['Failed', failed, '#dc2626'],
+      ['Processing', total - completed - failed, '#f59e0b'],
+    ].map(([l,v,c]) => `<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:10px 18px;min-width:100px;text-align:center"><div style="font-size:1.3rem;font-weight:900;color:${c}">${v}</div><div style="font-size:0.72rem;color:#6b7280;text-transform:uppercase;letter-spacing:.05em">${l}</div></div>`).join('');
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="padding:2rem;text-align:center;color:#9ca3af">No reels found</td></tr>';
+      return;
+    }
+    const statusBadge = s => {
+      const map = { completed:'#d1fae5:#065f46', failed:'#fee2e2:#991b1b', processing:'#fef3c7:#92400e' };
+      const [bg, col] = (map[s] || '#f3f4f6:#374151').split(':');
+      return `<span style="background:${bg};color:${col};padding:2px 9px;border-radius:20px;font-size:0.75rem;font-weight:700">${s}</span>`;
+    };
+    tbody.innerHTML = rows.map((r, i) => `
+      <tr style="border-bottom:1px solid #f3f4f6">
+        <td style="padding:9px 12px;color:#9ca3af">${i+1}</td>
+        <td style="padding:9px 12px">
+          <div style="font-weight:700;color:#111827">${r.name || '—'}</div>
+          <div style="font-size:0.75rem;color:#6b7280">${r.email || ''}</div>
+        </td>
+        <td style="padding:9px 12px;color:#374151;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(r.topic||'').replace(/"/g,'&quot;')}">${r.topic || r.title || '—'}</td>
+        <td style="padding:9px 12px">${statusBadge(r.status)}</td>
+        <td style="padding:9px 12px;color:#6b7280;font-size:0.78rem">${new Date(r.created_at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</td>
+        <td style="padding:9px 12px">
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            ${r.status==='completed'?`<button onclick="playReel(${r.id})" style="padding:4px 10px;background:#ede9fe;color:#4f46e5;border:none;border-radius:7px;font-size:0.78rem;font-weight:700;cursor:pointer">▶ Play</button>`:''}
+            ${r.status==='completed'?`<a href="/videos/${r.id}.mp4" download style="padding:4px 10px;background:#dbeafe;color:#1d4ed8;border-radius:7px;font-size:0.78rem;font-weight:700;text-decoration:none">⬇ Video</a>`:''}
+            ${r.status==='completed'?`<a href="/audio/${r.id}.mp3" download style="padding:4px 10px;background:#d1fae5;color:#065f46;border-radius:7px;font-size:0.78rem;font-weight:700;text-decoration:none">⬇ Audio</a>`:''}
+            <button onclick="deleteAdminReel(${r.id},this)" style="padding:4px 10px;background:#fee2e2;color:#dc2626;border:none;border-radius:7px;font-size:0.78rem;font-weight:700;cursor:pointer">🗑 Delete</button>
+          </div>
+        </td>
+      </tr>`).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="6" style="padding:2rem;text-align:center;color:#dc2626">Error: ${e.message}</td></tr>`;
+  }
+}
+
+function playReel(id) {
+  const modal = document.getElementById('reelPlayerModal');
+  const video = document.getElementById('reelPlayerVideo');
+  const audio = document.getElementById('reelPlayerAudio');
+  video.src = `/videos/${id}.mp4`;
+  audio.src = `/audio/${id}.mp3`;
+  video.style.display = 'block';
+  audio.style.display = 'none';
+  video.onerror = () => { video.style.display='none'; audio.style.display='block'; };
+  modal.style.display = 'flex';
+  video.play().catch(() => {});
+}
+
+function closeReelPlayer() {
+  const modal = document.getElementById('reelPlayerModal');
+  const video = document.getElementById('reelPlayerVideo');
+  const audio = document.getElementById('reelPlayerAudio');
+  video.pause(); audio.pause();
+  video.src = ''; audio.src = '';
+  modal.style.display = 'none';
+}
+
+async function deleteAdminReel(id, btn) {
+  if (!confirm('Delete this reel permanently? Files will be removed from disk and users will no longer see it.')) return;
+  btn.disabled = true;
+  try {
+    const d = await fetch(`/admin/api/reels/${id}`, { method: 'DELETE' }).then(r => r.json());
+    if (d.success) {
+      btn.closest('tr').remove();
+      showAdmToast('Reel deleted and files removed');
+      loadAdminReels();
+    } else {
+      showAdmToast(d.error || 'Delete failed', 'error');
+      btn.disabled = false;
+    }
+  } catch(e) { showAdmToast('Delete failed: ' + e.message, 'error'); btn.disabled = false; }
 }
 
 // Delete a transaction permanently from DB

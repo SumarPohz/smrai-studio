@@ -2124,5 +2124,81 @@ export default function adminRouter(db) {
     } catch (err) { res.status(500).json({ success: false, error: err.message }); }
   });
 
+  // ── Reels Channel Proof ──────────────────────────────────────────────────
+  router.get("/api/reels/channel-proof", async (req, res) => {
+    try {
+      const [rows] = await db.query(`SELECT * FROM reels_channel_proof ORDER BY sort_order, created_at DESC`);
+      res.json(rows);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  router.post("/api/reels/channel-proof", async (req, res) => {
+    try {
+      const { channel_name, handle, videos } = req.body;
+      if (!channel_name) return res.status(400).json({ error: 'channel_name required' });
+      const videosJson = JSON.stringify(Array.isArray(videos) ? videos : []);
+      await db.query(`INSERT INTO reels_channel_proof (channel_name, handle, videos) VALUES (?,?,?)`, [channel_name, handle || '', videosJson]);
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  router.delete("/api/reels/channel-proof/:id", async (req, res) => {
+    try {
+      await db.query(`DELETE FROM reels_channel_proof WHERE id = ?`, [parseInt(req.params.id)]);
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  // ── Reels Niche Config ───────────────────────────────────────────────────
+  router.get("/api/reels/niche-config", async (req, res) => {
+    try {
+      const [rows] = await db.query(`SELECT * FROM reels_niche_config ORDER BY niche_label`);
+      res.json(rows);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  router.post("/api/reels/niche-config", async (req, res) => {
+    try {
+      const { niche_label, video_url } = req.body;
+      if (!niche_label) return res.status(400).json({ error: 'niche_label required' });
+      await db.query(
+        `INSERT INTO reels_niche_config (niche_label, video_url) VALUES (?,?)
+         ON DUPLICATE KEY UPDATE video_url = VALUES(video_url)`,
+        [niche_label, video_url || '']
+      );
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  // GET /admin/api/reels — list all user-generated reels
+  router.get("/api/reels", async (req, res) => {
+    try {
+      const [rows] = await db.query(`
+        SELECT r.id, r.topic, r.title, r.status, r.video_url, r.audio_url,
+               r.created_at, u.name, u.email
+        FROM reels r
+        LEFT JOIN users u ON r.user_id = u.id
+        ORDER BY r.created_at DESC
+      `);
+      res.json(rows);
+    } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+  });
+
+  // DELETE /admin/api/reels/:id — remove reel from DB and delete files from disk
+  router.delete("/api/reels/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const [[reel]] = await db.query(`SELECT id FROM reels WHERE id = ?`, [id]);
+      if (reel) {
+        const videoPath = path.join(__dirname, '..', 'public', 'videos', `${id}.mp4`);
+        const audioPath = path.join(__dirname, '..', 'public', 'audio', `${id}.mp3`);
+        if (fs.existsSync(videoPath)) fs.unlinkSync(videoPath);
+        if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath);
+        await db.query(`DELETE FROM reels WHERE id = ?`, [id]);
+      }
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+  });
+
   return router;
 }

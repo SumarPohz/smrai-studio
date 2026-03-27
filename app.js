@@ -280,7 +280,7 @@ await db.query(`
         tag:       "Smart Digital Services Platform",
         headline:  "All Your Digital Needs<br><span class=\"smr-grad\">In One Smart Platform</span>",
         subtitle:  "Pay bills, recharge mobile, create professional resumes, edit photos, and apply for services — all from one powerful dashboard.",
-        trustText: "✦ &nbsp; 50K+ Users &nbsp;·&nbsp; 5+ services &nbsp;·&nbsp; 1 login",
+        trustText: "✦ &nbsp; 50K+ Users &nbsp;·&nbsp; 5+ services",
       })],
       ['homepage_services', JSON.stringify({
         title:    "What you can do with SmrAI-Studio",
@@ -638,6 +638,29 @@ await db.query(`
         created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE KEY uq_user_channel (user_id, channel_id),
         INDEX (user_id)
+      )
+    `);
+
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS reels_channel_proof (
+        id           INT AUTO_INCREMENT PRIMARY KEY,
+        channel_name VARCHAR(100) NOT NULL,
+        handle       VARCHAR(100),
+        videos       JSON,
+        sort_order   INT DEFAULT 0,
+        created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS reels_niche_config (
+        id          INT AUTO_INCREMENT PRIMARY KEY,
+        niche_label VARCHAR(100) UNIQUE NOT NULL,
+        gradient    VARCHAR(500),
+        emoji       VARCHAR(20),
+        emoji2      VARCHAR(20),
+        video_url   VARCHAR(500),
+        updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )
     `);
 
