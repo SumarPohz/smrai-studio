@@ -1151,9 +1151,11 @@
       // Category
       const desc = (p.description || '').toLowerCase();
       const val = (p.validity || '').toLowerCase();
-      if (currentCat === 'data' && !desc.includes('gb') && !desc.includes('data')) return false;
-      if (currentCat === 'voice' && !desc.includes('call') && !desc.includes('voice')) return false;
-      if (currentCat === 'long' && !val.includes('90') && !val.includes('365') && !val.includes('year') && !val.includes('annual')) return false;
+      const cat = (p.category || '').toLowerCase();
+      if (currentCat === 'data'  && cat !== 'data'  && !desc.includes('gb')   && !desc.includes('data'))  return false;
+      if (currentCat === 'voice' && cat !== 'voice' && !desc.includes('call')  && !desc.includes('voice')) return false;
+      if (currentCat === 'long'  && cat !== 'long'  && !val.includes('90')     && !val.includes('365')
+                                                     && !val.includes('year')   && !val.includes('annual')) return false;
       // Chip
       const amt = parseFloat(p.amount);
       if (currentChip === 'u199'    && amt > 199) return false;

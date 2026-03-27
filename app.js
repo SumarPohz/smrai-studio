@@ -4510,7 +4510,9 @@ function mapJioPlan(plan, subCatType) {
     validity,
     description:   benefits || plan.description || subCatType || '',
     category,
-    subscriptions: plan.misc?.subscriptions || []
+    subscriptions: (plan.misc?.subscriptions || [])
+                     .map(s => typeof s === 'string' ? s : (s.name || s.title || s.serviceName || s.offerName || ''))
+                     .filter(Boolean)
   };
 }
 
