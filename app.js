@@ -732,7 +732,7 @@ await db.query(`
         INDEX (type, operator)
       )
     `).catch(() => {});
-    await db.query(`ALTER TABLE recharge_plans ADD COLUMN IF NOT EXISTS circle VARCHAR(60) NOT NULL DEFAULT 'All India'`).catch(() => {});
+    await db.query(`ALTER TABLE recharge_plans ADD COLUMN circle VARCHAR(60) NOT NULL DEFAULT 'All India'`).catch(() => {});
     await db.query(`
       INSERT IGNORE INTO recharge_plans (type, operator, amount, validity, description, category, sort_order) VALUES
       -- Airtel Mobile
