@@ -32,7 +32,6 @@
       <div class="smr-actions">
         <% if (currentUser) { %>
           <a href="/paysetu" class="smr-btn-primary">Explore Services <span class="smr-arrow">→</span></a>
-          <a href="/resume-templates" class="smr-btn-ghost">Build Resume</a>
         <% } else { %>
           <a href="/register" class="smr-btn-primary">Get Started Free <span class="smr-arrow">→</span></a>
           <a href="/login" class="smr-btn-ghost">Log in</a>
@@ -471,17 +470,25 @@
   .smr-hero-art { width: 360px; }
 }
 @media (max-width: 768px) {
-  .smr-hero { padding: 56px 20px 72px; }
-  .smr-hero-inner { flex-direction: column; gap: 40px; }
+  .smr-hero { padding: 20px 16px 48px; }
+  .smr-hero-inner { flex-direction: column; gap: 28px; }
   .smr-hero-art { width: 100%; }
   .smr-h1 { font-size: 2.1rem; }
 }
 @media (max-width: 480px) {
-  .smr-h1 { font-size: 1.85rem; }
-  .smr-actions { flex-direction: column; }
-  .smr-btn-primary, .smr-btn-ghost { justify-content: center; }
-  .smr-hero-art { gap: 10px; }
-  .smr-card { padding: 16px 12px; }
+  .smr-h1 { font-size: 1.55rem; }
+  .smr-sub { font-size: 0.82rem; }
+  .smr-actions { flex-direction: column; gap: 8px; }
+  .smr-btn-primary, .smr-btn-ghost { justify-content: center; padding: 11px 20px; font-size: 0.9rem; }
+  .smr-hero-art { gap: 8px; }
+  .smr-card { padding: 14px 10px; border-radius: 16px; gap: 8px; }
+  .smr-card-icon-wrap { width: 38px; height: 38px; font-size: 20px; border-radius: 10px; }
+  .smr-card-title { font-size: 0.82rem; }
+  .smr-card-sub { font-size: 0.7rem; }
+  .smr-chips { gap: 6px; margin-bottom: 16px; }
+  .smr-chip { padding: 5px 10px; font-size: 11px; }
+  .smr-badge { margin-bottom: 14px; font-size: 11px; }
+  .smr-trust { font-size: 0.75rem; }
 }
 </style>
 
