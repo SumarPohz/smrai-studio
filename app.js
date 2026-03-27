@@ -5024,8 +5024,14 @@ app.get("/api/recharge/dth-limits", ensureAuthenticated, async (req, res) => {
 app.get('/paysetu', ensureAuthenticated, (req, res) => {
   res.render('paysetu/index', { currentUser: req.user });
 });
-app.get('/paysetu/recharge', ensureAuthenticated, (req, res) => {
-  res.render('paysetu/recharge', { currentUser: req.user });
+app.get('/paysetu/recharge', ensureAuthenticated, async (req, res) => {
+  try {
+    const pinRes = await db.query('SELECT wallet_pin FROM users WHERE id = ?', [req.user.id]);
+    const hasPin = !!(pinRes.rows[0]?.wallet_pin);
+    res.render('paysetu/recharge', { currentUser: req.user, hasPin });
+  } catch {
+    res.render('paysetu/recharge', { currentUser: req.user, hasPin: false });
+  }
 });
 app.get('/paysetu/bbps', ensureAuthenticated, (req, res) => {
   res.render('paysetu/bbps', { currentUser: req.user });

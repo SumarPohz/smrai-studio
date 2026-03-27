@@ -446,6 +446,24 @@
   .pm-btn.cancel { background: #f1f5f9; color: #475569; }
   .pm-btn.cancel:hover { background: #e2e8f0; }
 
+  /* ── No PIN Modal ── */
+  .no-pin-modal { text-align: center; padding: 2rem 1.5rem; }
+  .no-pin-icon { font-size: 3rem; margin-bottom: 0.5rem; }
+  .no-pin-body {
+    font-size: 0.88rem; color: #475569; line-height: 1.6;
+    margin: 0.75rem auto 1.5rem; max-width: 280px;
+  }
+  .no-pin-cta-btn {
+    display: block; width: 100%; padding: 0.78rem;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff; font-weight: 700; font-size: 1rem;
+    border-radius: 12px; text-decoration: none;
+    margin-bottom: 0.65rem; transition: opacity 0.2s;
+    box-sizing: border-box;
+  }
+  .no-pin-cta-btn:hover { opacity: 0.88; }
+  .no-pin-cancel { width: 100%; margin-top: 0; background: #f1f5f9; color: #64748b; font-size: 0.85rem; }
+
   /* ── Spinner ── */
   .ds-spinner-overlay {
     display: none; position: fixed; inset: 0;
@@ -862,6 +880,20 @@
   </div>
 </div>
 
+<!-- ── No PIN Prompt Modal ── -->
+<div class="ds-modal-backdrop" id="no-pin-modal">
+  <div class="ds-modal no-pin-modal">
+    <div class="no-pin-icon">🔐</div>
+    <div class="ds-modal-title">Wallet PIN Not Set</div>
+    <div class="no-pin-body">
+      To make payments from your wallet, you need to set a <strong>4-digit security PIN</strong> first.
+      This keeps your wallet safe even if someone else accesses your account.
+    </div>
+    <a href="/paysetu/set-pin" class="no-pin-cta-btn">Create PIN →</a>
+    <button class="pm-btn cancel no-pin-cancel" onclick="closeNoPinModal()">Maybe Later</button>
+  </div>
+</div>
+
 <!-- Spinner & Toast -->
 <div class="ds-spinner-overlay" id="spinner"><div class="ds-spinner"></div></div>
 <div class="ds-toast" id="toast"></div>
@@ -872,7 +904,7 @@
     <div class="rcpt-body">
       <div class="rcpt-header">
         <div class="rcpt-logo">
-          <img src="/images/logo.png" alt="SmrAI Studio">
+          <img src="/images/favicon-32.png" alt="SmrAI Studio">
           <div class="rcpt-logo-name">SmrAI Studio</div>
         </div>
         <div class="rcpt-title-wrap">
@@ -914,6 +946,7 @@
 </div>
 
 <script>
+  const HAS_WALLET_PIN = <%- JSON.stringify(hasPin) %>;
   const OPERATORS = {
     mobile: [
       { id: 'Jio',           label: 'Jio',          cls: 'op-jio',    abbr: 'JIO' },
@@ -1172,11 +1205,18 @@
   /* ── PIN Modal ── */
   function openPinModal() {
     closeBkModal();
+    if (!HAS_WALLET_PIN) {
+      document.getElementById('no-pin-modal').classList.add('open');
+      return;
+    }
     clearPinInputs();
     document.getElementById('pm-error').textContent = '';
     document.getElementById('pm-set-link').style.display = 'none';
     document.getElementById('pin-modal').classList.add('open');
     setTimeout(() => document.querySelector('#pm-row .pm-otp-box').focus(), 100);
+  }
+  function closeNoPinModal() {
+    document.getElementById('no-pin-modal').classList.remove('open');
   }
   function closePinModal() {
     document.getElementById('pin-modal').classList.remove('open');
