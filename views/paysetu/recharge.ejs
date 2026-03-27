@@ -1164,8 +1164,14 @@
       if (currentChip === '28d' && !val.includes('28')) return false;
       if (currentChip === '84d' && !val.includes('84') && !val.includes('90')) return false;
       if (currentChip === '365d' && !val.includes('365') && !val.includes('year') && !val.includes('annual')) return false;
-      // Search
-      if (search && !desc.includes(search) && !String(p.amount).includes(search) && !val.includes(search)) return false;
+      // Search — numeric input matches exact amount only; text matches description/validity
+      if (search) {
+        if (/^\d+$/.test(search)) {
+          if (String(p.amount) !== search) return false;
+        } else {
+          if (!desc.includes(search) && !val.includes(search)) return false;
+        }
+      }
       return true;
     });
     filteredPlans = plans;
