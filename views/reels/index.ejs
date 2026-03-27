@@ -321,22 +321,13 @@
             <% slide.videos.slice(0,3).forEach((v, vi) => { %>
             <div onclick="<%= v.url ? 'playYT(\''+v.url+'\')' : '' %>"
                  style="flex:1; aspect-ratio:9/16; border-radius:10px; overflow:hidden; position:relative; background:<%= gradients[vi % gradients.length] %>; <%= v.url ? 'cursor:pointer;' : '' %>">
-              <% if (v.url) { %>
-              <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
-                <div style="width:36px;height:36px;background:rgba(255,255,255,0.25);border-radius:50%;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                </div>
-              </div>
-              <% } %>
               <% if (si === 0) { %>
                 <div style="position:absolute;top:8px;left:8px;background:#ef4444;color:white;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;">Pinned</div>
               <% } %>
-              <% if (v.views) { %>
               <div style="position:absolute;bottom:8px;left:8px;color:white;font-size:12px;font-weight:600;display:flex;align-items:center;gap:4px;">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                <%= v.views %>
+                <%= v.views || '' %>
               </div>
-              <% } %>
             </div>
             <% }) %>
           </div>
