@@ -3913,7 +3913,7 @@ app.get("/refer", ensureAuthenticated, async (req, res) => {
       qrDataUrl,
       walletBalance: parseFloat(u.wallet_balance) || 0,
       invitedCount,
-      totalEarned: invitedCount * 20, // fixed ₹20 per referral
+      totalEarned: invitedCount * 10, // fixed ₹10 per referral
     });
   } catch (err) {
     res.redirect("/dashboard");
@@ -4353,7 +4353,7 @@ if (existing.rows.length > 0) {
         [userId]
       );
       if (parseInt(payCount.rows[0].count) === 1) {
-        const reward = 20; // fixed ₹20 per successful referral
+        const reward = 10; // fixed ₹10 per successful referral
         await db.query(
           "UPDATE users SET wallet_balance = wallet_balance + ? WHERE id=?",
           [reward, referrerId]
