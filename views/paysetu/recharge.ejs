@@ -755,7 +755,7 @@
             <input class="ds-input" id="confirm-input" type="tel" inputmode="numeric"
                    placeholder="e.g. 9876543210" maxlength="15" oninput="onConfirmInput()" />
           </div>
-          <div class="ds-field">
+          <div class="ds-field" id="region-field">
             <label>Region</label>
             <div class="ds-select-wrap">
               <select class="ds-select" id="region-select">
@@ -1015,6 +1015,13 @@
     document.getElementById('dth-amount-input').value = '';
     document.getElementById('num-error').style.display = 'none';
     allPlans = []; filteredPlans = [];
+    // Jio plans are All India — no region selection needed
+    const regionField = document.getElementById('region-field');
+    if (regionField) {
+      const isJio = op.id === 'Jio';
+      regionField.style.display = isJio ? 'none' : '';
+      if (isJio) document.getElementById('region-select').value = '';
+    }
   }
 
   /* ── Sidebar ── */
