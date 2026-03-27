@@ -5214,3 +5214,9 @@ app.post('/api/user/pin/verify', ensureAuthenticated, async (req, res) => {
     return res.status(500).json({ success: false, message: 'Verification error.' });
   }
 });
+
+// ── 404 catch-all ─────────────────────────────────────────────────────────────
+app.use((req, res) => {
+  if (req.accepts('html')) return res.status(404).render('404');
+  res.status(404).json({ success: false, message: 'Not found' });
+});

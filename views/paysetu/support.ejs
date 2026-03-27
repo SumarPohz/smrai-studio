@@ -240,6 +240,26 @@
     }
     .ps-tut-title { max-width: 520px; margin-left: auto; margin-right: auto; padding: 0; }
   }
+  @media (max-width: 768px) {
+    .header-fixed-wrap { display: none !important; }
+    footer             { display: none !important; }
+    main               { padding-top: 0 !important; }
+    .refer-float, .whatsapp-float, .gc-float { display: none !important; }
+  }
+
+  /* Toast */
+  .sup-toast {
+    position: fixed; bottom: 90px; left: 50%;
+    transform: translateX(-50%) translateY(12px);
+    background: #1e293b; color: #fff;
+    padding: 12px 20px; border-radius: 12px;
+    font-size: 14px; font-weight: 500;
+    z-index: 500; opacity: 0;
+    transition: opacity 0.25s, transform 0.25s;
+    white-space: nowrap; pointer-events: none;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+  }
+  .sup-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 </style>
 
 <div class="ps-page">
@@ -253,17 +273,17 @@
   <!-- Select Support card -->
   <div class="ps-sup-card">
     <div class="ps-sup-label">Select Support</div>
-    <a class="ps-sup-item" href="tel:+918291539050">
+    <a class="ps-sup-item" href="tel:+918787509536">
       <span class="ps-sup-icon">📞</span>
       Call Support
       <span class="ps-sup-chevron">›</span>
     </a>
-    <a class="ps-sup-item" href="mailto:support@smrai.studio">
+    <a class="ps-sup-item" href="mailto:tech@sumarpohz.com">
       <span class="ps-sup-icon">✉️</span>
       Email Support
       <span class="ps-sup-chevron">›</span>
     </a>
-    <a class="ps-sup-item" href="https://wa.me/918291539050" target="_blank">
+    <a class="ps-sup-item" href="https://wa.me/918787509536" target="_blank">
       <span class="ps-sup-icon">💬</span>
       WhatsApp Support
       <span class="ps-sup-chevron">›</span>
@@ -314,7 +334,7 @@
   </div>
 
   <!-- WhatsApp CTA -->
-  <a class="ps-wa-cta" href="https://wa.me/918291539050" target="_blank">
+  <a class="ps-wa-cta" href="https://wa.me/918787509536" target="_blank">
     <span class="ps-wa-icon">💬</span>
     <div class="ps-wa-text">
       <div class="wt-title">Chat with us on WhatsApp</div>
@@ -323,6 +343,9 @@
   </a>
 
 </div>
+
+<!-- Toast -->
+<div class="sup-toast" id="supToast"></div>
 
 <!-- Video Modal -->
 <div class="ps-vid-backdrop" id="vidBackdrop" onclick="closeVid(event)">
@@ -356,10 +379,18 @@
     tut3: '',
   };
 
+  function showSupportToast(msg) {
+    const t = document.getElementById('supToast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(window._supToastTimer);
+    window._supToastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+  }
+
   function openVid(id) {
     const ytId = TUTORIALS[id];
     if (!ytId) {
-      alert('Tutorial video coming soon!');
+      showSupportToast('🎬 Tutorial video coming soon!');
       return;
     }
     document.getElementById('vidFrame').src =

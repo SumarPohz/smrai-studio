@@ -515,14 +515,14 @@
   .rcg-progress { height: 3px; background: #e2e8f0; border-radius: 3px; margin-bottom: 20px; overflow: hidden; }
   .rcg-progress-bar { height: 100%; border-radius: 3px; width: 100%; }
   .rcg-progress-bar.success { background: var(--ds-green); }
-  .rcg-actions { display: flex; gap: 10px; }
+  .rcg-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
   .rcg-btn {
-    flex: 1; padding: 12px 10px; border-radius: 10px;
+    flex: 1; min-width: 120px; padding: 12px 10px; border-radius: 10px;
     font-size: 14px; font-weight: 600; cursor: pointer; border: none;
     transition: opacity 0.18s, transform 0.18s;
   }
   .rcg-btn:hover { opacity: 0.85; transform: translateY(-1px); }
-  .rcg-btn.primary { background: var(--ds-blue); color: #fff; }
+  .rcg-btn.primary   { flex: 0 0 100%; background: var(--ds-blue); color: #fff; }
   .rcg-btn.secondary { background: #f1f5f9; color: #334155; }
   /* keep small toast for non-recharge alerts */
   .ds-toast {
@@ -617,6 +617,81 @@
     .ds-plan-validity { font-size: 11px; margin-bottom: 2px; }
     .ds-plan-desc { font-size: 11px; margin-bottom: 8px; line-height: 1.4; }
     .ds-plan-btn { padding: 6px; font-size: 11px; }
+  }
+  @media (max-width: 768px) {
+    .header-fixed-wrap { display: none !important; }
+    footer             { display: none !important; }
+    main               { padding-top: 0 !important; }
+    .refer-float, .whatsapp-float, .gc-float { display: none !important; }
+  }
+
+  /* ── Receipt Modal ── */
+  .rcpt-overlay {
+    position: fixed; inset: 0;
+    background: rgba(15,23,42,0.6);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 950; opacity: 0; pointer-events: none;
+    transition: opacity 0.25s;
+  }
+  .rcpt-overlay.show { opacity: 1; pointer-events: all; }
+  .rcpt-card {
+    background: #fff;
+    width: min(480px, 96vw);
+    max-height: 90vh;
+    overflow-y: auto;
+    border-radius: 12px;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.2);
+    transform: translateY(24px) scale(0.97);
+    transition: transform 0.3s cubic-bezier(0.34,1.5,0.64,1);
+  }
+  .rcpt-overlay.show .rcpt-card { transform: translateY(0) scale(1); }
+  .rcpt-body { padding: 24px 24px 16px; }
+  .rcpt-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding-bottom: 16px; border-bottom: 2px solid #e2e8f0; margin-bottom: 16px;
+  }
+  .rcpt-logo { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .rcpt-logo img { height: 44px; width: auto; object-fit: contain; }
+  .rcpt-logo-name { font-size: 10px; font-weight: 800; color: #1e4db7; letter-spacing: 0.5px; }
+  .rcpt-title-wrap { text-align: center; flex: 1; padding: 0 12px; }
+  .rcpt-title { font-size: 13px; font-weight: 700; color: #1e293b; line-height: 1.4; }
+  .rcpt-brand {
+    background: linear-gradient(135deg, #1e4db7, #2563eb);
+    color: #fff; border-radius: 8px; padding: 7px 10px;
+    text-align: center; min-width: 68px;
+  }
+  .rcpt-brand-name { font-size: 11px; font-weight: 800; letter-spacing: 0.5px; }
+  .rcpt-brand-sub  { font-size: 9px; opacity: 0.85; margin-top: 2px; }
+  .rcpt-table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+  .rcpt-table td { border: 1px solid #cbd5e1; padding: 9px 12px; font-size: 13px; vertical-align: top; }
+  .rcpt-table td:first-child { color: #64748b; font-weight: 500; width: 40%; }
+  .rcpt-table td:last-child  { color: #0f172a; font-weight: 600; word-break: break-all; }
+  .rcpt-status-ok { color: #16a34a; font-weight: 700; }
+  .rcpt-note {
+    font-size: 11px; color: #64748b; text-align: center;
+    border-top: 1px solid #e2e8f0; padding-top: 12px; line-height: 1.6;
+  }
+  .rcpt-actions {
+    display: flex; gap: 10px; padding: 14px 24px 18px;
+  }
+  .rcpt-btn {
+    flex: 1; padding: 11px 8px; border-radius: 10px; border: none;
+    font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity 0.15s;
+  }
+  .rcpt-btn:hover { opacity: 0.85; }
+  .rcpt-btn.primary   { background: var(--ds-blue); color: #fff; }
+  .rcpt-btn.secondary { background: #f1f5f9; color: #334155; }
+  .rcpt-btn.close-btn { background: #fee2e2; color: #991b1b; }
+  @media print {
+    body * { visibility: hidden !important; }
+    .rcpt-card, .rcpt-card * { visibility: visible !important; }
+    .rcpt-card {
+      position: fixed !important; top: 0 !important; left: 0 !important;
+      width: 100% !important; max-height: none !important;
+      box-shadow: none !important; border-radius: 0 !important;
+      transform: none !important;
+    }
+    .rcpt-actions { display: none !important; }
   }
 </style>
 
@@ -790,6 +865,37 @@
 <!-- Spinner & Toast -->
 <div class="ds-spinner-overlay" id="spinner"><div class="ds-spinner"></div></div>
 <div class="ds-toast" id="toast"></div>
+
+<!-- Payment Receipt Modal -->
+<div class="rcpt-overlay" id="rcptOverlay" onclick="if(event.target===this)closeReceipt()">
+  <div class="rcpt-card" id="rcptCard">
+    <div class="rcpt-body">
+      <div class="rcpt-header">
+        <div class="rcpt-logo">
+          <img src="/images/logo.png" alt="SmrAI Studio">
+          <div class="rcpt-logo-name">SmrAI Studio</div>
+        </div>
+        <div class="rcpt-title-wrap">
+          <div class="rcpt-title">Payment Confirmation<br>Receipt</div>
+        </div>
+        <div class="rcpt-brand">
+          <div class="rcpt-brand-name">PaySetu</div>
+          <div class="rcpt-brand-sub">by SmrAI</div>
+        </div>
+      </div>
+      <table class="rcpt-table" id="rcptTable"></table>
+      <div class="rcpt-note">
+        The service provider may take up to 72 hrs to process your request.<br>
+        This receipt is computer generated and no signature is required.
+      </div>
+    </div>
+    <div class="rcpt-actions">
+      <button class="rcpt-btn secondary" onclick="shareReceiptText()">↗ Share</button>
+      <button class="rcpt-btn primary"   onclick="window.print()">🖨 Print</button>
+      <button class="rcpt-btn close-btn" onclick="closeReceipt()">✕ Close</button>
+    </div>
+  </div>
+</div>
 
 <!-- Recharge Status Modal -->
 <div class="rcg-overlay" id="rcgOverlay" onclick="if(event.target===this)hideRcgModal()">
@@ -1168,13 +1274,25 @@
             ]
           });
         } else {
+          window._lastReceipt = {
+            amount:   pendingPlan.amount,
+            operator: selectedOp.label,
+            mobile:   document.getElementById('num-input').value,
+            type:     currentType === 'dth' ? 'DTH' : 'Mobile',
+            ref:      d.ref,
+            date:     new Date().toLocaleString('en-IN', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
+          };
           showRcgModal({
             type: 'success',
             title: 'Recharge Successful!',
             subtitle: `Your ${selectedOp.label} number has been recharged.`,
             pills: [`₹${pendingPlan.amount}`, selectedOp.label, `Ref: ${d.ref}`],
             autoDismiss: 6000,
-            actions: [{ label: 'Done', cls: 'primary', fn: 'hideRcgModal()' }]
+            actions: [
+              { label: '↗ Share Receipt', cls: 'secondary', fn: 'shareReceipt()' },
+              { label: '📋 History',      cls: 'secondary', fn: "window.location='/paysetu/history'" },
+              { label: 'Done',            cls: 'primary',   fn: 'hideRcgModal()' }
+            ]
           });
         }
         pendingPlan = null;
@@ -1275,6 +1393,43 @@
   function hideRcgModal() {
     document.getElementById('rcgOverlay').classList.remove('show');
     if (_rcgTimer) { clearTimeout(_rcgTimer); _rcgTimer = null; }
+  }
+
+  function shareReceipt() {
+    const r = window._lastReceipt;
+    if (!r) return;
+    document.getElementById('rcptTable').innerHTML = [
+      ['Operator',         r.operator],
+      ['Service No',       r.mobile],
+      ['Type',             r.type],
+      ['Amount (₹)',       Number(r.amount).toFixed(2)],
+      ['Reference No',     r.ref],
+      ['Status',           '<span class="rcpt-status-ok">SUCCESS</span>'],
+      ['Transaction Date', r.date],
+    ].map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+    document.getElementById('rcptOverlay').classList.add('show');
+  }
+
+  function closeReceipt() {
+    document.getElementById('rcptOverlay').classList.remove('show');
+  }
+
+  function shareReceiptText() {
+    const r = window._lastReceipt;
+    if (!r) return;
+    const text = `✅ Payment Confirmation Receipt\n\nOperator: ${r.operator}\nService No: ${r.mobile}\nType: ${r.type}\nAmount: ₹${Number(r.amount).toFixed(2)}\nReference No: ${r.ref}\nStatus: SUCCESS\nDate: ${r.date}\n\n— SmrAI PaySetu`;
+    if (navigator.share) {
+      navigator.share({ title: 'Payment Receipt', text }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.querySelector('.rcpt-btn.secondary');
+        if (btn) { const o = btn.textContent; btn.textContent = 'Copied!'; setTimeout(() => btn.textContent = o, 2000); }
+      }).catch(() => {
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.style.cssText = 'position:fixed;top:-9999px';
+        document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+      });
+    }
   }
 </script>
 

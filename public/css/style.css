@@ -2308,12 +2308,13 @@ main section {
 
 @media (max-width: 768px) {
   .refer-float {
-    bottom: 82px;
-    right: 14px;
-    height: 38px;
-    padding: 0 0.85rem 0 0.65rem;
-    font-size: 0.73rem;
+    bottom: 148px;
+    right: 12px;
+    height: 32px;
+    padding: 0 0.7rem 0 0.55rem;
+    font-size: 0.68rem;
   }
+  .refer-float svg { width: 16px; height: 16px; }
 }
 
 .whatsapp-float {
@@ -2353,14 +2354,13 @@ main section {
 
 @media (max-width: 768px) {
   .whatsapp-float {
-    width: 50px;
-    height: 50px;
-    bottom: 18px;
-    right: 16px;
+    width: 42px;
+    height: 42px;
+    bottom: 96px;
+    right: 12px;
   }
-
   .whatsapp-float i {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
   }
 }
 

@@ -23,7 +23,7 @@
     font-size: 96px;
     font-weight: 900;
     line-height: 1;
-    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    background: linear-gradient(135deg, #1e4db7 0%, #2563eb 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -70,7 +70,7 @@
   .err-btn.ghost   { background: #f1f5f9; color: #334155; }
   .err-divider {
     width: 48px; height: 3px;
-    background: linear-gradient(90deg, #ef4444, #f97316);
+    background: linear-gradient(90deg, #1e4db7, #3b82f6);
     border-radius: 3px;
     margin: 0 auto 24px;
   }
@@ -78,17 +78,17 @@
 
 <div class="err-page">
   <div class="err-card">
-    <span class="err-icon">🚫</span>
-    <div class="err-code">403</div>
+    <span class="err-icon">🔍</span>
+    <div class="err-code">404</div>
     <div class="err-divider"></div>
-    <div class="err-title">Access Denied</div>
+    <div class="err-title">Page Not Found</div>
     <div class="err-desc">
-      You don't have permission to view this page.<br>
-      If you think this is a mistake, please contact support.
+      The page you're looking for doesn't exist or has been moved.<br>
+      Let's get you back on track.
     </div>
     <div class="err-actions">
-      <a class="err-btn primary" href="/dashboard">← Back to Dashboard</a>
-      <a class="err-btn ghost"   href="/paysetu/support">Contact Support</a>
+      <a class="err-btn primary" href="/">← Go Home</a>
+      <a class="err-btn ghost"   href="javascript:history.back()">Go Back</a>
     </div>
   </div>
 </div>

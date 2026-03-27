@@ -288,6 +288,12 @@
     40%,80% { transform: translateX(6px); }
   }
   .shake { animation: shake 0.35s ease; }
+  @media (max-width: 768px) {
+    .header-fixed-wrap { display: none !important; }
+    footer             { display: none !important; }
+    main               { padding-top: 0 !important; }
+    .refer-float, .whatsapp-float, .gc-float { display: none !important; }
+  }
 </style>
 
 <div class="ps-wrap">

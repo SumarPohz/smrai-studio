@@ -268,23 +268,64 @@
   /* ── Coming soon toast ── */
   .ps-cs-toast {
     position: fixed;
-    bottom: 78px; left: 50%; transform: translateX(-50%);
+    bottom: 90px; left: 50%;
+    transform: translateX(-50%) translateY(12px);
     background: #1e293b;
     color: #fff;
-    border-radius: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.18);
     padding: 8px 20px;
     font-size: 13px;
     font-weight: 600;
     z-index: 9999;
     pointer-events: none;
     opacity: 0;
-    transition: opacity 0.2s;
+    transition: opacity 0.25s, transform 0.25s;
     white-space: nowrap;
   }
-  .ps-cs-toast.show { opacity: 1; }
+  .ps-cs-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── Mobile: hide global header/footer ── */
+  @media (max-width: 768px) {
+    .header-fixed-wrap { display: none !important; }
+    footer             { display: none !important; }
+    main               { padding-top: 0 !important; }
+    .refer-float, .whatsapp-float, .gc-float { display: none !important; }
+  }
+
+  /* ── Hamburger button ── */
+  .ps-hbr {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: #eff6ff; border: none; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 5px; flex-shrink: 0;
+  }
+  .ps-hbr-bar { width: 18px; height: 2px; background: var(--ps-blue); border-radius: 2px; transition: all 0.22s; }
+  .ps-hbr.open .ps-hbr-bar:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+  .ps-hbr.open .ps-hbr-bar:nth-child(2) { opacity: 0; }
+  .ps-hbr.open .ps-hbr-bar:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+  /* ── Nav Drawer ── */
+  .ps-nav-drawer {
+    display: none; flex-direction: column;
+    background: #fff; border-bottom: 1px solid #e2e8f0;
+    padding: 6px 0; box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  }
+  .ps-nav-drawer.open { display: flex; }
+  .ps-nav-link {
+    display: flex; align-items: center; gap: 12px;
+    padding: 13px 20px; font-size: 14px; font-weight: 600;
+    color: #334155; text-decoration: none;
+    border-left: 3px solid transparent; transition: all 0.15s;
+  }
+  .ps-nav-link:active { background: #f0f4ff; border-left-color: var(--ps-blue); color: var(--ps-blue); }
+  .ps-nav-link .nl-icon { font-size: 18px; width: 24px; text-align: center; }
+  .ps-nav-divider { height: 1px; background: #f1f5f9; margin: 4px 0; }
 
   /* ── Desktop overrides ── */
   @media (min-width: 769px) {
+    .ps-hbr        { display: none; }
+    .ps-nav-drawer { display: none !important; }
     .ps-page { max-width: 960px; padding-bottom: 24px; }
     .ps-header { max-width: 960px; margin: 0 auto; border-radius: 0 0 16px 16px; }
     .ps-slider-wrap { height: 200px; margin: 16px 0 0; }
@@ -304,6 +345,11 @@
 
   <!-- 1. Greeting Header -->
   <div class="ps-header">
+    <button class="ps-hbr" id="psHbrBtn" onclick="togglePsNav()">
+      <span class="ps-hbr-bar"></span>
+      <span class="ps-hbr-bar"></span>
+      <span class="ps-hbr-bar"></span>
+    </button>
     <div class="ps-header-left">
       <div class="ps-avatar" id="ps-avatar-init"></div>
       <div>
@@ -312,6 +358,16 @@
       </div>
     </div>
     <a class="ps-header-chat" href="/paysetu/support" title="Help & Support">💬</a>
+  </div>
+
+  <!-- Nav Drawer (mobile only) -->
+  <div class="ps-nav-drawer" id="psNavDrawer">
+    <a class="ps-nav-link" href="/"><span class="nl-icon">🏠</span> Home</a>
+    <a class="ps-nav-link" href="/paysetu/history"><span class="nl-icon">📋</span> History</a>
+    <a class="ps-nav-link" href="/paysetu/wallet-topup"><span class="nl-icon">👛</span> Wallet Top-up</a>
+    <div class="ps-nav-divider"></div>
+    <a class="ps-nav-link" href="/profile"><span class="nl-icon">👤</span> Profile</a>
+    <a class="ps-nav-link" href="/logout"><span class="nl-icon">🚪</span> Logout</a>
   </div>
 
   <!-- 2. Hero Banner Slider -->
@@ -355,9 +411,9 @@
 
   <!-- 3. Quick Action Row -->
   <div class="ps-quick-row">
-    <button class="ps-quick-pill" onclick="comingSoon('Refer & Earn')">
+    <a class="ps-quick-pill" href="/refer">
       <span>🏷️</span> Refer &amp; Earn
-    </button>
+    </a>
     <a class="ps-quick-pill" href="/paysetu/history">
       <span>📊</span> Balance &amp; History
     </a>
@@ -514,6 +570,20 @@
     clearTimeout(_csTimer);
     _csTimer = setTimeout(() => t.classList.remove('show'), 2500);
   }
+
+  // Hamburger nav drawer
+  function togglePsNav() {
+    const btn    = document.getElementById('psHbrBtn');
+    const drawer = document.getElementById('psNavDrawer');
+    const open   = drawer.classList.toggle('open');
+    btn.classList.toggle('open', open);
+  }
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#psHbrBtn') && !e.target.closest('#psNavDrawer')) {
+      document.getElementById('psNavDrawer')?.classList.remove('open');
+      document.getElementById('psHbrBtn')?.classList.remove('open');
+    }
+  });
 </script>
 
 <%- include('../partials/footer') %>
