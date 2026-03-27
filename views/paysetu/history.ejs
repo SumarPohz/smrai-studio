@@ -284,6 +284,63 @@
     main               { padding-top: 0 !important; }
     .refer-float, .whatsapp-float, .gc-float { display: none !important; }
   }
+
+  /* ── Receipt Modal (for history view) ── */
+  .rcpt-overlay {
+    position: fixed; inset: 0;
+    background: rgba(15,23,42,0.6);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 2000; padding: 16px;
+  }
+  .rcpt-overlay.hidden { display: none; }
+  .rcpt-card {
+    background: #fff; border-radius: 16px;
+    max-width: 420px; width: 100%;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.22);
+    overflow: hidden; max-height: 90vh; display: flex; flex-direction: column;
+  }
+  .rcpt-body { padding: 20px; overflow-y: auto; flex: 1; }
+  .rcpt-header {
+    display: flex; align-items: center; gap: 12px;
+    padding-bottom: 14px; border-bottom: 1.5px dashed #e2e8f0; margin-bottom: 14px;
+  }
+  .rcpt-logo { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .rcpt-logo img { height: 36px; width: auto; object-fit: contain; }
+  .rcpt-logo-name { font-size: 9px; font-weight: 700; color: #475569; }
+  .rcpt-title-wrap { flex: 1; text-align: center; }
+  .rcpt-title { font-size: 13px; font-weight: 800; color: #1e293b; line-height: 1.3; }
+  .rcpt-brand {
+    background: linear-gradient(135deg,#1e4db7,#6366f1);
+    color:#fff; border-radius:8px; padding:6px 10px; text-align:center;
+  }
+  .rcpt-brand-name { font-size: 12px; font-weight: 800; }
+  .rcpt-brand-sub  { font-size: 9px; opacity: 0.85; }
+  .rcpt-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .rcpt-table td { padding: 6px 4px; border-bottom: 1px solid #f1f5f9; }
+  .rcpt-table td:first-child { color: #64748b; width: 40%; }
+  .rcpt-table td:last-child  { font-weight: 600; color: #1e293b; text-align: right; }
+  .rcpt-note {
+    font-size: 10px; color: #94a3b8; text-align: center;
+    margin-top: 12px; line-height: 1.5;
+  }
+  .rcpt-actions {
+    display: flex; gap: 8px; padding: 14px 20px;
+    border-top: 1px solid #f1f5f9; background: #f8fafc;
+  }
+  .rcpt-btn {
+    flex: 1; padding: 9px 6px; border: none; border-radius: 10px;
+    font-size: 12px; font-weight: 700; cursor: pointer; transition: opacity .2s;
+  }
+  .rcpt-btn:hover { opacity: 0.88; }
+  .rcpt-btn.primary   { background: #1e4db7; color: #fff; }
+  .rcpt-btn.secondary { background: #f1f5f9; color: #334155; }
+  .rcpt-btn.close-btn { background: #fee2e2; color: #991b1b; }
+  @media print {
+    body * { visibility: hidden !important; }
+    .rcpt-card, .rcpt-card * { visibility: visible !important; }
+    .rcpt-card { position:fixed!important;top:0!important;left:0!important;width:100%!important;max-height:none!important;box-shadow:none!important;border-radius:0!important; }
+    .rcpt-actions { display: none !important; }
+  }
 </style>
 
 <div class="ps-wrap">
@@ -365,11 +422,47 @@
         <div class="ht-detail-label">Reference</div>
         <div class="ht-detail-value" id="hdRef"></div>
       </div>
+      <div id="hdReceiptBtn" style="display:none;margin-top:4px">
+        <button onclick="openHistoryReceipt()" style="width:100%;padding:9px;background:linear-gradient(135deg,#1e4db7,#6366f1);color:#fff;border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer">
+          🧾 View Receipt
+        </button>
+      </div>
     </div>
 
   </div><!-- /.ht-page -->
 
 </div><!-- /.ps-wrap -->
+
+<!-- Receipt Modal -->
+<div class="rcpt-overlay hidden" id="htRcptOverlay" onclick="if(event.target===this)closeHtReceipt()">
+  <div class="rcpt-card">
+    <div class="rcpt-body">
+      <div class="rcpt-header">
+        <div class="rcpt-logo">
+          <img src="/images/favicon-32.png" alt="SmrAI Studio">
+          <div class="rcpt-logo-name">SmrAI Studio</div>
+        </div>
+        <div class="rcpt-title-wrap">
+          <div class="rcpt-title">Payment Confirmation<br>Receipt</div>
+        </div>
+        <div class="rcpt-brand">
+          <div class="rcpt-brand-name">PaySetu</div>
+          <div class="rcpt-brand-sub">by SmrAI</div>
+        </div>
+      </div>
+      <table class="rcpt-table" id="htRcptTable"></table>
+      <div class="rcpt-note">
+        The service provider may take up to 72 hrs to process your request.<br>
+        This receipt is computer generated and no signature is required.
+      </div>
+    </div>
+    <div class="rcpt-actions">
+      <button class="rcpt-btn secondary" onclick="shareHtReceipt()">↗ Share</button>
+      <button class="rcpt-btn primary"   onclick="window.print()">🖨 Print</button>
+      <button class="rcpt-btn close-btn" onclick="closeHtReceipt()">✕ Close</button>
+    </div>
+  </div>
+</div>
 
 <!-- Mobile Bottom Tabs -->
 <div class="ps-tabs">
@@ -531,9 +624,14 @@
     }
   }
 
+  let _currentDetailTx = null;
+  let _currentDetailType = null;
+
   function showDetail(i, type) {
     const tx = type === 'recharge' ? window._rHistory[i] : window._bHistory[i];
     if (!tx) return;
+    _currentDetailTx = tx;
+    _currentDetailType = type;
     document.getElementById('hdAmt').textContent = '₹' + Number(tx.amount).toFixed(2);
     document.getElementById('hdStatus').innerHTML =
       `<span class="ht-status-badge ${tx.status}">${tx.status}</span>`;
@@ -547,10 +645,48 @@
       type === 'recharge' ? (tx.type === 'dth' ? 'DTH Prepaid' : 'Mobile Prepaid') : (tx.category || '—');
     document.getElementById('hdRef').textContent = tx.external_ref || tx.id || '—';
 
+    // Show receipt button only for successful recharge transactions
+    const showReceipt = type === 'recharge' && tx.status === 'success';
+    document.getElementById('hdReceiptBtn').style.display = showReceipt ? 'block' : 'none';
+
     document.querySelectorAll('.ht-trow').forEach(r => r.classList.remove('ht-selected'));
     const rows = document.querySelectorAll('.ht-trow');
     if (rows[i]) rows[i].classList.add('ht-selected');
     document.getElementById('htDetail').classList.add('open');
+  }
+
+  function openHistoryReceipt() {
+    const tx = _currentDetailTx;
+    if (!tx) return;
+    const date = new Date(tx.created_at).toLocaleString('en-IN', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+    const rows = [
+      ['Status',    tx.status.toUpperCase()],
+      ['Operator',  tx.operator],
+      ['Number',    tx.mobile],
+      ['Type',      tx.type === 'dth' ? 'DTH Prepaid' : 'Mobile Prepaid'],
+      ['Amount',    '₹' + Number(tx.amount).toFixed(2)],
+      ['Date',      date],
+      ['Reference', tx.external_ref || String(tx.id)],
+    ];
+    document.getElementById('htRcptTable').innerHTML = rows.map(([k,v]) =>
+      `<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+    document.getElementById('htRcptOverlay').classList.remove('hidden');
+  }
+
+  function closeHtReceipt() {
+    document.getElementById('htRcptOverlay').classList.add('hidden');
+  }
+
+  function shareHtReceipt() {
+    const tx = _currentDetailTx;
+    if (!tx) return;
+    const date = new Date(tx.created_at).toLocaleString('en-IN');
+    const text = `✅ Recharge Receipt\nOperator: ${tx.operator}\nNumber: ${tx.mobile}\nAmount: ₹${Number(tx.amount).toFixed(2)}\nRef: ${tx.external_ref || tx.id}\nDate: ${date}\n\nPowered by PaySetu · SmrAI Studio`;
+    if (navigator.share) {
+      navigator.share({ title: 'Recharge Receipt', text }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(text).then(() => alert('Receipt copied to clipboard!'));
+    }
   }
 
   function closeDetail() {

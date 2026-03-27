@@ -1782,6 +1782,23 @@ export default function adminRouter(db) {
     } catch (err) { res.status(500).json({ success: false, message: err.message }); }
   });
 
+  // DELETE /admin/api/paysetu/transactions/:id — permanently remove a transaction
+  router.delete("/api/paysetu/transactions/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const type = req.query.type; // 'recharge' or 'bbps'
+      if (!id || !['recharge', 'bbps'].includes(type)) {
+        return res.status(400).json({ success: false, message: 'Valid id and type (recharge|bbps) required.' });
+      }
+      const table = type === 'recharge' ? 'recharge_transactions' : 'bbps_transactions';
+      const result = await db.query(`DELETE FROM ${table} WHERE id = ?`, [id]);
+      if ((result.affectedRows ?? result.rowCount ?? 0) === 0) {
+        return res.status(404).json({ success: false, message: 'Transaction not found.' });
+      }
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+  });
+
   // POST /admin/api/paysetu/reset-pin — clear wallet PIN for a user
   router.post("/api/paysetu/reset-pin", async (req, res) => {
     try {

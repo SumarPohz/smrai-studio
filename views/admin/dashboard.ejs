@@ -5930,6 +5930,7 @@ async function loadPsTxns(page) {
         : (t.status === 'pending' && t.txn_type === 'recharge')
         ? `<button onclick="checkRechargeTxnStatus(${t.id},this)" style="padding:0.25rem 0.55rem;background:#0891b2;color:#fff;border:none;border-radius:5px;font-size:0.72rem;cursor:pointer;margin-right:0.3rem">Check Status</button><button onclick="openComplainModal(${t.id})" style="padding:0.25rem 0.55rem;background:#f59e0b;color:#fff;border:none;border-radius:5px;font-size:0.72rem;cursor:pointer;margin-right:0.3rem">Complain</button><button onclick="forceRefundPending(${t.id})" style="padding:0.25rem 0.55rem;background:#dc2626;color:#fff;border:none;border-radius:5px;font-size:0.72rem;cursor:pointer;margin-right:0.3rem">Force Refund</button>` : '';
       const pinBtn = `<button onclick="openPsPinModal(${t.user_id},'${(t.user_name||'User').replace(/'/g,"\\'")} (${t.user_email||''})')" style="padding:0.25rem 0.55rem;background:#6366f1;color:#fff;border:none;border-radius:5px;font-size:0.72rem;cursor:pointer">Reset PIN</button>`;
+      const delBtn = `<button onclick="deletePsTxn(${t.id},'${t.txn_type}')" style="padding:0.25rem 0.55rem;background:#dc2626;color:#fff;border:none;border-radius:5px;font-size:0.72rem;cursor:pointer;margin-left:0.3rem" title="Delete transaction permanently">🗑</button>`;
       return `<tr style="border-bottom:1px solid #f3f4f6">
         <td style="padding:0.5rem 0.45rem;white-space:nowrap">${typeLabel}</td>
         <td style="padding:0.5rem 0.45rem">
@@ -5940,7 +5941,7 @@ async function loadPsTxns(page) {
         <td style="padding:0.5rem 0.45rem;font-weight:700;color:#1e293b">₹${Number(t.amount).toFixed(0)}</td>
         <td style="padding:0.5rem 0.45rem"><span style="font-size:0.72rem;font-weight:700;color:${statusColor};text-transform:uppercase">${t.status}</span></td>
         <td style="padding:0.5rem 0.45rem;font-size:0.75rem;color:#9ca3af">${date}</td>
-        <td style="padding:0.5rem 0.45rem">${refundBtn}${pinBtn}</td>
+        <td style="padding:0.5rem 0.45rem">${refundBtn}${pinBtn}${delBtn}</td>
       </tr>`;
     }).join('');
     el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:0.83rem">
@@ -5965,6 +5966,20 @@ async function loadPsTxns(page) {
       pager.appendChild(btn);
     }
   } catch(e) { el.innerHTML = `<p style="color:#dc2626">Error: ${e.message}</p>`; }
+}
+
+// Delete a transaction permanently from DB
+async function deletePsTxn(id, type) {
+  if (!confirm(`Delete this ${type} transaction permanently? Users will no longer see it.`)) return;
+  try {
+    const d = await fetch(`/admin/api/paysetu/transactions/${id}?type=${type}`, { method: 'DELETE' }).then(r => r.json());
+    if (d.success) {
+      showAdmToast('Transaction deleted');
+      loadPsTxns(_psTxnPage);
+    } else {
+      showAdmToast(d.message || 'Delete failed', 'error');
+    }
+  } catch(e) { showAdmToast('Delete failed: ' + e.message, 'error'); }
 }
 
 // Check live status of a pending recharge via femoney24

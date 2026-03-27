@@ -51,6 +51,10 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
 
   /* ── Service type tabs ── */
@@ -125,6 +129,28 @@
   .op-sun    { background: #f39c12; }
   .op-vd2h   { background: #2980b9; }
 
+  /* ── Mobile top bar (back arrow) ── */
+  .ds-mobile-topbar {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    background: linear-gradient(135deg, #1e4db7 0%, #2563eb 100%);
+    padding: 12px 14px;
+    color: #fff;
+  }
+  .ds-mobile-back {
+    background: rgba(255,255,255,0.18);
+    border: none; color: #fff;
+    font-size: 18px;
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0; flex-shrink: 0;
+  }
+  .ds-mobile-topbar-title { font-size: 16px; font-weight: 700; }
+  @media (max-width: 768px) { .ds-mobile-topbar { display: flex; } }
+
   /* ── Selected operator badge ── */
   .ds-op-badge {
     display: flex;
@@ -133,6 +159,7 @@
     font-size: 14px;
     font-weight: 600;
     color: var(--ds-blue);
+    flex-shrink: 0;
   }
   .ds-op-badge .badge-logo {
     width: 28px;
@@ -612,9 +639,9 @@
     .ds-type-tabs { width: 100%; }
     .ds-type-tab { padding: 7px 0; font-size: 12px; flex: 1; text-align: center; }
 
-    /* Operator grid — 4 per row on mobile */
-    .ds-op-grid { gap: 8px; margin-top: 10px; }
-    .ds-op-card { padding: 10px 8px; min-width: 0; flex: 1 1 calc(25% - 8px); gap: 4px; border-radius: 8px; }
+    /* Operator grid — 5 per row on mobile (fits Jio/Airtel/Vi/BSNL/BSNL Special) */
+    .ds-op-grid { gap: 6px; margin-top: 10px; }
+    .ds-op-card { padding: 8px 4px; min-width: 0; flex: 1 1 calc(20% - 6px); gap: 3px; border-radius: 8px; }
     .ds-op-logo { width: 36px; height: 36px; font-size: 13px; }
     .ds-op-name { font-size: 10px; }
 
@@ -714,6 +741,12 @@
 </style>
 
 <div class="ds-page">
+
+  <!-- Mobile-only back arrow header -->
+  <div class="ds-mobile-topbar">
+    <button class="ds-mobile-back" onclick="history.back()">&#8592;</button>
+    <span class="ds-mobile-topbar-title">Recharge</span>
+  </div>
 
   <!-- Wallet balance strip -->
   <div class="ds-wallet-strip">
