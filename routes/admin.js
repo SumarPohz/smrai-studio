@@ -2127,7 +2127,7 @@ export default function adminRouter(db) {
   // ── Reels Channel Proof ──────────────────────────────────────────────────
   router.get("/api/reels/channel-proof", async (req, res) => {
     try {
-      const [rows] = await db.query(`SELECT * FROM reels_channel_proof ORDER BY sort_order, created_at DESC`);
+      const { rows } = await db.query(`SELECT * FROM reels_channel_proof ORDER BY sort_order, created_at DESC`);
       res.json(rows);
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
@@ -2152,7 +2152,7 @@ export default function adminRouter(db) {
   // ── Reels Niche Config ───────────────────────────────────────────────────
   router.get("/api/reels/niche-config", async (req, res) => {
     try {
-      const [rows] = await db.query(`SELECT * FROM reels_niche_config ORDER BY niche_label`);
+      const { rows } = await db.query(`SELECT * FROM reels_niche_config ORDER BY niche_label`);
       res.json(rows);
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
@@ -2173,7 +2173,7 @@ export default function adminRouter(db) {
   // GET /admin/api/reels — list all user-generated reels
   router.get("/api/reels", async (req, res) => {
     try {
-      const [rows] = await db.query(`
+      const { rows } = await db.query(`
         SELECT r.id, r.topic, r.title, r.status, r.video_url, r.audio_url,
                r.created_at, u.name, u.email
         FROM reels r
@@ -2188,7 +2188,8 @@ export default function adminRouter(db) {
   router.delete("/api/reels/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const [[reel]] = await db.query(`SELECT id FROM reels WHERE id = ?`, [id]);
+      const { rows: reelRows } = await db.query(`SELECT id FROM reels WHERE id = ?`, [id]);
+      const reel = reelRows[0];
       if (reel) {
         const videoPath = path.join(__dirname, '..', 'public', 'videos', `${id}.mp4`);
         const audioPath = path.join(__dirname, '..', 'public', 'audio', `${id}.mp3`);

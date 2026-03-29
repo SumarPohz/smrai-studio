@@ -5,18 +5,33 @@ import path from 'path';
 import https from 'https';
 import http from 'http';
 
+const STYLE_KEYWORDS = {
+  cinematic:  'cinematic dramatic wide shot',
+  creepy:     'dark horror shadows atmospheric',
+  vibrant:    'colorful bright energetic',
+  disney:     'magical whimsical animated',
+  nature:     'nature landscape wildlife',
+  urban:      'city street urban night',
+  fantasy:    'magical mystical ethereal',
+  historical: 'vintage ancient historical',
+};
+
 /**
  * Search Pexels for portrait/vertical video clips related to the topic.
  * Returns an array of direct video file URLs.
  * @param {string} topic
- * @param {number} count - how many clips to fetch (default 4)
+ * @param {number} count    - how many clips to fetch (default 4)
+ * @param {string} artStyle - used to enrich the search query (default 'cinematic')
  * @returns {Promise<string[]>} array of video download URLs
  */
-export async function fetchPexelsVideos(topic, count = 4) {
+export async function fetchPexelsVideos(topic, count = 4, artStyle = 'cinematic') {
+  const styleTag = STYLE_KEYWORDS[artStyle] || '';
+  const query    = styleTag ? `${topic} ${styleTag}` : topic;
+
   const res = await axios.get('https://api.pexels.com/videos/search', {
     headers: { Authorization: process.env.PEXELS_API_KEY },
     params: {
-      query: topic,
+      query,
       per_page: Math.min(count + 2, 10), // fetch a few extra in case some have no valid file
       orientation: 'portrait',
     },

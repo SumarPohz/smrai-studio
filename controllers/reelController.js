@@ -1,9 +1,11 @@
-import { generateScript, generateMetadata }        from '../services/openaiService.js';
+import { generateScript }                           from '../services/geminiReelService.js';
+import { generateMetadata }                         from '../services/openaiService.js';
 import { generateTTS, AVAILABLE_VOICES }            from '../services/ttsService.js';
 import { fetchPexelsVideos, downloadClips, cleanupTempClips } from '../services/videoService.js';
 import { mergeReel }                                from '../services/ffmpegService.js';
 import { uploadToYouTube }                          from '../services/youtubeService.js';
 import path                                         from 'path';
+import fs                                           from 'fs/promises';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -265,7 +267,16 @@ export async function getPricingPage(req, res, db) {
  * Checks paywall, inserts DB record, fires background pipeline.
  */
 export async function generateReel(req, res, db) {
-  const { topic, voice = 'alloy' } = req.body;
+  const {
+    topic,
+    voice        = 'alloy',
+    language     = 'en',
+    artStyle     = 'cinematic',
+    captionStyle = 'bold-stroke',
+    duration     = '30-40',
+    music        = [],
+    effects      = {},
+  } = req.body;
 
   if (!topic || topic.trim().length < 3) {
     return res.status(400).json({ error: 'Please enter a topic (at least 3 characters).' });
@@ -298,8 +309,9 @@ export async function generateReel(req, res, db) {
   let reelId;
   try {
     const result = await db.query(
-      'INSERT INTO reels (user_id, topic, status) VALUES (?, ?, ?)',
-      [req.user.id, topic.trim(), 'processing']
+      `INSERT INTO reels (user_id, topic, status, language, art_style, caption_style, duration, music_tracks)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [req.user.id, topic.trim(), 'processing', language, artStyle, captionStyle, duration, JSON.stringify(music)]
     );
     reelId = result.insertId;
   } catch (err) {
@@ -310,7 +322,7 @@ export async function generateReel(req, res, db) {
   // Respond immediately — pipeline runs in background
   res.json({ reel_id: reelId, free: access.free });
 
-  setImmediate(() => runPipeline(reelId, topic.trim(), voice, req.user.id, access.free, db));
+  setImmediate(() => runPipeline(reelId, topic.trim(), voice, language, artStyle, captionStyle, duration, music, effects, req.user.id, access.free, db));
 }
 
 /**
@@ -337,13 +349,13 @@ export async function getReelStatus(req, res, db) {
 
 // ─── Background Pipeline ─────────────────────────────────────────────────────
 
-async function runPipeline(reelId, topic, voice, userId, isFree, db) {
-  console.log(`[Reels] Starting pipeline for reel #${reelId} — topic: "${topic}" free=${isFree}`);
+async function runPipeline(reelId, topic, voice, language, artStyle, captionStyle, duration, music, effects, userId, isFree, db) {
+  console.log(`[Reels] Starting pipeline for reel #${reelId} — topic: "${topic}" lang=${language} art=${artStyle} free=${isFree}`);
 
   try {
     // Step 1: Script
-    console.log(`[Reels] #${reelId} — Step 1: Generating script…`);
-    const script = await generateScript(topic);
+    console.log(`[Reels] #${reelId} — Step 1: Generating script (Gemini, lang=${language}, art=${artStyle}, dur=${duration})…`);
+    const script = await generateScript(topic, { language, artStyle, duration });
     await db.query('UPDATE reels SET script = ? WHERE id = ?', [script, reelId]);
 
     // Step 2: Metadata
@@ -358,17 +370,27 @@ async function runPipeline(reelId, topic, voice, userId, isFree, db) {
     console.log(`[Reels] #${reelId} — Step 3: Generating TTS (voice: ${voice})…`);
     const audioPath = await generateTTS(script, voice, reelId);
 
-    // Step 4: Pexels videos
-    console.log(`[Reels] #${reelId} — Step 4: Fetching Pexels videos…`);
-    const videoUrls = await fetchPexelsVideos(topic, 4);
+    // Step 4: Pexels videos — fetch more clips for longer videos
+    const clipCount = duration === '60-70' ? 6 : 4;
+    console.log(`[Reels] #${reelId} — Step 4: Fetching ${clipCount} Pexels clips (artStyle=${artStyle}, duration=${duration})…`);
+    const videoUrls = await fetchPexelsVideos(topic, clipCount, artStyle);
 
     // Step 5: Download clips
     console.log(`[Reels] #${reelId} — Step 5: Downloading ${videoUrls.length} clips…`);
     const clipPaths = await downloadClips(videoUrls, reelId);
 
+    // Step 5b: Resolve BGM music path (first selected track, if file exists on disk)
+    let musicPath = null;
+    const musicId = Array.isArray(music) && music[0] ? music[0] : null;
+    if (musicId) {
+      const candidate = path.join(process.cwd(), 'public', 'music', `${musicId}.mp3`);
+      try { await fs.access(candidate); musicPath = candidate; } catch {}
+      if (!musicPath) console.log(`[Reels] #${reelId} — BGM "${musicId}" not found on disk, skipping.`);
+    }
+
     // Step 6: FFmpeg merge
-    console.log(`[Reels] #${reelId} — Step 6: Merging with FFmpeg…`);
-    await mergeReel(reelId, clipPaths, audioPath, script);
+    console.log(`[Reels] #${reelId} — Step 6: Merging with FFmpeg (captionStyle=${captionStyle}, bgm=${musicPath ? musicId : 'none'})…`);
+    await mergeReel(reelId, clipPaths, audioPath, script, { captionStyle, effects, musicPath });
 
     // Step 7: Cleanup
     await cleanupTempClips(reelId);

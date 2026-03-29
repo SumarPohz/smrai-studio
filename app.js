@@ -24,6 +24,7 @@ import QRCode from "qrcode";
 import { getFieldsForTemplate, isPhotoTemplate } from "./config/template-fields.js";
 import adminRouter from "./routes/admin.js";
 import reelsRouter from "./routes/reels.js";
+import ttsRouter   from "./routes/tts.js";
 import { removeBackgroundFromImageBase64 } from "remove.bg";
 import compression from "compression";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
@@ -576,6 +577,26 @@ await db.query(`
     await db.query(`ALTER TABLE reels ADD COLUMN title VARCHAR(500)`).catch(() => {});
     await db.query(`ALTER TABLE reels ADD COLUMN hashtags TEXT`).catch(() => {});
     await db.query(`ALTER TABLE reels ADD COLUMN caption TEXT`).catch(() => {});
+    await db.query(`ALTER TABLE reels ADD COLUMN language VARCHAR(50) DEFAULT 'English'`).catch(() => {});
+    await db.query(`ALTER TABLE reels ADD COLUMN art_style VARCHAR(50) DEFAULT 'cinematic'`).catch(() => {});
+    await db.query(`ALTER TABLE reels ADD COLUMN caption_style VARCHAR(50) DEFAULT 'bold-stroke'`).catch(() => {});
+    await db.query(`ALTER TABLE reels ADD COLUMN duration VARCHAR(20) DEFAULT '30-40'`).catch(() => {});
+    await db.query(`ALTER TABLE reels ADD COLUMN music_tracks TEXT`).catch(() => {});
+
+    /* ── Text-to-Voice Audios ── */
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS tts_audios (
+        id         INT AUTO_INCREMENT PRIMARY KEY,
+        user_id    INT NOT NULL,
+        topic      TEXT,
+        script     TEXT,
+        voice      VARCHAR(50) DEFAULT 'alloy',
+        audio_url  TEXT,
+        status     ENUM('pending','completed','failed') DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX (user_id)
+      )
+    `).catch(() => {});
 
     /* ── Reel Subscriptions ── */
     await db.query(`
@@ -3063,6 +3084,7 @@ app.use("/admin", ensureAdmin, adminRouter(db));
 
 // ── AI Reel Generator ─────────────────────────────────────────────────────────
 app.use("/reels", ensureAuthenticated, reelsRouter(db));
+app.use("/tts",   ensureAuthenticated, ttsRouter(db));
 
 // ── Reel Subscription Payments ────────────────────────────────────────────────
 

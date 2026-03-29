@@ -7,6 +7,7 @@ import {
   generateReel,
   getReelStatus,
 } from '../controllers/reelController.js';
+import { generateVoicePreview, AVAILABLE_VOICES } from '../services/ttsService.js';
 
 export default function reelsRouter(db) {
   const router = express.Router();
@@ -30,6 +31,20 @@ export default function reelsRouter(db) {
   // ── API routes ───────────────────────────────────────────────────────────
   router.post('/generate',   (req, res) => generateReel(req, res, db));
   router.get('/:id/status',  (req, res) => getReelStatus(req, res, db));
+
+  // Voice preview — generates & caches a short sample clip per voice
+  router.get('/voice-preview/:voice', async (req, res) => {
+    if (!AVAILABLE_VOICES.includes(req.params.voice)) {
+      return res.status(400).json({ error: 'Invalid voice' });
+    }
+    try {
+      const filePath = await generateVoicePreview(req.params.voice);
+      res.sendFile(filePath);
+    } catch (err) {
+      console.error('[VoicePreview] Error:', err.message);
+      res.status(500).json({ error: 'Failed to generate preview' });
+    }
+  });
 
   return router;
 }

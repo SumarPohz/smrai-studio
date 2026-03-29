@@ -11,6 +11,37 @@ function getClient() {
 
 export const AVAILABLE_VOICES = ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'];
 
+const PREVIEW_TEXT = "Hey there! I'm your AI narrator, ready to bring your stories to life.";
+
+/**
+ * Generate a short voice preview clip and cache it as preview-{voice}.mp3.
+ * Returns the absolute path to the cached MP3.
+ * @param {string} voice
+ * @returns {Promise<string>} absolute file path
+ */
+export async function generateVoicePreview(voice) {
+  const safeVoice = AVAILABLE_VOICES.includes(voice) ? voice : 'alloy';
+  const previewPath = path.resolve(`./public/audio/preview-${safeVoice}.mp3`);
+
+  // Serve cached file if it already exists
+  try {
+    await fs.access(previewPath);
+    return previewPath;
+  } catch {}
+
+  // Generate and cache
+  const response = await getClient().audio.speech.create({
+    model: 'tts-1',
+    voice: safeVoice,
+    input: PREVIEW_TEXT,
+    speed: 1.0,
+  });
+
+  const buffer = Buffer.from(await response.arrayBuffer());
+  await fs.writeFile(previewPath, buffer);
+  return previewPath;
+}
+
 /**
  * Convert script text to MP3 using OpenAI TTS
  * @param {string} script - Text to convert

@@ -83,6 +83,9 @@
 .upload-zone { border:2px dashed #e5e7eb; border-radius:12px; padding:36px; text-align:center; cursor:pointer; transition:border-color .15s; }
 .upload-zone:hover { border-color:#a78bfa; }
 
+/* Scrollable step body — keeps Continue/Create always visible */
+.wiz-body { max-height: calc(100vh - 320px); overflow-y: auto; padding-right: 4px; }
+
 /* Nav */
 .wiz-nav { display:flex; justify-content:space-between; align-items:center; padding-top:24px; border-top:1px solid #f3f4f6; margin-top:32px; }
 .btn-back { display:flex; align-items:center; gap:6px; padding:12px 22px; border:1.5px solid #e5e7eb; border-radius:10px; background:#fff; color:#374151; font-size:15px; font-weight:500; cursor:pointer; transition:border-color .15s; }
@@ -119,7 +122,7 @@
       </button>
     </div>
 
-    <div id="p1a">
+    <div id="p1a" class="wiz-body">
       <% [
         ['Scary Stories','Scary stories that give you goosebumps'],
         ['History','Viral videos about history spanning from ancient times to the modern day.'],
@@ -141,7 +144,7 @@
       <% }) %>
     </div>
 
-    <div id="p1b" style="display:none;">
+    <div id="p1b" class="wiz-body" style="display:none;">
       <div style="margin-bottom:20px;">
         <label class="wiz-label">Niche</label>
         <textarea id="customNiche" class="wiz-textarea" maxlength="5000"
@@ -175,6 +178,7 @@
     <h2 class="step-title">Language &amp; Voice <span class="step-badge">Step 2 of 8</span></h2>
     <p class="step-sub">Choose the language and voice style for your video</p>
 
+    <div class="wiz-body">
     <div style="margin-bottom:22px;">
       <label class="wiz-label">Language</label>
       <select id="langSel" class="wiz-select">
@@ -210,12 +214,13 @@
             <div style="font-size:13px;color:#6b7280;margin-top:2px;"><%- v[4] %></div>
           </div>
         </div>
-        <button class="play-btn" onclick="event.stopPropagation();" title="Preview" style="width:34px;height:34px;border-radius:8px;border:1.5px solid #e5e7eb;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#374151;flex-shrink:0;">
+        <button class="play-btn" onclick="event.stopPropagation();playVoice('<%= v[0] %>',this)" title="Preview voice" style="width:34px;height:34px;border-radius:8px;border:1.5px solid #e5e7eb;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#374151;flex-shrink:0;">
           <svg width="11" height="11" fill="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
         </button>
       </div>
       <% }) %>
     </div>
+    </div><!-- /wiz-body -->
 
     <div class="wiz-nav">
       <button class="btn-back" onclick="go(1)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg> Back</button>
@@ -239,7 +244,7 @@
       </button>
     </div>
 
-    <div id="p3a">
+    <div id="p3a" class="wiz-body">
       <% [
         ['happy',    'Happy rhythm',       'Upbeat and energetic, perfect for positive content',            'linear-gradient(135deg,#f59e0b,#ef4444)'],
         ['storm',    'Quiet before storm', 'Building tension and anticipation for dramatic reveals',         'linear-gradient(135deg,#6366f1,#4338ca)'],
@@ -253,14 +258,14 @@
           <div style="font-size:14px;font-weight:600;color:#111827;"><%= m[1] %></div>
           <div style="font-size:13px;color:#9ca3af;"><%= m[2] %></div>
         </div>
-        <button class="play-btn" onclick="event.stopPropagation();" style="width:34px;height:34px;border-radius:8px;border:1.5px solid #e5e7eb;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#374151;flex-shrink:0;">
+        <button class="play-btn" onclick="event.stopPropagation();playMusic('<%= m[0] %>',this)" title="Preview music" style="width:34px;height:34px;border-radius:8px;border:1.5px solid #e5e7eb;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#374151;flex-shrink:0;">
           <svg width="11" height="11" fill="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
         </button>
       </div>
       <% }) %>
     </div>
 
-    <div id="p3b" style="display:none;">
+    <div id="p3b" class="wiz-body" style="display:none;">
       <div style="margin-bottom:20px;">
         <label class="wiz-label">TikTok Sound URLs <span style="font-size:12px;color:#9ca3af;font-weight:400;">(copy+paste link to TikTok sound)</span></label>
         <textarea class="wiz-textarea" placeholder="Enter TikTok sound URLs, one per line" style="min-height:80px;"></textarea>
@@ -284,6 +289,7 @@
     <h2 class="step-title">Art Style <span class="step-badge">Step 4 of 8</span></h2>
     <p class="step-sub">Choose the visual style for your video</p>
 
+    <div class="wiz-body">
     <div class="art-grid">
       <% [
         ['cinematic',  'Cinematic',   'linear-gradient(160deg,#0f172a,#1e293b,#334155)', '🎬'],
@@ -301,6 +307,7 @@
       </div>
       <% }) %>
     </div>
+    </div><!-- /wiz-body -->
 
     <div class="wiz-nav">
       <button class="btn-back" onclick="go(3)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg> Back</button>
@@ -313,6 +320,7 @@
     <h2 class="step-title">Caption Style <span class="step-badge">Step 5 of 8</span></h2>
     <p class="step-sub">Choose how captions will appear in your video</p>
 
+    <div class="wiz-body">
     <div class="cap-grid">
       <!-- Bold Stroke -->
       <div class="cap-item selected" onclick="pickCap('bold-stroke')" data-cap="bold-stroke">
@@ -324,57 +332,54 @@
       <!-- Red Highlight -->
       <div class="cap-item" onclick="pickCap('red-highlight')" data-cap="red-highlight">
         <div class="cap-preview" style="background:#4b5563;">
-          <span style="font-size:1rem;font-weight:700;color:#d1d5db;">A</span>
-          <span style="font-size:1.5rem;font-weight:900;color:#ef4444;">DUSTY</span>
+          <span style="font-size:1.4rem;font-weight:900;color:#fff;background:rgba(220,38,38,0.88);padding:3px 14px;border-radius:3px;">DUSTY</span>
         </div>
         <div class="cap-label">Red Highlight</div>
       </div>
       <!-- Sleek -->
       <div class="cap-item" onclick="pickCap('sleek')" data-cap="sleek">
         <div class="cap-preview" style="background:#4b5563;">
-          <span style="font-size:1rem;font-weight:600;color:#d1d5db;letter-spacing:.08em;">A</span>
-          <span style="font-size:1.4rem;font-weight:700;color:#fff;letter-spacing:.1em;">DUSTY</span>
+          <span style="font-size:1.1rem;font-weight:600;color:#fff;letter-spacing:.06em;text-shadow:0 0 4px rgba(0,0,0,0.9),1px 1px 0 #000;">DUSTY</span>
         </div>
         <div class="cap-label">Sleek</div>
       </div>
       <!-- Karaoke -->
       <div class="cap-item" onclick="pickCap('karaoke')" data-cap="karaoke">
         <div class="cap-preview" style="background:#374151;">
-          <span style="font-size:1rem;font-weight:700;color:#d1d5db;">A</span>
-          <span style="background:#7c3aed;color:#fff;padding:2px 12px;border-radius:4px;font-size:1.5rem;font-weight:900;">DUSTY</span>
+          <span style="font-size:1.4rem;font-weight:900;color:#fff;background:rgba(124,58,237,0.92);padding:3px 14px;border-radius:4px;">DUSTY</span>
         </div>
         <div class="cap-label">Karaoke</div>
       </div>
       <!-- Majestic -->
       <div class="cap-item" onclick="pickCap('majestic')" data-cap="majestic">
         <div class="cap-preview" style="background:#4b5563;">
-          <span style="font-size:1rem;font-weight:700;color:#d1d5db;">A</span>
-          <span style="font-size:1.5rem;font-weight:800;color:#fff;">DUSTY</span>
+          <span style="font-size:1.6rem;font-weight:800;color:#fbbf24;text-shadow:-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000,2px 2px 0 #000;">DUSTY</span>
         </div>
         <div class="cap-label">Majestic</div>
       </div>
       <!-- Beast -->
       <div class="cap-item" onclick="pickCap('beast')" data-cap="beast">
         <div class="cap-preview" style="background:#374151;">
-          <span style="font-size:1.6rem;font-weight:900;color:#fff;font-style:italic;text-shadow:3px 3px 0 #000;">DUSTY</span>
+          <span style="font-size:1.7rem;font-weight:900;color:#facc15;text-shadow:-3px -3px 0 #000,3px -3px 0 #000,-3px 3px 0 #000,3px 3px 0 #000;">DUSTY</span>
         </div>
         <div class="cap-label">Beast</div>
       </div>
       <!-- Elegant -->
       <div class="cap-item" onclick="pickCap('elegant')" data-cap="elegant">
         <div class="cap-preview" style="background:#4b5563;">
-          <span style="font-size:1.3rem;font-weight:400;color:#fff;letter-spacing:.2em;">DUSTY</span>
+          <span style="font-size:1.1rem;font-weight:300;color:#fff;letter-spacing:.28em;text-shadow:1px 1px 3px rgba(0,0,0,0.9);">DUSTY</span>
         </div>
         <div class="cap-label">Elegant</div>
       </div>
       <!-- Clarity -->
       <div class="cap-item" onclick="pickCap('clarity')" data-cap="clarity">
         <div class="cap-preview" style="background:#374151;">
-          <span style="font-size:1.2rem;font-weight:500;color:#e5e7eb;letter-spacing:.04em;">dusty</span>
+          <span style="font-size:1.3rem;font-weight:500;color:#fff;background:rgba(0,0,0,0.55);padding:4px 14px;border-radius:2px;">DUSTY</span>
         </div>
         <div class="cap-label">Clarity</div>
       </div>
     </div>
+    </div><!-- /wiz-body -->
 
     <div class="wiz-nav">
       <button class="btn-back" onclick="go(4)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg> Back</button>
@@ -387,27 +392,29 @@
     <h2 class="step-title">Effects <span class="step-badge">Step 6 of 8</span> <span class="opt-badge">Optional</span></h2>
     <p class="step-sub">Add visual effects to make your videos more engaging and eye-catching.</p>
 
+    <div class="wiz-body">
     <div class="effect-item">
       <div>
         <div style="font-size:15px;font-weight:700;color:#111827;display:flex;align-items:center;">Shake effect <span class="eff-badge badge-new">NEW</span></div>
         <div style="font-size:13px;color:#6b7280;margin-top:3px;">Subjects pop out with eerie motion — great for horror, thriller, and suspenseful stories.</div>
       </div>
-      <button class="toggle" onclick="this.classList.toggle('on')" type="button"></button>
+      <button class="toggle" onclick="toggleEffect('shake',this)" type="button"></button>
     </div>
     <div class="effect-item">
       <div>
         <div style="font-size:15px;font-weight:700;color:#111827;display:flex;align-items:center;">Film grain <span class="eff-badge badge-new">NEW</span></div>
         <div style="font-size:13px;color:#6b7280;margin-top:3px;">Add an old film look with scanlines, dust particles, noise, and a subtle vignette.</div>
       </div>
-      <button class="toggle" onclick="this.classList.toggle('on')" type="button"></button>
+      <button class="toggle" onclick="toggleEffect('filmGrain',this)" type="button"></button>
     </div>
     <div class="effect-item">
       <div>
         <div style="font-size:15px;font-weight:700;color:#111827;display:flex;align-items:center;">Animated hook <span class="eff-badge badge-premium">PREMIUM</span></div>
         <div style="font-size:13px;color:#6b7280;margin-top:3px;">Generate a 5-second motion video for the first scene to hook viewers instantly.</div>
       </div>
-      <button class="toggle" onclick="this.classList.toggle('on')" type="button"></button>
+      <button class="toggle" onclick="toggleEffect('animatedHook',this)" type="button"></button>
     </div>
+    </div><!-- /wiz-body -->
 
     <div class="wiz-nav">
       <button class="btn-back" onclick="go(5)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg> Back</button>
@@ -420,6 +427,7 @@
     <h2 class="step-title">Connect Social Accounts <span class="step-badge">Step 7 of 8</span></h2>
     <p class="step-sub">Connect and select the social media accounts where you want to publish your content</p>
 
+    <div class="wiz-body">
     <!-- Connected YouTube accounts (loaded dynamically) -->
     <div id="s7-accounts">
       <div style="text-align:center;padding:24px 0;color:#9ca3af;font-size:14px;">Loading…</div>
@@ -449,6 +457,7 @@
 
     <p id="s7-error" style="display:none;color:#ef4444;font-size:13px;margin-bottom:12px;padding:10px 14px;background:#fef2f2;border-radius:8px;border:1px solid #fee2e2;"></p>
     <p style="text-align:center;font-size:14px;color:#7c3aed;">You can connect your social media accounts later.</p>
+    </div><!-- /wiz-body -->
 
     <div class="wiz-nav">
       <button class="btn-back" onclick="go(6)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg> Back</button>
@@ -462,6 +471,7 @@
     <p class="step-sub">Finalize your series details and posting schedule</p>
     <div id="s8err" class="err-box"></div>
 
+    <div class="wiz-body">
     <div style="margin-bottom:20px;">
       <label class="wiz-label">Series Name</label>
       <input type="text" id="seriesName" class="wiz-input" placeholder="Enter a name for your series" maxlength="200" />
@@ -489,6 +499,7 @@
     <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:12px 16px;font-size:13px;color:#0369a1;margin-bottom:4px;">
       <strong>Note:</strong> Videos will be generated 6 hours before the scheduled publish time so you have time to review them.
     </div>
+    </div><!-- /wiz-body -->
 
     <div class="wiz-nav">
       <button class="btn-back" onclick="go(7)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg> Back</button>
@@ -503,7 +514,77 @@
 </div><!-- /reel-wizard -->
 
 <script>
-const S = { step:1, niche:'', voice:'alloy', music:[], art:'cinematic', cap:'bold-stroke' };
+const S = { step:1, niche:'', voice:'alloy', music:[], art:'cinematic', cap:'bold-stroke', effects:{ filmGrain:false, shake:false, animatedHook:false } };
+
+// ── Voice preview player ──────────────────────────────────────────────────────
+const PLAY_ICON  = `<svg width="11" height="11" fill="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>`;
+const PAUSE_ICON = `<svg width="11" height="11" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>`;
+const SPIN_ICON  = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin 1s linear infinite"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>`;
+
+let _activeAudio = null;
+let _activeBtn   = null;
+
+function _resetBtn(btn) { if (btn) btn.innerHTML = PLAY_ICON; }
+
+function playVoice(voice, btn) {
+  // If this button is already playing, pause it
+  if (_activeAudio && _activeBtn === btn) {
+    _activeAudio.pause();
+    _activeAudio = null;
+    _activeBtn   = null;
+    _resetBtn(btn);
+    return;
+  }
+
+  // Stop any other playing preview
+  if (_activeAudio) { _activeAudio.pause(); _resetBtn(_activeBtn); }
+
+  btn.innerHTML  = SPIN_ICON;
+  _activeBtn     = btn;
+
+  const audio    = new Audio(`/reels/voice-preview/${voice}`);
+  _activeAudio   = audio;
+
+  audio.oncanplaythrough = () => {
+    if (_activeAudio !== audio) return;
+    btn.innerHTML = PAUSE_ICON;
+    audio.play();
+  };
+  audio.onended  = () => { _resetBtn(btn); _activeAudio = null; _activeBtn = null; };
+  audio.onerror  = () => { _resetBtn(btn); _activeAudio = null; _activeBtn = null; };
+  audio.load();
+}
+
+// ── Music preview player ──────────────────────────────────────────────────────
+let _activeMusicAudio = null;
+let _activeMusicBtn   = null;
+
+function playMusic(id, btn) {
+  if (_activeMusicAudio && _activeMusicBtn === btn) {
+    _activeMusicAudio.pause();
+    _activeMusicAudio = null;
+    _activeMusicBtn   = null;
+    btn.innerHTML     = PLAY_ICON;
+    return;
+  }
+
+  if (_activeMusicAudio) { _activeMusicAudio.pause(); _resetBtn(_activeMusicBtn); }
+
+  btn.innerHTML   = SPIN_ICON;
+  _activeMusicBtn = btn;
+
+  const audio     = new Audio(`/music/preview-${id}.mp3`);
+  _activeMusicAudio = audio;
+
+  audio.oncanplaythrough = () => {
+    if (_activeMusicAudio !== audio) return;
+    btn.innerHTML = PAUSE_ICON;
+    audio.play();
+  };
+  audio.onended  = () => { btn.innerHTML = PLAY_ICON; _activeMusicAudio = null; _activeMusicBtn = null; };
+  audio.onerror  = () => { btn.innerHTML = PLAY_ICON; _activeMusicAudio = null; _activeMusicBtn = null; };
+  audio.load();
+}
 
 function updProg(n) {
   for(let i=0;i<8;i++) {
@@ -558,6 +639,10 @@ function pickArt(id) {
   document.querySelector('[data-art="'+id+'"]').classList.add('selected');
   S.art = id;
 }
+function toggleEffect(key, btn) {
+  S.effects[key] = !S.effects[key];
+  btn.classList.toggle('on', S.effects[key]);
+}
 function pickCap(id) {
   document.querySelectorAll('.cap-item').forEach(el => el.classList.remove('selected'));
   document.querySelector('[data-cap="'+id+'"]').classList.add('selected');
@@ -581,7 +666,20 @@ async function handleCreate() {
   btn.disabled = true;
 
   try {
-    const res  = await fetch('/reels/generate', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ topic, voice:S.voice }) });
+    const res  = await fetch('/reels/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        topic,
+        voice:        S.voice,
+        language:     document.getElementById('langSel')?.value || 'en',
+        artStyle:     S.art,
+        captionStyle: S.cap,
+        duration:     document.getElementById('durSel')?.value || '30-40',
+        music:        S.music,
+        effects:      S.effects,
+      }),
+    });
     const data = await res.json();
     if (res.status === 402) { window.location.href = data.redirect || '/reels/pricing'; return; }
     if (!res.ok || data.error) throw new Error(data.error || 'Server error. Please try again.');
