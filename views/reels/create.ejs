@@ -106,12 +106,12 @@
 
   <!-- Progress -->
   <div class="wiz-progress" id="wizProg">
-    <% for(let i=0;i<8;i++){%><div class="wiz-seg" id="seg<%=i%>"></div><%}%>
+    <% for(let i=0;i<7;i++){%><div class="wiz-seg" id="seg<%=i%>"></div><%}%>
   </div>
 
   <!-- ── STEP 1: Niche ──────────────────────────────────────────────────── -->
   <div id="step-1" class="wiz-step active">
-    <h2 class="step-title">Choose your niche <span class="step-badge">Step 1 of 8</span></h2>
+    <h2 class="step-title">Choose your niche <span class="step-badge">Step 1 of 7</span></h2>
     <p class="step-sub">Select a preset or describe your own niche</p>
     <div id="s1err" class="err-box"></div>
 
@@ -179,7 +179,7 @@
 
   <!-- ── STEP 2: Language & Voice ────────────────────────────────────────── -->
   <div id="step-2" class="wiz-step" style="display:none;">
-    <h2 class="step-title">Language &amp; Voice <span class="step-badge">Step 2 of 8</span></h2>
+    <h2 class="step-title">Language &amp; Voice <span class="step-badge">Step 2 of 7</span></h2>
     <p class="step-sub">Choose the language and voice style for your video</p>
 
     <div class="wiz-body">
@@ -234,7 +234,7 @@
 
   <!-- ── STEP 3: Background Music ────────────────────────────────────────── -->
   <div id="step-3" class="wiz-step" style="display:none;">
-    <h2 class="step-title">Background Music <span class="step-badge">Step 3 of 8</span> <span class="opt-badge">Optional</span></h2>
+    <h2 class="step-title">Background Music <span class="step-badge">Step 3 of 7</span> <span class="opt-badge">Optional</span></h2>
     <p class="step-sub">Choose as many songs as you want, we'll pick a random one for each video</p>
 
     <div class="wiz-tabs">
@@ -290,7 +290,7 @@
 
   <!-- ── STEP 4: Art Style ───────────────────────────────────────────────── -->
   <div id="step-4" class="wiz-step" style="display:none;">
-    <h2 class="step-title">Art Style <span class="step-badge">Step 4 of 8</span></h2>
+    <h2 class="step-title">Art Style <span class="step-badge">Step 4 of 7</span></h2>
     <p class="step-sub">Choose the visual style for your video</p>
 
     <div class="wiz-body">
@@ -321,7 +321,7 @@
 
   <!-- ── STEP 5: Caption Style ──────────────────────────────────────────── -->
   <div id="step-5" class="wiz-step" style="display:none;">
-    <h2 class="step-title">Caption Style <span class="step-badge">Step 5 of 8</span></h2>
+    <h2 class="step-title">Caption Style <span class="step-badge">Step 5 of 7</span></h2>
     <p class="step-sub">Choose how captions will appear in your video</p>
 
     <div class="wiz-body">
@@ -393,7 +393,7 @@
 
   <!-- ── STEP 6: Effects ─────────────────────────────────────────────────── -->
   <div id="step-6" class="wiz-step" style="display:none;">
-    <h2 class="step-title">Effects <span class="step-badge">Step 6 of 8</span> <span class="opt-badge">Optional</span></h2>
+    <h2 class="step-title">Effects <span class="step-badge">Step 6 of 7</span> <span class="opt-badge">Optional</span></h2>
     <p class="step-sub">Add visual effects to make your videos more engaging and eye-catching.</p>
 
     <div class="wiz-body">
@@ -426,54 +426,11 @@
     </div>
   </div>
 
-  <!-- ── STEP 7: Connect Social Accounts ────────────────────────────────── -->
+  <!-- ── STEP 7: Series Details ──────────────────────────────────────────── -->
   <div id="step-7" class="wiz-step" style="display:none;">
-    <h2 class="step-title">Connect Social Accounts <span class="step-badge">Step 7 of 8</span></h2>
-    <p class="step-sub">Connect and select the social media accounts where you want to publish your content</p>
-
-    <div class="wiz-body">
-    <!-- Connected YouTube accounts (loaded dynamically) -->
-    <div id="s7-accounts">
-      <div style="text-align:center;padding:24px 0;color:#9ca3af;font-size:14px;">Loading…</div>
-    </div>
-
-    <!-- Connect YouTube button -->
-    <button id="s7-yt-btn" onclick="connectYouTube()" type="button"
-      style="display:flex;align-items:center;gap:10px;width:100%;padding:13px 18px;border:1.5px solid #e5e7eb;border-radius:12px;background:#fff;cursor:pointer;font-size:14px;font-weight:600;color:#111827;margin-bottom:10px;transition:border-color .15s;">
-      <svg width="22" height="22" viewBox="0 0 24 24"><path fill="#ef4444" d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
-      + Connect YouTube Account
-    </button>
-
-    <!-- Coming soon platforms -->
-    <button type="button" disabled
-      style="display:flex;align-items:center;gap:10px;width:100%;padding:13px 18px;border:1.5px solid #f3f4f6;border-radius:12px;background:#fafafa;cursor:not-allowed;font-size:14px;font-weight:600;color:#9ca3af;margin-bottom:10px;">
-      <svg width="22" height="22" viewBox="0 0 24 24"><defs><radialGradient id="ig1" cx="30%" cy="107%"><stop offset="0%" stop-color="#fdf497"/><stop offset="5%" stop-color="#fdf497"/><stop offset="45%" stop-color="#fd5949"/><stop offset="60%" stop-color="#d6249f"/><stop offset="90%" stop-color="#285AEB"/></radialGradient></defs><path fill="url(#ig1)" d="M12 2.163c3.204 0 3.584.012 4.85.07 1.366.062 2.633.334 3.608 1.308.975.975 1.246 2.242 1.308 3.608.058 1.266.07 1.646.07 4.85s-.012 3.584-.07 4.85c-.062 1.366-.334 2.633-1.308 3.608-.975.975-2.242 1.246-3.608 1.308-1.266.058-1.646.07-4.85.07s-3.584-.012-4.85-.07c-1.366-.062-2.633-.334-3.608-1.308C2.497 19.483 2.226 18.216 2.164 16.85 2.106 15.584 2.094 15.204 2.094 12s.012-3.584.07-4.85c.062-1.366.334-2.633 1.308-3.608C4.447 2.497 5.714 2.226 7.08 2.164 8.346 2.106 8.726 2.094 12 2.094zm0-2.163c-3.259 0-3.667.014-4.947.072-1.613.074-3.067.372-4.204 1.508C1.712 2.716 1.414 4.17 1.34 5.783 1.282 7.063 1.268 7.471 1.268 12c0 4.529.014 4.937.072 6.217.074 1.613.372 3.067 1.508 4.204 1.137 1.136 2.591 1.434 4.204 1.508 1.28.058 1.688.072 4.948.072s3.667-.014 4.947-.072c1.613-.074 3.067-.372 4.204-1.508 1.136-1.137 1.434-2.591 1.508-4.204.058-1.28.072-1.688.072-6.217 0-4.529-.014-4.937-.072-6.217-.074-1.613-.372-3.067-1.508-4.204C19.214 1.412 17.76 1.114 16.147 1.04 14.867.982 14.459.968 12 .968z"/><circle fill="url(#ig1)" cx="12" cy="12" r="3.2"/><circle fill="url(#ig1)" cx="18.406" cy="5.594" r="1.44"/></svg>
-      + Connect Instagram
-      <span style="margin-left:auto;font-size:11px;font-weight:700;background:#f3f4f6;color:#9ca3af;padding:2px 8px;border-radius:99px;">Coming soon</span>
-    </button>
-
-    <button type="button" disabled
-      style="display:flex;align-items:center;gap:10px;width:100%;padding:13px 18px;border:1.5px solid #f3f4f6;border-radius:12px;background:#fafafa;cursor:not-allowed;font-size:14px;font-weight:600;color:#9ca3af;margin-bottom:20px;">
-      <svg width="22" height="22" viewBox="0 0 24 24"><path fill="#1877F2" d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.513c-1.491 0-1.956.93-1.956 1.874v2.25h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/></svg>
-      + Connect Facebook
-      <span style="margin-left:auto;font-size:11px;font-weight:700;background:#f3f4f6;color:#9ca3af;padding:2px 8px;border-radius:99px;">Coming soon</span>
-    </button>
-
-    <p id="s7-error" style="display:none;color:#ef4444;font-size:13px;margin-bottom:12px;padding:10px 14px;background:#fef2f2;border-radius:8px;border:1px solid #fee2e2;"></p>
-    <p style="text-align:center;font-size:14px;color:#7c3aed;">You can connect your social media accounts later.</p>
-    </div><!-- /wiz-body -->
-
-    <div class="wiz-nav">
-      <button class="btn-back" onclick="go(6)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg> Back</button>
-      <button class="btn-next" onclick="go(8)">Continue <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></button>
-    </div>
-  </div>
-
-  <!-- ── STEP 8: Series Details ──────────────────────────────────────────── -->
-  <div id="step-8" class="wiz-step" style="display:none;">
-    <h2 class="step-title">Series Details <span class="step-badge">Step 8 of 8</span></h2>
+    <h2 class="step-title">Series Details <span class="step-badge">Step 7 of 7</span></h2>
     <p class="step-sub">Finalize your series details and posting schedule</p>
-    <div id="s8err" class="err-box"></div>
+    <div id="s7err" class="err-box"></div>
 
     <div class="wiz-body">
     <div style="margin-bottom:20px;">
@@ -506,7 +463,7 @@
     </div><!-- /wiz-body -->
 
     <div class="wiz-nav">
-      <button class="btn-back" onclick="go(7)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg> Back</button>
+      <button class="btn-back" onclick="go(6)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg> Back</button>
       <button class="btn-next" id="createBtn" onclick="handleCreate()">
         <span id="createBtnTxt">Create Series</span>
         <span id="createBtnIco"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></span>
@@ -611,7 +568,6 @@ function go(n) {
   document.getElementById('step-'+n).classList.add('active');
   updProg(n);
   window.scrollTo({top:0,behavior:'smooth'});
-  if (n === 7) loadSocialAccounts();
 }
 
 function sTab(step, panel) {
@@ -661,8 +617,8 @@ function hideErr(id)       { const el=document.getElementById(id); if(el) el.sty
 async function handleCreate() {
   const name  = document.getElementById('seriesName').value.trim();
   const topic = name || S.niche;
-  if (!topic || topic.length < 3) { showErr('s8err','Please enter a series name.'); return; }
-  hideErr('s8err');
+  if (!topic || topic.length < 3) { showErr('s7err','Please enter a series name.'); return; }
+  hideErr('s7err');
 
   const btn = document.getElementById('createBtn');
   document.getElementById('createBtnTxt').textContent = 'Creating…';
@@ -689,57 +645,11 @@ async function handleCreate() {
     if (!res.ok || data.error) throw new Error(data.error || 'Server error. Please try again.');
     window.location.href = '/reels/loading/' + data.reel_id;
   } catch(err) {
-    showErr('s8err', err.message);
+    showErr('s7err', err.message);
     document.getElementById('createBtnTxt').textContent = 'Create Series';
     document.getElementById('createBtnIco').innerHTML = '<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>';
     btn.disabled = false;
   }
-}
-
-// ── Step 7: Social account helpers ───────────────────────────────────────────
-
-const YT_ICON = `<svg width="20" height="20" viewBox="0 0 24 24"><path fill="#ef4444" d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>`;
-
-async function loadSocialAccounts() {
-  const container = document.getElementById('s7-accounts');
-  try {
-    const res  = await fetch('/api/reels/social-accounts');
-    const data = await res.json();
-    const accounts = data.accounts || [];
-
-    if (accounts.length === 0) {
-      container.innerHTML = '';
-      return;
-    }
-
-    container.innerHTML = accounts.map(a => `
-      <div class="social-item" style="margin-bottom:10px;" id="sa-${a.id}">
-        ${a.channel_thumb
-          ? `<img src="${a.channel_thumb}" width="32" height="32" style="border-radius:50%;object-fit:cover;flex-shrink:0;" />`
-          : YT_ICON
-        }
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:14px;font-weight:600;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(a.channel_name || 'YouTube Channel')}</div>
-          <div style="font-size:12px;color:#9ca3af;">YouTube · Connected</div>
-        </div>
-        <span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#16a34a;font-weight:600;background:#f0fdf4;padding:3px 10px;border-radius:99px;">
-          <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-          Connected
-        </span>
-        <button onclick="disconnectAccount(${a.id})" type="button"
-          style="border:none;background:none;cursor:pointer;color:#9ca3af;font-size:12px;padding:4px 6px;border-radius:6px;transition:color .15s;"
-          title="Disconnect">✕</button>
-      </div>
-    `).join('');
-  } catch (e) {
-    container.innerHTML = '';
-  }
-}
-
-function connectYouTube() {
-  // Save wizard state to sessionStorage so we can restore after OAuth redirect
-  sessionStorage.setItem('wizState', JSON.stringify(S));
-  window.location.href = '/auth/youtube';
 }
 
 async function disconnectAccount(id) {
@@ -764,25 +674,12 @@ document.addEventListener('DOMContentLoaded', () => {
     sessionStorage.removeItem('wizState');
   }
 
-  const stepParam = parseInt(qp.get('step'), 10);
-
-  if (stepParam === 7 || qp.get('ytConnected') || qp.get('ytError')) {
-    // Return from YouTube OAuth — go back to step 7
-    go(7);
-    loadSocialAccounts();
-    if (qp.get('ytError')) {
-      const errEl = document.getElementById('s7-error');
-      errEl.textContent = 'Could not connect YouTube. Please try again.';
-      errEl.style.display = 'block';
-    }
-  } else {
-    updProg(1);
-    const tp = qp.get('topic');
-    if (tp) {
-      const match = document.querySelector('[data-niche="'+tp+'"]');
-      if (match) { pickNiche(tp); }
-      else { sTab(1,'b'); document.getElementById('customNiche').value=tp; cc('customNiche','cc1',5000); S.niche=tp; }
-    }
+  updProg(1);
+  const tp = qp.get('topic');
+  if (tp) {
+    const match = document.querySelector('[data-niche="'+tp+'"]');
+    if (match) { pickNiche(tp); }
+    else { sTab(1,'b'); document.getElementById('customNiche').value=tp; cc('customNiche','cc1',5000); S.niche=tp; }
   }
 
 });
