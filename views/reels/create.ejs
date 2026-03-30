@@ -83,6 +83,10 @@
 .upload-zone { border:2px dashed #e5e7eb; border-radius:12px; padding:36px; text-align:center; cursor:pointer; transition:border-color .15s; }
 .upload-zone:hover { border-color:#a78bfa; }
 
+/* Step visibility — class-based to avoid Tailwind CDN conflicts */
+.wiz-step         { display: none !important; }
+.wiz-step.active  { display: block !important; }
+
 /* Scrollable step body — keeps Continue/Create always visible */
 .wiz-body { max-height: calc(100vh - 320px); overflow-y: auto; padding-right: 4px; }
 
@@ -106,7 +110,7 @@
   </div>
 
   <!-- ── STEP 1: Niche ──────────────────────────────────────────────────── -->
-  <div id="step-1" class="wiz-step">
+  <div id="step-1" class="wiz-step active">
     <h2 class="step-title">Choose your niche <span class="step-badge">Step 1 of 8</span></h2>
     <p class="step-sub">Select a preset or describe your own niche</p>
     <div id="s1err" class="err-box"></div>
@@ -602,9 +606,9 @@ function go(n) {
     } else if (!S.niche) { showErr('s1err','Please select a niche to continue.'); return; }
     hideErr('s1err');
   }
-  document.getElementById('step-'+S.step).style.display = 'none';
+  document.getElementById('step-'+S.step).classList.remove('active');
   S.step = n;
-  document.getElementById('step-'+n).style.display = 'block';
+  document.getElementById('step-'+n).classList.add('active');
   updProg(n);
   window.scrollTo({top:0,behavior:'smooth'});
   if (n === 7) loadSocialAccounts();

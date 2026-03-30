@@ -3211,7 +3211,6 @@ app.get("/auth/youtube", ensureAuthenticated, (req, res) => {
     "email",
     "profile",
     "https://www.googleapis.com/auth/youtube.readonly",
-    "https://www.googleapis.com/auth/youtube.upload",
   ].join(" ");
 
   const params = new URLSearchParams({
