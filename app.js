@@ -2361,7 +2361,14 @@ app.get("/dashboard", ensureAuthenticated, async (req, res) => {
   }
   const walletRow = await db.query("SELECT wallet_balance FROM users WHERE id=?", [req.user.id]).catch(() => ({ rows: [] }));
   const walletBalance = parseFloat(walletRow.rows[0]?.wallet_balance) || 0;
-  res.render("dashboard", { subadminInvestment, subadminProfile, walletBalance });
+  let hp_services = {};
+  try {
+    const { rows: svcRows } = await db.query(
+      `SELECT value FROM admin_settings WHERE \`key\` = 'homepage_services' LIMIT 1`
+    );
+    if (svcRows.length) hp_services = JSON.parse(svcRows[0].value);
+  } catch {}
+  res.render("dashboard", { subadminInvestment, subadminProfile, walletBalance, hp_services });
 });
 
 app.get("/wallet", ensureAuthenticated, async (req, res) => {

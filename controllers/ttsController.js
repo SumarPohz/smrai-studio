@@ -1,6 +1,6 @@
-import { generateScript }            from '../services/geminiReelService.js';
-import { generateTTS, AVAILABLE_VOICES } from '../services/ttsService.js';
-import path                            from 'path';
+import { generateLongScript }                      from '../services/geminiReelService.js';
+import { generateLongTTS, AVAILABLE_VOICES }        from '../services/ttsService.js';
+import path                                         from 'path';
 
 export function getCreatePage(req, res) {
   res.render('tts/create', {
@@ -18,14 +18,10 @@ export async function generateScriptHandler(req, res) {
     return res.status(400).json({ error: 'Topic must be under 300 characters.' });
 
   try {
-    const script = await generateScript(topic.trim(), {
-      language: 'en',
-      artStyle:  'cinematic',
-      duration:  '30-40',
-    });
+    const script = await generateLongScript(topic.trim());
     res.json({ script });
   } catch (err) {
-    console.error('[TTS] generateScript error:', err.message);
+    console.error('[TTS] generateLongScript error:', err.message);
     res.status(500).json({ error: 'Failed to generate script. Please try again.' });
   }
 }
@@ -49,22 +45,41 @@ export async function generateAudioHandler(req, res, db) {
     return res.status(500).json({ error: 'Failed to start audio generation.' });
   }
 
+  // Respond immediately — pipeline runs in background (takes ~2-4 min for 60-min audio)
+  res.json({ tts_id: ttsId });
+
+  setImmediate(async () => {
+    try {
+      console.log(`[TTS] #${ttsId} — starting long TTS pipeline (voice: ${voice})`);
+      await generateLongTTS(script.trim(), voice, `tts-${ttsId}`);
+      const audioUrl = `/audio/tts-${ttsId}.mp3`;
+      await db.query(
+        `UPDATE tts_audios SET audio_url = ?, status = 'completed' WHERE id = ?`,
+        [audioUrl, ttsId]
+      );
+      console.log(`[TTS] #${ttsId} — complete → ${audioUrl}`);
+    } catch (err) {
+      console.error(`[TTS] #${ttsId} — pipeline failed:`, err.message);
+      await db.query(
+        `UPDATE tts_audios SET status = 'failed' WHERE id = ?`,
+        [ttsId]
+      ).catch(() => {});
+    }
+  });
+}
+
+export async function getTtsStatus(req, res, db) {
+  const ttsId = parseInt(req.params.id, 10);
+  if (!ttsId) return res.status(400).json({ error: 'Invalid ID.' });
   try {
-    // generateTTS names the file public/audio/{id}.mp3 — prefix with "tts-" to avoid collisions
-    await generateTTS(script.trim(), voice, `tts-${ttsId}`);
-    const audioUrl = `/audio/tts-${ttsId}.mp3`;
-    await db.query(
-      `UPDATE tts_audios SET audio_url = ?, status = 'completed' WHERE id = ?`,
-      [audioUrl, ttsId]
+    const { rows } = await db.query(
+      `SELECT status, audio_url FROM tts_audios WHERE id = ? AND user_id = ?`,
+      [ttsId, req.user.id]
     );
-    res.json({ audio_url: audioUrl, tts_id: ttsId });
+    if (!rows.length) return res.status(404).json({ error: 'Not found.' });
+    res.json(rows[0]);
   } catch (err) {
-    console.error('[TTS] generateTTS error:', err.message);
-    await db.query(
-      `UPDATE tts_audios SET status = 'failed' WHERE id = ?`,
-      [ttsId]
-    );
-    res.status(500).json({ error: 'Failed to generate audio. Please try again.' });
+    res.status(500).json({ error: err.message });
   }
 }
 
@@ -72,7 +87,6 @@ export async function downloadAudio(req, res, db) {
   const ttsId = parseInt(req.params.id, 10);
   if (!ttsId) return res.status(400).json({ error: 'Invalid audio ID.' });
 
-  // Subscription check
   try {
     const { rows: subs } = await db.query(
       `SELECT id FROM user_subscriptions
@@ -80,9 +94,8 @@ export async function downloadAudio(req, res, db) {
        LIMIT 1`,
       [req.user.id]
     );
-    if (!subs.length) {
+    if (!subs.length)
       return res.status(403).json({ error: 'Pro subscription required to download.' });
-    }
   } catch (err) {
     return res.status(500).json({ error: 'Could not verify subscription.' });
   }
@@ -92,9 +105,9 @@ export async function downloadAudio(req, res, db) {
       `SELECT audio_url FROM tts_audios WHERE id = ? AND user_id = ? AND status = 'completed'`,
       [ttsId, req.user.id]
     );
-    if (!rows.length || !rows[0].audio_url) {
+    if (!rows.length || !rows[0].audio_url)
       return res.status(404).json({ error: 'Audio not found.' });
-    }
+
     const filePath = path.join(process.cwd(), 'public', rows[0].audio_url);
     res.download(filePath, `smrai-voice-${ttsId}.mp3`);
   } catch (err) {

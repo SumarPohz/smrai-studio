@@ -2,10 +2,33 @@
 <script src="/socket.io/socket.io.js"></script>
 
 <section class="dash-section">
+
+  <!-- ── Service chip strip ────────────────────────────────────────────── -->
+  <div class="dash-chip-wrap" id="dashChipWrap">
+    <div class="dash-chip-track">
+      <a href="/photo-editor"        class="smr-chip smr-chip-green">🖼️ Photo Editor</a>
+      <a href="/reels"               class="smr-chip smr-chip-red">🎬 Reels</a>
+      <a href="/tts"                 class="smr-chip smr-chip-blue">🎙️ Text to Voice</a>
+      <a href="/resume-templates"    class="smr-chip smr-chip-indigo">📄 Resume</a>
+      <a href="/paysetu"             class="smr-chip smr-chip-orange">💳 PaySetu</a>
+      <a href="/application-builder" class="smr-chip smr-chip-purple">📋 Applications</a>
+      <a href="/background-remover"  class="smr-chip smr-chip-green">✂️ BG Remover</a>
+      <!-- duplicate for seamless loop -->
+      <a href="/photo-editor"        class="smr-chip smr-chip-green">🖼️ Photo Editor</a>
+      <a href="/reels"               class="smr-chip smr-chip-red">🎬 Reels</a>
+      <a href="/tts"                 class="smr-chip smr-chip-blue">🎙️ Text to Voice</a>
+      <a href="/resume-templates"    class="smr-chip smr-chip-indigo">📄 Resume</a>
+      <a href="/paysetu"             class="smr-chip smr-chip-orange">💳 PaySetu</a>
+      <a href="/application-builder" class="smr-chip smr-chip-purple">📋 Applications</a>
+      <a href="/background-remover"  class="smr-chip smr-chip-green">✂️ BG Remover</a>
+    </div>
+  </div>
+
+  <div class="dash-top-row">
+  <div class="dash-top-left">
   <div class="dash-welcome-row">
     <div>
       <h1 class="dash-welcome">Welcome back, <%= currentUser ? currentUser.name.split(" ")[0] : "" %>! 👋</h1>
-      <p class="dash-subtitle">Here's what's happening on SmrAI-Studio today.</p>
     </div>
     <% if (currentUser && currentUser.role === 'admin') { %>
     <div class="dash-subadmin-card">
@@ -139,8 +162,93 @@
 
     </div>
   </div>
+  </div><!-- /.dash-top-left -->
+
+  <div class="dash-top-right">
+    <div class="card">
+      <h2>Service Request</h2>
+      <p style="font-size:0.9rem;color:#6b7280;margin-bottom:1rem">Need something custom? Tell us what you need.</p>
+      <div id="srSuccess" hidden style="text-align:center;padding:1.5rem 0">
+        <div style="font-size:2rem;margin-bottom:0.5rem">✅</div>
+        <p style="font-weight:600;color:#111827">Request submitted!</p>
+        <p style="font-size:0.85rem;color:#6b7280">We'll get back to you soon.</p>
+        <button class="btn-ghost" style="margin-top:0.75rem;font-size:0.85rem" onclick="resetSrForm()">Submit another</button>
+      </div>
+      <form id="srForm">
+        <div class="sr-field">
+          <label class="sr-label">Service Type</label>
+          <select name="service_type" class="sr-input" required>
+            <option value="">Select a service…</option>
+            <option value="resume">AI Resume &amp; Cover Letter</option>
+            <option value="logo">Logo + Brand Kit</option>
+            <option value="landing_page">Landing Page Copy + Design</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="sr-field">
+          <label class="sr-label">Details</label>
+          <textarea name="details" class="sr-input sr-textarea" rows="4" placeholder="Tell us about your project…" required></textarea>
+        </div>
+        <button type="submit" class="btn-primary sr-submit" id="srSubmitBtn">Submit Request</button>
+      </form>
+      <div id="myRequestsList" style="margin-top:1.25rem"></div>
+    </div>
+  </div><!-- /.dash-top-right -->
+
+  </div><!-- /.dash-top-row -->
+
   <style>
+    /* ── Service chip strip ── */
+    .smr-chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 6px 14px; border-radius: 999px; font-size: 12px;
+      font-weight: 600; text-decoration: none !important;
+      border: 1.5px solid transparent;
+      transition: transform 0.15s, box-shadow 0.15s; white-space: nowrap;
+    }
+    .smr-chip:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .smr-chip-indigo { background:#ede9fe; border-color:#c4b5fd; color:#4f46e5; }
+    .smr-chip-orange { background:#fff7ed; border-color:#fed7aa; color:#ea580c; }
+    .smr-chip-purple { background:#faf5ff; border-color:#e9d5ff; color:#7c3aed; }
+    .smr-chip-green  { background:#f0fdf4; border-color:#bbf7d0; color:#16a34a; }
+    .smr-chip-red    { background:#fff1f2; border-color:#fecdd3; color:#e11d48; }
+    .smr-chip-blue   { background:#eef2ff; border-color:#c7d2fe; color:#4f46e5; }
+
+    .dash-chip-wrap {
+      overflow: hidden; position: relative; margin-bottom: 1.5rem;
+      -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 8%, #000 92%, transparent 100%);
+      mask-image:         linear-gradient(90deg, transparent 0%, #000 8%, #000 92%, transparent 100%);
+    }
+    .dash-chip-track {
+      display: flex; gap: 8px; width: max-content;
+      padding: 2px 4px;
+      animation: dashChipScroll 22s linear infinite;
+    }
+    .dash-chip-wrap:hover .dash-chip-track { animation-play-state: paused; }
+    @keyframes dashChipScroll {
+      0%   { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+
+    /* ── Top two-column layout ── */
+    .dash-top-row {
+      display: flex;
+      gap: 1.5rem;
+      align-items: flex-start;
+      margin-bottom: 2rem;
+    }
+    .dash-top-left { flex: 1; min-width: 0; }
+    .dash-top-right { width: 280px; flex-shrink: 0; }
+    .dash-top-right .card { margin-bottom: 0; }
+
+    /* ── What you can do showcase ── */
+    .dash-svc-showcase { grid-template-columns: repeat(3, 1fr) !important; }
+    @media (max-width: 860px) {
+      .dash-top-row { flex-direction: column; }
+      .dash-top-right { width: 100%; }
+    }
     @media (max-width: 640px) {
+      .dash-svc-showcase { grid-template-columns: repeat(2, 1fr) !important; }
       /* ── Explore Services grid ── */
       .dash-svc-grid { grid-template-columns: repeat(2,1fr) !important; gap: 0.5rem !important; }
       .dash-svc-grid > a { padding: 0.6rem 0.65rem !important; gap: 0.5rem !important; border-radius: 11px !important; }
@@ -163,35 +271,42 @@
     }
   </style>
 
+  <!-- ── What you can do with SmrAI-Studio ────────────────────────────── -->
+  <% const svcCards = (hp_services && hp_services.cards) ? hp_services.cards : []; %>
+  <% if (svcCards.length > 0) { %>
+  <div style="margin-bottom:2rem">
+    <div style="margin-bottom:1rem">
+      <h2 style="font-size:1.1rem;font-weight:800;color:#111827;margin:0 0 0.2rem"><%= hp_services.title || 'What you can do with SmrAI-Studio' %></h2>
+      <% if (hp_services.subtitle) { %><p style="font-size:0.82rem;color:#6b7280;margin:0"><%= hp_services.subtitle %></p><% } %>
+    </div>
+    <div class="service-cards dash-svc-showcase">
+      <% svcCards.forEach(function(card) { %>
+        <% if (card.link) { %>
+          <a href="<%= card.link === '/resume-templates' ? '/resume-templates' : card.link %>" class="service-card service-card-link">
+        <% } else { %>
+          <article class="service-card">
+        <% } %>
+          <% if (card.imageUrl) { %>
+            <div class="service-image" style="background-image:url('<%= card.imageUrl %>');background-size:cover;background-position:center;"></div>
+          <% } else { %>
+            <div class="service-image <%= card.bgClass || '' %>"></div>
+          <% } %>
+          <div class="service-card-body">
+            <h3><%- card.title %></h3>
+            <p><%- card.description %></p>
+          </div>
+        <% if (card.link) { %>
+          </a>
+        <% } else { %>
+          </article>
+        <% } %>
+      <% }); %>
+    </div>
+  </div>
+  <% } %>
+
   <!-- Action cards -->
   <div class="card-grid">
-    <a href="/resume-templates" class="service-card service-card-link">
-      <div class="service-image resume-bg"></div>
-      <div class="service-card-body">
-        <h3>Resume Making</h3>
-        <p>Generate a clean, ATS-friendly resume with professional wording and layout in minutes.</p>
-      </div>
-    </a>
-    <a href="/photo-editor" class="service-card service-card-link">
-      <div class="service-image photo-editor-bg">
-        <svg class="ped-icon" width="56" height="56" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect width="100" height="100" rx="22" fill="#3abcb1"/>
-          <path d="M22 28 Q22 18 32 18 L58 18 Q78 18 78 38 Q78 58 58 58 L46 58 L46 78 Q46 82 42 82 L26 82 Q22 82 22 78 Z" fill="white"/>
-          <path d="M46 38 Q46 28 56 28 Q66 28 66 38 Q66 48 56 48 L46 48 Z" fill="#3abcb1"/>
-        </svg>
-      </div>
-      <div class="service-card-body">
-        <h3>Photo Editor</h3>
-        <p>Edit images, create graphics and designs with the full-featured Photopea online editor.</p>
-      </div>
-    </a>
-    <a href="/background-remover" class="service-card service-card-link">
-      <div class="service-image" style="background-image:url('/images/bgre.png');background-size:cover;background-position:center;"></div>
-      <div class="service-card-body">
-        <h3>Background Remover</h3>
-        <p>Remove image backgrounds instantly with AI — clean, precise cutouts in seconds.</p>
-      </div>
-    </a>
     <div class="card refer-earn-card">
       <div class="ref-card-top">
         <div class="ref-card-icon">
@@ -227,39 +342,6 @@
       <a href="/investor/dashboard" class="btn-primary" style="display:inline-block;text-decoration:none">View Investor Card</a>
     </div>
     <% } %>
-
-    <div class="card">
-      <h2>Service Request</h2>
-      <p style="font-size:0.9rem;color:#6b7280;margin-bottom:1rem">Need something custom? Tell us what you need.</p>
-
-      <div id="srSuccess" hidden style="text-align:center;padding:1.5rem 0">
-        <div style="font-size:2rem;margin-bottom:0.5rem">✅</div>
-        <p style="font-weight:600;color:#111827">Request submitted!</p>
-        <p style="font-size:0.85rem;color:#6b7280">We'll get back to you soon.</p>
-        <button class="btn-ghost" style="margin-top:0.75rem;font-size:0.85rem" onclick="resetSrForm()">Submit another</button>
-      </div>
-
-      <form id="srForm">
-        <div class="sr-field">
-          <label class="sr-label">Service Type</label>
-          <select name="service_type" class="sr-input" required>
-            <option value="">Select a service…</option>
-            <option value="resume">AI Resume &amp; Cover Letter</option>
-            <option value="logo">Logo + Brand Kit</option>
-            <option value="landing_page">Landing Page Copy + Design</option>
-            <option value="other">Other</option>
-          </select>
-        </div>
-        <div class="sr-field">
-          <label class="sr-label">Details</label>
-          <textarea name="details" class="sr-input sr-textarea" rows="3" placeholder="Tell us about your project…" required></textarea>
-        </div>
-        <button type="submit" class="btn-primary sr-submit" id="srSubmitBtn">Submit Request</button>
-      </form>
-
-      <!-- Past requests list -->
-      <div id="myRequestsList" style="margin-top:1.25rem"></div>
-    </div>
 
 
   </div>
@@ -398,7 +480,7 @@
   }
 </style>
 <style>
-  .dash-section    { max-width: 900px; margin: 0 auto; padding: 2rem 1.25rem; }
+  .dash-section    { max-width: 1200px; margin: 0 auto; padding: 2rem 2rem; }
   .dash-welcome    { font-size: 1.6rem; font-weight: 800; color: #111827; margin-bottom: 0.25rem; }
   .dash-subtitle   { color: #6b7280; margin-bottom: 0; font-size: 0.95rem; }
 

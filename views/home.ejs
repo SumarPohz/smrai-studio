@@ -8,12 +8,14 @@
     <a href="/application-builder" class="smr-chip smr-chip-purple">📋 Applications</a>
     <a href="/photo-editor"        class="smr-chip smr-chip-green">🖼️ Photo Editor</a>
     <a href="/reels"               class="smr-chip smr-chip-red">🎬 Reels</a>
+    <a href="/tts"                 class="smr-chip smr-chip-blue">🎙️ Text to Voice</a>
     <!-- duplicate for seamless loop -->
     <a href="/resume-templates"    class="smr-chip smr-chip-indigo">📄 Resume</a>
     <a href="/paysetu"             class="smr-chip smr-chip-orange">💳 PaySetu</a>
     <a href="/application-builder" class="smr-chip smr-chip-purple">📋 Applications</a>
     <a href="/photo-editor"        class="smr-chip smr-chip-green">🖼️ Photo Editor</a>
     <a href="/reels"               class="smr-chip smr-chip-red">🎬 Reels</a>
+    <a href="/tts"                 class="smr-chip smr-chip-blue">🎙️ Text to Voice</a>
   </div>
 </div>
 
@@ -61,6 +63,7 @@
         <a href="/application-builder" class="smr-chip smr-chip-purple">📋 Applications</a>
         <a href="/photo-editor"        class="smr-chip smr-chip-green">🖼️ Photo Editor</a>
         <a href="/reels"               class="smr-chip smr-chip-red">🎬 Reels</a>
+        <a href="/tts"                 class="smr-chip smr-chip-blue">🎙️ Text to Voice</a>
       </div>
 
       <p class="smr-trust">
@@ -102,6 +105,24 @@
         <div>
           <div class="smr-card-title">Photo Tools</div>
           <div class="smr-card-sub">BG Remove &amp; Editor</div>
+        </div>
+        <div class="smr-card-arrow">→</div>
+      </a>
+
+      <a href="/reels" class="smr-card smr-card-red">
+        <div class="smr-card-icon-wrap smr-iw-red">🎬</div>
+        <div>
+          <div class="smr-card-title">AI Reels</div>
+          <div class="smr-card-sub">Generate video reels</div>
+        </div>
+        <div class="smr-card-arrow">→</div>
+      </a>
+
+      <a href="/tts" class="smr-card smr-card-blue">
+        <div class="smr-card-icon-wrap smr-iw-blue">🎙️</div>
+        <div>
+          <div class="smr-card-title">Text to Voice</div>
+          <div class="smr-card-sub">AI voiceover from script</div>
         </div>
         <div class="smr-card-arrow">→</div>
       </a>
@@ -374,6 +395,7 @@
 .smr-chip-purple { background: #faf5ff; border-color: #e9d5ff; color: #7c3aed; }
 .smr-chip-green  { background: #f0fdf4; border-color: #bbf7d0; color: #16a34a; }
 .smr-chip-red    { background: #fff1f2; border-color: #fecdd3; color: #e11d48; }
+.smr-chip-blue   { background: #eef2ff; border-color: #c7d2fe; color: #4f46e5; }
 
 .smr-trust {
   font-size: 0.8rem;
@@ -445,6 +467,23 @@
   box-shadow: 0 4px 20px rgba(22,163,74,0.10);
 }
 .smr-card-green:hover { box-shadow: 0 14px 40px rgba(22,163,74,0.20); }
+
+.smr-card-red {
+  background: linear-gradient(145deg, #fff1f2 0%, #fecdd3 60%, #fda4af 100%);
+  border-color: #fda4af;
+  box-shadow: 0 4px 20px rgba(225,29,72,0.10);
+}
+.smr-card-red:hover { box-shadow: 0 14px 40px rgba(225,29,72,0.20); }
+
+.smr-card-blue {
+  background: linear-gradient(145deg, #eef2ff 0%, #c7d2fe 60%, #a5b4fc 100%);
+  border-color: #a5b4fc;
+  box-shadow: 0 4px 20px rgba(99,102,241,0.10);
+}
+.smr-card-blue:hover { box-shadow: 0 14px 40px rgba(99,102,241,0.20); }
+
+.smr-iw-red  { background: rgba(255,241,242,0.80); }
+.smr-iw-blue { background: rgba(238,242,255,0.80); }
 
 .smr-card-icon-wrap {
   width: 46px; height: 46px;
