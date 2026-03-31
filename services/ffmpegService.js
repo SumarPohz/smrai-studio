@@ -128,7 +128,7 @@ export async function mergeReelFromImages(reelId, imagePaths, audioPath, script,
   // Seconds each image is held on screen — total must exceed TTS audio length
   // (-shortest will cut at audio end)
   const frameDuration = duration === '60-70' ? 13 : 11;
-  const frameCount    = frameDuration * 30;  // frames at 30fps
+  const frameCount    = frameDuration * 24;  // frames at 24fps (zoompan is CPU-bound; 24fps is ~20% faster)
 
   const n = imagePaths.length;  // audio stream index = n, BGM = n+1
 
@@ -152,12 +152,13 @@ export async function mergeReelFromImages(reelId, imagePaths, audioPath, script,
       const kb = KB_VARIANTS[i % KB_VARIANTS.length];
       const kenBurns =
         `zoompan=z='${kb.z}':x='${kb.x}':y='${kb.y}'` +
-        `:d=${frameCount}:s=1080x1920:fps=30`;
+        `:d=${frameCount}:s=1080x1920:fps=24`;
       return (
         `[${i}:v]` +
         `scale=1080:1920:force_original_aspect_ratio=increase,` +
         `crop=1080:1920,setsar=1,` +
         `${kenBurns}` +
+        `,setpts=N/24/TB` +
         `[v${i}]`
       );
     });
@@ -166,7 +167,7 @@ export async function mergeReelFromImages(reelId, imagePaths, audioPath, script,
 
     // Optional shake (same as mergeReel)
     const shakeStage  = hasShake
-      ? `[vcat]scale=1116:1996,crop=1080:1920:x='18+18*sin(t*22)':y='18+18*sin(t*17)'[vshaken]`
+      ? `[vcat]scale=1116:1996,crop=1080:1920:x='18+18*sin(t*4)':y='18+18*sin(t*3)'[vshaken]`
       : null;
     const drawtextSrc = hasShake ? '[vshaken]' : '[vcat]';
 
@@ -225,7 +226,8 @@ export async function mergeReelFromImages(reelId, imagePaths, audioPath, script,
         '-b:a 128k',
         '-crf 26',
         '-preset ultrafast',
-        '-r 30',
+        '-r 24',
+        '-threads 0',
         '-shortest',
         '-movflags +faststart',
         '-pix_fmt yuv420p',
@@ -291,7 +293,7 @@ export async function mergeReel(reelId, clipPaths, audioPath, script, options = 
 
     // Shake: scale up slightly, crop with sinusoidal offset → camera wobble
     const shakeStage  = hasShake
-      ? `[vcat]scale=1116:1996,crop=1080:1920:x='18+18*sin(t*22)':y='18+18*sin(t*17)'[vshaken]`
+      ? `[vcat]scale=1116:1996,crop=1080:1920:x='18+18*sin(t*4)':y='18+18*sin(t*3)'[vshaken]`
       : null;
     const drawtextSrc = hasShake ? '[vshaken]' : '[vcat]';
 
