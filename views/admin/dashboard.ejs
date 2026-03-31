@@ -467,6 +467,23 @@
             <span class="adm-price-status" id="status_price_ats-friendly" hidden></span>
           </div>
 
+          <!-- AI Reel Video -->
+          <div class="adm-price-card">
+            <div class="adm-price-card-icon adm-icon-purple"><i class="fas fa-film"></i></div>
+            <div class="adm-price-card-info">
+              <h3>AI Reel Video</h3>
+              <p>Per-video price charged to users on the Reels create page</p>
+            </div>
+            <div class="adm-price-card-input-wrap">
+              <span class="adm-price-currency">₹</span>
+              <input type="number" class="adm-price-input" id="price_reel_video" min="1" step="1" placeholder="30" />
+            </div>
+            <button class="adm-price-save-btn" data-key="price_reel_video">
+              <i class="fas fa-check"></i> Save
+            </button>
+            <span class="adm-price-status" id="status_price_reel_video" hidden></span>
+          </div>
+
         </div><!-- /adm-price-grid -->
 
         <!-- Wallet Cap -->
@@ -3692,7 +3709,7 @@ async function loadPricing() {
     const res  = await fetch("/admin/api/settings");
     const data = await res.json();
     if (!data.success) return;
-    ["price_fresher", "price_experienced", "price_developer", "price_ats-friendly", "wallet_cap"].forEach(key => {
+    ["price_fresher", "price_experienced", "price_developer", "price_ats-friendly", "wallet_cap", "price_reel_video"].forEach(key => {
       const input = document.getElementById(key);
       if (input && data.settings[key] !== undefined) input.value = data.settings[key];
     });

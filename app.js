@@ -275,6 +275,7 @@ await db.query(`
     await db.query(`INSERT IGNORE INTO admin_settings (\`key\`, value) VALUES ('dth_recharge_max', '50000')`);
     await db.query(`INSERT IGNORE INTO admin_settings (\`key\`, value) VALUES ('wallet_cap', '100')`);
     await db.query(`INSERT IGNORE INTO admin_settings (\`key\`, value) VALUES ('reel_image_provider', 'openai')`);
+    await db.query(`INSERT IGNORE INTO admin_settings (\`key\`, value) VALUES ('price_reel_video', '30')`);
 
     // ── Homepage editable content defaults ───────────────────────────────────
     const homepageDefaults = [
@@ -3302,11 +3303,22 @@ app.post("/api/reels/video-pay/apply-promo", ensureAuthenticated, async (req, re
   }
 });
 
-/** POST /api/reels/video-pay/create-order — create ₹30 Razorpay order */
+/** GET /api/reels/video-pay/price — return current admin-set reel price */
+app.get("/api/reels/video-pay/price", ensureAuthenticated, async (req, res) => {
+  try {
+    const r = await db.query("SELECT value FROM admin_settings WHERE `key` = 'price_reel_video'");
+    const price = parseInt(r.rows[0]?.value || '30', 10);
+    res.json({ price });
+  } catch { res.json({ price: 30 }); }
+});
+
+/** POST /api/reels/video-pay/create-order — create Razorpay order at admin-set price */
 app.post("/api/reels/video-pay/create-order", ensureAuthenticated, async (req, res) => {
   try {
     const { couponCode } = req.body || {};
-    let finalAmount = 30;
+    const priceRes = await db.query("SELECT value FROM admin_settings WHERE `key` = 'price_reel_video'");
+    const basePrice = parseInt(priceRes.rows[0]?.value || '30', 10);
+    let finalAmount = basePrice;
 
     if (couponCode) {
       const upper = String(couponCode).trim().toUpperCase();
@@ -3317,9 +3329,9 @@ app.post("/api/reels/video-pay/create-order", ensureAuthenticated, async (req, r
         const hasUses     = c.max_uses <= 0 || c.uses_count < c.max_uses;
         if (notExpired && hasUses) {
           if (c.discount_type === 'percent') {
-            finalAmount = Math.max(1, Math.round(30 * (1 - c.discount_value / 100)));
+            finalAmount = Math.max(1, Math.round(basePrice * (1 - c.discount_value / 100)));
           } else {
-            finalAmount = Math.max(1, 30 - Number(c.discount_value));
+            finalAmount = Math.max(1, basePrice - Number(c.discount_value));
           }
         }
       }

@@ -480,15 +480,15 @@
         <div style="font-size:12px;color:#9ca3af;margin-top:2px;">One video · instant download</div>
       </div>
       <div style="text-align:right;">
-        <span id="payOriginalPrice" style="font-size:13px;color:#9ca3af;text-decoration:line-through;display:none;margin-right:6px;">₹30</span>
-        <span id="payFinalPrice" style="font-size:1.6rem;font-weight:800;color:#111827;">₹30</span>
+        <span id="payOriginalPrice" style="font-size:13px;color:#9ca3af;text-decoration:line-through;display:none;margin-right:6px;">₹…</span>
+        <span id="payFinalPrice" style="font-size:1.6rem;font-weight:800;color:#111827;">₹…</span>
       </div>
     </div>
 
     <!-- Pay button -->
     <button id="payBtn" onclick="startVideoPay()"
       style="width:100%;padding:14px;background:#7c3aed;color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;transition:background .15s;">
-      <span id="payBtnTxt">Pay ₹30 &amp; Generate</span>
+      <span id="payBtnTxt">Pay &amp; Generate</span>
     </button>
   </div>
 </div>
@@ -498,6 +498,7 @@ const S = { step:1, niche:'', exScript:'', voice:'alloy', music:[], art:'cinemat
 const needsPayment = <%= totalReels %> > 0;
 let payAppliedCoupon = null;
 let payFinalAmount   = 30;
+let reelBasePrice    = 30; // overwritten on DOMContentLoaded from server
 
 // ── Voice preview player ──────────────────────────────────────────────────────
 const PLAY_ICON  = `<svg width="11" height="11" fill="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>`;
@@ -654,18 +655,18 @@ async function applyPayCoupon() {
     if (data.valid) {
       payAppliedCoupon = data;
       payFinalAmount   = data.discountType === 'percent'
-        ? Math.max(1, Math.round(30 * (1 - data.discountValue / 100)))
-        : Math.max(1, 30 - data.discountValue);
+        ? Math.max(1, Math.round(reelBasePrice * (1 - data.discountValue / 100)))
+        : Math.max(1, reelBasePrice - data.discountValue);
       msgEl.textContent = data.message; msgEl.style.color = '#059669';
       document.getElementById('payOriginalPrice').style.display = 'inline';
       document.getElementById('payFinalPrice').textContent      = '₹' + payFinalAmount;
       document.getElementById('payBtnTxt').textContent          = `Pay ₹${payFinalAmount} & Generate`;
     } else {
-      payAppliedCoupon = null; payFinalAmount = 30;
+      payAppliedCoupon = null; payFinalAmount = reelBasePrice;
       msgEl.textContent = data.message; msgEl.style.color = '#dc2626';
       document.getElementById('payOriginalPrice').style.display = 'none';
-      document.getElementById('payFinalPrice').textContent      = '₹30';
-      document.getElementById('payBtnTxt').textContent          = 'Pay ₹30 & Generate';
+      document.getElementById('payFinalPrice').textContent      = '₹' + reelBasePrice;
+      document.getElementById('payBtnTxt').textContent          = `Pay ₹${reelBasePrice} & Generate`;
     }
   } catch(e) {
     msgEl.textContent = 'Could not apply coupon.'; msgEl.style.color = '#dc2626';
@@ -817,6 +818,16 @@ document.addEventListener('DOMContentLoaded', () => {
       updProg(6);
     } catch(e) {}
   }
+
+  // Fetch admin-set reel price
+  try {
+    const pr = await fetch('/api/reels/video-pay/price').then(r => r.json());
+    reelBasePrice  = pr.price || 30;
+    payFinalAmount = reelBasePrice;
+    document.getElementById('payOriginalPrice').textContent = '₹' + reelBasePrice;
+    document.getElementById('payFinalPrice').textContent    = '₹' + reelBasePrice;
+    document.getElementById('payBtnTxt').textContent        = `Pay ₹${reelBasePrice} & Generate`;
+  } catch {}
 
   updProg(1);
   const tp = qp.get('topic');
