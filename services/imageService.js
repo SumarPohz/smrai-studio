@@ -17,6 +17,25 @@ function getXAI() {
   return _xai;
 }
 
+// ── Names that trigger DALL-E content policy ─────────────────────────────────
+const STRIP_NAMES = [
+  /\bJesus\b/gi, /\bChrist\b/gi, /\bMessiah\b/gi,
+  /\bGod\b/gi,   /\bAllah\b/gi,  /\bYahweh\b/gi, /\bJehovah\b/gi,
+  /\bMoses\b/gi, /\bNoah\b/gi,   /\bAbraham\b/gi,/\bIsaac\b/gi,
+  /\bJacob\b/gi, /\bJoseph\b/gi, /\bDavid\b/gi,  /\bSolomon\b/gi,
+  /\bElijah\b/gi,/\bElisha\b/gi, /\bSamson\b/gi, /\bDaniel\b/gi,
+  /\bMary\b/gi,  /\bAngel\b/gi,  /\bAngels\b/gi,
+  /\bMuhammad\b/gi, /\bProphet\b/gi,
+  /\bSatan\b/gi, /\bDevil\b/gi,  /\bLucifer\b/gi,/\bDemon\b/gi,
+  /\bBible\b/gi, /\bQuran\b/gi,  /\bTorah\b/gi,  /\bBiblical\b/gi,
+];
+
+function sanitizeSceneText(text) {
+  let s = text;
+  for (const re of STRIP_NAMES) s = s.replace(re, 'a figure');
+  return s;
+}
+
 // ── Art style → DALL-E 3 visual description ───────────────────────────────────
 const ART_STYLE_VISUALS = {
   cinematic:  'cinematic film still, dramatic lighting, high contrast, professional cinematography',
@@ -58,23 +77,35 @@ export async function generateImages(scriptLines, reelId, artStyle = 'cinematic'
   const imagePaths = [];
 
   for (let i = 0; i < count; i++) {
-    const sceneText = chunks[i] || chunks[chunks.length - 1] || 'dramatic scene';
-    const prompt =
-      `${styleVisual}: ${sceneText}. ` +
+    const rawScene  = chunks[i] || chunks[chunks.length - 1] || 'dramatic scene';
+    const safeScene = sanitizeSceneText(rawScene);
+    const prompt    =
+      `${styleVisual}: ${safeScene}. ` +
       `Vertical portrait composition 9:16. No text, no watermarks, no subtitles. High quality.`;
 
     console.log(`[ImageGen] Reel #${reelId} image ${i + 1}/${count}: generating…`);
 
     const genOpts = {
       model,
-      prompt,
       n:               1,
       size,
       response_format: 'url',
     };
     if (provider !== 'xai') genOpts.quality = 'standard';  // DALL-E 3 only
 
-    const response = await client.images.generate(genOpts);
+    let response;
+    try {
+      response = await client.images.generate({ ...genOpts, prompt });
+    } catch (err) {
+      // Retry with a generic fallback if content policy triggered
+      if (err?.status === 400 || err?.message?.toLowerCase().includes('safety')) {
+        console.warn(`[ImageGen] Reel #${reelId} image ${i + 1}: safety rejection — retrying with fallback prompt`);
+        const fallback = `${styleVisual}: an epic dramatic scene, ancient world setting, majestic golden atmosphere, grand architecture. Vertical portrait composition 9:16. No text, no watermarks. High quality.`;
+        response = await client.images.generate({ ...genOpts, prompt: fallback });
+      } else {
+        throw err;
+      }
+    }
 
     const imageUrl = response.data[0].url;
     const destPath = path.join(dir, `img_${i}.png`);

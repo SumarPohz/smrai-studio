@@ -231,7 +231,6 @@ export async function mergeReelFromImages(reelId, imagePaths, audioPath, script,
         '-pix_fmt yuv420p',
       ])
       .output(outputPath)
-      .timeout(420)   // 7-minute limit (image pipeline is slower than video)
       .on('start', (cmd) => console.log(`[FFmpeg] Starting image reel #${reelId}:`, cmd))
       .on('progress', (p) => {
         if (p.percent) console.log(`[FFmpeg] Reel #${reelId}: ${Math.round(p.percent)}%`);
@@ -362,7 +361,6 @@ export async function mergeReel(reelId, clipPaths, audioPath, script, options = 
         '-pix_fmt yuv420p',
       ])
       .output(outputPath)
-      .timeout(300)   // 5-minute hard limit — kills ffmpeg gracefully if exceeded
       .on('start', (cmd) => console.log(`[FFmpeg] Starting reel ${reelId}:`, cmd))
       .on('progress', (p) => {
         if (p.percent) console.log(`[FFmpeg] Reel ${reelId}: ${Math.round(p.percent)}%`);
