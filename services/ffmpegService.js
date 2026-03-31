@@ -192,7 +192,7 @@ export async function mergeReelFromImages(reelId, imagePaths, audioPath, script,
         `${drawtextSrc}drawtext=` +
         `text='${fallbackText}':` +
         `${captionParams}:` +
-        `x=(w-text_w)/2:y=h-180:line_spacing=8` +
+        `x=(w-text_w)/2:y=h-200:line_spacing=8:fix_bounds=1` +
         `${grainFilter}[vout]`,
       ];
     } else {
@@ -205,7 +205,7 @@ export async function mergeReelFromImages(reelId, imagePaths, audioPath, script,
           `${inputLabel}drawtext=` +
           `text='${seg.text}':` +
           `${captionParams}:` +
-          `x=(w-text_w)/2:y=h-180:line_spacing=8:` +
+          `x=(w-text_w)/2:y=h-200:line_spacing=8:fix_bounds=1:` +
           `enable='between(t,${seg.start},${seg.end})':` +
           `alpha='min(1,max(0,if(lt(t,${seg.start}+0.2),(t-${seg.start})/0.2,if(gt(t,${seg.end}-0.15),(${seg.end}-t)/0.15,1))))'` +
           `${grain}${outputLabel}`
@@ -323,7 +323,7 @@ export async function mergeReel(reelId, clipPaths, audioPath, script, options = 
         `${drawtextSrc}drawtext=` +
         `text='${fallbackText}':` +
         `${captionParams}:` +
-        `x=(w-text_w)/2:y=h-180:line_spacing=8` +
+        `x=(w-text_w)/2:y=h-200:line_spacing=8:fix_bounds=1` +
         `${grainFilter}[vout]`,
       ];
     } else {
@@ -336,7 +336,7 @@ export async function mergeReel(reelId, clipPaths, audioPath, script, options = 
           `${inputLabel}drawtext=` +
           `text='${seg.text}':` +
           `${captionParams}:` +
-          `x=(w-text_w)/2:y=h-180:line_spacing=8:` +
+          `x=(w-text_w)/2:y=h-200:line_spacing=8:fix_bounds=1:` +
           `enable='between(t,${seg.start},${seg.end})':` +
           `alpha='min(1,max(0,if(lt(t,${seg.start}+0.2),(t-${seg.start})/0.2,if(gt(t,${seg.end}-0.15),(${seg.end}-t)/0.15,1))))'` +
           `${grain}${outputLabel}`
