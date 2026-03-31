@@ -539,10 +539,10 @@
               </div>`;
             }).join('');
         } else {
-          list.innerHTML = d.history.map(tx => {
+          list.innerHTML = d.history.map((tx, i) => {
             const icon = OP_ICONS[tx.operator] || OP_ICONS.default;
             const date = new Date(tx.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'2-digit' });
-            return `<div class="ps-txn-item">
+            return `<div class="ps-txn-item" onclick="handleMobileTxnTap(${i},'recharge')" style="cursor:pointer;">
               <div class="ps-txn-icon">${icon}</div>
               <div class="ps-txn-main">
                 <div class="ps-txn-title">${tx.operator} · ${tx.type === 'dth' ? 'DTH' : 'Mobile'}</div>
@@ -597,10 +597,10 @@
               </div>`;
             }).join('');
         } else {
-          list.innerHTML = d.history.map(tx => {
+          list.innerHTML = d.history.map((tx, i) => {
             const icon = CAT_ICONS[tx.category] || '🏦';
             const date = new Date(tx.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'2-digit' });
-            return `<div class="ps-txn-item">
+            return `<div class="ps-txn-item" onclick="handleMobileTxnTap(${i},'bills')" style="cursor:pointer;">
               <div class="ps-txn-icon">${icon}</div>
               <div class="ps-txn-main">
                 <div class="ps-txn-title">${tx.biller_name || tx.biller_id}</div>
@@ -645,8 +645,8 @@
       type === 'recharge' ? (tx.type === 'dth' ? 'DTH Prepaid' : 'Mobile Prepaid') : (tx.category || '—');
     document.getElementById('hdRef').textContent = tx.external_ref || tx.id || '—';
 
-    // Show receipt button only for successful recharge transactions
-    const showReceipt = type === 'recharge' && tx.status === 'success';
+    // Show receipt button for any successful transaction (recharge or bill)
+    const showReceipt = tx.status === 'success';
     document.getElementById('hdReceiptBtn').style.display = showReceipt ? 'block' : 'none';
 
     document.querySelectorAll('.ht-trow').forEach(r => r.classList.remove('ht-selected'));
@@ -656,18 +656,29 @@
   }
 
   function openHistoryReceipt() {
-    const tx = _currentDetailTx;
+    const tx   = _currentDetailTx;
+    const type = _currentDetailType;
     if (!tx) return;
     const date = new Date(tx.created_at).toLocaleString('en-IN', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
-    const rows = [
-      ['Status',    tx.status.toUpperCase()],
-      ['Operator',  tx.operator],
-      ['Number',    tx.mobile],
-      ['Type',      tx.type === 'dth' ? 'DTH Prepaid' : 'Mobile Prepaid'],
-      ['Amount',    '₹' + Number(tx.amount).toFixed(2)],
-      ['Date',      date],
-      ['Reference', tx.external_ref || String(tx.id)],
-    ];
+    const rows = type === 'recharge'
+      ? [
+          ['Status',    tx.status.toUpperCase()],
+          ['Operator',  tx.operator],
+          ['Number',    tx.mobile],
+          ['Type',      tx.type === 'dth' ? 'DTH Prepaid' : 'Mobile Prepaid'],
+          ['Amount',    '₹' + Number(tx.amount).toFixed(2)],
+          ['Date',      date],
+          ['Reference', tx.external_ref || String(tx.id)],
+        ]
+      : [
+          ['Status',     tx.status.toUpperCase()],
+          ['Biller',     tx.biller_name || tx.biller_id],
+          ['Account No', tx.customer_number],
+          ['Category',   tx.category || '—'],
+          ['Amount',     '₹' + Number(tx.amount).toFixed(2)],
+          ['Date',       date],
+          ['Reference',  tx.external_ref || String(tx.id)],
+        ];
     document.getElementById('htRcptTable').innerHTML = rows.map(([k,v]) =>
       `<tr><td>${k}</td><td>${v}</td></tr>`).join('');
     document.getElementById('htRcptOverlay').classList.remove('hidden');
@@ -678,14 +689,28 @@
   }
 
   function shareHtReceipt() {
-    const tx = _currentDetailTx;
+    const tx   = _currentDetailTx;
+    const type = _currentDetailType;
     if (!tx) return;
     const date = new Date(tx.created_at).toLocaleString('en-IN');
-    const text = `✅ Recharge Receipt\nOperator: ${tx.operator}\nNumber: ${tx.mobile}\nAmount: ₹${Number(tx.amount).toFixed(2)}\nRef: ${tx.external_ref || tx.id}\nDate: ${date}\n\nPowered by PaySetu · SmrAI Studio`;
+    const text = type === 'recharge'
+      ? `✅ Recharge Receipt\nOperator: ${tx.operator}\nNumber: ${tx.mobile}\nAmount: ₹${Number(tx.amount).toFixed(2)}\nRef: ${tx.external_ref || tx.id}\nDate: ${date}\n\nPowered by PaySetu · SmrAI Studio`
+      : `✅ Bill Payment Receipt\nBiller: ${tx.biller_name || tx.biller_id}\nAccount: ${tx.customer_number}\nAmount: ₹${Number(tx.amount).toFixed(2)}\nRef: ${tx.external_ref || tx.id}\nDate: ${date}\n\nPowered by PaySetu · SmrAI Studio`;
     if (navigator.share) {
-      navigator.share({ title: 'Recharge Receipt', text }).catch(() => {});
+      navigator.share({ title: 'Payment Receipt', text }).catch(() => {});
     } else {
       navigator.clipboard.writeText(text).then(() => alert('Receipt copied to clipboard!'));
+    }
+  }
+
+  // Mobile tap handler — opens receipt directly for successful transactions
+  function handleMobileTxnTap(i, type) {
+    const tx = type === 'recharge' ? window._rHistory[i] : window._bHistory[i];
+    if (!tx) return;
+    _currentDetailTx   = tx;
+    _currentDetailType = type;
+    if (tx.status === 'success') {
+      openHistoryReceipt();
     }
   }
 

@@ -274,6 +274,7 @@ await db.query(`
     await db.query(`INSERT IGNORE INTO admin_settings (\`key\`, value) VALUES ('dth_recharge_min', '200')`);
     await db.query(`INSERT IGNORE INTO admin_settings (\`key\`, value) VALUES ('dth_recharge_max', '50000')`);
     await db.query(`INSERT IGNORE INTO admin_settings (\`key\`, value) VALUES ('wallet_cap', '100')`);
+    await db.query(`INSERT IGNORE INTO admin_settings (\`key\`, value) VALUES ('reel_image_provider', 'openai')`);
 
     // ── Homepage editable content defaults ───────────────────────────────────
     const homepageDefaults = [
@@ -616,6 +617,8 @@ await db.query(`
       )
     `);
 
+    await db.query(`ALTER TABLE reel_subscriptions ADD COLUMN coupon_code VARCHAR(50) NULL`).catch(() => {});
+
     /* ── Reel Usage (weekly counter) ── */
     await db.query(`
       CREATE TABLE IF NOT EXISTS reel_usage (
@@ -624,6 +627,23 @@ await db.query(`
         videos_generated  INT DEFAULT 0,
         week_start        DATE NOT NULL,
         UNIQUE KEY uq_user_week (user_id, week_start)
+      )
+    `);
+
+    /* ── Reel Per-Video Payments ── */
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS reel_video_payments (
+        id                   INT AUTO_INCREMENT PRIMARY KEY,
+        user_id              INT NOT NULL,
+        reel_id              INT,
+        razorpay_order_id    VARCHAR(255) UNIQUE,
+        razorpay_payment_id  VARCHAR(255),
+        razorpay_signature   VARCHAR(500),
+        amount               DECIMAL(10,2) NOT NULL DEFAULT 30.00,
+        coupon_code          VARCHAR(50),
+        created_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX (user_id),
+        INDEX (razorpay_order_id)
       )
     `);
 
@@ -3127,6 +3147,8 @@ app.get("/api/reels/subscription/status", ensureAuthenticated, async (req, res) 
 /** POST /api/reels/payment/create-order */
 app.post("/api/reels/payment/create-order", ensureAuthenticated, async (req, res) => {
   try {
+    const { couponCode } = req.body || {};
+
     // Block if already subscribed
     const existing = await db.query(
       `SELECT id FROM reel_subscriptions
@@ -3137,18 +3159,45 @@ app.post("/api/reels/payment/create-order", ensureAuthenticated, async (req, res
       return res.json({ success: false, message: "You already have an active subscription." });
     }
 
+    // Apply promo code discount to ₹199 base price
+    let priceRupees = 199;
+    let appliedCoupon = null;
+    if (couponCode) {
+      const upper = String(couponCode).trim().toUpperCase();
+
+      // Per-user reuse guard — coupon is one-time per subscription period
+      const alreadyUsed = await db.query(
+        `SELECT id FROM reel_subscriptions WHERE user_id = ? AND coupon_code = ? LIMIT 1`,
+        [req.user.id, upper]
+      );
+      if (alreadyUsed.rows.length) {
+        return res.status(400).json({ success: false, message: "You have already used this promo code." });
+      }
+
+      const cRow  = await db.query(`SELECT * FROM coupons WHERE code = ? AND is_active = true`, [upper]);
+      const c     = cRow.rows[0];
+      if (c && !(c.expires_at && new Date(c.expires_at) < new Date()) && !(c.max_uses > 0 && c.uses_count >= c.max_uses)) {
+        const disc = c.discount_type === "percent"
+          ? Math.floor(priceRupees * Number(c.discount_value) / 100)
+          : Math.min(Number(c.discount_value), priceRupees);
+        priceRupees   = Math.max(1, priceRupees - disc);
+        appliedCoupon = upper;
+      }
+    }
+
     const order = await getRazorpay().orders.create({
-      amount:   19900,   // ₹199 in paise
+      amount:   Math.round(priceRupees * 100),
       currency: "INR",
       receipt:  "reel_sub_" + req.user.id + "_" + Date.now(),
     });
 
     res.json({
-      success:  true,
-      orderId:  order.id,
-      amount:   order.amount,
-      currency: order.currency,
-      key:      process.env.RAZORPAY_KEY_ID,
+      success:     true,
+      orderId:     order.id,
+      amount:      order.amount,
+      currency:    order.currency,
+      key:         process.env.RAZORPAY_KEY_ID,
+      couponCode:  appliedCoupon,
     });
   } catch (err) {
     console.error("[Reels Payment] create-order error:", err.message);
@@ -3159,7 +3208,7 @@ app.post("/api/reels/payment/create-order", ensureAuthenticated, async (req, res
 /** POST /api/reels/payment/verify */
 app.post("/api/reels/payment/verify", ensureAuthenticated, async (req, res) => {
   try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, couponCode } = req.body;
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
       return res.status(400).json({ success: false, message: "Missing payment fields." });
     }
@@ -3183,17 +3232,115 @@ app.post("/api/reels/payment/verify", ensureAuthenticated, async (req, res) => {
     periodEnd.setDate(periodEnd.getDate() + 30);
     const periodEndStr = periodEnd.toISOString().split('T')[0];
 
+    const storedCoupon = couponCode ? String(couponCode).trim().toUpperCase() : null;
+
     await db.query(
       `INSERT INTO reel_subscriptions
-         (user_id, plan_name, razorpay_order_id, razorpay_payment_id, razorpay_signature, amount, status, current_period_end)
-       VALUES (?, 'Starter', ?, ?, ?, 199.00, 'active', ?)`,
-      [req.user.id, razorpay_order_id, razorpay_payment_id, razorpay_signature, periodEndStr]
+         (user_id, plan_name, razorpay_order_id, razorpay_payment_id, razorpay_signature, amount, status, current_period_end, coupon_code)
+       VALUES (?, 'Starter', ?, ?, ?, 199.00, 'active', ?, ?)`,
+      [req.user.id, razorpay_order_id, razorpay_payment_id, razorpay_signature, periodEndStr, storedCoupon]
     );
+
+    if (storedCoupon) {
+      await db.query(
+        "UPDATE coupons SET uses_count = uses_count + 1 WHERE code = ? AND is_active = true",
+        [storedCoupon]
+      ).catch(() => {});
+    }
 
     res.json({ success: true });
   } catch (err) {
     console.error("[Reels Payment] verify error:", err.message);
     res.status(500).json({ success: false, message: "Subscription activation failed." });
+  }
+});
+
+// ── Reel Per-Video Payment ────────────────────────────────────────────────────
+
+/** POST /api/reels/video-pay/apply-promo — validate coupon for ₹30 per-video */
+app.post("/api/reels/video-pay/apply-promo", ensureAuthenticated, async (req, res) => {
+  try {
+    const { code } = req.body || {};
+    if (!code) return res.status(400).json({ valid: false, message: "No code provided." });
+
+    const upper = String(code).trim().toUpperCase();
+    const row = await db.query(`SELECT * FROM coupons WHERE code = ? AND is_active = true`, [upper]);
+    if (!row.rows[0]) return res.json({ valid: false, message: "Invalid coupon code." });
+
+    const c = row.rows[0];
+    if (c.expires_at && new Date(c.expires_at) < new Date()) {
+      return res.json({ valid: false, message: "This coupon has expired." });
+    }
+    if (c.max_uses > 0 && c.uses_count >= c.max_uses) {
+      return res.json({ valid: false, message: "This coupon has reached its usage limit." });
+    }
+
+    // One-time per user: check reel_video_payments
+    if (c.first_time_only) {
+      const prior = await db.query(
+        "SELECT id FROM reel_video_payments WHERE user_id = ? AND coupon_code = ? LIMIT 1",
+        [req.user.id, upper]
+      );
+      if (prior.rows.length) {
+        return res.json({ valid: false, message: "You have already used this coupon." });
+      }
+    }
+
+    const label = c.discount_type === "percent"
+      ? `${c.discount_value}% off`
+      : `₹${c.discount_value} off`;
+
+    return res.json({
+      valid: true,
+      code: upper,
+      discountType:  c.discount_type,
+      discountValue: Number(c.discount_value),
+      message: `${label} applied!`,
+    });
+  } catch (err) {
+    res.status(500).json({ valid: false, message: "Server error. Please try again." });
+  }
+});
+
+/** POST /api/reels/video-pay/create-order — create ₹30 Razorpay order */
+app.post("/api/reels/video-pay/create-order", ensureAuthenticated, async (req, res) => {
+  try {
+    const { couponCode } = req.body || {};
+    let finalAmount = 30;
+
+    if (couponCode) {
+      const upper = String(couponCode).trim().toUpperCase();
+      const row = await db.query(`SELECT * FROM coupons WHERE code = ? AND is_active = true`, [upper]);
+      if (row.rows[0]) {
+        const c = row.rows[0];
+        const notExpired  = !c.expires_at || new Date(c.expires_at) >= new Date();
+        const hasUses     = c.max_uses <= 0 || c.uses_count < c.max_uses;
+        if (notExpired && hasUses) {
+          if (c.discount_type === 'percent') {
+            finalAmount = Math.max(1, Math.round(30 * (1 - c.discount_value / 100)));
+          } else {
+            finalAmount = Math.max(1, 30 - Number(c.discount_value));
+          }
+        }
+      }
+    }
+
+    const order = await razorpay.orders.create({
+      amount:   finalAmount * 100,
+      currency: 'INR',
+      receipt:  `rvp_${req.user.id}_${Date.now()}`,
+    });
+
+    res.json({
+      success:    true,
+      orderId:    order.id,
+      amount:     finalAmount,
+      currency:   'INR',
+      couponCode: couponCode || null,
+    });
+  } catch (err) {
+    console.error("[Reels Video Pay] create-order error:", err.message);
+    res.status(500).json({ success: false, message: "Could not create payment order." });
   }
 });
 
@@ -3789,7 +3936,7 @@ app.get("/api/subscription/status", ensureAuthenticated, async (req, res) => {
 
 app.post("/api/subscription/create-order", ensureAuthenticated, async (req, res) => {
   try {
-    const { planId, useWallet } = req.body;
+    const { planId, useWallet, couponCode } = req.body;
     const planResult = await db.query(
       `SELECT * FROM subscription_plans WHERE id = ? AND is_active = true`, [planId]
     );
@@ -3805,6 +3952,21 @@ app.post("/api/subscription/create-order", ensureAuthenticated, async (req, res)
       return res.json({ success: false, message: "You already have an active subscription" });
     }
 
+    // Apply promo code discount
+    let appliedCoupon = null;
+    if (couponCode) {
+      const upper = String(couponCode).trim().toUpperCase();
+      const cRow = await db.query(`SELECT * FROM coupons WHERE code = ? AND is_active = true`, [upper]);
+      const c = cRow.rows[0];
+      if (c && !(c.expires_at && new Date(c.expires_at) < new Date()) && !(c.max_uses > 0 && c.uses_count >= c.max_uses)) {
+        const disc = c.discount_type === "percent"
+          ? Math.floor(priceRupees * Number(c.discount_value) / 100)
+          : Math.min(Number(c.discount_value), priceRupees);
+        priceRupees = Math.max(1, priceRupees - disc);
+        appliedCoupon = upper;
+      }
+    }
+
     // Wallet deduction (respects wallet cap)
     let walletDeduction = 0;
     if (useWallet) {
@@ -3815,7 +3977,7 @@ app.post("/api/subscription/create-order", ensureAuthenticated, async (req, res)
       const walletBalance = parseFloat(wRow.rows[0]?.wallet_balance) || 0;
       walletDeduction = Math.min(Math.max(0, walletBalance - subCap), priceRupees);
       if (walletDeduction >= priceRupees) {
-        return res.json({ success: true, walletOnly: true, walletDeduction, planId, planName: plan.name });
+        return res.json({ success: true, walletOnly: true, walletDeduction, planId, planName: plan.name, couponCode: appliedCoupon });
       }
       priceRupees = Math.max(1, priceRupees - walletDeduction);
     }
@@ -3834,6 +3996,7 @@ app.post("/api/subscription/create-order", ensureAuthenticated, async (req, res)
       key: process.env.RAZORPAY_KEY_ID,
       walletDeduction,
       planName: plan.name,
+      couponCode: appliedCoupon,
     });
   } catch (err) {
     res.status(500).json({ success: false, message: "Unable to create order" });
@@ -3844,7 +4007,7 @@ app.post("/api/subscription/verify", ensureAuthenticated, async (req, res) => {
   try {
     const {
       razorpay_order_id, razorpay_payment_id, razorpay_signature,
-      planId, walletDeduction
+      planId, walletDeduction, couponCode
     } = req.body;
 
     // Verify signature
@@ -3888,6 +4051,13 @@ app.post("/api/subscription/verify", ensureAuthenticated, async (req, res) => {
       ).catch(() => {});
     }
 
+    if (couponCode) {
+      await db.query(
+        "UPDATE coupons SET uses_count = uses_count + 1 WHERE code = ? AND is_active = true",
+        [String(couponCode).trim().toUpperCase()]
+      ).catch(() => {});
+    }
+
     logActivity({ userId: req.user.id, actionType: "subscription", metadata: { planId, duration: p.duration_days }, ip: req.ip });
     res.json({ success: true });
   } catch (err) {
@@ -3897,7 +4067,7 @@ app.post("/api/subscription/verify", ensureAuthenticated, async (req, res) => {
 
 app.post("/api/subscription/wallet-pay", ensureAuthenticated, async (req, res) => {
   try {
-    const { planId } = req.body;
+    const { planId, couponCode } = req.body;
     const plan = await db.query("SELECT * FROM subscription_plans WHERE id = ? AND is_active = true", [planId]);
     if (!plan.rows.length) return res.status(404).json({ success: false, message: "Plan not found" });
     const p = plan.rows[0];
@@ -3905,9 +4075,25 @@ app.post("/api/subscription/wallet-pay", ensureAuthenticated, async (req, res) =
     const existing = await hasActiveSubscription(req.user.id);
     if (existing) return res.json({ success: false, message: "Already subscribed" });
 
+    // Apply promo code discount
+    let finalPrice = parseFloat(p.price);
+    let appliedCoupon = null;
+    if (couponCode) {
+      const upper = String(couponCode).trim().toUpperCase();
+      const cRow = await db.query(`SELECT * FROM coupons WHERE code = ? AND is_active = true`, [upper]);
+      const c = cRow.rows[0];
+      if (c && !(c.expires_at && new Date(c.expires_at) < new Date()) && !(c.max_uses > 0 && c.uses_count >= c.max_uses)) {
+        const disc = c.discount_type === "percent"
+          ? Math.floor(finalPrice * Number(c.discount_value) / 100)
+          : Math.min(Number(c.discount_value), finalPrice);
+        finalPrice = Math.max(1, finalPrice - disc);
+        appliedCoupon = upper;
+      }
+    }
+
     const wRow = await db.query("SELECT wallet_balance FROM users WHERE id=?", [req.user.id]);
     const walletBalance = parseFloat(wRow.rows[0]?.wallet_balance) || 0;
-    if (walletBalance < parseFloat(p.price)) {
+    if (walletBalance < finalPrice) {
       return res.json({ success: false, message: "Insufficient wallet balance" });
     }
 
@@ -3917,20 +4103,69 @@ app.post("/api/subscription/wallet-pay", ensureAuthenticated, async (req, res) =
     await db.query(
       `INSERT INTO user_subscriptions (user_id, plan_id, amount, status, end_date)
        VALUES (?, ?, ?, 'active', ?)`,
-      [req.user.id, planId, p.price, endDate]
+      [req.user.id, planId, finalPrice, endDate]
     );
     await db.query(
       "UPDATE users SET wallet_balance = GREATEST(0, wallet_balance - ?) WHERE id=?",
-      [p.price, req.user.id]
+      [finalPrice, req.user.id]
     );
     await db.query(
       "INSERT INTO wallet_transactions (user_id,amount,type,reason) VALUES (?,?,'debit','subscription_payment')",
-      [req.user.id, p.price]
+      [req.user.id, finalPrice]
     );
+
+    if (appliedCoupon) {
+      await db.query(
+        "UPDATE coupons SET uses_count = uses_count + 1 WHERE code = ? AND is_active = true",
+        [appliedCoupon]
+      ).catch(() => {});
+    }
 
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false, message: "Wallet payment failed" });
+  }
+});
+
+// ── Subscription promo code validation ───────────────────────────────────────
+app.post("/api/subscription/apply-promo", ensureAuthenticated, async (req, res) => {
+  try {
+    const { code } = req.body || {};
+    if (!code) return res.status(400).json({ valid: false, message: "No code provided." });
+
+    const upper = String(code).trim().toUpperCase();
+    const row = await db.query(`SELECT * FROM coupons WHERE code = ? AND is_active = true`, [upper]);
+    if (!row.rows[0]) return res.json({ valid: false, message: "Invalid coupon code." });
+
+    const c = row.rows[0];
+    if (c.expires_at && new Date(c.expires_at) < new Date()) {
+      return res.json({ valid: false, message: "This coupon has expired." });
+    }
+    if (c.max_uses > 0 && c.uses_count >= c.max_uses) {
+      return res.json({ valid: false, message: "This coupon has reached its usage limit." });
+    }
+    if (c.first_time_only) {
+      const prior = await db.query(
+        "SELECT id FROM user_subscriptions WHERE user_id = ? LIMIT 1", [req.user.id]
+      );
+      if (prior.rows.length) {
+        return res.json({ valid: false, message: "This coupon is for first-time subscribers only." });
+      }
+    }
+
+    const label = c.discount_type === "percent"
+      ? `${c.discount_value}% off`
+      : `₹${c.discount_value} off`;
+
+    return res.json({
+      valid: true,
+      code: upper,
+      discountType: c.discount_type,
+      discountValue: Number(c.discount_value),
+      message: `${label} applied!`,
+    });
+  } catch (err) {
+    res.status(500).json({ valid: false, message: "Server error. Please try again." });
   }
 });
 

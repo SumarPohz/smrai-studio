@@ -786,6 +786,19 @@
         </label>
       </div>
 
+      <!-- Reel Image Provider toggle -->
+      <div style="background:#f0f4ff;border:1px solid #c7d2fe;border-radius:10px;padding:0.85rem 1rem;margin-bottom:1.25rem;display:flex;align-items:center;justify-content:space-between;gap:1rem">
+        <div>
+          <div style="font-weight:700;color:#3730a3;font-size:0.85rem">🎨 Reel Image Provider</div>
+          <p style="font-size:0.75rem;color:#4338ca;margin:0.2rem 0 0">OFF = OpenAI DALL-E 3 &nbsp;·&nbsp; ON = xAI Aurora. Requires <code>XAI_API_KEY</code> env var when ON.</p>
+        </div>
+        <label style="position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0">
+          <input type="checkbox" id="reelImgProviderToggle" style="opacity:0;width:0;height:0" onchange="saveReelImageProvider(this.checked)" />
+          <span id="ripSlider" style="position:absolute;inset:0;background:#d1d5db;border-radius:24px;cursor:pointer;transition:.3s"></span>
+          <span id="ripKnob"   style="position:absolute;width:18px;height:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s;pointer-events:none"></span>
+        </label>
+      </div>
+
       <div class="adm-ads-form-card" style="margin-bottom:1.25rem">
         <h3 class="adm-ads-form-title"><i class="fas fa-code" style="margin-right:0.4rem"></i>Tracking & Ad Networks</h3>
         <p style="font-size:0.8rem;color:#6b7280;margin:0 0 1rem">Enter your IDs — scripts are injected automatically on all pages. Leave blank to disable.</p>
@@ -1922,6 +1935,25 @@
         <div style="display:flex;gap:0.5rem">
           <button id="psComplainBtn" onclick="submitComplain()" style="flex:1;padding:0.6rem;background:#f59e0b;color:#fff;border:none;border-radius:8px;font-size:0.85rem;font-weight:700;cursor:pointer">Submit Complaint</button>
           <button onclick="document.getElementById('psComplainModal').style.display='none'" style="flex:1;padding:0.6rem;background:#f3f4f6;color:#374151;border:none;border-radius:8px;font-size:0.85rem;cursor:pointer">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PaySetu: Receipt Modal -->
+    <div id="psRcptModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;align-items:center;justify-content:center">
+      <div style="background:#fff;border-radius:16px;padding:1.5rem;max-width:440px;width:92%;position:relative;max-height:90vh;overflow-y:auto">
+        <button onclick="document.getElementById('psRcptModal').style.display='none'" style="position:absolute;top:12px;right:14px;background:none;border:none;font-size:19px;cursor:pointer;color:#9ca3af;line-height:1">✕</button>
+        <div style="text-align:center;margin-bottom:1rem">
+          <div style="font-size:0.68rem;font-weight:700;color:#6366f1;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:3px">PaySetu · SmrAI Studio</div>
+          <div style="font-size:1rem;font-weight:800;color:#111827">Payment Confirmation Receipt</div>
+        </div>
+        <table id="psRcptTable" style="width:100%;border-collapse:collapse;font-size:0.82rem"></table>
+        <div style="font-size:0.7rem;color:#94a3b8;text-align:center;margin-top:0.6rem;line-height:1.5">
+          This receipt is computer generated and no signature is required.
+        </div>
+        <div style="display:flex;gap:0.5rem;margin-top:0.9rem">
+          <button onclick="shareAdminReceipt()" style="flex:1;padding:0.55rem;background:#f1f5f9;color:#334155;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:0.8rem">↗ Share</button>
+          <button onclick="window.print()" style="flex:1;padding:0.55rem;background:#1e4db7;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:0.8rem">🖨 Print</button>
         </div>
       </div>
     </div>
@@ -5129,6 +5161,24 @@ async function saveTranslateSetting(enabled) {
   } catch (_) {}
 }
 
+function applyRipToggleUI(enabled) {
+  const slider = document.getElementById('ripSlider');
+  const knob   = document.getElementById('ripKnob');
+  if (!slider) return;
+  slider.style.background = enabled ? '#4f46e5' : '#d1d5db';
+  knob.style.transform    = enabled ? 'translateX(20px)' : 'translateX(0)';
+}
+async function saveReelImageProvider(useXai) {
+  applyRipToggleUI(useXai);
+  try {
+    await fetch('/admin/api/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reel_image_provider: useXai ? 'xai' : 'openai' }),
+    });
+  } catch (_) {}
+}
+
 // ── Tracking scripts ─────────────────────────────────────────────────────────
 async function loadTrackingScripts() {
   try {
@@ -5142,6 +5192,9 @@ async function loadTrackingScripts() {
       const gtEnabled = d.settings.google_translate_enabled === 'true';
       const toggle = document.getElementById('googleTranslateToggle');
       if (toggle) { toggle.checked = gtEnabled; applyToggleUI(gtEnabled); }
+      const ripEnabled = d.settings.reel_image_provider === 'xai';
+      const ripToggle  = document.getElementById('reelImgProviderToggle');
+      if (ripToggle) { ripToggle.checked = ripEnabled; applyRipToggleUI(ripEnabled); }
     }
   } catch (_) {}
 }
@@ -5991,12 +6044,16 @@ async function loadPsTxns(page) {
       document.getElementById('psTxnPager').innerHTML = '';
       return;
     }
+    window._psAdminRows = d.rows;
     const rows = d.rows.map(t => {
       const isRc = t.txn_type === 'recharge';
       const desc = isRc ? (t.operator + ' · ' + t.mobile) : (t.biller_name + ' · ' + t.customer_number);
       const typeLabel = isRc ? '📱 Recharge' : '🧾 Bill';
       const statusColor = t.status === 'success' ? '#16a34a' : t.status === 'failed' ? '#dc2626' : '#f59e0b';
       const date = new Date(t.created_at).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'2-digit'});
+      const rcptBtn = t.status === 'success'
+        ? `<button onclick="openAdminReceipt(${t.id},'${t.txn_type}')" style="padding:0.25rem 0.55rem;background:#0f766e;color:#fff;border:none;border-radius:5px;font-size:0.72rem;cursor:pointer;margin-right:0.3rem">🧾 Receipt</button>`
+        : '';
       const refundBtn = t.status === 'failed'
         ? `<button onclick="openPsRefundModal(${t.id},'${t.txn_type}',${t.amount},'${(t.user_name||'').replace(/'/g,"\\'")} (${t.user_email||''})')" style="padding:0.25rem 0.55rem;background:#f97316;color:#fff;border:none;border-radius:5px;font-size:0.72rem;cursor:pointer;margin-right:0.3rem">Refund</button>`
         : (t.status === 'pending' && t.txn_type === 'recharge')
@@ -6265,6 +6322,53 @@ async function forceRefundPending(id) {
     if (d.success) { showAdmToast('✅ ' + d.message, 'success'); loadPsTxns(); }
     else showAdmToast(d.message || 'Refund failed', 'error');
   } catch(e) { showAdmToast(e.message, 'error'); }
+}
+
+// Receipt Modal
+function openAdminReceipt(id, type) {
+  const rows = (window._psAdminRows || []);
+  const tx = rows.find(r => r.id === id && r.txn_type === type);
+  if (!tx) return;
+  window._psCurrentAdminRcpt = { tx, type };
+
+  const fields = type === 'recharge'
+    ? [
+        ['Operator',    tx.operator    || '—'],
+        ['Mobile',      tx.mobile      || '—'],
+        ['Type',        tx.type        || '—'],
+        ['Amount',      '₹' + (tx.amount || 0)],
+        ['Status',      tx.status],
+        ['Ref / TxnID', tx.transaction_id || tx.ref_id || '—'],
+        ['Date',        new Date(tx.created_at).toLocaleString('en-IN')],
+      ]
+    : [
+        ['Biller',      tx.biller_name        || '—'],
+        ['Account No',  tx.customer_number    || '—'],
+        ['Category',    tx.category           || '—'],
+        ['Amount',      '₹' + (tx.amount || 0)],
+        ['Status',      tx.status],
+        ['Ref / TxnID', tx.transaction_id     || tx.ref_id || '—'],
+        ['Date',        new Date(tx.created_at).toLocaleString('en-IN')],
+      ];
+
+  document.getElementById('psRcptTable').innerHTML =
+    '<tbody>' + fields.map(([k, v]) =>
+      `<tr><td style="font-weight:600;padding:6px 12px;">${k}</td><td style="padding:6px 12px;">${v}</td></tr>`
+    ).join('') + '</tbody>';
+
+  document.getElementById('psRcptModal').style.display = 'flex';
+}
+function shareAdminReceipt() {
+  const { tx, type } = window._psCurrentAdminRcpt || {};
+  if (!tx) return;
+  const text = type === 'recharge'
+    ? `SmrAI Recharge Receipt\nOperator: ${tx.operator||'—'}\nMobile: ${tx.mobile||'—'}\nAmount: ₹${tx.amount}\nStatus: ${tx.status}\nRef: ${tx.transaction_id||tx.ref_id||'—'}\nDate: ${new Date(tx.created_at).toLocaleString('en-IN')}`
+    : `SmrAI Bill Receipt\nBiller: ${tx.biller_name||'—'}\nAccount: ${tx.customer_number||'—'}\nAmount: ₹${tx.amount}\nStatus: ${tx.status}\nRef: ${tx.transaction_id||tx.ref_id||'—'}\nDate: ${new Date(tx.created_at).toLocaleString('en-IN')}`;
+  if (navigator.share) {
+    navigator.share({ title: 'SmrAI Receipt', text });
+  } else {
+    navigator.clipboard.writeText(text).then(() => alert('Copied to clipboard'));
+  }
 }
 
 // Refund Modal

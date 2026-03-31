@@ -42,10 +42,11 @@ export async function fetchPexelsVideos(topic, count = 4, artStyle = 'cinematic'
   for (const video of res.data.videos) {
     if (urls.length >= count) break;
 
-    // Prefer HD, fall back to SD
-    const file = video.video_files
-      .filter(f => ['hd', 'sd'].includes(f.quality))
-      .sort((a, b) => b.width - a.width)[0];
+    // Prefer 720p-or-below HD for fast download/processing; fall back to SD or any available
+    const file =
+      video.video_files.filter(f => f.quality === 'hd' && f.width && f.width <= 1280).sort((a, b) => b.width - a.width)[0] ||
+      video.video_files.find(f => f.quality === 'sd') ||
+      video.video_files.filter(f => ['hd', 'sd'].includes(f.quality)).sort((a, b) => a.width - b.width)[0];
 
     if (file?.link) urls.push(file.link);
   }

@@ -445,8 +445,8 @@ function copyText(text) {
           });
           const vData = await vRes.json();
           if (vRes.ok && vData.success) {
-            showPayToast('🎉 Subscription activated! Redirecting…');
-            setTimeout(() => window.location.href = '/reels/create', 1400);
+            showPayToast('🎉 Subscription activated! Loading your reel…');
+            setTimeout(() => location.reload(), 1400);
           } else {
             showPayToast(vData.error || 'Verification failed.', true); reset();
           }

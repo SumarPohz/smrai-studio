@@ -23,7 +23,7 @@ export default function reelsRouter(db) {
       res.render('reels/index', { title: 'AI Reel Generator', currentUser: req.user, channelProof: [], nicheMap: {} });
     }
   });
-  router.get('/create', getCreatePage);
+  router.get('/create', (req, res) => getCreatePage(req, res, db));
   router.get('/loading/:id', (req, res) => getLoadingPage(req, res, db));
   router.get('/result/:id',  (req, res) => getResultPage(req, res, db));
   router.get('/pricing',     (req, res) => getPricingPage(req, res, db));

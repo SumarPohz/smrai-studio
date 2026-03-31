@@ -100,6 +100,49 @@
     .sub-hero h1 { font-size: 1.4rem; }
     .sub-hero p { font-size: 0.85rem; }
   }
+
+  /* Promo code */
+  .sub-promo-box {
+    background: var(--card-bg, #fff);
+    border: 1.5px solid var(--border-color, #e2e8f0);
+    border-radius: 12px;
+    padding: 0.875rem 1.25rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .sub-promo-box input {
+    flex: 1; min-width: 140px;
+    padding: 0.5rem 0.85rem;
+    border: 1.5px solid var(--border-color, #e2e8f0);
+    border-radius: 8px;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    outline: none;
+    transition: border-color 0.2s;
+    background: var(--input-bg, #fff);
+    color: var(--text-primary, #1e293b);
+  }
+  .sub-promo-box input:focus { border-color: #7c3aed; }
+  .sub-promo-apply {
+    padding: 0.5rem 1.1rem;
+    background: #7c3aed; color: #fff;
+    border: none; border-radius: 8px;
+    font-size: 0.875rem; font-weight: 600;
+    cursor: pointer; white-space: nowrap;
+    transition: opacity 0.2s;
+  }
+  .sub-promo-apply:hover { opacity: 0.88; }
+  .sub-promo-msg { width: 100%; font-size: 0.82rem; margin: 0.25rem 0 0; }
+  .sub-promo-msg.ok { color: #16a34a; }
+  .sub-promo-msg.err { color: #dc2626; }
+  .sub-plan-price-wrap { margin: 0.5rem 0; }
+  .sub-price-original { text-decoration: line-through; font-size: 1.1rem; font-weight: 600; color: var(--text-muted,#94a3b8); margin-right: 0.25rem; }
+  .sub-price-discounted { font-size: 2rem; font-weight: 800; color: #7c3aed; }
+  .sub-discount-badge { display: inline-block; background: #dcfce7; color: #16a34a; font-size: 0.7rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 20px; margin-left: 0.25rem; vertical-align: middle; }
 </style>
 
 <div class="sub-page">
@@ -127,6 +170,14 @@
     <% if (walletBalance > 0) { %> — can be used to pay for plans<% } %>
   </div>
 
+  <% if (!activeSub) { %>
+  <div class="sub-promo-box">
+    <input type="text" id="promoInput" placeholder="Promo code" maxlength="30" onkeydown="if(event.key==='Enter') applyPromo()">
+    <button class="sub-promo-apply" onclick="applyPromo()">Apply</button>
+    <p class="sub-promo-msg" id="promoMsg" style="display:none"></p>
+  </div>
+  <% } %>
+
   <% const activePlans = plans.filter(p => p.is_active); %>
   <% if (activePlans.length === 0 && !activeSub) { %>
     <div class="sub-unavailable">Subscription plans are currently unavailable. Please check back later.</div>
@@ -138,7 +189,9 @@
         <div class="sub-popular-badge">Best Value</div>
       <% } %>
       <div class="sub-plan-name"><%= plan.name %></div>
-      <div class="sub-plan-price">₹<%= parseFloat(plan.price).toFixed(0) %> <span>/ <%= plan.duration_days %> days</span></div>
+      <div class="sub-plan-price-wrap" id="price-<%= plan.id %>" data-original="<%= parseFloat(plan.price).toFixed(0) %>" data-duration="<%= plan.duration_days %>">
+        <span class="sub-plan-price">₹<%= parseFloat(plan.price).toFixed(0) %></span> <span style="font-size:1rem;font-weight:500;color:var(--text-muted,#64748b)">/ <%= plan.duration_days %> days</span>
+      </div>
       <div class="sub-plan-desc"><%= plan.description || 'Unlimited access to all paid features' %></div>
       <ul class="sub-features">
         <li>Unlimited resume downloads (JPG + PDF)</li>
@@ -150,12 +203,12 @@
       <% if (activeSub) { %>
         <button class="sub-btn" disabled>Already Subscribed</button>
       <% } else { %>
-        <button class="sub-btn" onclick="startSubPayment(<%= plan.id %>, <%= plan.price %>, '<%= plan.name.replace(/'/g,'') %>')">
-          Get <%= plan.duration_days %>-Day Access — ₹<%= parseFloat(plan.price).toFixed(0) %>
+        <button class="sub-btn" id="pay-btn-<%= plan.id %>" onclick="startSubPayment(<%= plan.id %>, <%= plan.price %>, '<%= plan.name.replace(/'/g,'') %>')">
+          Get <%= plan.duration_days %>-Day Access — ₹<span class="btn-price" data-original="<%= parseFloat(plan.price).toFixed(0) %>"><%= parseFloat(plan.price).toFixed(0) %></span>
         </button>
         <% if (walletBalance >= plan.price) { %>
-          <button class="sub-btn wallet-btn" onclick="payWithWallet(<%= plan.id %>, '<%= plan.name.replace(/'/g,'') %>')">
-            Pay with Wallet (₹<%= parseFloat(plan.price).toFixed(0) %>)
+          <button class="sub-btn wallet-btn" id="wallet-btn-<%= plan.id %>" onclick="payWithWallet(<%= plan.id %>, '<%= plan.name.replace(/'/g,'') %>')">
+            Pay with Wallet — ₹<span class="btn-price" data-original="<%= parseFloat(plan.price).toFixed(0) %>"><%= parseFloat(plan.price).toFixed(0) %></span>
           </button>
         <% } %>
       <% } %>
@@ -195,22 +248,97 @@
 
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script>
+let appliedCoupon = null; // { code, discountType, discountValue }
+
+/* ── Promo code ── */
+async function applyPromo() {
+  const input = document.getElementById('promoInput');
+  const msg   = document.getElementById('promoMsg');
+  const code  = input.value.trim();
+  if (!code) return;
+
+  msg.style.display = 'none';
+  try {
+    const res  = await fetch('/api/subscription/apply-promo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
+    });
+    const data = await res.json();
+    msg.style.display = 'block';
+    if (data.valid) {
+      appliedCoupon = data;
+      msg.className = 'sub-promo-msg ok';
+      msg.textContent = data.message;
+      updatePriceDisplays();
+    } else {
+      appliedCoupon = null;
+      msg.className = 'sub-promo-msg err';
+      msg.textContent = data.message;
+      resetPriceDisplays();
+    }
+  } catch(e) {
+    msg.style.display = 'block';
+    msg.className = 'sub-promo-msg err';
+    msg.textContent = 'Could not validate code. Please try again.';
+  }
+}
+
+function calcFinal(originalPrice) {
+  if (!appliedCoupon) return { disc: 0, final: originalPrice };
+  const disc = appliedCoupon.discountType === 'percent'
+    ? Math.floor(originalPrice * appliedCoupon.discountValue / 100)
+    : Math.min(appliedCoupon.discountValue, originalPrice);
+  return { disc, final: Math.max(1, originalPrice - disc) };
+}
+
+function updatePriceDisplays() {
+  document.querySelectorAll('[data-original][data-duration]').forEach(el => {
+    const orig = parseFloat(el.dataset.original);
+    const dur  = el.dataset.duration;
+    const { disc, final } = calcFinal(orig);
+    if (disc > 0) {
+      el.innerHTML = `<span class="sub-price-original">₹${orig}</span><span class="sub-price-discounted">₹${final}</span><span class="sub-discount-badge">−₹${disc}</span> <span style="font-size:1rem;font-weight:500;color:var(--text-muted,#64748b)">/ ${dur} days</span>`;
+    } else {
+      el.innerHTML = `<span class="sub-plan-price">₹${orig}</span> <span style="font-size:1rem;font-weight:500;color:var(--text-muted,#64748b)">/ ${dur} days</span>`;
+    }
+  });
+  document.querySelectorAll('.btn-price').forEach(span => {
+    const orig = parseFloat(span.dataset.original);
+    const { final } = calcFinal(orig);
+    span.textContent = final;
+  });
+}
+
+function resetPriceDisplays() {
+  document.querySelectorAll('[data-original][data-duration]').forEach(el => {
+    const orig = el.dataset.original;
+    const dur  = el.dataset.duration;
+    el.innerHTML = `<span class="sub-plan-price">₹${orig}</span> <span style="font-size:1rem;font-weight:500;color:var(--text-muted,#64748b)">/ ${dur} days</span>`;
+  });
+  document.querySelectorAll('.btn-price').forEach(span => {
+    span.textContent = span.dataset.original;
+  });
+}
+
+/* ── Payments ── */
 async function startSubPayment(planId, planPrice, planName) {
   try {
     const res = await fetch('/api/subscription/create-order', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ planId, useWallet: true })
+      body: JSON.stringify({ planId, useWallet: true, couponCode: appliedCoupon?.code || null })
     });
     const data = await res.json();
     if (!data.success) return alert(data.message || 'Unable to start payment');
 
     if (data.walletOnly) {
-      if (!confirm('Pay ₹' + planPrice + ' from your wallet for ' + planName + '?')) return;
+      const { final } = calcFinal(planPrice);
+      if (!confirm('Pay ₹' + final + ' from your wallet for ' + planName + '?')) return;
       const wRes = await fetch('/api/subscription/wallet-pay', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planId })
+        body: JSON.stringify({ planId, couponCode: appliedCoupon?.code || null })
       });
       const wData = await wRes.json();
       if (wData.success) { alert('Subscription activated! Refreshing...'); location.reload(); }
@@ -233,7 +361,8 @@ async function startSubPayment(planId, planPrice, planName) {
             razorpay_payment_id: response.razorpay_payment_id,
             razorpay_signature: response.razorpay_signature,
             planId,
-            walletDeduction: data.walletDeduction || 0
+            walletDeduction: data.walletDeduction || 0,
+            couponCode: data.couponCode || null,
           })
         });
         const vData = await vRes.json();
@@ -246,11 +375,12 @@ async function startSubPayment(planId, planPrice, planName) {
 }
 
 async function payWithWallet(planId, planName) {
-  if (!confirm('Pay with wallet for ' + planName + '?')) return;
+  const { final } = calcFinal(parseFloat(document.querySelector(`#price-${planId}`)?.dataset.original || 0));
+  if (!confirm('Pay ₹' + final + ' with wallet for ' + planName + '?')) return;
   const res = await fetch('/api/subscription/wallet-pay', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ planId })
+    body: JSON.stringify({ planId, couponCode: appliedCoupon?.code || null })
   });
   const data = await res.json();
   if (data.success) { alert('Subscription activated!'); location.reload(); }

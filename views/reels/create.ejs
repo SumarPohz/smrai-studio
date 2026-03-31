@@ -1,5 +1,6 @@
 <%- include('../partials/header', { title: 'Create AI Reel — SmrAI Studio' }) %>
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 
 <style>
 #reel-wizard {
@@ -106,12 +107,12 @@
 
   <!-- Progress -->
   <div class="wiz-progress" id="wizProg">
-    <% for(let i=0;i<7;i++){%><div class="wiz-seg" id="seg<%=i%>"></div><%}%>
+    <% for(let i=0;i<6;i++){%><div class="wiz-seg" id="seg<%=i%>"></div><%}%>
   </div>
 
   <!-- ── STEP 1: Niche ──────────────────────────────────────────────────── -->
   <div id="step-1" class="wiz-step active">
-    <h2 class="step-title">Choose your niche <span class="step-badge">Step 1 of 7</span></h2>
+    <h2 class="step-title">Choose your niche <span class="step-badge">Step 1 of 6</span></h2>
     <p class="step-sub">Select a preset or describe your own niche</p>
     <div id="s1err" class="err-box"></div>
 
@@ -150,7 +151,7 @@
 
     <div id="p1b" class="wiz-body" style="display:none;">
       <div style="margin-bottom:20px;">
-        <label class="wiz-label">Niche</label>
+        <label class="wiz-label">Niche <span style="color:red">*</span></label>
         <textarea id="customNiche" class="wiz-textarea" maxlength="5000"
           placeholder="Describe your content focus, e.g.: 'Weird historical facts that sound fake but are real, delivered in a casual conversational tone with humor'"
           oninput="cc('customNiche','cc1',5000)"></textarea>
@@ -179,7 +180,7 @@
 
   <!-- ── STEP 2: Language & Voice ────────────────────────────────────────── -->
   <div id="step-2" class="wiz-step" style="display:none;">
-    <h2 class="step-title">Language &amp; Voice <span class="step-badge">Step 2 of 7</span></h2>
+    <h2 class="step-title">Language &amp; Voice <span class="step-badge">Step 2 of 6</span></h2>
     <p class="step-sub">Choose the language and voice style for your video</p>
 
     <div class="wiz-body">
@@ -234,7 +235,7 @@
 
   <!-- ── STEP 3: Background Music ────────────────────────────────────────── -->
   <div id="step-3" class="wiz-step" style="display:none;">
-    <h2 class="step-title">Background Music <span class="step-badge">Step 3 of 7</span> <span class="opt-badge">Optional</span></h2>
+    <h2 class="step-title">Background Music <span class="step-badge">Step 3 of 6</span> <span class="opt-badge">Optional</span></h2>
     <p class="step-sub">Choose as many songs as you want, we'll pick a random one for each video</p>
 
     <div class="wiz-tabs">
@@ -290,7 +291,7 @@
 
   <!-- ── STEP 4: Art Style ───────────────────────────────────────────────── -->
   <div id="step-4" class="wiz-step" style="display:none;">
-    <h2 class="step-title">Art Style <span class="step-badge">Step 4 of 7</span></h2>
+    <h2 class="step-title">Art Style <span class="step-badge">Step 4 of 6</span></h2>
     <p class="step-sub">Choose the visual style for your video</p>
 
     <div class="wiz-body">
@@ -321,7 +322,7 @@
 
   <!-- ── STEP 5: Caption Style ──────────────────────────────────────────── -->
   <div id="step-5" class="wiz-step" style="display:none;">
-    <h2 class="step-title">Caption Style <span class="step-badge">Step 5 of 7</span></h2>
+    <h2 class="step-title">Caption Style <span class="step-badge">Step 5 of 6</span></h2>
     <p class="step-sub">Choose how captions will appear in your video</p>
 
     <div class="wiz-body">
@@ -391,10 +392,11 @@
     </div>
   </div>
 
-  <!-- ── STEP 6: Effects ─────────────────────────────────────────────────── -->
+  <!-- ── STEP 6: Effects & Duration ───────────────────────────────────────── -->
   <div id="step-6" class="wiz-step" style="display:none;">
-    <h2 class="step-title">Effects <span class="step-badge">Step 6 of 7</span> <span class="opt-badge">Optional</span></h2>
-    <p class="step-sub">Add visual effects to make your videos more engaging and eye-catching.</p>
+    <h2 class="step-title">Effects &amp; Duration <span class="step-badge">Step 6 of 6</span> <span class="opt-badge">Optional</span></h2>
+    <p class="step-sub">Add visual effects and choose your video length.</p>
+    <div id="s6err" class="err-box"></div>
 
     <div class="wiz-body">
     <div class="effect-item">
@@ -418,64 +420,84 @@
       </div>
       <button class="toggle" onclick="toggleEffect('animatedHook',this)" type="button"></button>
     </div>
-    </div><!-- /wiz-body -->
 
-    <div class="wiz-nav">
-      <button class="btn-back" onclick="go(5)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg> Back</button>
-      <button class="btn-next" onclick="go(7)">Continue <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></button>
-    </div>
-  </div>
-
-  <!-- ── STEP 7: Series Details ──────────────────────────────────────────── -->
-  <div id="step-7" class="wiz-step" style="display:none;">
-    <h2 class="step-title">Series Details <span class="step-badge">Step 7 of 7</span></h2>
-    <p class="step-sub">Finalize your series details and posting schedule</p>
-    <div id="s7err" class="err-box"></div>
-
-    <div class="wiz-body">
-    <div style="margin-bottom:20px;">
-      <label class="wiz-label">Series Name</label>
-      <input type="text" id="seriesName" class="wiz-input" placeholder="Enter a name for your series" maxlength="200" />
-    </div>
-
-    <div style="margin-bottom:20px;">
+    <div style="margin-top:22px;">
       <label class="wiz-label" style="display:flex;align-items:center;gap:6px;">
         Video Duration
         <svg width="14" height="14" fill="none" stroke="#9ca3af" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
       </label>
       <select id="durSel" class="wiz-select">
-        <option value="30-40">30-40 seconds</option>
-        <option value="60-70">60-70 seconds</option>
+        <option value="30-40">Short (~30 sec)</option>
+        <option value="60-70">Long (~1 min)</option>
       </select>
-    </div>
-
-    <div style="margin-bottom:20px;">
-      <label class="wiz-label">Publish time:</label>
-      <div style="display:flex;align-items:center;gap:10px;">
-        <input type="time" id="pubTime" class="wiz-input" value="12:00" style="width:auto;min-width:140px;" />
-        <span style="font-size:13px;color:#9ca3af;">(Your local time)</span>
-      </div>
-    </div>
-
-    <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:12px 16px;font-size:13px;color:#0369a1;margin-bottom:4px;">
-      <strong>Note:</strong> Videos will be generated 6 hours before the scheduled publish time so you have time to review them.
     </div>
     </div><!-- /wiz-body -->
 
     <div class="wiz-nav">
-      <button class="btn-back" onclick="go(6)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg> Back</button>
+      <button class="btn-back" onclick="go(5)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg> Back</button>
       <button class="btn-next" id="createBtn" onclick="handleCreate()">
-        <span id="createBtnTxt">Create Series</span>
+        <span id="createBtnTxt">Generate Video</span>
         <span id="createBtnIco"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></span>
       </button>
     </div>
   </div>
 
+
 </div><!-- /max-width -->
 </div><!-- /reel-wizard -->
 
+<!-- ── Payment Modal ──────────────────────────────────────────────────────── -->
+<div id="payOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:20px;padding:32px 28px;max-width:420px;width:90%;box-shadow:0 25px 60px rgba(0,0,0,0.3);position:relative;">
+    <button onclick="closePayModal()" style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:22px;cursor:pointer;color:#9ca3af;line-height:1;">✕</button>
+
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="width:52px;height:52px;background:#f3f0ff;border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+        <svg width="24" height="24" fill="none" stroke="#7c3aed" stroke-width="2" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><path d="M1 10h22"/></svg>
+      </div>
+      <h3 style="font-size:1.3rem;font-weight:800;color:#111827;margin:0 0 6px;">Generate this Reel</h3>
+      <p style="font-size:14px;color:#6b7280;margin:0;">One-time payment — download & keep forever</p>
+    </div>
+
+    <!-- Coupon input -->
+    <div style="margin-bottom:18px;">
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="payCoupon" placeholder="Coupon code (optional)" class="wiz-input"
+          style="flex:1;text-transform:uppercase;font-size:14px;"
+          oninput="this.value=this.value.toUpperCase()">
+        <button onclick="applyPayCoupon()"
+          style="padding:12px 14px;background:#f3f0ff;border:1.5px solid #7c3aed;border-radius:10px;color:#7c3aed;font-weight:600;cursor:pointer;white-space:nowrap;font-size:14px;">
+          Apply
+        </button>
+      </div>
+      <div id="payCouponMsg" style="font-size:13px;margin-top:6px;min-height:18px;"></div>
+    </div>
+
+    <!-- Price display -->
+    <div style="background:#f9fafb;border-radius:12px;padding:16px 18px;margin-bottom:22px;display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div style="font-size:14px;font-weight:600;color:#374151;">Total</div>
+        <div style="font-size:12px;color:#9ca3af;margin-top:2px;">One video · instant download</div>
+      </div>
+      <div style="text-align:right;">
+        <span id="payOriginalPrice" style="font-size:13px;color:#9ca3af;text-decoration:line-through;display:none;margin-right:6px;">₹30</span>
+        <span id="payFinalPrice" style="font-size:1.6rem;font-weight:800;color:#111827;">₹30</span>
+      </div>
+    </div>
+
+    <!-- Pay button -->
+    <button id="payBtn" onclick="startVideoPay()"
+      style="width:100%;padding:14px;background:#7c3aed;color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;transition:background .15s;">
+      <span id="payBtnTxt">Pay ₹30 &amp; Generate</span>
+    </button>
+  </div>
+</div>
+
 <script>
-const S = { step:1, niche:'', voice:'alloy', music:[], art:'cinematic', cap:'bold-stroke', effects:{ filmGrain:false, shake:false, animatedHook:false } };
+const S = { step:1, niche:'', exScript:'', voice:'alloy', music:[], art:'cinematic', cap:'bold-stroke', effects:{ filmGrain:false, shake:false, animatedHook:false } };
+const needsPayment = <%= totalReels %> > 0;
+let payAppliedCoupon = null;
+let payFinalAmount   = 30;
 
 // ── Voice preview player ──────────────────────────────────────────────────────
 const PLAY_ICON  = `<svg width="11" height="11" fill="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>`;
@@ -548,7 +570,7 @@ function playMusic(id, btn) {
 }
 
 function updProg(n) {
-  for(let i=0;i<8;i++) {
+  for(let i=0;i<7;i++) {
     document.getElementById('seg'+i).classList.toggle('done', i < n);
   }
 }
@@ -560,6 +582,7 @@ function go(n) {
     if (isCustom) {
       S.niche = document.getElementById('customNiche').value.trim();
       if (!S.niche || S.niche.length < 3) { showErr('s1err','Please describe your niche (at least 3 characters).'); return; }
+      S.exScript = document.getElementById('exScript').value.trim();
     } else if (!S.niche) { showErr('s1err','Please select a niche to continue.'); return; }
     hideErr('s1err');
   }
@@ -614,14 +637,98 @@ function cc(inputId, countId, max) {
 function showErr(id, msg) { const el=document.getElementById(id); el.textContent=msg; el.style.display='block'; }
 function hideErr(id)       { const el=document.getElementById(id); if(el) el.style.display='none'; }
 
-async function handleCreate() {
-  const name  = document.getElementById('seriesName').value.trim();
-  const topic = name || S.niche;
-  if (!topic || topic.length < 3) { showErr('s7err','Please enter a series name.'); return; }
-  hideErr('s7err');
+// ── Payment modal helpers ─────────────────────────────────────────────────────
+function openPayModal()  { document.getElementById('payOverlay').style.display = 'flex'; }
+function closePayModal() { document.getElementById('payOverlay').style.display = 'none'; }
+
+async function applyPayCoupon() {
+  const code  = document.getElementById('payCoupon').value.trim();
+  if (!code) return;
+  const msgEl = document.getElementById('payCouponMsg');
+  msgEl.textContent = 'Checking…'; msgEl.style.color = '#6b7280';
+  try {
+    const res  = await fetch('/api/reels/video-pay/apply-promo', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ code }),
+    });
+    const data = await res.json();
+    if (data.valid) {
+      payAppliedCoupon = data;
+      payFinalAmount   = data.discountType === 'percent'
+        ? Math.max(1, Math.round(30 * (1 - data.discountValue / 100)))
+        : Math.max(1, 30 - data.discountValue);
+      msgEl.textContent = data.message; msgEl.style.color = '#059669';
+      document.getElementById('payOriginalPrice').style.display = 'inline';
+      document.getElementById('payFinalPrice').textContent      = '₹' + payFinalAmount;
+      document.getElementById('payBtnTxt').textContent          = `Pay ₹${payFinalAmount} & Generate`;
+    } else {
+      payAppliedCoupon = null; payFinalAmount = 30;
+      msgEl.textContent = data.message; msgEl.style.color = '#dc2626';
+      document.getElementById('payOriginalPrice').style.display = 'none';
+      document.getElementById('payFinalPrice').textContent      = '₹30';
+      document.getElementById('payBtnTxt').textContent          = 'Pay ₹30 & Generate';
+    }
+  } catch(e) {
+    msgEl.textContent = 'Could not apply coupon.'; msgEl.style.color = '#dc2626';
+  }
+}
+
+async function startVideoPay() {
+  const btn    = document.getElementById('payBtn');
+  const btnTxt = document.getElementById('payBtnTxt');
+  btn.disabled = true; btnTxt.textContent = 'Creating order…';
+  try {
+    const orderRes = await fetch('/api/reels/video-pay/create-order', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ couponCode: payAppliedCoupon?.code || null }),
+    });
+    const order = await orderRes.json();
+    if (!order.success) throw new Error(order.message || 'Order creation failed');
+
+    const rzp = new Razorpay({
+      key:         '<%= razorpayKey %>',
+      amount:      order.amount * 100,
+      currency:    'INR',
+      name:        'SmrAI Studio',
+      description: 'AI Reel — ₹' + order.amount,
+      order_id:    order.orderId,
+      handler: async function(response) {
+        closePayModal();
+        await doGenerate({
+          razorpay_order_id:   response.razorpay_order_id,
+          razorpay_payment_id: response.razorpay_payment_id,
+          razorpay_signature:  response.razorpay_signature,
+        });
+      },
+      modal: { ondismiss: function() { btn.disabled = false; btnTxt.textContent = `Pay ₹${payFinalAmount} & Generate`; } },
+      prefill: { name: '<%= currentUser.name || "" %>', email: '<%= currentUser.email || "" %>' },
+      theme: { color: '#7c3aed' },
+    });
+    rzp.open();
+  } catch(err) {
+    btn.disabled = false; btnTxt.textContent = `Pay ₹${payFinalAmount} & Generate`;
+    showErr('s6err', err.message);
+    closePayModal();
+  }
+}
+
+// ── Create entry point ────────────────────────────────────────────────────────
+function handleCreate() {
+  const topic = S.niche;
+  if (!topic || topic.length < 3) { showErr('s6err', 'Please select a niche to continue.'); return; }
+  hideErr('s6err');
+
+  if (needsPayment) {
+    openPayModal();
+  } else {
+    doGenerate({});
+  }
+}
+
+async function doGenerate(paymentFields) {
+  const topic = S.niche;
 
   const btn = document.getElementById('createBtn');
-  document.getElementById('createBtnTxt').textContent = 'Creating…';
+  document.getElementById('createBtnTxt').textContent = 'Generating…';
   document.getElementById('createBtnIco').innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:spin 1s linear infinite"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>';
   btn.disabled = true;
 
@@ -638,15 +745,16 @@ async function handleCreate() {
         duration:     document.getElementById('durSel')?.value || '30-40',
         music:        S.music,
         effects:      S.effects,
+        exScript:     S.exScript || '',
+        ...paymentFields,
       }),
     });
     const data = await res.json();
-    if (res.status === 402) { window.location.href = data.redirect || '/reels/pricing'; return; }
     if (!res.ok || data.error) throw new Error(data.error || 'Server error. Please try again.');
     window.location.href = '/reels/loading/' + data.reel_id;
   } catch(err) {
-    showErr('s7err', err.message);
-    document.getElementById('createBtnTxt').textContent = 'Create Series';
+    showErr('s6err', err.message);
+    document.getElementById('createBtnTxt').textContent = 'Generate Video';
     document.getElementById('createBtnIco').innerHTML = '<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>';
     btn.disabled = false;
   }
@@ -672,6 +780,42 @@ document.addEventListener('DOMContentLoaded', () => {
   if (savedState) {
     try { Object.assign(S, JSON.parse(savedState)); } catch(e) {}
     sessionStorage.removeItem('wizState');
+  }
+
+  // Restore wizard state saved when user was redirected to subscribe (402)
+  const pending = sessionStorage.getItem('reels_pending');
+  if (pending) {
+    try {
+      const p = JSON.parse(pending);
+      sessionStorage.removeItem('reels_pending');
+
+      Object.assign(S, {
+        niche:    p.niche    || S.niche,
+        exScript: p.exScript || '',
+        voice:    p.voice    || S.voice,
+        music:    p.music    || S.music,
+        art:      p.art      || S.art,
+        cap:      p.cap      || S.cap,
+        effects:  p.effects  || S.effects,
+      });
+
+      // Restore niche selection visually
+      if (p.niche) {
+        const nicheEl = document.querySelector('[data-niche="' + p.niche + '"]');
+        if (nicheEl) { pickNiche(p.niche); }
+        else { sTab(1,'b'); document.getElementById('customNiche').value = p.niche; S.niche = p.niche; }
+      }
+
+      // Restore language & duration dropdowns
+      if (p.language) { const el = document.getElementById('langSel'); if (el) el.value = p.language; }
+      if (p.duration) { const el = document.getElementById('durSel');  if (el) el.value = p.duration; }
+
+      // Jump straight to step 6 (last step)
+      document.getElementById('step-1').classList.remove('active');
+      S.step = 6;
+      document.getElementById('step-6').classList.add('active');
+      updProg(6);
+    } catch(e) {}
   }
 
   updProg(1);

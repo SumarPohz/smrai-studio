@@ -144,6 +144,30 @@
     .rp-note { text-align: center; color: #52525b; font-size: 0.75rem; margin-top: 0.75rem; }
     .rp-back { display: inline-block; margin-top: 1.5rem; color: #52525b; font-size: 0.82rem; text-decoration: none; }
     .rp-back:hover { color: #a1a1aa; }
+    /* promo code */
+    .rp-promo-row { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; }
+    .rp-promo-row input {
+      flex: 1; min-width: 0;
+      padding: 0.55rem 0.85rem;
+      background: #18181b; border: 1.5px solid #3f3f46;
+      border-radius: 0.5rem; color: #e4e4e7;
+      font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em;
+      outline: none; transition: border-color 0.2s;
+    }
+    .rp-promo-row input:focus { border-color: #7c3aed; }
+    .rp-promo-apply {
+      padding: 0.55rem 1rem;
+      background: #3f3f46; color: #e4e4e7;
+      border: none; border-radius: 0.5rem;
+      font-size: 0.82rem; font-weight: 600;
+      cursor: pointer; white-space: nowrap; transition: background 0.2s;
+    }
+    .rp-promo-apply:hover { background: #52525b; }
+    .rp-promo-msg { font-size: 0.8rem; margin-bottom: 0.75rem; }
+    .rp-promo-msg.ok  { color: #4ade80; }
+    .rp-promo-msg.err { color: #f87171; }
+    .rp-price-original { text-decoration: line-through; color: #71717a; font-size: 0.9rem; margin-right: 0.3rem; }
+    .rp-price-discounted { color: #a78bfa; font-weight: 800; font-size: 1.05rem; }
 
     /* ── RIGHT: video preview ────────────────────────────────────────────── */
     .rp-right {
@@ -281,8 +305,13 @@
           </div>
           <p class="rp-note">Renews automatically each month · Cancel anytime</p>
         <% } else { %>
+          <div class="rp-promo-row">
+            <input type="text" id="rp-promo-input" placeholder="Promo code" maxlength="30" onkeydown="if(event.key==='Enter') applyPromo()">
+            <button class="rp-promo-apply" onclick="applyPromo()">Apply</button>
+          </div>
+          <p class="rp-promo-msg" id="rp-promo-msg" style="display:none"></p>
           <button class="rp-btn" id="rp-pay-btn" onclick="startPayment()">
-            ⚡ Subscribe Now — ₹199/month
+            ⚡ Subscribe Now — <span id="rp-price-label">₹199/month</span>
           </button>
           <p class="rp-note">Secure payment via Razorpay · Cancel anytime</p>
         <% } %>
@@ -333,12 +362,50 @@
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
   <script>
     const RAZORPAY_KEY = '<%= razorpayKey %>';
+    let appliedCoupon = null; // { code, discountType, discountValue }
 
     function showToast(msg, isError = false) {
       const t = document.getElementById('rp-toast');
       t.textContent = msg;
       t.className = isError ? 'error show' : 'show';
       setTimeout(() => t.className = '', 3500);
+    }
+
+    async function applyPromo() {
+      const input = document.getElementById('rp-promo-input');
+      const msg   = document.getElementById('rp-promo-msg');
+      const code  = input.value.trim();
+      if (!code) return;
+      msg.style.display = 'none';
+      try {
+        const res  = await fetch('/api/subscription/apply-promo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code }),
+        });
+        const data = await res.json();
+        msg.style.display = 'block';
+        if (data.valid) {
+          appliedCoupon = data;
+          msg.className = 'rp-promo-msg ok';
+          msg.textContent = data.message;
+          const disc  = data.discountType === 'percent'
+            ? Math.floor(199 * data.discountValue / 100)
+            : Math.min(data.discountValue, 199);
+          const final = Math.max(1, 199 - disc);
+          document.getElementById('rp-price-label').innerHTML =
+            `<span class="rp-price-original">₹199</span><span class="rp-price-discounted">₹${final}</span>/month`;
+        } else {
+          appliedCoupon = null;
+          msg.className = 'rp-promo-msg err';
+          msg.textContent = data.message;
+          document.getElementById('rp-price-label').textContent = '₹199/month';
+        }
+      } catch(e) {
+        msg.style.display = 'block';
+        msg.className = 'rp-promo-msg err';
+        msg.textContent = 'Could not validate code. Try again.';
+      }
     }
 
     async function startPayment() {
@@ -348,9 +415,26 @@
 
       let order;
       try {
-        const res  = await fetch('/api/reels/payment/create-order', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+        const res  = await fetch('/api/reels/payment/create-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ couponCode: appliedCoupon?.code || null }),
+        });
         const data = await res.json();
-        if (!res.ok) { showToast(data.error || 'Failed to create order.', true); reset(); return; }
+        if (!res.ok || !data.success) {
+          // Surface coupon-reuse error back to the promo field
+          if (data.message && data.message.includes('promo code')) {
+            const msg = document.getElementById('rp-promo-msg');
+            msg.style.display = 'block';
+            msg.className = 'rp-promo-msg err';
+            msg.textContent = data.message;
+            appliedCoupon = null;
+            document.getElementById('rp-price-label').textContent = '₹199/month';
+          } else {
+            showToast(data.message || data.error || 'Failed to create order.', true);
+          }
+          reset(); return;
+        }
         order = data;
       } catch (e) { showToast('Network error. Please try again.', true); reset(); return; }
 
@@ -359,7 +443,7 @@
         amount:      order.amount,
         currency:    order.currency,
         name:        'SmrAI Studio',
-        description: 'Reels Starter Plan — ₹199/month',
+        description: 'Reels Starter Plan',
         order_id:    order.orderId,
         handler: async function(response) {
           btn.innerHTML = '<span class="rp-spinner"></span> Verifying…';
@@ -371,6 +455,7 @@
                 razorpay_order_id:   response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature:  response.razorpay_signature,
+                couponCode:          order.couponCode || null,
               }),
             });
             const vData = await vRes.json();
@@ -392,7 +477,7 @@
 
       function reset() {
         btn.disabled = false;
-        btn.textContent = '⚡ Subscribe Now — ₹199/month';
+        btn.innerHTML = '⚡ Subscribe Now — <span id="rp-price-label">₹199/month</span>';
       }
 
       const rzp = new Razorpay(options);

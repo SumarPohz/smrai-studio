@@ -1,6 +1,7 @@
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
 import path from 'path';
+import fs from 'fs/promises';
 
 ffmpeg.setFfmpegPath(ffmpegInstaller.path);
 
@@ -66,9 +67,194 @@ function buildSubtitleSegments(script) {
  * @param {string}   [options.musicPath=null]  - absolute path to BGM mp3, or null
  * @returns {Promise<string>}   resolved output file path
  */
+/**
+ * Ken Burns (pan/zoom) variants — cycled per image for visual variety.
+ * Expressions are evaluated inside FFmpeg zoompan; `zoom`, `iw`, `ih` are built-in vars.
+ */
+const KB_VARIANTS = [
+  // 0: slow zoom-in to centre
+  { z: `min(zoom+0.0008,1.25)`, x: `iw/2-(iw/zoom/2)`, y: `ih/2-(ih/zoom/2)` },
+  // 1: slow zoom-out from centre
+  { z: `if(lte(zoom,1),1.25,max(zoom-0.0008,1))`, x: `iw/2-(iw/zoom/2)`, y: `ih/2-(ih/zoom/2)` },
+  // 2: zoom-in, drift to bottom
+  { z: `min(zoom+0.0008,1.25)`, x: `iw/2-(iw/zoom/2)`, y: `ih-(ih/zoom)` },
+  // 3: zoom-in, drift to top
+  { z: `min(zoom+0.0008,1.25)`, x: `iw/2-(iw/zoom/2)`, y: `0` },
+];
+
+/**
+ * Merge AI-generated images + TTS audio into a single vertical MP4 reel.
+ *
+ * Pipeline:
+ *   1. Loop each image as a still-image stream (11s or 13s per image)
+ *   2. Scale each image to 1080×1920 portrait
+ *   3. Apply Ken Burns (zoompan) animation — cycling through 4 pan/zoom variants
+ *   4. Concatenate all animated clips
+ *   5. Optionally apply shake effect
+ *   6. Burn timed subtitle text synced to ~155 WPM
+ *   7. Optionally apply film grain
+ *   8. Mix TTS audio with optional BGM at 15% volume
+ *   9. Export with libx264 / aac — `-shortest` trims to TTS audio length
+ *
+ * @param {number}   reelId
+ * @param {string[]} imagePaths  - local paths to PNG images (4 or 6)
+ * @param {string}   audioPath  - local path to TTS mp3
+ * @param {string}   script     - line-per-line script used for timed subtitles
+ * @param {object}   options
+ * @param {string}   [options.captionStyle='bold-stroke']
+ * @param {object}   [options.effects]
+ * @param {boolean}  [options.effects.filmGrain=false]
+ * @param {boolean}  [options.effects.shake=false]
+ * @param {string}   [options.musicPath=null]
+ * @param {string}   [options.duration='30-40']  - '30-40' or '60-70'
+ * @returns {Promise<string>}  resolved output file path
+ */
+export async function mergeReelFromImages(reelId, imagePaths, audioPath, script, options = {}) {
+  const {
+    captionStyle = 'bold-stroke',
+    effects      = {},
+    musicPath    = null,
+    duration     = '30-40',
+  } = options;
+
+  const outputPath = path.resolve(`./public/videos/${reelId}.mp4`);
+  await fs.mkdir(path.dirname(outputPath), { recursive: true });
+
+  const captionParams = CAPTION_STYLES[captionStyle] || CAPTION_STYLES['bold-stroke'];
+  const grainFilter   = effects.filmGrain ? ',noise=alls=20:allf=t' : '';
+  const hasShake      = !!effects.shake;
+  const hasBGM        = !!musicPath;
+
+  // Seconds each image is held on screen — total must exceed TTS audio length
+  // (-shortest will cut at audio end)
+  const frameDuration = duration === '60-70' ? 13 : 11;
+  const frameCount    = frameDuration * 30;  // frames at 30fps
+
+  const n = imagePaths.length;  // audio stream index = n, BGM = n+1
+
+  const segments = buildSubtitleSegments(script);
+
+  return new Promise((resolve, reject) => {
+    const cmd = ffmpeg();
+
+    // Each image: loop as still-image stream for frameDuration seconds
+    imagePaths.forEach((p) => {
+      cmd.input(p).inputOptions(['-loop 1', `-t ${frameDuration}`]);
+    });
+    cmd.input(audioPath);
+    if (hasBGM) {
+      cmd.input(musicPath);
+      console.log(`[FFmpeg] BGM mixed: ${path.basename(musicPath)}`);
+    }
+
+    // Per-image: scale to 1080×1920, then Ken Burns zoompan
+    const imageFilters = imagePaths.map((_, i) => {
+      const kb = KB_VARIANTS[i % KB_VARIANTS.length];
+      const kenBurns =
+        `zoompan=z='${kb.z}':x='${kb.x}':y='${kb.y}'` +
+        `:d=${frameCount}:s=1080x1920:fps=30`;
+      return (
+        `[${i}:v]` +
+        `scale=1080:1920:force_original_aspect_ratio=increase,` +
+        `crop=1080:1920,setsar=1,` +
+        `${kenBurns}` +
+        `[v${i}]`
+      );
+    });
+
+    const concatInputLabels = imagePaths.map((_, i) => `[v${i}]`).join('');
+
+    // Optional shake (same as mergeReel)
+    const shakeStage  = hasShake
+      ? `[vcat]scale=1116:1996,crop=1080:1920:x='18+18*sin(t*22)':y='18+18*sin(t*17)'[vshaken]`
+      : null;
+    const drawtextSrc = hasShake ? '[vshaken]' : '[vcat]';
+
+    // Timed subtitle filters (identical logic to mergeReel)
+    let subtitleFilters;
+    if (segments.length <= 1) {
+      const fallbackText = sanitizeLine(
+        script.replace(/[\r\n]+/g, ' ').substring(0, 100).trim()
+      );
+      subtitleFilters = [
+        `${drawtextSrc}drawtext=` +
+        `text='${fallbackText}':` +
+        `${captionParams}:` +
+        `x=(w-text_w)/2:y=h-180:line_spacing=8` +
+        `${grainFilter}[vout]`,
+      ];
+    } else {
+      subtitleFilters = segments.map((seg, i) => {
+        const inputLabel  = i === 0 ? drawtextSrc : `[vsub${i - 1}]`;
+        const isLast      = i === segments.length - 1;
+        const outputLabel = isLast ? '[vout]' : `[vsub${i}]`;
+        const grain       = isLast ? grainFilter : '';
+        return (
+          `${inputLabel}drawtext=` +
+          `text='${seg.text}':` +
+          `${captionParams}:` +
+          `x=(w-text_w)/2:y=h-180:line_spacing=8:` +
+          `enable='between(t,${seg.start},${seg.end})'` +
+          `${grain}${outputLabel}`
+        );
+      });
+    }
+
+    // Audio mix (identical to mergeReel)
+    const audioFilterPart = hasBGM
+      ? `[${n}:a]volume=1.0[tts];[${n + 1}:a]volume=0.15[bgm];[tts][bgm]amix=inputs=2:duration=first[aout]`
+      : null;
+
+    const filterComplex = [
+      ...imageFilters,
+      `${concatInputLabels}concat=n=${n}:v=1:a=0[vcat]`,
+      ...(shakeStage      ? [shakeStage]      : []),
+      ...subtitleFilters,
+      ...(audioFilterPart ? [audioFilterPart] : []),
+    ].join(';');
+
+    const audioMap = hasBGM ? '-map [aout]' : `-map ${n}:a`;
+
+    cmd
+      .complexFilter(filterComplex)
+      .outputOptions([
+        '-map [vout]',
+        audioMap,
+        '-c:v libx264',
+        '-c:a aac',
+        '-b:a 128k',
+        '-crf 26',
+        '-preset ultrafast',
+        '-r 30',
+        '-shortest',
+        '-movflags +faststart',
+        '-pix_fmt yuv420p',
+      ])
+      .output(outputPath)
+      .timeout(420)   // 7-minute limit (image pipeline is slower than video)
+      .on('start', (cmd) => console.log(`[FFmpeg] Starting image reel #${reelId}:`, cmd))
+      .on('progress', (p) => {
+        if (p.percent) console.log(`[FFmpeg] Reel #${reelId}: ${Math.round(p.percent)}%`);
+      })
+      .on('end', () => {
+        console.log(`[FFmpeg] Reel #${reelId} complete → ${outputPath}`);
+        resolve(outputPath);
+      })
+      .on('error', (err, stdout, stderr) => {
+        console.error(`[FFmpeg] Reel #${reelId} error:`, err.message);
+        console.error('[FFmpeg stderr]', stderr);
+        reject(new Error(`FFmpeg failed: ${err.message}`));
+      })
+      .run();
+  });
+}
+
 export async function mergeReel(reelId, clipPaths, audioPath, script, options = {}) {
   const { captionStyle = 'bold-stroke', effects = {}, musicPath = null } = options;
   const outputPath = path.resolve(`./public/videos/${reelId}.mp4`);
+
+  // Ensure output directory exists (Render ephemeral FS may not have it)
+  await fs.mkdir(path.dirname(outputPath), { recursive: true });
 
   const captionParams = CAPTION_STYLES[captionStyle] || CAPTION_STYLES['bold-stroke'];
   const grainFilter   = effects.filmGrain ? ',noise=alls=20:allf=t' : '';
@@ -168,13 +354,15 @@ export async function mergeReel(reelId, clipPaths, audioPath, script, options = 
         '-c:v libx264',
         '-c:a aac',
         '-b:a 128k',
-        '-crf 23',
-        '-preset fast',
+        '-crf 26',
+        '-preset ultrafast',
+        '-r 30',
         '-shortest',
         '-movflags +faststart',
         '-pix_fmt yuv420p',
       ])
       .output(outputPath)
+      .timeout(300)   // 5-minute hard limit — kills ffmpeg gracefully if exceeded
       .on('start', (cmd) => console.log(`[FFmpeg] Starting reel ${reelId}:`, cmd))
       .on('progress', (p) => {
         if (p.percent) console.log(`[FFmpeg] Reel ${reelId}: ${Math.round(p.percent)}%`);

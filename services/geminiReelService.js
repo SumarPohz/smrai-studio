@@ -140,10 +140,10 @@ Instructions:
  * Falls back to OpenAI if Gemini is unavailable.
  *
  * @param {string} topic
- * @param {{ language?: string, artStyle?: string, duration?: string }} opts
+ * @param {{ language?: string, artStyle?: string, duration?: string, exScript?: string }} opts
  * @returns {Promise<string>}
  */
-export async function generateScript(topic, { language = 'en', artStyle = 'cinematic', duration = '30-40' } = {}) {
+export async function generateScript(topic, { language = 'en', artStyle = 'cinematic', duration = '30-40', exScript = '' } = {}) {
   if (!geminiModel) {
     console.warn('[GeminiReel] Model not initialised — falling back to OpenAI');
     return openaiGenerateScript(topic);
@@ -152,6 +152,10 @@ export async function generateScript(topic, { language = 'en', artStyle = 'cinem
   const lang       = LANG_MAP[language] || 'English';
   const tone       = TONE_MAP[artStyle]  || TONE_MAP.cinematic;
   const wordTarget = WORD_TARGET[duration] || WORD_TARGET['30-40'];
+
+  const styleSection = exScript && exScript.trim().length > 10
+    ? `\nStyle & tone reference — match this voice exactly:\n"""\n${exScript.trim()}\n"""\n`
+    : '';
 
   const prompt = `You are a viral faceless short-form video scriptwriter.
 Write a script about: "${topic}"
@@ -164,7 +168,7 @@ Requirements:
 - NO emojis, hashtags, stage directions, or speaker labels
 - First line must be a powerful hook that stops the scroll
 - Last line must be a memorable, shareable closing
-
+${styleSection}
 Output only the script lines. Nothing else.`;
 
   try {
