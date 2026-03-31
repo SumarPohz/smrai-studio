@@ -7,14 +7,14 @@ ffmpeg.setFfmpegPath(ffmpegInstaller.path);
 
 // ── Caption style drawtext configurations ─────────────────────────────────────
 const CAPTION_STYLES = {
-  'bold-stroke':   'fontsize=52:fontcolor=white:borderw=5:bordercolor=black',
-  'red-highlight': 'fontsize=48:fontcolor=white:borderw=2:bordercolor=black:box=1:boxcolor=red@0.85:boxborderw=10',
-  'sleek':         'fontsize=36:fontcolor=white:borderw=2:bordercolor=black@0.5',
-  'majestic':      'fontsize=56:fontcolor=gold:borderw=4:bordercolor=black',
-  'beast':         'fontsize=60:fontcolor=yellow:borderw=6:bordercolor=black',
-  'elegant':       'fontsize=42:fontcolor=white:borderw=2:bordercolor=black@0.6',
-  'clarity':       'fontsize=46:fontcolor=white:borderw=2:bordercolor=black:box=1:boxcolor=black@0.5:boxborderw=8',
-  'karaoke':       'fontsize=52:fontcolor=white:borderw=0:box=1:boxcolor=0x7c3aed@0.92:boxborderw=12',
+  'bold-stroke':   'fontsize=64:fontcolor=white:borderw=5:bordercolor=black',
+  'red-highlight': 'fontsize=60:fontcolor=white:borderw=2:bordercolor=black:box=1:boxcolor=red@0.85:boxborderw=12',
+  'sleek':         'fontsize=48:fontcolor=white:borderw=2:bordercolor=black@0.5',
+  'majestic':      'fontsize=68:fontcolor=gold:borderw=4:bordercolor=black',
+  'beast':         'fontsize=72:fontcolor=yellow:borderw=6:bordercolor=black',
+  'elegant':       'fontsize=54:fontcolor=white:borderw=2:bordercolor=black@0.6',
+  'clarity':       'fontsize=58:fontcolor=white:borderw=2:bordercolor=black:box=1:boxcolor=black@0.5:boxborderw=10',
+  'karaoke':       'fontsize=64:fontcolor=white:borderw=0:box=1:boxcolor=0x7c3aed@0.92:boxborderw=14',
 };
 
 // ── Sanitize a single line for use inside FFmpeg drawtext ────────────────────
@@ -79,18 +79,15 @@ function buildSubtitleSegments(script) {
  * @returns {Promise<string>}   resolved output file path
  */
 /**
- * Ken Burns (pan/zoom) variants — cycled per image for visual variety.
- * Expressions are evaluated inside FFmpeg zoompan; `zoom`, `iw`, `ih` are built-in vars.
+ * Pan animation variants — cycled per image for visual variety.
+ * Uses scale+crop with t-based expressions instead of zoompan to avoid PTS issues.
+ * Scale to 120% (1296×2304) then crop the 1080×1920 window, shifting by t.
  */
-const KB_VARIANTS = [
-  // 0: slow zoom-in to centre
-  { z: `min(zoom+0.0008,1.25)`, x: `iw/2-(iw/zoom/2)`, y: `ih/2-(ih/zoom/2)` },
-  // 1: slow zoom-out from centre
-  { z: `if(lte(zoom,1),1.25,max(zoom-0.0008,1))`, x: `iw/2-(iw/zoom/2)`, y: `ih/2-(ih/zoom/2)` },
-  // 2: zoom-in, drift to bottom
-  { z: `min(zoom+0.0008,1.25)`, x: `iw/2-(iw/zoom/2)`, y: `ih-(ih/zoom)` },
-  // 3: zoom-in, drift to top
-  { z: `min(zoom+0.0008,1.25)`, x: `iw/2-(iw/zoom/2)`, y: `0` },
+const PAN_VARIANTS = [
+  { x: `(iw-ow)/2`,                             y: `(ih-oh)*min(t/D,1)` },    // top→bottom
+  { x: `(iw-ow)/2`,                             y: `(ih-oh)*max(1-t/D,0)` },  // bottom→top
+  { x: `(iw-ow)*min(t/D,1)`,                    y: `(ih-oh)/2` },              // left→right
+  { x: `(iw-ow)*max(1-t/D,0)`,                  y: `(ih-oh)/2` },              // right→left
 ];
 
 /**
@@ -139,7 +136,6 @@ export async function mergeReelFromImages(reelId, imagePaths, audioPath, script,
   // Seconds each image is held on screen — total must exceed TTS audio length
   // (-shortest will cut at audio end)
   const frameDuration = duration === '60-70' ? 13 : 11;
-  const frameCount    = frameDuration * 24;  // frames at 24fps (zoompan is CPU-bound; 24fps is ~20% faster)
 
   const n = imagePaths.length;  // audio stream index = n, BGM = n+1
 
@@ -148,9 +144,9 @@ export async function mergeReelFromImages(reelId, imagePaths, audioPath, script,
   return new Promise((resolve, reject) => {
     const cmd = ffmpeg();
 
-    // Each image: loop as still-image stream for frameDuration seconds
+    // Each image: loop as still-image stream for frameDuration seconds at 24fps
     imagePaths.forEach((p) => {
-      cmd.input(p).inputOptions(['-loop 1', `-t ${frameDuration}`]);
+      cmd.input(p).inputOptions(['-loop 1', '-r 24', `-t ${frameDuration}`]);
     });
     cmd.input(audioPath);
     if (hasBGM) {
@@ -158,18 +154,16 @@ export async function mergeReelFromImages(reelId, imagePaths, audioPath, script,
       console.log(`[FFmpeg] BGM mixed: ${path.basename(musicPath)}`);
     }
 
-    // Per-image: scale to 1080×1920, then Ken Burns zoompan
+    // Per-image: scale to 120% then crop with animated pan — no zoompan PTS issues
     const imageFilters = imagePaths.map((_, i) => {
-      const kb = KB_VARIANTS[i % KB_VARIANTS.length];
-      const kenBurns =
-        `zoompan=z='${kb.z}':x='${kb.x}':y='${kb.y}'` +
-        `:d=${frameCount}:s=1080x1920:fps=24`;
+      const pan = PAN_VARIANTS[i % PAN_VARIANTS.length];
+      const px  = pan.x.replace(/D/g, frameDuration);
+      const py  = pan.y.replace(/D/g, frameDuration);
       return (
         `[${i}:v]` +
-        `scale=1080:1920:force_original_aspect_ratio=increase,` +
-        `crop=1080:1920,setsar=1,` +
-        `${kenBurns}` +
-        `,setpts=N/24/TB` +
+        `scale=1296:2304:force_original_aspect_ratio=increase,` +
+        `crop=1080:1920:x='${px}':y='${py}',` +
+        `setsar=1,fps=fps=24` +
         `[v${i}]`
       );
     });
@@ -192,7 +186,7 @@ export async function mergeReelFromImages(reelId, imagePaths, audioPath, script,
         `${drawtextSrc}drawtext=` +
         `text='${fallbackText}':` +
         `${captionParams}:` +
-        `x=(w-text_w)/2:y=h-200:line_spacing=8:fix_bounds=1` +
+        `x=(w-text_w)/2:y=h-250:line_spacing=8:fix_bounds=1` +
         `${grainFilter}[vout]`,
       ];
     } else {
@@ -205,7 +199,7 @@ export async function mergeReelFromImages(reelId, imagePaths, audioPath, script,
           `${inputLabel}drawtext=` +
           `text='${seg.text}':` +
           `${captionParams}:` +
-          `x=(w-text_w)/2:y=h-200:line_spacing=8:fix_bounds=1:` +
+          `x=(w-text_w)/2:y=h-250:line_spacing=8:fix_bounds=1:` +
           `enable='between(t,${seg.start},${seg.end})':` +
           `alpha='min(1,max(0,if(lt(t,${seg.start}+0.2),(t-${seg.start})/0.2,if(gt(t,${seg.end}-0.15),(${seg.end}-t)/0.15,1))))'` +
           `${grain}${outputLabel}`
@@ -323,7 +317,7 @@ export async function mergeReel(reelId, clipPaths, audioPath, script, options = 
         `${drawtextSrc}drawtext=` +
         `text='${fallbackText}':` +
         `${captionParams}:` +
-        `x=(w-text_w)/2:y=h-200:line_spacing=8:fix_bounds=1` +
+        `x=(w-text_w)/2:y=h-250:line_spacing=8:fix_bounds=1` +
         `${grainFilter}[vout]`,
       ];
     } else {
@@ -336,7 +330,7 @@ export async function mergeReel(reelId, clipPaths, audioPath, script, options = 
           `${inputLabel}drawtext=` +
           `text='${seg.text}':` +
           `${captionParams}:` +
-          `x=(w-text_w)/2:y=h-200:line_spacing=8:fix_bounds=1:` +
+          `x=(w-text_w)/2:y=h-250:line_spacing=8:fix_bounds=1:` +
           `enable='between(t,${seg.start},${seg.end})':` +
           `alpha='min(1,max(0,if(lt(t,${seg.start}+0.2),(t-${seg.start})/0.2,if(gt(t,${seg.end}-0.15),(${seg.end}-t)/0.15,1))))'` +
           `${grain}${outputLabel}`
