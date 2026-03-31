@@ -3464,7 +3464,7 @@ app.get("/auth/youtube/callback", ensureAuthenticated, async (req, res) => {
 
     res.redirect("/reels/create?step=7&ytConnected=1");
   } catch (err) {
-    console.error("[YouTube OAuth] callback error:", err.response?.data || err.message);
+    console.error("[YouTube OAuth] callback error:", err.message);
     res.redirect("/reels/create?step=7&ytError=1");
   }
 });
@@ -5410,7 +5410,7 @@ app.get("/paysetu/recharge/callback", async (req, res) => {
   }
 
   const { STATUS, TRANSACTIONID, OPERATORID, CLIENTID, MESSAGE } = req.query;
-  console.log(`[callback] STATUS=${STATUS} TXN=${TRANSACTIONID} OP=${OPERATORID} CLIENT=${CLIENTID} MSG=${MESSAGE}`);
+  console.log(`[callback] STATUS=${STATUS} TXN=${TRANSACTIONID} OP=${OPERATORID} MSG=${MESSAGE}`);
   if (!CLIENTID || !STATUS) return res.send("MISSING_PARAMS");
 
   const txnId = parseInt(CLIENTID);
