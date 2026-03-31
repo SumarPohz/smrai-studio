@@ -3315,7 +3315,7 @@ app.get("/api/reels/video-pay/price", ensureAuthenticated, async (req, res) => {
 /** POST /api/reels/video-pay/create-order — create Razorpay order at admin-set price */
 app.post("/api/reels/video-pay/create-order", ensureAuthenticated, async (req, res) => {
   try {
-    const { couponCode } = req.body || {};
+    const { couponCode, useWallet } = req.body || {};
     const priceRes = await db.query("SELECT value FROM admin_settings WHERE `key` = 'price_reel_video'");
     const basePrice = parseInt(priceRes.rows[0]?.value || '30', 10);
     let finalAmount = basePrice;
@@ -3337,7 +3337,33 @@ app.post("/api/reels/video-pay/create-order", ensureAuthenticated, async (req, r
       }
     }
 
-    const order = await razorpay.orders.create({
+    // ── Wallet handling ──────────────────────────────────────────────────────
+    if (useWallet) {
+      const wRow = await db.query('SELECT wallet_balance FROM users WHERE id = ?', [req.user.id]);
+      const walletBal = parseFloat(wRow.rows[0]?.wallet_balance || 0);
+
+      if (walletBal >= finalAmount) {
+        // Full wallet payment — no Razorpay needed
+        return res.json({ success: true, walletOnly: true, walletDeduction: finalAmount, amount: 0 });
+      }
+
+      if (walletBal > 0) {
+        // Partial wallet — deduct what's available, charge rest via Razorpay
+        const walletDeduction = Math.floor(walletBal);
+        finalAmount = Math.max(1, finalAmount - walletDeduction);
+        const order = await getRazorpay().orders.create({
+          amount:   finalAmount * 100,
+          currency: 'INR',
+          receipt:  `rvp_${req.user.id}_${Date.now()}`,
+        });
+        return res.json({
+          success: true, orderId: order.id, amount: finalAmount,
+          currency: 'INR', walletDeduction, couponCode: couponCode || null,
+        });
+      }
+    }
+
+    const order = await getRazorpay().orders.create({
       amount:   finalAmount * 100,
       currency: 'INR',
       receipt:  `rvp_${req.user.id}_${Date.now()}`,

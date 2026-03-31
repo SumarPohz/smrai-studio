@@ -511,6 +511,25 @@
       <p style="font-size:14px;color:#6b7280;margin:0;">One-time payment — download & keep forever</p>
     </div>
 
+    <% if (walletBalance > 0) { %>
+    <!-- Wallet option -->
+    <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:13px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:36px;height:36px;background:#dcfce7;border-radius:9px;display:flex;align-items:center;justify-content:center;">
+          <svg width="18" height="18" fill="none" stroke="#16a34a" stroke-width="2" viewBox="0 0 24 24"><path d="M21 12V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2"/><path d="M16 12h5v4h-5a2 2 0 0 1 0-4z"/></svg>
+        </div>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:#15803d;">Wallet Balance</div>
+          <div style="font-size:13px;color:#16a34a;">₹<%= walletBalance.toFixed(2) %> available</div>
+        </div>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+        <input type="checkbox" id="useWalletChk" onchange="onWalletToggle()" style="width:18px;height:18px;accent-color:#7c3aed;cursor:pointer;">
+        <span style="font-size:13px;font-weight:600;color:#374151;">Use</span>
+      </label>
+    </div>
+    <% } %>
+
     <!-- Coupon input -->
     <div style="margin-bottom:18px;">
       <div style="display:flex;gap:8px;">
@@ -725,17 +744,38 @@ async function applyPayCoupon() {
   }
 }
 
+function onWalletToggle() {
+  const chk = document.getElementById('useWalletChk');
+  if (!chk) return;
+  const walletBal = <%= walletBalance %>;
+  if (chk.checked && walletBal >= payFinalAmount) {
+    document.getElementById('payBtnTxt').textContent = `Pay with Wallet — Free`;
+    document.getElementById('payFinalPrice').textContent = '₹0';
+  } else {
+    document.getElementById('payBtnTxt').textContent = `Pay ₹${payFinalAmount} & Generate`;
+    document.getElementById('payFinalPrice').textContent = '₹' + payFinalAmount;
+  }
+}
+
 async function startVideoPay() {
-  const btn    = document.getElementById('payBtn');
-  const btnTxt = document.getElementById('payBtnTxt');
-  btn.disabled = true; btnTxt.textContent = 'Creating order…';
+  const btn      = document.getElementById('payBtn');
+  const btnTxt   = document.getElementById('payBtnTxt');
+  const useWallet = !!document.getElementById('useWalletChk')?.checked;
+  btn.disabled = true; btnTxt.textContent = 'Processing…';
   try {
     const orderRes = await fetch('/api/reels/video-pay/create-order', {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ couponCode: payAppliedCoupon?.code || null }),
+      body: JSON.stringify({ couponCode: payAppliedCoupon?.code || null, useWallet }),
     });
     const order = await orderRes.json();
     if (!order.success) throw new Error(order.message || 'Order creation failed');
+
+    // Wallet-only: skip Razorpay entirely
+    if (order.walletOnly) {
+      closePayModal();
+      await doGenerate({ walletOnly: true });
+      return;
+    }
 
     const rzp = new Razorpay({
       key:         '<%= razorpayKey %>',
@@ -750,6 +790,7 @@ async function startVideoPay() {
           razorpay_order_id:   response.razorpay_order_id,
           razorpay_payment_id: response.razorpay_payment_id,
           razorpay_signature:  response.razorpay_signature,
+          walletDeduction:     order.walletDeduction || 0,
         });
       },
       modal: { ondismiss: function() { btn.disabled = false; btnTxt.textContent = `Pay ₹${payFinalAmount} & Generate`; } },

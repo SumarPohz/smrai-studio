@@ -26,16 +26,18 @@ async function canGenerateReel(userId, db) {
 
 export async function getCreatePage(req, res, db) {
   try {
-    const countRes = await db.query(
-      `SELECT COUNT(*) AS cnt FROM reels WHERE user_id = ? AND status != 'failed'`,
-      [req.user.id]
-    );
-    const totalReels = parseInt(countRes.rows[0]?.cnt || 0, 10);
+    const [countRes, walletRes] = await Promise.all([
+      db.query(`SELECT COUNT(*) AS cnt FROM reels WHERE user_id = ? AND status != 'failed'`, [req.user.id]),
+      db.query(`SELECT wallet_balance FROM users WHERE id = ?`, [req.user.id]),
+    ]);
+    const totalReels    = parseInt(countRes.rows[0]?.cnt || 0, 10);
+    const walletBalance = parseFloat(walletRes.rows[0]?.wallet_balance || 0);
     res.render('reels/create', {
       title:       'AI Reel Generator',
       voices:      AVAILABLE_VOICES,
       currentUser: req.user,
       totalReels,
+      walletBalance,
       razorpayKey: process.env.RAZORPAY_KEY_ID,
     });
   } catch (err) {
@@ -45,6 +47,7 @@ export async function getCreatePage(req, res, db) {
       voices:      AVAILABLE_VOICES,
       currentUser: req.user,
       totalReels:  0,
+      walletBalance: 0,
       razorpayKey: process.env.RAZORPAY_KEY_ID,
     });
   }
@@ -200,6 +203,8 @@ export async function generateReel(req, res, db) {
     razorpay_order_id,
     razorpay_payment_id,
     razorpay_signature,
+    walletOnly            = false,
+    walletDeduction       = 0,
   } = req.body;
 
   if (!topic || topic.trim().length < 3) {
@@ -221,27 +226,40 @@ export async function generateReel(req, res, db) {
 
   // ── Payment verification (non-free videos) ────────────────────────────────
   if (!isFree) {
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-      return res.status(402).json({ requiresPayment: true, amount: 30 });
-    }
+    if (walletOnly) {
+      // Verify wallet has sufficient balance
+      const [wRow, priceRow] = await Promise.all([
+        db.query('SELECT wallet_balance FROM users WHERE id = ?', [req.user.id]),
+        db.query("SELECT value FROM admin_settings WHERE `key` = 'price_reel_video'"),
+      ]);
+      const bal   = parseFloat(wRow.rows[0]?.wallet_balance || 0);
+      const price = parseInt(priceRow.rows[0]?.value || '30', 10);
+      if (bal < price) {
+        return res.status(402).json({ error: 'Insufficient wallet balance.' });
+      }
+    } else {
+      if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+        return res.status(402).json({ requiresPayment: true, amount: 30 });
+      }
 
-    // Verify Razorpay signature
-    const body        = `${razorpay_order_id}|${razorpay_payment_id}`;
-    const expectedSig = crypto
-      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
-      .update(body)
-      .digest('hex');
-    if (expectedSig !== razorpay_signature) {
-      return res.status(400).json({ error: 'Invalid payment signature.' });
-    }
+      // Verify Razorpay signature
+      const body        = `${razorpay_order_id}|${razorpay_payment_id}`;
+      const expectedSig = crypto
+        .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+        .update(body)
+        .digest('hex');
+      if (expectedSig !== razorpay_signature) {
+        return res.status(400).json({ error: 'Invalid payment signature.' });
+      }
 
-    // Duplicate-payment guard
-    const dup = await db.query(
-      `SELECT id FROM reel_video_payments WHERE razorpay_payment_id = ?`,
-      [razorpay_payment_id]
-    );
-    if (dup.rows.length) {
-      return res.status(400).json({ error: 'This payment has already been used.' });
+      // Duplicate-payment guard
+      const dup = await db.query(
+        `SELECT id FROM reel_video_payments WHERE razorpay_payment_id = ?`,
+        [razorpay_payment_id]
+      );
+      if (dup.rows.length) {
+        return res.status(400).json({ error: 'This payment has already been used.' });
+      }
     }
   }
 
@@ -261,11 +279,26 @@ export async function generateReel(req, res, db) {
 
   // ── Store payment record ───────────────────────────────────────────────────
   if (!isFree) {
-    await db.query(
-      `INSERT INTO reel_video_payments (user_id, reel_id, razorpay_order_id, razorpay_payment_id, razorpay_signature)
-       VALUES (?, ?, ?, ?, ?)`,
-      [req.user.id, reelId, razorpay_order_id, razorpay_payment_id, razorpay_signature]
-    ).catch(err => console.error('[Reels] Payment record insert error:', err.message));
+    if (walletOnly) {
+      const priceRow = await db.query("SELECT value FROM admin_settings WHERE `key` = 'price_reel_video'");
+      const price    = parseInt(priceRow.rows[0]?.value || '30', 10);
+      await db.query('UPDATE users SET wallet_balance = wallet_balance - ? WHERE id = ?', [price, req.user.id])
+        .catch(err => console.error('[Reels] Wallet deduct error:', err.message));
+      await db.query(
+        `INSERT INTO reel_video_payments (user_id, reel_id, amount) VALUES (?, ?, ?)`,
+        [req.user.id, reelId, price]
+      ).catch(err => console.error('[Reels] Payment record insert error:', err.message));
+    } else {
+      if (walletDeduction > 0) {
+        await db.query('UPDATE users SET wallet_balance = wallet_balance - ? WHERE id = ?', [walletDeduction, req.user.id])
+          .catch(err => console.error('[Reels] Wallet partial deduct error:', err.message));
+      }
+      await db.query(
+        `INSERT INTO reel_video_payments (user_id, reel_id, razorpay_order_id, razorpay_payment_id, razorpay_signature)
+         VALUES (?, ?, ?, ?, ?)`,
+        [req.user.id, reelId, razorpay_order_id, razorpay_payment_id, razorpay_signature]
+      ).catch(err => console.error('[Reels] Payment record insert error:', err.message));
+    }
   }
 
   // Respond immediately — pipeline runs in background
