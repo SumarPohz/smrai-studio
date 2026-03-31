@@ -28,19 +28,30 @@ function sanitizeLine(text) {
 }
 
 // ── Build timed subtitle segments from a line-per-line script ────────────────
-// Estimates on-screen time per line at ~155 WPM.
+// Splits script into 3-word groups with estimated timing at ~155 WPM.
+// Produces TikTok-style captions that change every ~1s as audio plays.
 function buildSubtitleSegments(script) {
   const WPM         = 155;
   const secsPerWord = 60 / WPM;
   const lines       = script.split(/\n+/).map(l => l.trim()).filter(Boolean);
+  const segments    = [];
   let t = 0;
-  return lines.map(line => {
-    const words    = line.split(/\s+/).filter(Boolean).length;
-    const duration = Math.max(words * secsPerWord, 1.5);
-    const seg      = { text: sanitizeLine(line), start: +t.toFixed(2), end: +(t + duration).toFixed(2) };
-    t += duration;
-    return seg;
+
+  lines.forEach(line => {
+    const words = line.split(/\s+/).filter(Boolean);
+    for (let i = 0; i < words.length; i += 3) {
+      const group    = words.slice(i, i + 3);
+      const duration = Math.max(group.length * secsPerWord, 0.5);
+      segments.push({
+        text:  sanitizeLine(group.join(' ')),
+        start: +t.toFixed(2),
+        end:   +(t + duration).toFixed(2),
+      });
+      t += duration;
+    }
   });
+
+  return segments;
 }
 
 /**
