@@ -571,7 +571,7 @@ function playMusic(id, btn) {
 }
 
 function updProg(n) {
-  for(let i=0;i<7;i++) {
+  for(let i=0;i<6;i++) {
     document.getElementById('seg'+i).classList.toggle('done', i < n);
   }
 }
@@ -773,7 +773,7 @@ function escHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const qp = new URLSearchParams(window.location.search);
 
   // Restore wizard state saved before YouTube OAuth redirect
