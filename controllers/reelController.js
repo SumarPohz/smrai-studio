@@ -52,13 +52,10 @@ export async function getCreatePage(req, res, db) {
       catch {}
     }
 
-    // Check which preset music files have been uploaded by admin
-    const musicDir      = path.join(process.cwd(), 'public', 'music');
-    const availableMusic = [];
-    for (const preset of MUSIC_PRESETS) {
-      try { await fs.access(path.join(musicDir, `${preset[0]}.mp3`)); availableMusic.push(preset); }
-      catch {}
-    }
+    // Check which preset music tracks have been uploaded by admin (stored in DB)
+    const { rows: musicRows } = await db.query(`SELECT id FROM reels_music_presets WHERE full_audio IS NOT NULL`);
+    const uploadedIds    = new Set(musicRows.map(r => r.id));
+    const availableMusic = MUSIC_PRESETS.filter(p => uploadedIds.has(p[0]));
 
     res.render('reels/create', {
       title:       'AI Reel Generator',
@@ -396,15 +393,19 @@ async function runPipeline(reelId, topic, voice, language, artStyle, captionStyl
     const { imagePaths, imageDurations } = await generateImages(scriptLines, reelId, artStyle, imageCount, imgProvider);
 
     // Step 5: Resolve BGM music path — custom upload takes priority over preset
-    let musicPath = null;
+    let musicPath    = null;
+    let tempMusicPath = null;
     if (customMusicPath) {
       try { await fs.access(customMusicPath); musicPath = customMusicPath; } catch {}
     }
     const musicId = Array.isArray(music) && music[0] ? music[0] : null;
     if (!musicPath && musicId) {
-      const candidate = path.join(process.cwd(), 'public', 'music', `${musicId}.mp3`);
-      try { await fs.access(candidate); musicPath = candidate; } catch {}
-      if (!musicPath) console.log(`[Reels] #${reelId} — BGM "${musicId}" not found on disk, skipping.`);
+      const { rows: mRows } = await db.query(`SELECT full_audio FROM reels_music_presets WHERE id = ?`, [musicId]);
+      if (mRows.length && mRows[0].full_audio) {
+        tempMusicPath = path.join(process.cwd(), 'public', 'videos', 'temp', `bgm-${reelId}.mp3`);
+        await fs.writeFile(tempMusicPath, mRows[0].full_audio);
+        musicPath = tempMusicPath;
+      }
     }
 
     // Step 6: FFmpeg merge (Ken Burns animation + captions)
@@ -413,6 +414,7 @@ async function runPipeline(reelId, topic, voice, language, artStyle, captionStyl
 
     // Step 7: Cleanup
     await cleanupTempImages(reelId);
+    if (tempMusicPath) await fs.unlink(tempMusicPath).catch(() => {});
 
     // Step 8: Mark completed
     const videoUrl = `/videos/${reelId}.mp4`;

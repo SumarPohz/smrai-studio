@@ -2230,36 +2230,48 @@ export default function adminRouter(db) {
     } catch (err) { res.status(500).json({ success: false, error: err.message }); }
   });
 
-  // ── POST /admin/api/music/upload — admin uploads preset music MP3 ────────────
-  router.post('/api/music/upload', (req, res, next) => {
-    // musicId must be in body before multer runs — use fields() to parse multipart body first
-    musicUpload.single('file')(req, res, (err) => {
+  // ── POST /admin/api/music/upload — store preset music in DB (survives redeploys) ──
+  router.post('/api/music/upload', (req, res) => {
+    const memUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 }, fileFilter: (_r, f, cb) => cb(null, /mp3|wav|mpeg|audio/.test(f.mimetype)) });
+    memUpload.single('file')(req, res, async (err) => {
       if (err) return res.status(400).json({ error: err.message });
       if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-      res.json({ success: true, filename: req.file.filename });
+      const id        = ((req.body && req.body.musicId) || '').replace(/[^a-z0-9_-]/gi, '').toLowerCase();
+      const isPreview = req.body && req.body.isPreview === '1';
+      if (!id) return res.status(400).json({ error: 'musicId is required' });
+      const col = isPreview ? 'preview_audio' : 'full_audio';
+      try {
+        await db.query(
+          `INSERT INTO reels_music_presets (id, ${col}) VALUES (?, ?) ON CONFLICT (id) DO UPDATE SET ${col} = EXCLUDED.${col}`,
+          [id, req.file.buffer]
+        );
+        res.json({ success: true, id, isPreview });
+      } catch (e) { res.status(500).json({ error: e.message }); }
     });
   });
 
-  // ── DELETE /admin/api/music/:filename — delete a music file ──────────────────
-  router.delete('/api/music/:filename', (req, res) => {
-    const safe = path.basename(req.params.filename);
-    const full = path.join(musicDir, safe);
-    if (!full.startsWith(musicDir)) return res.status(400).json({ error: 'Invalid path' });
-    try { fs.unlinkSync(full); res.json({ success: true }); }
-    catch { res.status(404).json({ error: 'File not found' }); }
+  // ── DELETE /admin/api/music/:id — remove a music preset from DB ──────────────
+  router.delete('/api/music/:id', async (req, res) => {
+    const id = req.params.id.replace(/[^a-z0-9_-]/gi, '').toLowerCase();
+    if (!id) return res.status(400).json({ error: 'Invalid id' });
+    try { await db.query(`DELETE FROM reels_music_presets WHERE id = ?`, [id]); res.json({ success: true }); }
+    catch (e) { res.status(500).json({ error: e.message }); }
   });
 
-  // ── GET /admin/api/music/list — list all music files + sizes ─────────────────
-  router.get('/api/music/list', (req, res) => {
+  // ── GET /admin/api/music/list — list music presets stored in DB ───────────────
+  router.get('/api/music/list', async (req, res) => {
     try {
-      const files = fs.readdirSync(musicDir)
-        .filter(f => /\.(mp3|wav)$/i.test(f))
-        .map(f => {
-          const stat = fs.statSync(path.join(musicDir, f));
-          return { name: f, size: stat.size, url: `/music/${f}` };
-        });
+      const { rows } = await db.query(
+        `SELECT id, octet_length(full_audio) AS full_size, octet_length(preview_audio) AS preview_size FROM reels_music_presets ORDER BY created_at`
+      );
+      const files = rows.flatMap(r => {
+        const out = [];
+        if (r.full_size)    out.push({ name: `${r.id}.mp3`,         size: parseInt(r.full_size,10),    url: `/music/${r.id}.mp3` });
+        if (r.preview_size) out.push({ name: `preview-${r.id}.mp3`, size: parseInt(r.preview_size,10), url: `/music/preview-${r.id}.mp3` });
+        return out;
+      });
       res.json({ files });
-    } catch { res.json({ files: [] }); }
+    } catch (e) { res.json({ files: [] }); }
   });
 
   // ── GET /admin/api/user-music/list — list user-uploaded custom music ──────────

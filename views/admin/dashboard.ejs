@@ -6351,8 +6351,8 @@ async function uploadPresetMusic() {
 async function loadPresetMusicFiles() {
   const listEl = document.getElementById('pmFileList');
   try {
-    const files = await fetch('/admin/api/music/list').then(r=>r.json());
-    if (!files.length) { listEl.innerHTML='<span style="font-size:0.78rem;color:#9ca3af">No files uploaded yet</span>'; return; }
+    const { files } = await fetch('/admin/api/music/list').then(r=>r.json());
+    if (!files || !files.length) { listEl.innerHTML='<span style="font-size:0.78rem;color:#9ca3af">No files uploaded yet</span>'; return; }
     listEl.innerHTML = files.map(f => `
       <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:6px 10px;display:flex;align-items:center;gap:8px;font-size:0.78rem">
         <span style="color:#374151;font-weight:600">${f.name}</span>

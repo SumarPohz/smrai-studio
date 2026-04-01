@@ -695,6 +695,15 @@ await db.query(`
     `);
 
     await db.query(`
+      CREATE TABLE IF NOT EXISTS reels_music_presets (
+        id           VARCHAR(50) PRIMARY KEY,
+        full_audio   BYTEA,
+        preview_audio BYTEA,
+        created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await db.query(`
       CREATE TABLE IF NOT EXISTS reels_niche_config (
         id          INT AUTO_INCREMENT PRIMARY KEY,
         niche_label VARCHAR(100) UNIQUE NOT NULL,
@@ -949,6 +958,21 @@ const saltRounds = 10;
 
 // Gzip compression — compress all responses
 app.use(compression());
+
+// ── Serve preset music from DB (persists across Render redeploys) ────────────
+app.get('/music/:filename', async (req, res) => {
+  try {
+    const filename = req.params.filename;
+    const isPreview = filename.startsWith('preview-');
+    const id = filename.replace(/^preview-/, '').replace(/\.[^.]+$/, '');
+    const col = isPreview ? 'preview_audio' : 'full_audio';
+    const { rows } = await db.query(`SELECT ${col} AS audio FROM reels_music_presets WHERE id = ?`, [id]);
+    if (!rows.length || !rows[0].audio) return res.status(404).end();
+    res.set('Content-Type', 'audio/mpeg');
+    res.set('Cache-Control', 'public, max-age=86400');
+    res.send(rows[0].audio);
+  } catch { res.status(500).end(); }
+});
 
 // Static files with cache headers (1 week for CSS/JS/images)
 app.use(express.static(path.join(__dirname, "public"), {
