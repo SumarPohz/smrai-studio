@@ -39,8 +39,8 @@ export default function reelsRouter(db) {
   // ── Page routes ──────────────────────────────────────────────────────────
   router.get('/', async (req, res) => {
     try {
-      const [channelProof] = await db.query(`SELECT * FROM reels_channel_proof ORDER BY sort_order, created_at DESC`);
-      const [nicheConfig]  = await db.query(`SELECT * FROM reels_niche_config`);
+      const { rows: channelProof } = await db.query(`SELECT * FROM reels_channel_proof ORDER BY sort_order, created_at DESC`);
+      const { rows: nicheConfig }  = await db.query(`SELECT * FROM reels_niche_config`);
       const nicheMap = Object.fromEntries(nicheConfig.map(r => [r.niche_label, r]));
       res.render('reels/index', { title: 'AI Reel Generator', currentUser: req.user, channelProof, nicheMap });
     } catch {
