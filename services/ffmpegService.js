@@ -144,9 +144,9 @@ export async function mergeReelFromImages(reelId, imagePaths, audioPath, script,
   return new Promise((resolve, reject) => {
     const cmd = ffmpeg();
 
-    // Each image: loop as still-image stream for frameDuration seconds at 24fps
+    // Each image: loop as still-image stream for frameDuration seconds
     imagePaths.forEach((p) => {
-      cmd.input(p).inputOptions(['-loop 1', '-r 24', `-t ${frameDuration}`]);
+      cmd.input(p).inputOptions(['-loop 1', `-t ${frameDuration}`]);
     });
     cmd.input(audioPath);
     if (hasBGM) {
@@ -154,16 +154,19 @@ export async function mergeReelFromImages(reelId, imagePaths, audioPath, script,
       console.log(`[FFmpeg] BGM mixed: ${path.basename(musicPath)}`);
     }
 
-    // Per-image: scale to 120% then crop with animated pan — no zoompan PTS issues
+    // Per-image: scale to exact 1080×1920, then scale to 120% for pan headroom,
+    // then animated crop — explicit format=yuv420p avoids encoder pixel format errors
     const imageFilters = imagePaths.map((_, i) => {
       const pan = PAN_VARIANTS[i % PAN_VARIANTS.length];
       const px  = pan.x.replace(/D/g, frameDuration);
       const py  = pan.y.replace(/D/g, frameDuration);
       return (
         `[${i}:v]` +
-        `scale=1296:2304:force_original_aspect_ratio=increase,` +
+        `scale=1080:1920:force_original_aspect_ratio=increase,` +
+        `crop=1080:1920,` +
+        `scale=1296:2304,` +
         `crop=1080:1920:x='${px}':y='${py}',` +
-        `setsar=1,fps=fps=24` +
+        `format=yuv420p,setsar=1,fps=24` +
         `[v${i}]`
       );
     });
