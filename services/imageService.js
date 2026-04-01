@@ -48,17 +48,22 @@ const ART_STYLE_VISUALS = {
   historical: 'historical oil painting style, period-accurate, dramatic vintage tones',
 };
 
+const WPM = 150;  // words per minute — matches TTS pace used for caption timing
+
 /**
  * Generate AI images from script lines using DALL-E 3.
- * Splits the script into `count` equal scenes and generates one image per scene.
+ * Splits script into `count` equal scene chunks, generates one image per chunk,
+ * and returns per-image durations calculated from word count so images stay in
+ * sync with the spoken audio.
  *
  * @param {string[]} scriptLines - script lines (already split by newline, filtered)
  * @param {number}   reelId
  * @param {string}   artStyle    - e.g. 'cinematic', 'creepy', etc.
- * @param {number}   count       - number of images to generate (4 or 6)
- * @returns {Promise<string[]>}  - absolute local paths to downloaded PNG files
+ * @param {number}   count       - number of images to generate (8 or 12)
+ * @param {string}   provider    - 'openai' | 'xai'
+ * @returns {Promise<{ imagePaths: string[], imageDurations: number[] }>}
  */
-export async function generateImages(scriptLines, reelId, artStyle = 'cinematic', count = 4, provider = 'openai') {
+export async function generateImages(scriptLines, reelId, artStyle = 'cinematic', count = 8, provider = 'openai') {
   const dir = path.resolve(`./public/videos/temp/${reelId}`);
   await fsp.mkdir(dir, { recursive: true });
 
@@ -73,6 +78,13 @@ export async function generateImages(scriptLines, reelId, artStyle = 'cinematic'
   const chunks    = Array.from({ length: count }, (_, i) =>
     scriptLines.slice(i * chunkSize, (i + 1) * chunkSize).join(' ').substring(0, 300).trim()
   );
+
+  // Per-image duration = how long it takes to speak that chunk at WPM pace
+  // Minimum 4s per image so short lines don't flash too quickly
+  const imageDurations = chunks.map(chunk => {
+    const words = chunk.split(/\s+/).filter(Boolean).length;
+    return Math.max(+(words / WPM * 60).toFixed(2), 4);
+  });
 
   const imagePaths = [];
 
@@ -115,7 +127,7 @@ export async function generateImages(scriptLines, reelId, artStyle = 'cinematic'
     console.log(`[ImageGen] Reel #${reelId} image ${i + 1}/${count} saved → ${destPath}`);
   }
 
-  return imagePaths;
+  return { imagePaths, imageDurations };
 }
 
 /**

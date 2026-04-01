@@ -143,10 +143,11 @@ const PAN_VARIANTS = [
  */
 export async function mergeReelFromImages(reelId, imagePaths, audioPath, script, options = {}) {
   const {
-    captionStyle = 'bold-stroke',
-    effects      = {},
-    musicPath    = null,
-    duration     = '30-40',
+    captionStyle   = 'bold-stroke',
+    effects        = {},
+    musicPath      = null,
+    duration       = '30-40',
+    imageDurations = null,   // per-image script-synced durations in seconds
   } = options;
 
   const outputPath = path.resolve(`./public/videos/${reelId}.mp4`);
@@ -157,9 +158,11 @@ export async function mergeReelFromImages(reelId, imagePaths, audioPath, script,
   const hasShake      = !!effects.shake;
   const hasBGM        = !!musicPath;
 
-  // Seconds each image is held on screen — total must exceed TTS audio length
-  // (-shortest will cut at audio end)
-  const frameDuration = duration === '60-70' ? 13 : 11;
+  // Use per-image script-synced durations; fall back to a fixed value
+  const fallbackDur = duration === '60-70' ? 7 : 5;
+  const durations   = imagePaths.map((_, i) =>
+    (imageDurations && imageDurations[i]) ? imageDurations[i] : fallbackDur
+  );
 
   const n = imagePaths.length;  // audio stream index = n, BGM = n+1
 
@@ -168,11 +171,10 @@ export async function mergeReelFromImages(reelId, imagePaths, audioPath, script,
   return new Promise((resolve, reject) => {
     const cmd = ffmpeg();
 
-    // Each image: loop as still-image stream at 24fps for frameDuration seconds.
-    // -framerate 24 (input option) sets the decode framerate for looped images
-    // so the filter graph receives a proper 24fps PTS timeline.
-    imagePaths.forEach((p) => {
-      cmd.input(p).inputOptions(['-loop 1', '-framerate 24', `-t ${frameDuration}`]);
+    // Each image: looped still-image stream at 24fps for its script-synced duration.
+    // -framerate 24 sets the decode framerate so the filter graph gets a valid PTS timeline.
+    imagePaths.forEach((p, i) => {
+      cmd.input(p).inputOptions(['-loop 1', '-framerate 24', `-t ${durations[i]}`]);
     });
     cmd.input(audioPath);
     if (hasBGM) {
@@ -184,8 +186,8 @@ export async function mergeReelFromImages(reelId, imagePaths, audioPath, script,
     // then animated crop — explicit format=yuv420p avoids encoder pixel format errors
     const imageFilters = imagePaths.map((_, i) => {
       const pan = PAN_VARIANTS[i % PAN_VARIANTS.length];
-      const px  = pan.x.replace(/D/g, frameDuration);
-      const py  = pan.y.replace(/D/g, frameDuration);
+      const px  = pan.x.replace(/D/g, durations[i]);
+      const py  = pan.y.replace(/D/g, durations[i]);
       return (
         `[${i}:v]` +
         `scale=1080:1920:force_original_aspect_ratio=increase,` +

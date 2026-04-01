@@ -357,10 +357,10 @@ async function runPipeline(reelId, topic, voice, language, artStyle, captionStyl
       "SELECT value FROM admin_settings WHERE `key` = 'reel_image_provider'"
     );
     const imgProvider = providerRes.rows[0]?.value || 'openai';
-    const imageCount  = duration === '60-70' ? 6 : 4;
+    const imageCount  = duration === '60-70' ? 12 : 8;
     const scriptLines = script.split(/\n+/).filter(Boolean);
     console.log(`[Reels] #${reelId} — Step 4: Generating ${imageCount} images via ${imgProvider} (artStyle=${artStyle})…`);
-    const imagePaths = await generateImages(scriptLines, reelId, artStyle, imageCount, imgProvider);
+    const { imagePaths, imageDurations } = await generateImages(scriptLines, reelId, artStyle, imageCount, imgProvider);
 
     // Step 5: Resolve BGM music path (first selected track, if file exists on disk)
     let musicPath = null;
@@ -373,7 +373,7 @@ async function runPipeline(reelId, topic, voice, language, artStyle, captionStyl
 
     // Step 6: FFmpeg merge (Ken Burns animation + captions)
     console.log(`[Reels] #${reelId} — Step 6: Merging ${imagePaths.length} images with FFmpeg (captionStyle=${captionStyle}, bgm=${musicPath ? musicId : 'none'})…`);
-    await mergeReelFromImages(reelId, imagePaths, audioPath, script, { captionStyle, effects, musicPath, duration });
+    await mergeReelFromImages(reelId, imagePaths, audioPath, script, { captionStyle, effects, musicPath, duration, imageDurations });
 
     // Step 7: Cleanup
     await cleanupTempImages(reelId);
