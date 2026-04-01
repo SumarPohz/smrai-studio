@@ -27,29 +27,53 @@ function sanitizeLine(text) {
     .replace(/\]/g, '\\]');
 }
 
-// ── Build timed subtitle segments from a line-per-line script ────────────────
-// Splits script into 3-word groups with estimated timing at ~155 WPM.
-// Produces TikTok-style captions that change every ~1s as audio plays.
+// ── Build timed subtitle segments with word-by-word reveal ───────────────────
+// Groups words into 3-word chunks. Within each chunk, generates one sub-segment
+// per word so text builds up live: "Hello" → "Hello World" → "Hello World Now".
+// Dramatic/emotional words get 35% longer display; sentence-end words add a 0.3s pause.
 function buildSubtitleSegments(script) {
-  const WPM         = 155;
-  const secsPerWord = 60 / WPM;
-  const lines       = script.split(/\n+/).map(l => l.trim()).filter(Boolean);
-  const segments    = [];
+  const BASE_SPW = 60 / 150;  // ~0.4s per word at normal pace
+
+  // Words that deserve a slightly longer hold for dramatic pacing
+  const DRAMATIC = /^(but|wait|listen|however|because|love|truth|real|change|life|time|never|always|every|only|just|now|stop|think|feel|remember|imagine|believe|know|understand|people|world|story|dream|fear|hope|fail|win|lose|moment|chance|choice|power|mind|heart|soul|pain|joy|wrong|right|end|start|begin|yet|still|already)$/i;
+
+  // Flatten all words across lines, tagging each with duration + post-word pause
+  const allWords = [];
+  script.split(/\n+/).map(l => l.trim()).filter(Boolean).forEach(line => {
+    line.split(/\s+/).filter(Boolean).forEach(w => {
+      const bare = w.replace(/[.,!?;:'"]/g, '');
+      let dur    = BASE_SPW;
+      if (DRAMATIC.test(bare)) dur *= 1.35;
+      allWords.push({ word: w, dur, pause: /[.!?]$/.test(w) ? 0.3 : 0 });
+    });
+  });
+
+  const segments = [];
   let t = 0;
 
-  lines.forEach(line => {
-    const words = line.split(/\s+/).filter(Boolean);
-    for (let i = 0; i < words.length; i += 3) {
-      const group    = words.slice(i, i + 3);
-      const duration = Math.max(group.length * secsPerWord, 0.5);
+  for (let i = 0; i < allWords.length; i += 3) {
+    const group      = allWords.slice(i, i + 3);
+    const groupWords = group.map(g => g.word);
+    const totalDur   = Math.max(group.reduce((s, g) => s + g.dur, 0), 0.6);
+    const postPause  = group[group.length - 1].pause;
+
+    // Word-by-word reveal: each sub-segment shows one more word than the last.
+    // Only the final sub-segment fades out; intermediate ones snap to next word.
+    let wordT = t;
+    group.forEach((g, wi) => {
+      const isLast  = wi === group.length - 1;
+      const segEnd  = isLast ? +(t + totalDur).toFixed(2) : +(wordT + g.dur).toFixed(2);
       segments.push({
-        text:  sanitizeLine(group.join(' ')),
-        start: +t.toFixed(2),
-        end:   +(t + duration).toFixed(2),
+        text:       sanitizeLine(groupWords.slice(0, wi + 1).join(' ')),
+        start:      +wordT.toFixed(2),
+        end:        segEnd,
+        isGroupEnd: isLast,  // fade-out only at group boundaries
       });
-      t += duration;
-    }
-  });
+      if (!isLast) wordT += g.dur;
+    });
+
+    t += totalDur + postPause;
+  }
 
   return segments;
 }
@@ -144,9 +168,11 @@ export async function mergeReelFromImages(reelId, imagePaths, audioPath, script,
   return new Promise((resolve, reject) => {
     const cmd = ffmpeg();
 
-    // Each image: loop as still-image stream for frameDuration seconds
+    // Each image: loop as still-image stream at 24fps for frameDuration seconds.
+    // -framerate 24 (input option) sets the decode framerate for looped images
+    // so the filter graph receives a proper 24fps PTS timeline.
     imagePaths.forEach((p) => {
-      cmd.input(p).inputOptions(['-loop 1', `-t ${frameDuration}`]);
+      cmd.input(p).inputOptions(['-loop 1', '-framerate 24', `-t ${frameDuration}`]);
     });
     cmd.input(audioPath);
     if (hasBGM) {
@@ -198,13 +224,18 @@ export async function mergeReelFromImages(reelId, imagePaths, audioPath, script,
         const isLast      = i === segments.length - 1;
         const outputLabel = isLast ? '[vout]' : `[vsub${i}]`;
         const grain       = isLast ? grainFilter : '';
+        // Fast snap-in (0.06s). Fade-out only at group boundaries for dramatic pause;
+        // mid-group words hold at full opacity until next word snaps in.
+        const alphaExpr   = seg.isGroupEnd
+          ? `min(1,max(0,if(lt(t,${seg.start}+0.06),(t-${seg.start})/0.06,if(gt(t,${seg.end}-0.1),(${seg.end}-t)/0.1,1))))`
+          : `min(1,max(0,(t-${seg.start})/0.06))`;
         return (
           `${inputLabel}drawtext=` +
           `text='${seg.text}':` +
           `${captionParams}:` +
           `x=(w-text_w)/2:y=h-250:line_spacing=8:fix_bounds=1:` +
           `enable='between(t,${seg.start},${seg.end})':` +
-          `alpha='min(1,max(0,if(lt(t,${seg.start}+0.2),(t-${seg.start})/0.2,if(gt(t,${seg.end}-0.15),(${seg.end}-t)/0.15,1))))'` +
+          `alpha='${alphaExpr}'` +
           `${grain}${outputLabel}`
         );
       });
@@ -329,13 +360,16 @@ export async function mergeReel(reelId, clipPaths, audioPath, script, options = 
         const isLast      = i === segments.length - 1;
         const outputLabel = isLast ? '[vout]' : `[vsub${i}]`;
         const grain       = isLast ? grainFilter : '';
+        const alphaExpr   = seg.isGroupEnd
+          ? `min(1,max(0,if(lt(t,${seg.start}+0.06),(t-${seg.start})/0.06,if(gt(t,${seg.end}-0.1),(${seg.end}-t)/0.1,1))))`
+          : `min(1,max(0,(t-${seg.start})/0.06))`;
         return (
           `${inputLabel}drawtext=` +
           `text='${seg.text}':` +
           `${captionParams}:` +
           `x=(w-text_w)/2:y=h-250:line_spacing=8:fix_bounds=1:` +
           `enable='between(t,${seg.start},${seg.end})':` +
-          `alpha='min(1,max(0,if(lt(t,${seg.start}+0.2),(t-${seg.start})/0.2,if(gt(t,${seg.end}-0.15),(${seg.end}-t)/0.15,1))))'` +
+          `alpha='${alphaExpr}'` +
           `${grain}${outputLabel}`
         );
       });
