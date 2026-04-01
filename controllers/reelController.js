@@ -7,6 +7,8 @@ import path                                         from 'path';
 import fs                                           from 'fs/promises';
 import crypto                                       from 'crypto';
 
+const ART_STYLES = ['cinematic','creepy','vibrant','disney','nature','urban','fantasy','historical'];
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /**
@@ -32,23 +34,34 @@ export async function getCreatePage(req, res, db) {
     ]);
     const totalReels    = parseInt(countRes.rows[0]?.cnt || 0, 10);
     const walletBalance = parseFloat(walletRes.rows[0]?.wallet_balance || 0);
+
+    // Check which art style GIFs have been uploaded by admin
+    const artGifDir = path.join(process.cwd(), 'public', 'uploads', 'art-gifs');
+    const artGifs   = {};
+    for (const id of ART_STYLES) {
+      try { await fs.access(path.join(artGifDir, `${id}.gif`)); artGifs[id] = `/uploads/art-gifs/${id}.gif`; }
+      catch {}
+    }
+
     res.render('reels/create', {
       title:       'AI Reel Generator',
       voices:      AVAILABLE_VOICES,
       currentUser: req.user,
       totalReels,
       walletBalance,
+      artGifs,
       razorpayKey: process.env.RAZORPAY_KEY_ID,
     });
   } catch (err) {
     console.error('[Reels] getCreatePage error:', err);
     res.render('reels/create', {
-      title:       'AI Reel Generator',
-      voices:      AVAILABLE_VOICES,
-      currentUser: req.user,
-      totalReels:  0,
+      title:        'AI Reel Generator',
+      voices:       AVAILABLE_VOICES,
+      currentUser:  req.user,
+      totalReels:   0,
       walletBalance: 0,
-      razorpayKey: process.env.RAZORPAY_KEY_ID,
+      artGifs:      {},
+      razorpayKey:  process.env.RAZORPAY_KEY_ID,
     });
   }
 }
@@ -205,6 +218,7 @@ export async function generateReel(req, res, db) {
     razorpay_signature,
     walletOnly            = false,
     walletDeduction       = 0,
+    customMusicPath       = null,
   } = req.body;
 
   if (!topic || topic.trim().length < 3) {
@@ -304,7 +318,7 @@ export async function generateReel(req, res, db) {
   // Respond immediately — pipeline runs in background
   res.json({ reel_id: reelId, free: isFree });
 
-  setImmediate(() => runPipeline(reelId, topic.trim(), voice, language, artStyle, captionStyle, duration, music, effects, exScript, req.user.id, isFree, db));
+  setImmediate(() => runPipeline(reelId, topic.trim(), voice, language, artStyle, captionStyle, duration, music, effects, exScript, req.user.id, isFree, db, customMusicPath));
 }
 
 /**
@@ -331,7 +345,7 @@ export async function getReelStatus(req, res, db) {
 
 // ─── Background Pipeline ─────────────────────────────────────────────────────
 
-async function runPipeline(reelId, topic, voice, language, artStyle, captionStyle, duration, music, effects, exScript, userId, isFree, db) {
+async function runPipeline(reelId, topic, voice, language, artStyle, captionStyle, duration, music, effects, exScript, userId, isFree, db, customMusicPath = null) {
   console.log(`[Reels] Starting pipeline for reel #${reelId} — topic: "${topic}" lang=${language} art=${artStyle} free=${isFree}`);
 
   try {
@@ -357,15 +371,18 @@ async function runPipeline(reelId, topic, voice, language, artStyle, captionStyl
       "SELECT value FROM admin_settings WHERE `key` = 'reel_image_provider'"
     );
     const imgProvider = providerRes.rows[0]?.value || 'openai';
-    const imageCount  = duration === '60-70' ? 12 : 8;
+    const imageCount  = duration === '60-70' ? 12 : 11;
     const scriptLines = script.split(/\n+/).filter(Boolean);
     console.log(`[Reels] #${reelId} — Step 4: Generating ${imageCount} images via ${imgProvider} (artStyle=${artStyle})…`);
     const { imagePaths, imageDurations } = await generateImages(scriptLines, reelId, artStyle, imageCount, imgProvider);
 
-    // Step 5: Resolve BGM music path (first selected track, if file exists on disk)
+    // Step 5: Resolve BGM music path — custom upload takes priority over preset
     let musicPath = null;
+    if (customMusicPath) {
+      try { await fs.access(customMusicPath); musicPath = customMusicPath; } catch {}
+    }
     const musicId = Array.isArray(music) && music[0] ? music[0] : null;
-    if (musicId) {
+    if (!musicPath && musicId) {
       const candidate = path.join(process.cwd(), 'public', 'music', `${musicId}.mp3`);
       try { await fs.access(candidate); musicPath = candidate; } catch {}
       if (!musicPath) console.log(`[Reels] #${reelId} — BGM "${musicId}" not found on disk, skipping.`);

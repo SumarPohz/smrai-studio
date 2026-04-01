@@ -30,6 +30,35 @@ const adImgStorage = multer.diskStorage({
 });
 const adUpload = multer({ storage: adImgStorage, limits: { fileSize: 5 * 1024 * 1024 } });
 
+// Multer for preset music uploads (admin)
+const musicDir = path.join(__dirname, '..', 'public', 'music');
+if (!fs.existsSync(musicDir)) fs.mkdirSync(musicDir, { recursive: true });
+const musicStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, musicDir),
+  filename: (req, file, cb) => {
+    const id   = ((req.body && req.body.musicId) || '').replace(/[^a-z0-9_-]/gi, '').toLowerCase() || 'track';
+    const type = req.body && req.body.isPreview === '1' ? `preview-${id}` : id;
+    cb(null, `${type}.mp3`);
+  },
+});
+const musicUpload = multer({
+  storage: musicStorage,
+  limits: { fileSize: 20 * 1024 * 1024 },
+  fileFilter: (_req, f, cb) => cb(null, /mp3|wav|mpeg|audio/.test(f.mimetype)),
+});
+
+// Multer for art style GIF uploads (admin)
+const artGifDir = path.join(__dirname, '..', 'public', 'uploads', 'art-gifs');
+if (!fs.existsSync(artGifDir)) fs.mkdirSync(artGifDir, { recursive: true });
+const artGifStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, artGifDir),
+  filename: (req, _file, cb) => {
+    const id = ((req.body && req.body.artId) || '').replace(/[^a-z0-9_-]/gi, '').toLowerCase() || 'style';
+    cb(null, `${id}.gif`);
+  },
+});
+const artGifUpload = multer({ storage: artGifStorage, limits: { fileSize: 10 * 1024 * 1024 } });
+
 const ADMIN_SECTIONS = ["overview","users","activity","requests","pricing","templates","homepage","ads","coupons","apikeys","investors","wallet","subscriptions","paysetu","plans"];
 
 // Map API path prefixes → section key (for write-guard)
@@ -2199,6 +2228,82 @@ export default function adminRouter(db) {
       }
       res.json({ success: true });
     } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+  });
+
+  // ── POST /admin/api/music/upload — admin uploads preset music MP3 ────────────
+  router.post('/api/music/upload', (req, res, next) => {
+    // musicId must be in body before multer runs — use fields() to parse multipart body first
+    musicUpload.single('file')(req, res, (err) => {
+      if (err) return res.status(400).json({ error: err.message });
+      if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+      res.json({ success: true, filename: req.file.filename });
+    });
+  });
+
+  // ── DELETE /admin/api/music/:filename — delete a music file ──────────────────
+  router.delete('/api/music/:filename', (req, res) => {
+    const safe = path.basename(req.params.filename);
+    const full = path.join(musicDir, safe);
+    if (!full.startsWith(musicDir)) return res.status(400).json({ error: 'Invalid path' });
+    try { fs.unlinkSync(full); res.json({ success: true }); }
+    catch { res.status(404).json({ error: 'File not found' }); }
+  });
+
+  // ── GET /admin/api/music/list — list all music files + sizes ─────────────────
+  router.get('/api/music/list', (req, res) => {
+    try {
+      const files = fs.readdirSync(musicDir)
+        .filter(f => /\.(mp3|wav)$/i.test(f))
+        .map(f => {
+          const stat = fs.statSync(path.join(musicDir, f));
+          return { name: f, size: stat.size, url: `/music/${f}` };
+        });
+      res.json({ files });
+    } catch { res.json({ files: [] }); }
+  });
+
+  // ── GET /admin/api/user-music/list — list user-uploaded custom music ──────────
+  const userMusicDir = path.join(__dirname, '..', 'public', 'videos', 'temp', 'music');
+  router.get('/api/user-music/list', (req, res) => {
+    try {
+      if (!fs.existsSync(userMusicDir)) return res.json({ files: [] });
+      const files = fs.readdirSync(userMusicDir)
+        .filter(f => /\.(mp3|wav)$/i.test(f))
+        .map(f => {
+          const stat = fs.statSync(path.join(userMusicDir, f));
+          return { name: f, size: stat.size };
+        });
+      res.json({ files });
+    } catch { res.json({ files: [] }); }
+  });
+
+  // ── DELETE /admin/api/user-music/:filename — delete user-uploaded music ───────
+  router.delete('/api/user-music/:filename', (req, res) => {
+    const safe = path.basename(req.params.filename);
+    const full = path.join(userMusicDir, safe);
+    if (!fs.existsSync(userMusicDir) || !full.startsWith(userMusicDir)) {
+      return res.status(400).json({ error: 'Invalid path' });
+    }
+    try { fs.unlinkSync(full); res.json({ success: true }); }
+    catch { res.status(404).json({ error: 'File not found' }); }
+  });
+
+  // ── POST /admin/api/art-gif/upload — admin uploads art style GIF ─────────────
+  router.post('/api/art-gif/upload', (req, res) => {
+    artGifUpload.single('file')(req, res, (err) => {
+      if (err) return res.status(400).json({ error: err.message });
+      if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+      res.json({ success: true, filename: req.file.filename });
+    });
+  });
+
+  // ── DELETE /admin/api/art-gif/:artId — remove a GIF ─────────────────────────
+  router.delete('/api/art-gif/:artId', (req, res) => {
+    const safe = path.basename(req.params.artId) + '.gif';
+    const full = path.join(artGifDir, safe);
+    if (!full.startsWith(artGifDir)) return res.status(400).json({ error: 'Invalid' });
+    try { fs.unlinkSync(full); res.json({ success: true }); }
+    catch { res.status(404).json({ error: 'Not found' }); }
   });
 
   return router;

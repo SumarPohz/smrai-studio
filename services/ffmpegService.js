@@ -7,14 +7,26 @@ ffmpeg.setFfmpegPath(ffmpegInstaller.path);
 
 // ── Caption style drawtext configurations ─────────────────────────────────────
 const CAPTION_STYLES = {
-  'bold-stroke':   'fontsize=64:fontcolor=white:borderw=5:bordercolor=black',
-  'red-highlight': 'fontsize=60:fontcolor=white:borderw=2:bordercolor=black:box=1:boxcolor=red@0.85:boxborderw=12',
-  'sleek':         'fontsize=48:fontcolor=white:borderw=2:bordercolor=black@0.5',
-  'majestic':      'fontsize=68:fontcolor=gold:borderw=4:bordercolor=black',
-  'beast':         'fontsize=72:fontcolor=yellow:borderw=6:bordercolor=black',
-  'elegant':       'fontsize=54:fontcolor=white:borderw=2:bordercolor=black@0.6',
-  'clarity':       'fontsize=58:fontcolor=white:borderw=2:bordercolor=black:box=1:boxcolor=black@0.5:boxborderw=10',
-  'karaoke':       'fontsize=64:fontcolor=white:borderw=0:box=1:boxcolor=0x7c3aed@0.92:boxborderw=14',
+  'bold-stroke':   'fontsize=76:fontcolor=white:borderw=5:bordercolor=black',
+  'red-highlight': 'fontsize=70:fontcolor=white:borderw=2:bordercolor=black:box=1:boxcolor=red@0.85:boxborderw=12',
+  'sleek':         'fontsize=58:fontcolor=white:borderw=2:bordercolor=black@0.5',
+  'majestic':      'fontsize=78:fontcolor=gold:borderw=4:bordercolor=black',
+  'beast':         'fontsize=84:fontcolor=yellow:borderw=6:bordercolor=black',
+  'elegant':       'fontsize=64:fontcolor=white:borderw=2:bordercolor=black@0.6',
+  'clarity':       'fontsize=68:fontcolor=white:borderw=2:bordercolor=black:box=1:boxcolor=black@0.5:boxborderw=10',
+  'karaoke':       'fontsize=76:fontcolor=white:borderw=0:box=1:boxcolor=0x7c3aed@0.92:boxborderw=14',
+};
+
+// ── Highlight box color per caption style (word-by-word highlight) ────────────
+const HIGHLIGHT_BOX = {
+  'bold-stroke':   '0xFFD700',  // yellow
+  'red-highlight': '0xdc2626',  // red
+  'sleek':         '0x3b82f6',  // blue
+  'majestic':      '0xb45309',  // amber
+  'beast':         '0xca8a04',  // gold
+  'elegant':       '0x7c3aed',  // purple
+  'clarity':       '0x0ea5e9',  // sky blue
+  'karaoke':       '0x7c3aed',  // purple
 };
 
 // ── Sanitize a single line for use inside FFmpeg drawtext ────────────────────
@@ -27,53 +39,32 @@ function sanitizeLine(text) {
     .replace(/\]/g, '\\]');
 }
 
-// ── Build timed subtitle segments with word-by-word reveal ───────────────────
-// Groups words into 3-word chunks. Within each chunk, generates one sub-segment
-// per word so text builds up live: "Hello" → "Hello World" → "Hello World Now".
-// Dramatic/emotional words get 35% longer display; sentence-end words add a 0.3s pause.
+// ── Build timed subtitle segments — one word per segment ─────────────────────
+// Each word gets its own segment for word-by-word highlight effect.
+// Dramatic/emotional words hold 35% longer. Sentence-end punctuation adds a
+// 0.25s pause so the screen briefly clears, mimicking natural speech rhythm.
 function buildSubtitleSegments(script) {
-  const BASE_SPW = 60 / 150;  // ~0.4s per word at normal pace
-
-  // Words that deserve a slightly longer hold for dramatic pacing
+  const BASE_SPW = 60 / 150;  // ~0.4s per word at 150 WPM
   const DRAMATIC = /^(but|wait|listen|however|because|love|truth|real|change|life|time|never|always|every|only|just|now|stop|think|feel|remember|imagine|believe|know|understand|people|world|story|dream|fear|hope|fail|win|lose|moment|chance|choice|power|mind|heart|soul|pain|joy|wrong|right|end|start|begin|yet|still|already)$/i;
-
-  // Flatten all words across lines, tagging each with duration + post-word pause
-  const allWords = [];
-  script.split(/\n+/).map(l => l.trim()).filter(Boolean).forEach(line => {
-    line.split(/\s+/).filter(Boolean).forEach(w => {
-      const bare = w.replace(/[.,!?;:'"]/g, '');
-      let dur    = BASE_SPW;
-      if (DRAMATIC.test(bare)) dur *= 1.35;
-      allWords.push({ word: w, dur, pause: /[.!?]$/.test(w) ? 0.3 : 0 });
-    });
-  });
 
   const segments = [];
   let t = 0;
 
-  for (let i = 0; i < allWords.length; i += 3) {
-    const group      = allWords.slice(i, i + 3);
-    const groupWords = group.map(g => g.word);
-    const totalDur   = Math.max(group.reduce((s, g) => s + g.dur, 0), 0.6);
-    const postPause  = group[group.length - 1].pause;
+  script.split(/\n+/).map(l => l.trim()).filter(Boolean).forEach(line => {
+    line.split(/\s+/).filter(Boolean).forEach(w => {
+      const bare  = w.replace(/[.,!?;:'"]/g, '');
+      const dur   = DRAMATIC.test(bare) ? BASE_SPW * 1.35 : BASE_SPW;
+      const pause = /[.!?]$/.test(w) ? 0.25 : 0;
+      const GAP   = 0.04;  // brief blank gap between words — visual pulse
 
-    // Word-by-word reveal: each sub-segment shows one more word than the last.
-    // Only the final sub-segment fades out; intermediate ones snap to next word.
-    let wordT = t;
-    group.forEach((g, wi) => {
-      const isLast  = wi === group.length - 1;
-      const segEnd  = isLast ? +(t + totalDur).toFixed(2) : +(wordT + g.dur).toFixed(2);
       segments.push({
-        text:       sanitizeLine(groupWords.slice(0, wi + 1).join(' ')),
-        start:      +wordT.toFixed(2),
-        end:        segEnd,
-        isGroupEnd: isLast,  // fade-out only at group boundaries
+        text:  sanitizeLine(w),
+        start: +t.toFixed(2),
+        end:   +(t + dur - GAP).toFixed(2),
       });
-      if (!isLast) wordT += g.dur;
+      t += dur + pause;
     });
-
-    t += totalDur + postPause;
-  }
+  });
 
   return segments;
 }
@@ -107,11 +98,23 @@ function buildSubtitleSegments(script) {
  * Uses scale+crop with t-based expressions instead of zoompan to avoid PTS issues.
  * Scale to 120% (1296×2304) then crop the 1080×1920 window, shifting by t.
  */
+// Each variant: zoom expression drives the intermediate scale size (px).
+// Zoom-in: starts at 1080px wide, scales up to 1296px over the clip duration.
+// Zoom-out: starts at 1296px wide, scales down to 1080px over the clip duration.
+// Pan x/y expressions use iw/ih (the zoomed frame) and ow/oh (1080×1920 crop output).
 const PAN_VARIANTS = [
-  { x: `(iw-ow)/2`,                             y: `(ih-oh)*min(t/D,1)` },    // top→bottom
-  { x: `(iw-ow)/2`,                             y: `(ih-oh)*max(1-t/D,0)` },  // bottom→top
-  { x: `(iw-ow)*min(t/D,1)`,                    y: `(ih-oh)/2` },              // left→right
-  { x: `(iw-ow)*max(1-t/D,0)`,                  y: `(ih-oh)/2` },              // right→left
+  // zoom-in + pan top→bottom
+  { zoom: `trunc(1080+216*min(t/D,1))`, x: `(iw-ow)/2`,                    y: `(ih-oh)*min(t/D,1)` },
+  // zoom-out + pan bottom→top
+  { zoom: `trunc(1296-216*min(t/D,1))`, x: `(iw-ow)/2`,                    y: `(ih-oh)*max(1-t/D,0)` },
+  // zoom-in + pan left→right
+  { zoom: `trunc(1080+216*min(t/D,1))`, x: `(iw-ow)*min(t/D,1)`,           y: `(ih-oh)/2` },
+  // zoom-out + pan right→left
+  { zoom: `trunc(1296-216*min(t/D,1))`, x: `(iw-ow)*max(1-t/D,0)`,         y: `(ih-oh)/2` },
+  // zoom-in + pan bottom→top
+  { zoom: `trunc(1080+216*min(t/D,1))`, x: `(iw-ow)/2`,                    y: `(ih-oh)*max(1-t/D,0)` },
+  // zoom-out + pan top→bottom
+  { zoom: `trunc(1296-216*min(t/D,1))`, x: `(iw-ow)/2`,                    y: `(ih-oh)*min(t/D,1)` },
 ];
 
 /**
@@ -158,6 +161,12 @@ export async function mergeReelFromImages(reelId, imagePaths, audioPath, script,
   const hasShake      = !!effects.shake;
   const hasBGM        = !!musicPath;
 
+  // Word highlight params: white text on a colored box — one word at a time, CapCut style
+  const fontsizeMatch   = captionParams.match(/fontsize=(\d+)/);
+  const fontSize        = fontsizeMatch ? fontsizeMatch[1] : '64';
+  const boxHex          = HIGHLIGHT_BOX[captionStyle] || '0xFFD700';
+  const highlightParams = `fontsize=${fontSize}:fontcolor=white:borderw=3:bordercolor=black@0.6:box=1:boxcolor=${boxHex}@0.95:boxborderw=18`;
+
   // Use per-image script-synced durations; fall back to a fixed value
   const fallbackDur = duration === '60-70' ? 7 : 5;
   const durations   = imagePaths.map((_, i) =>
@@ -182,17 +191,19 @@ export async function mergeReelFromImages(reelId, imagePaths, audioPath, script,
       console.log(`[FFmpeg] BGM mixed: ${path.basename(musicPath)}`);
     }
 
-    // Per-image: scale to exact 1080×1920, then scale to 120% for pan headroom,
-    // then animated crop — explicit format=yuv420p avoids encoder pixel format errors
+    // Per-image: fill to 1080×1920, then scale dynamically (zoom in/out via t expression),
+    // then animated crop for pan. format=yuv420p avoids encoder pixel format errors.
     const imageFilters = imagePaths.map((_, i) => {
-      const pan = PAN_VARIANTS[i % PAN_VARIANTS.length];
-      const px  = pan.x.replace(/D/g, durations[i]);
-      const py  = pan.y.replace(/D/g, durations[i]);
+      const pan  = PAN_VARIANTS[i % PAN_VARIANTS.length];
+      const pzw  = pan.zoom.replace(/D/g, durations[i]);   // dynamic width expression
+      const pzh  = `trunc(${pzw}*1920/1080)`;             // maintain 9:16 aspect ratio
+      const px   = pan.x.replace(/D/g, durations[i]);
+      const py   = pan.y.replace(/D/g, durations[i]);
       return (
         `[${i}:v]` +
         `scale=1080:1920:force_original_aspect_ratio=increase,` +
         `crop=1080:1920,` +
-        `scale=1296:2304,` +
+        `scale='${pzw}':'${pzh}',` +
         `crop=1080:1920:x='${px}':y='${py}',` +
         `format=yuv420p,setsar=1,fps=24` +
         `[v${i}]`
@@ -216,7 +227,7 @@ export async function mergeReelFromImages(reelId, imagePaths, audioPath, script,
       subtitleFilters = [
         `${drawtextSrc}drawtext=` +
         `text='${fallbackText}':` +
-        `${captionParams}:` +
+        `${highlightParams}:` +
         `x=(w-text_w)/2:y=h-250:line_spacing=8:fix_bounds=1` +
         `${grainFilter}[vout]`,
       ];
@@ -226,16 +237,14 @@ export async function mergeReelFromImages(reelId, imagePaths, audioPath, script,
         const isLast      = i === segments.length - 1;
         const outputLabel = isLast ? '[vout]' : `[vsub${i}]`;
         const grain       = isLast ? grainFilter : '';
-        // Fast snap-in (0.06s). Fade-out only at group boundaries for dramatic pause;
-        // mid-group words hold at full opacity until next word snaps in.
-        const alphaExpr   = seg.isGroupEnd
-          ? `min(1,max(0,if(lt(t,${seg.start}+0.06),(t-${seg.start})/0.06,if(gt(t,${seg.end}-0.1),(${seg.end}-t)/0.1,1))))`
-          : `min(1,max(0,(t-${seg.start})/0.06))`;
+        // Fast fade-in + slide up: word starts 30px lower and rises to final position over 0.12s
+        const alphaExpr   = `min(1,max(0,(t-${seg.start})/0.04))`;
+        const yExpr       = `h-250+30*max(0,1-(t-${seg.start})/0.12)`;
         return (
           `${inputLabel}drawtext=` +
           `text='${seg.text}':` +
-          `${captionParams}:` +
-          `x=(w-text_w)/2:y=h-250:line_spacing=8:fix_bounds=1:` +
+          `${highlightParams}:` +
+          `x=(w-text_w)/2:y='${yExpr}':line_spacing=8:fix_bounds=1:` +
           `enable='between(t,${seg.start},${seg.end})':` +
           `alpha='${alphaExpr}'` +
           `${grain}${outputLabel}`
@@ -304,6 +313,12 @@ export async function mergeReel(reelId, clipPaths, audioPath, script, options = 
   const hasShake      = !!effects.shake;
   const hasBGM        = !!musicPath;
 
+  // Word highlight params: white text on a colored box — one word at a time, CapCut style
+  const fontsizeMatch   = captionParams.match(/fontsize=(\d+)/);
+  const fontSize        = fontsizeMatch ? fontsizeMatch[1] : '64';
+  const boxHex          = HIGHLIGHT_BOX[captionStyle] || '0xFFD700';
+  const highlightParams = `fontsize=${fontSize}:fontcolor=white:borderw=3:bordercolor=black@0.6:box=1:boxcolor=${boxHex}@0.95:boxborderw=18`;
+
   // Build timed subtitle segments from script lines
   const segments = buildSubtitleSegments(script);
 
@@ -352,7 +367,7 @@ export async function mergeReel(reelId, clipPaths, audioPath, script, options = 
       subtitleFilters = [
         `${drawtextSrc}drawtext=` +
         `text='${fallbackText}':` +
-        `${captionParams}:` +
+        `${highlightParams}:` +
         `x=(w-text_w)/2:y=h-250:line_spacing=8:fix_bounds=1` +
         `${grainFilter}[vout]`,
       ];
@@ -362,14 +377,13 @@ export async function mergeReel(reelId, clipPaths, audioPath, script, options = 
         const isLast      = i === segments.length - 1;
         const outputLabel = isLast ? '[vout]' : `[vsub${i}]`;
         const grain       = isLast ? grainFilter : '';
-        const alphaExpr   = seg.isGroupEnd
-          ? `min(1,max(0,if(lt(t,${seg.start}+0.06),(t-${seg.start})/0.06,if(gt(t,${seg.end}-0.1),(${seg.end}-t)/0.1,1))))`
-          : `min(1,max(0,(t-${seg.start})/0.06))`;
+        const alphaExpr   = `min(1,max(0,(t-${seg.start})/0.04))`;
+        const yExpr       = `h-250+30*max(0,1-(t-${seg.start})/0.12)`;
         return (
           `${inputLabel}drawtext=` +
           `text='${seg.text}':` +
-          `${captionParams}:` +
-          `x=(w-text_w)/2:y=h-250:line_spacing=8:fix_bounds=1:` +
+          `${highlightParams}:` +
+          `x=(w-text_w)/2:y='${yExpr}':line_spacing=8:fix_bounds=1:` +
           `enable='between(t,${seg.start},${seg.end})':` +
           `alpha='${alphaExpr}'` +
           `${grain}${outputLabel}`

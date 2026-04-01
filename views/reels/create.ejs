@@ -127,12 +127,12 @@
 
   <!-- Progress -->
   <div class="wiz-progress" id="wizProg">
-    <% for(let i=0;i<6;i++){%><div class="wiz-seg" id="seg<%=i%>"></div><%}%>
+    <% for(let i=0;i<5;i++){%><div class="wiz-seg" id="seg<%=i%>"></div><%}%>
   </div>
 
   <!-- ── STEP 1: Niche ──────────────────────────────────────────────────── -->
   <div id="step-1" class="wiz-step active">
-    <h2 class="step-title">Choose your niche <span class="step-badge">Step 1 of 6</span></h2>
+    <h2 class="step-title">Choose your niche <span class="step-badge">Step 1 of 5</span></h2>
     <p class="step-sub">Select a preset or describe your own niche</p>
     <div id="s1err" class="err-box"></div>
 
@@ -200,7 +200,7 @@
 
   <!-- ── STEP 2: Language & Voice ────────────────────────────────────────── -->
   <div id="step-2" class="wiz-step" style="display:none;">
-    <h2 class="step-title">Language &amp; Voice <span class="step-badge">Step 2 of 6</span></h2>
+    <h2 class="step-title">Language &amp; Voice <span class="step-badge">Step 2 of 5</span></h2>
     <p class="step-sub">Choose the language and voice style for your video</p>
 
     <div class="wiz-body">
@@ -255,8 +255,8 @@
 
   <!-- ── STEP 3: Background Music ────────────────────────────────────────── -->
   <div id="step-3" class="wiz-step" style="display:none;">
-    <h2 class="step-title">Background Music <span class="step-badge">Step 3 of 6</span> <span class="opt-badge">Optional</span></h2>
-    <p class="step-sub">Choose as many songs as you want, we'll pick a random one for each video</p>
+    <h2 class="step-title">Background Music <span class="step-badge">Step 3 of 5</span></h2>
+    <p class="step-sub">Choose a preset track or upload your own — makes your video 10× more engaging</p>
 
     <div class="wiz-tabs">
       <button class="wiz-tab active" id="t3a" onclick="sTab(3,'a')">
@@ -272,6 +272,7 @@
     <div id="p3a" class="wiz-body">
       <% [
         ['happy',    'Happy rhythm',       'Upbeat and energetic, perfect for positive content',            'linear-gradient(135deg,#f59e0b,#ef4444)'],
+        ['scary',    'Dark Spirits',       'Haunting and terrifying atmosphere for horror content',         'linear-gradient(135deg,#1a0000,#7f1d1d)'],
         ['storm',    'Quiet before storm', 'Building tension and anticipation for dramatic reveals',         'linear-gradient(135deg,#6366f1,#4338ca)'],
         ['peaceful', 'Peaceful vibes',     'Calm and soothing background for relaxed storytelling',         'linear-gradient(135deg,#22c55e,#16a34a)'],
         ['symphony', 'Brilliant symphony', 'Orchestral and majestic for epic storytelling',                 'linear-gradient(135deg,#8b5cf6,#7c3aed)'],
@@ -291,27 +292,29 @@
     </div>
 
     <div id="p3b" class="wiz-body" style="display:none;">
-      <div style="margin-bottom:20px;">
-        <label class="wiz-label">TikTok Sound URLs <span style="font-size:12px;color:#9ca3af;font-weight:400;">(copy+paste link to TikTok sound)</span></label>
-        <textarea class="wiz-textarea" placeholder="Enter TikTok sound URLs, one per line" style="min-height:80px;"></textarea>
-      </div>
-      <label class="wiz-label">Upload Sound Files</label>
-      <div class="upload-zone">
+      <label class="wiz-label">Upload your own background music</label>
+      <div style="font-size:13px;color:#9ca3af;margin-bottom:14px;">MP3 or WAV · up to 15MB · plays softly under the voiceover</div>
+      <input type="file" id="customMusicFile" accept=".mp3,.wav,audio/mpeg,audio/wav" style="display:none;" onchange="onCustomMusicSelected(this)">
+      <div class="upload-zone" onclick="document.getElementById('customMusicFile').click()" id="customMusicZone">
         <svg width="28" height="28" fill="none" stroke="#9ca3af" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto 10px;display:block;"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-        <div style="font-size:14px;font-weight:600;color:#374151;">Click to upload sound files or drag and drop</div>
-        <div style="font-size:13px;color:#9ca3af;margin-top:4px;">MP3, WAV up to 10MB</div>
+        <div id="customMusicName" style="font-size:14px;font-weight:600;color:#374151;">Click to upload or drag &amp; drop</div>
+        <div style="font-size:13px;color:#9ca3af;margin-top:4px;">MP3, WAV up to 15MB</div>
+      </div>
+      <div id="customMusicPreviewWrap" style="display:none;margin-top:14px;">
+        <audio id="customMusicPreview" controls style="width:100%;border-radius:8px;"></audio>
+        <button onclick="clearCustomMusic()" style="margin-top:8px;font-size:13px;color:#dc2626;background:none;border:none;cursor:pointer;padding:0;">✕ Remove</button>
       </div>
     </div>
 
     <div class="wiz-nav">
       <button class="btn-back" onclick="go(2)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg> Back</button>
-      <button class="btn-next" onclick="go(4)">Skip <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></button>
+      <button class="btn-next" onclick="go(4)">Continue <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></button>
     </div>
   </div>
 
   <!-- ── STEP 4: Art Style ───────────────────────────────────────────────── -->
   <div id="step-4" class="wiz-step" style="display:none;">
-    <h2 class="step-title">Art Style <span class="step-badge">Step 4 of 6</span></h2>
+    <h2 class="step-title">Art Style <span class="step-badge">Step 4 of 5</span></h2>
     <p class="step-sub">Choose the visual style for your video</p>
 
     <div class="wiz-body">
@@ -327,7 +330,13 @@
         ['historical', 'Historical',  'linear-gradient(160deg,#451a03,#92400e,#d97706)',  '📜'],
       ].forEach((a,ai) => { %>
       <div class="art-item <%= ai===0?'selected':'' %>" onclick="pickArt('<%= a[0] %>')" data-art="<%= a[0] %>">
-        <div class="art-thumb" style="background:<%= a[2] %>;border-radius:9px;"><span style="font-size:2.2rem;"><%= a[3] %></span></div>
+        <div class="art-thumb" style="background:<%= a[2] %>;border-radius:9px;position:relative;overflow:hidden;">
+          <% if (typeof artGifs !== 'undefined' && artGifs[a[0]]) { %>
+            <img src="<%= artGifs[a[0]] %>" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" alt="<%= a[1] %>">
+          <% } else { %>
+            <span style="font-size:2.2rem;"><%= a[3] %></span>
+          <% } %>
+        </div>
         <div class="art-label"><%= a[1] %></div>
       </div>
       <% }) %>
@@ -340,12 +349,14 @@
     </div>
   </div>
 
-  <!-- ── STEP 5: Caption Style ──────────────────────────────────────────── -->
+  <!-- ── STEP 5: Caption Style + Effects & Duration ───────────────────────── -->
   <div id="step-5" class="wiz-step" style="display:none;">
-    <h2 class="step-title">Caption Style <span class="step-badge">Step 5 of 6</span></h2>
-    <p class="step-sub">Choose how captions will appear in your video</p>
+    <h2 class="step-title">Caption &amp; Effects <span class="step-badge">Step 5 of 5</span></h2>
+    <p class="step-sub">Choose your caption style, effects, and video duration</p>
+    <div id="s5err" class="err-box"></div>
 
     <div class="wiz-body">
+    <div style="font-size:14px;font-weight:700;color:#111827;margin-bottom:12px;">Caption Style</div>
     <div class="cap-grid">
       <!-- Bold Stroke -->
       <div class="cap-item selected" onclick="pickCap('bold-stroke')" data-cap="bold-stroke">
@@ -436,57 +447,39 @@
         <div class="cap-label">Clarity</div>
       </div>
     </div>
+
+    <!-- Effects & Duration — merged into Step 5 -->
+    <div style="margin-top:26px;padding-top:22px;border-top:1px solid #f3f4f6;">
+      <div style="font-size:14px;font-weight:700;color:#111827;margin-bottom:14px;">Effects &amp; Duration</div>
+      <div class="effect-item">
+        <div>
+          <div style="font-size:15px;font-weight:700;color:#111827;display:flex;align-items:center;">Shake effect <span class="eff-badge badge-new">NEW</span></div>
+          <div style="font-size:13px;color:#6b7280;margin-top:3px;">Subjects pop out with eerie motion — great for horror, thriller, and suspenseful stories.</div>
+        </div>
+        <button class="toggle" onclick="toggleEffect('shake',this)" type="button"></button>
+      </div>
+      <div class="effect-item">
+        <div>
+          <div style="font-size:15px;font-weight:700;color:#111827;display:flex;align-items:center;">Film grain <span class="eff-badge badge-new">NEW</span></div>
+          <div style="font-size:13px;color:#6b7280;margin-top:3px;">Add an old film look with scanlines, dust particles, noise, and a subtle vignette.</div>
+        </div>
+        <button class="toggle" onclick="toggleEffect('filmGrain',this)" type="button"></button>
+      </div>
+      <div style="margin-top:18px;">
+        <label class="wiz-label" style="display:flex;align-items:center;gap:6px;">
+          Video Duration
+          <svg width="14" height="14" fill="none" stroke="#9ca3af" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+        </label>
+        <select id="durSel" class="wiz-select">
+          <option value="30-40">Short (~30 sec)</option>
+          <option value="60-70">Long (~1 min)</option>
+        </select>
+      </div>
+    </div>
     </div><!-- /wiz-body -->
 
     <div class="wiz-nav">
       <button class="btn-back" onclick="go(4)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg> Back</button>
-      <button class="btn-next" onclick="go(6)">Continue <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></button>
-    </div>
-  </div>
-
-  <!-- ── STEP 6: Effects & Duration ───────────────────────────────────────── -->
-  <div id="step-6" class="wiz-step" style="display:none;">
-    <h2 class="step-title">Effects &amp; Duration <span class="step-badge">Step 6 of 6</span> <span class="opt-badge">Optional</span></h2>
-    <p class="step-sub">Add visual effects and choose your video length.</p>
-    <div id="s6err" class="err-box"></div>
-
-    <div class="wiz-body">
-    <div class="effect-item">
-      <div>
-        <div style="font-size:15px;font-weight:700;color:#111827;display:flex;align-items:center;">Shake effect <span class="eff-badge badge-new">NEW</span></div>
-        <div style="font-size:13px;color:#6b7280;margin-top:3px;">Subjects pop out with eerie motion — great for horror, thriller, and suspenseful stories.</div>
-      </div>
-      <button class="toggle" onclick="toggleEffect('shake',this)" type="button"></button>
-    </div>
-    <div class="effect-item">
-      <div>
-        <div style="font-size:15px;font-weight:700;color:#111827;display:flex;align-items:center;">Film grain <span class="eff-badge badge-new">NEW</span></div>
-        <div style="font-size:13px;color:#6b7280;margin-top:3px;">Add an old film look with scanlines, dust particles, noise, and a subtle vignette.</div>
-      </div>
-      <button class="toggle" onclick="toggleEffect('filmGrain',this)" type="button"></button>
-    </div>
-    <div class="effect-item">
-      <div>
-        <div style="font-size:15px;font-weight:700;color:#111827;display:flex;align-items:center;">Animated hook <span class="eff-badge badge-premium">PREMIUM</span></div>
-        <div style="font-size:13px;color:#6b7280;margin-top:3px;">Generate a 5-second motion video for the first scene to hook viewers instantly.</div>
-      </div>
-      <button class="toggle" onclick="toggleEffect('animatedHook',this)" type="button"></button>
-    </div>
-
-    <div style="margin-top:22px;">
-      <label class="wiz-label" style="display:flex;align-items:center;gap:6px;">
-        Video Duration
-        <svg width="14" height="14" fill="none" stroke="#9ca3af" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-      </label>
-      <select id="durSel" class="wiz-select">
-        <option value="30-40">Short (~30 sec)</option>
-        <option value="60-70">Long (~1 min)</option>
-      </select>
-    </div>
-    </div><!-- /wiz-body -->
-
-    <div class="wiz-nav">
-      <button class="btn-back" onclick="go(5)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg> Back</button>
       <button class="btn-next" id="createBtn" onclick="handleCreate()">
         <span id="createBtnTxt">Generate Video</span>
         <span id="createBtnIco"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></span>
@@ -642,9 +635,36 @@ function playMusic(id, btn) {
 }
 
 function updProg(n) {
-  for(let i=0;i<6;i++) {
+  for(let i=0;i<5;i++) {
     document.getElementById('seg'+i).classList.toggle('done', i < n);
   }
+}
+
+// ── Custom music upload ───────────────────────────────────────────────────────
+function onCustomMusicSelected(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 15 * 1024 * 1024) {
+    alert('File too large — maximum 15MB');
+    input.value = '';
+    return;
+  }
+  document.getElementById('customMusicName').textContent = '🎵 ' + file.name;
+  document.getElementById('customMusicZone').style.borderColor = '#7c3aed';
+  S.customMusicFile = file;
+  // Show inline audio preview
+  const preview = document.getElementById('customMusicPreview');
+  preview.src = URL.createObjectURL(file);
+  document.getElementById('customMusicPreviewWrap').style.display = 'block';
+}
+
+function clearCustomMusic() {
+  S.customMusicFile = null;
+  document.getElementById('customMusicFile').value = '';
+  document.getElementById('customMusicName').textContent = 'Click to upload or drag & drop';
+  document.getElementById('customMusicZone').style.borderColor = '';
+  document.getElementById('customMusicPreviewWrap').style.display = 'none';
+  document.getElementById('customMusicPreview').src = '';
 }
 
 function go(n) {
@@ -800,7 +820,7 @@ async function startVideoPay() {
     rzp.open();
   } catch(err) {
     btn.disabled = false; btnTxt.textContent = `Pay ₹${payFinalAmount} & Generate`;
-    showErr('s6err', err.message);
+    showErr('s5err', err.message);
     closePayModal();
   }
 }
@@ -808,8 +828,8 @@ async function startVideoPay() {
 // ── Create entry point ────────────────────────────────────────────────────────
 function handleCreate() {
   const topic = S.niche;
-  if (!topic || topic.length < 3) { showErr('s6err', 'Please select a niche to continue.'); return; }
-  hideErr('s6err');
+  if (!topic || topic.length < 3) { showErr('s5err', 'Please select a niche to continue.'); return; }
+  hideErr('s5err');
 
   if (needsPayment) {
     openPayModal();
@@ -827,19 +847,30 @@ async function doGenerate(paymentFields) {
   btn.disabled = true;
 
   try {
+    // Upload custom music file first (if user selected one)
+    let customMusicPath = null;
+    if (S.customMusicFile) {
+      const fd = new FormData();
+      fd.append('file', S.customMusicFile);
+      const upRes  = await fetch('/reels/upload-music', { method: 'POST', body: fd });
+      const upData = await upRes.json();
+      if (upData.path) customMusicPath = upData.path;
+    }
+
     const res  = await fetch('/reels/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         topic,
-        voice:        S.voice,
-        language:     document.getElementById('langSel')?.value || 'en',
-        artStyle:     S.art,
-        captionStyle: S.cap,
-        duration:     document.getElementById('durSel')?.value || '30-40',
-        music:        S.music,
-        effects:      S.effects,
-        exScript:     S.exScript || '',
+        voice:           S.voice,
+        language:        document.getElementById('langSel')?.value || 'en',
+        artStyle:        S.art,
+        captionStyle:    S.cap,
+        duration:        document.getElementById('durSel')?.value || '30-40',
+        music:           S.music,
+        effects:         S.effects,
+        exScript:        S.exScript || '',
+        customMusicPath,
         ...paymentFields,
       }),
     });
@@ -847,7 +878,7 @@ async function doGenerate(paymentFields) {
     if (!res.ok || data.error) throw new Error(data.error || 'Server error. Please try again.');
     window.location.href = '/reels/loading/' + data.reel_id;
   } catch(err) {
-    showErr('s6err', err.message);
+    showErr('s5err', err.message);
     document.getElementById('createBtnTxt').textContent = 'Generate Video';
     document.getElementById('createBtnIco').innerHTML = '<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>';
     btn.disabled = false;
