@@ -121,7 +121,6 @@ Instructions:
 
       const chapterText = await geminiText(chapterPrompt, 3000);
       parts.push(chapterText);
-      console.log(`[GeminiReel] Chapter ${i + 1}/5 generated (${chapterText.split(/\s+/).length} words)`);
     }
 
     const fullScript = parts.join('\n\n');

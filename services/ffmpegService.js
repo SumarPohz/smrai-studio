@@ -285,9 +285,7 @@ export async function mergeReelFromImages(reelId, imagePaths, audioPath, script,
       ])
       .output(outputPath)
       .on('start', () => console.log(`[FFmpeg] Starting image reel #${reelId}`))
-      .on('progress', (p) => {
-        if (p.percent) console.log(`[FFmpeg] Reel #${reelId}: ${Math.round(p.percent)}%`);
-      })
+      .on('progress', () => {})
       .on('end', () => {
         console.log(`[FFmpeg] Reel #${reelId} complete → ${outputPath}`);
         resolve(outputPath);
@@ -424,9 +422,7 @@ export async function mergeReel(reelId, clipPaths, audioPath, script, options = 
       ])
       .output(outputPath)
       .on('start', () => console.log(`[FFmpeg] Starting reel ${reelId}`))
-      .on('progress', (p) => {
-        if (p.percent) console.log(`[FFmpeg] Reel ${reelId}: ${Math.round(p.percent)}%`);
-      })
+      .on('progress', () => {})
       .on('end', () => {
         console.log(`[FFmpeg] Reel ${reelId} complete → ${outputPath}`);
         resolve(outputPath);

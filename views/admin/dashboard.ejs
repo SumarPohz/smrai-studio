@@ -1909,6 +1909,55 @@
         <div id="nicheConfigList" style="display:flex;flex-direction:column;gap:8px"></div>
       </div>
 
+      <!-- ── Preset Music Manager ── -->
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:1rem 1.25rem;margin-bottom:1.25rem">
+        <div style="font-size:0.78rem;font-weight:700;color:#374151;margin-bottom:0.75rem"><i class="fas fa-music"></i> Preset Music</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:0.75rem">
+          <div style="flex:1;min-width:120px">
+            <label style="font-size:0.75rem;color:#6b7280;display:block;margin-bottom:3px">Music ID (e.g. scary)</label>
+            <input id="pmMusicId" placeholder="e.g. scary, happy, storm" style="width:100%;padding:6px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:0.82rem;box-sizing:border-box">
+          </div>
+          <div style="flex:1;min-width:140px">
+            <label style="font-size:0.75rem;color:#6b7280;display:block;margin-bottom:3px">Full Track MP3</label>
+            <input type="file" id="pmFullFile" accept=".mp3,.wav,audio/mpeg,audio/wav" style="font-size:0.82rem;width:100%">
+          </div>
+          <div style="flex:1;min-width:140px">
+            <label style="font-size:0.75rem;color:#6b7280;display:block;margin-bottom:3px">Preview Clip MP3 (~30s)</label>
+            <input type="file" id="pmPreviewFile" accept=".mp3,.wav,audio/mpeg,audio/wav" style="font-size:0.82rem;width:100%">
+          </div>
+          <button onclick="uploadPresetMusic()" style="padding:7px 16px;background:#7c3aed;color:#fff;border:none;border-radius:8px;font-size:0.82rem;font-weight:700;cursor:pointer;white-space:nowrap">Upload</button>
+        </div>
+        <div id="pmMsg" style="font-size:0.78rem;margin-bottom:0.5rem;min-height:16px"></div>
+        <div id="pmFileList" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+      </div>
+
+      <!-- ── Art Style GIF Manager ── -->
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:1rem 1.25rem;margin-bottom:1.25rem">
+        <div style="font-size:0.78rem;font-weight:700;color:#374151;margin-bottom:0.75rem"><i class="fas fa-image"></i> Art Style GIFs</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:0.75rem">
+          <div style="flex:1;min-width:140px">
+            <label style="font-size:0.75rem;color:#6b7280;display:block;margin-bottom:3px">Art Style</label>
+            <select id="agArtId" style="width:100%;padding:6px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:0.82rem;box-sizing:border-box">
+              <option value="cinematic">Cinematic</option>
+              <option value="creepy">Creepy Comic</option>
+              <option value="vibrant">Modern Cartoon</option>
+              <option value="disney">Disney</option>
+              <option value="nature">Nature</option>
+              <option value="urban">Urban</option>
+              <option value="fantasy">Fantasy</option>
+              <option value="historical">Historical</option>
+            </select>
+          </div>
+          <div style="flex:1;min-width:160px">
+            <label style="font-size:0.75rem;color:#6b7280;display:block;margin-bottom:3px">GIF File (max 10MB)</label>
+            <input type="file" id="agGifFile" accept=".gif,image/gif" style="font-size:0.82rem;width:100%">
+          </div>
+          <button onclick="uploadArtGif()" style="padding:7px 16px;background:#7c3aed;color:#fff;border:none;border-radius:8px;font-size:0.82rem;font-weight:700;cursor:pointer;white-space:nowrap">Upload</button>
+        </div>
+        <div id="agMsg" style="font-size:0.78rem;margin-bottom:0.5rem;min-height:16px"></div>
+        <div id="agGifList" style="display:flex;flex-wrap:wrap;gap:10px"></div>
+      </div>
+
       <!-- Stats bar -->
       <div id="reelStats" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:1.25rem"></div>
 
@@ -2414,7 +2463,7 @@ function showSection(id) {
     if (id === "investors")                  { loadInvestors(); }
     if (id === "wallet")                     { loadWalletUsers(1); }
     if (id === "paysetu" && !psLoaded)       { loadPsStats(); loadPsTxns(1); loadPsBillers(); loadPsProviders(); psLoaded = true; }
-    if (id === "reels")                      { loadAdminReels(); loadChannelProof(); loadNicheConfig(); }
+    if (id === "reels")                      { loadAdminReels(); loadChannelProof(); loadNicheConfig(); loadPresetMusicFiles(); loadArtGifs(); }
   }, 120);
 }
 
@@ -6269,6 +6318,102 @@ async function deleteAdminReel(id, btn) {
       btn.disabled = false;
     }
   } catch(e) { showAdmToast('Delete failed: ' + e.message, 'error'); btn.disabled = false; }
+}
+
+// ── Preset Music upload ────────────────────────────────────────────────────
+async function uploadPresetMusic() {
+  const id      = document.getElementById('pmMusicId').value.trim().toLowerCase().replace(/[^a-z0-9_-]/g,'');
+  const fullF   = document.getElementById('pmFullFile').files[0];
+  const prevF   = document.getElementById('pmPreviewFile').files[0];
+  const msgEl   = document.getElementById('pmMsg');
+  if (!id)   { msgEl.style.color='#dc2626'; msgEl.textContent='Enter a music ID'; return; }
+  if (!fullF && !prevF) { msgEl.style.color='#dc2626'; msgEl.textContent='Select at least one file'; return; }
+  msgEl.style.color='#6b7280'; msgEl.textContent='Uploading…';
+  try {
+    const uploads = [];
+    if (fullF) {
+      const fd = new FormData(); fd.append('file', fullF); fd.append('musicId', id); fd.append('isPreview','0');
+      uploads.push(fetch('/admin/api/music/upload', { method:'POST', body:fd }).then(r=>r.json()));
+    }
+    if (prevF) {
+      const fd = new FormData(); fd.append('file', prevF); fd.append('musicId', id); fd.append('isPreview','1');
+      uploads.push(fetch('/admin/api/music/upload', { method:'POST', body:fd }).then(r=>r.json()));
+    }
+    const results = await Promise.all(uploads);
+    const errs = results.filter(r=>r.error);
+    if (errs.length) { msgEl.style.color='#dc2626'; msgEl.textContent=errs[0].error; return; }
+    msgEl.style.color='#059669'; msgEl.textContent='Uploaded successfully';
+    document.getElementById('pmFullFile').value=''; document.getElementById('pmPreviewFile').value='';
+    loadPresetMusicFiles();
+  } catch(e) { msgEl.style.color='#dc2626'; msgEl.textContent='Upload failed: '+e.message; }
+}
+
+async function loadPresetMusicFiles() {
+  const listEl = document.getElementById('pmFileList');
+  try {
+    const files = await fetch('/admin/api/music/list').then(r=>r.json());
+    if (!files.length) { listEl.innerHTML='<span style="font-size:0.78rem;color:#9ca3af">No files uploaded yet</span>'; return; }
+    listEl.innerHTML = files.map(f => `
+      <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:6px 10px;display:flex;align-items:center;gap:8px;font-size:0.78rem">
+        <span style="color:#374151;font-weight:600">${f.name}</span>
+        <span style="color:#9ca3af">${(f.size/1024).toFixed(0)}KB</span>
+        <button onclick="deletePresetMusic('${f.name}',this)" style="margin-left:auto;background:none;border:none;color:#dc2626;cursor:pointer;font-size:0.78rem;padding:0">✕</button>
+      </div>`).join('');
+  } catch { listEl.innerHTML='<span style="font-size:0.78rem;color:#9ca3af">Failed to load</span>'; }
+}
+
+async function deletePresetMusic(filename, btn) {
+  if (!confirm(`Delete ${filename}?`)) return;
+  btn.disabled = true;
+  try {
+    const d = await fetch(`/admin/api/music/${encodeURIComponent(filename)}`, { method:'DELETE' }).then(r=>r.json());
+    if (d.success) { loadPresetMusicFiles(); showAdmToast('Deleted: '+filename); }
+    else { showAdmToast(d.error||'Delete failed','error'); btn.disabled=false; }
+  } catch(e) { showAdmToast('Delete failed','error'); btn.disabled=false; }
+}
+
+// ── Art GIF upload ─────────────────────────────────────────────────────────
+async function uploadArtGif() {
+  const artId = document.getElementById('agArtId').value;
+  const file  = document.getElementById('agGifFile').files[0];
+  const msgEl = document.getElementById('agMsg');
+  if (!file) { msgEl.style.color='#dc2626'; msgEl.textContent='Select a GIF file'; return; }
+  msgEl.style.color='#6b7280'; msgEl.textContent='Uploading…';
+  try {
+    const fd = new FormData(); fd.append('file', file); fd.append('artId', artId);
+    const d = await fetch('/admin/api/art-gif/upload', { method:'POST', body:fd }).then(r=>r.json());
+    if (d.success) {
+      msgEl.style.color='#059669'; msgEl.textContent='Uploaded: '+artId+'.gif';
+      document.getElementById('agGifFile').value='';
+      loadArtGifs();
+    } else { msgEl.style.color='#dc2626'; msgEl.textContent=d.error||'Upload failed'; }
+  } catch(e) { msgEl.style.color='#dc2626'; msgEl.textContent='Upload failed: '+e.message; }
+}
+
+async function loadArtGifs() {
+  const listEl = document.getElementById('agGifList');
+  const styles = ['cinematic','creepy','vibrant','disney','nature','urban','fantasy','historical'];
+  const labels = { cinematic:'Cinematic',creepy:'Creepy Comic',vibrant:'Modern Cartoon',disney:'Disney',nature:'Nature',urban:'Urban',fantasy:'Fantasy',historical:'Historical' };
+  listEl.innerHTML = styles.map(id => `
+    <div style="text-align:center">
+      <div style="width:60px;height:100px;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;background:#f9fafb;position:relative">
+        <img src="/uploads/art-gifs/${id}.gif?t=${Date.now()}" style="width:100%;height:100%;object-fit:cover"
+          onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        <div style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;font-size:0.65rem;color:#9ca3af">None</div>
+      </div>
+      <div style="font-size:0.68rem;color:#374151;margin-top:3px">${labels[id]}</div>
+      <button onclick="deleteArtGif('${id}',this)" style="font-size:0.65rem;color:#dc2626;background:none;border:none;cursor:pointer;padding:0">✕ Remove</button>
+    </div>`).join('');
+}
+
+async function deleteArtGif(artId, btn) {
+  if (!confirm(`Remove GIF for ${artId}?`)) return;
+  btn.disabled = true;
+  try {
+    const d = await fetch(`/admin/api/art-gif/${artId}`, { method:'DELETE' }).then(r=>r.json());
+    if (d.success) { loadArtGifs(); showAdmToast('GIF removed: '+artId); }
+    else { showAdmToast(d.error||'Delete failed','error'); btn.disabled=false; }
+  } catch(e) { showAdmToast('Delete failed','error'); btn.disabled=false; }
 }
 
 // Delete a transaction permanently from DB

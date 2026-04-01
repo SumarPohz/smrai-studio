@@ -147,7 +147,6 @@ export async function generateLongTTS(script, voice, fileId) {
     const buffer = Buffer.from(await response.arrayBuffer());
     await fs.writeFile(partPath, buffer);
     partPaths.push(partPath);
-    console.log(`[TTS] Chunk ${i + 1}/${chunks.length} done`);
   }
 
   if (partPaths.length === 1) {

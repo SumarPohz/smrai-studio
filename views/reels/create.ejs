@@ -935,11 +935,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (p.language) { const el = document.getElementById('langSel'); if (el) el.value = p.language; }
       if (p.duration) { const el = document.getElementById('durSel');  if (el) el.value = p.duration; }
 
-      // Jump straight to step 6 (last step)
+      // Jump straight to step 5 (last step)
       document.getElementById('step-1').classList.remove('active');
-      S.step = 6;
-      document.getElementById('step-6').classList.add('active');
-      updProg(6);
+      S.step = 5;
+      document.getElementById('step-5').classList.add('active');
+      updProg(5);
     } catch(e) {}
   }
 
