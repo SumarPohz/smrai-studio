@@ -6332,11 +6332,11 @@ async function uploadPresetMusic() {
   try {
     const uploads = [];
     if (fullF) {
-      const fd = new FormData(); fd.append('file', fullF); fd.append('musicId', id); fd.append('isPreview','0');
+      const fd = new FormData(); fd.append('musicId', id); fd.append('isPreview','0'); fd.append('file', fullF);
       uploads.push(fetch('/admin/api/music/upload', { method:'POST', body:fd }).then(r=>r.json()));
     }
     if (prevF) {
-      const fd = new FormData(); fd.append('file', prevF); fd.append('musicId', id); fd.append('isPreview','1');
+      const fd = new FormData(); fd.append('musicId', id); fd.append('isPreview','1'); fd.append('file', prevF);
       uploads.push(fetch('/admin/api/music/upload', { method:'POST', body:fd }).then(r=>r.json()));
     }
     const results = await Promise.all(uploads);
