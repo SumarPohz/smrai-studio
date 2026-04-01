@@ -371,7 +371,7 @@ async function runPipeline(reelId, topic, voice, language, artStyle, captionStyl
       "SELECT value FROM admin_settings WHERE `key` = 'reel_image_provider'"
     );
     const imgProvider = providerRes.rows[0]?.value || 'openai';
-    const imageCount  = duration === '60-70' ? 12 : 11;
+    const imageCount  = duration === '60-70' ? 12 : 8;
     const scriptLines = script.split(/\n+/).filter(Boolean);
     console.log(`[Reels] #${reelId} — Step 4: Generating ${imageCount} images via ${imgProvider} (artStyle=${artStyle})…`);
     const { imagePaths, imageDurations } = await generateImages(scriptLines, reelId, artStyle, imageCount, imgProvider);
