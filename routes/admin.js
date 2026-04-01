@@ -2242,7 +2242,7 @@ export default function adminRouter(db) {
       const col = isPreview ? 'preview_audio' : 'full_audio';
       try {
         await db.query(
-          `INSERT INTO reels_music_presets (id, ${col}) VALUES (?, ?) ON CONFLICT (id) DO UPDATE SET ${col} = EXCLUDED.${col}`,
+          `INSERT INTO reels_music_presets (id, ${col}) VALUES (?, ?) ON DUPLICATE KEY UPDATE ${col} = VALUES(${col})`,
           [id, req.file.buffer]
         );
         res.json({ success: true, id, isPreview });
@@ -2262,7 +2262,7 @@ export default function adminRouter(db) {
   router.get('/api/music/list', async (req, res) => {
     try {
       const { rows } = await db.query(
-        `SELECT id, octet_length(full_audio) AS full_size, octet_length(preview_audio) AS preview_size FROM reels_music_presets ORDER BY created_at`
+        `SELECT id, LENGTH(full_audio) AS full_size, LENGTH(preview_audio) AS preview_size FROM reels_music_presets ORDER BY created_at`
       );
       const files = rows.flatMap(r => {
         const out = [];

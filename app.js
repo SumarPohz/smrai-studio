@@ -696,10 +696,10 @@ await db.query(`
 
     await db.query(`
       CREATE TABLE IF NOT EXISTS reels_music_presets (
-        id           VARCHAR(50) PRIMARY KEY,
-        full_audio   BYTEA,
-        preview_audio BYTEA,
-        created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        id            VARCHAR(50) PRIMARY KEY,
+        full_audio    LONGBLOB,
+        preview_audio LONGBLOB,
+        created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
