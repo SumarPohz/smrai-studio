@@ -270,14 +270,10 @@
     </div>
 
     <div id="p3a" class="wiz-body">
-      <% [
-        ['happy',    'Happy rhythm',       'Upbeat and energetic, perfect for positive content',            'linear-gradient(135deg,#f59e0b,#ef4444)'],
-        ['scary',    'Dark Spirits',       'Haunting and terrifying atmosphere for horror content',         'linear-gradient(135deg,#1a0000,#7f1d1d)'],
-        ['storm',    'Quiet before storm', 'Building tension and anticipation for dramatic reveals',         'linear-gradient(135deg,#6366f1,#4338ca)'],
-        ['peaceful', 'Peaceful vibes',     'Calm and soothing background for relaxed storytelling',         'linear-gradient(135deg,#22c55e,#16a34a)'],
-        ['symphony', 'Brilliant symphony', 'Orchestral and majestic for epic storytelling',                 'linear-gradient(135deg,#8b5cf6,#7c3aed)'],
-        ['shadows',  'Breathing shadows',  'Mysterious and eerie ambiance for suspenseful videos',          'linear-gradient(135deg,#312e81,#1e1b4b)'],
-      ].forEach(m => { %>
+      <% if (!availableMusic || availableMusic.length === 0) { %>
+      <div style="text-align:center;padding:24px 0;color:#9ca3af;font-size:14px;">No music tracks uploaded yet. Upload them from the admin panel.</div>
+      <% } %>
+      <% (availableMusic || []).forEach(m => { %>
       <div class="music-item" onclick="toggleMusic('<%= m[0] %>')" data-music="<%= m[0] %>">
         <div class="music-color" style="background:<%= m[3] %>;"></div>
         <div style="flex:1;">

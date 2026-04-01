@@ -9,6 +9,15 @@ import crypto                                       from 'crypto';
 
 const ART_STYLES = ['cinematic','creepy','vibrant','disney','nature','urban','fantasy','historical'];
 
+const MUSIC_PRESETS = [
+  ['happy',    'Happy rhythm',       'Upbeat and energetic, perfect for positive content',           'linear-gradient(135deg,#f59e0b,#ef4444)'],
+  ['scary',    'Dark Spirits',       'Haunting and terrifying atmosphere for horror content',        'linear-gradient(135deg,#1a0000,#7f1d1d)'],
+  ['storm',    'Quiet before storm', 'Building tension and anticipation for dramatic reveals',       'linear-gradient(135deg,#6366f1,#4338ca)'],
+  ['peaceful', 'Peaceful vibes',     'Calm and soothing background for relaxed storytelling',       'linear-gradient(135deg,#22c55e,#16a34a)'],
+  ['symphony', 'Brilliant symphony', 'Orchestral and majestic for epic storytelling',               'linear-gradient(135deg,#8b5cf6,#7c3aed)'],
+  ['shadows',  'Breathing shadows',  'Mysterious and eerie ambiance for suspenseful videos',        'linear-gradient(135deg,#312e81,#1e1b4b)'],
+];
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /**
@@ -43,6 +52,14 @@ export async function getCreatePage(req, res, db) {
       catch {}
     }
 
+    // Check which preset music files have been uploaded by admin
+    const musicDir      = path.join(process.cwd(), 'public', 'music');
+    const availableMusic = [];
+    for (const preset of MUSIC_PRESETS) {
+      try { await fs.access(path.join(musicDir, `${preset[0]}.mp3`)); availableMusic.push(preset); }
+      catch {}
+    }
+
     res.render('reels/create', {
       title:       'AI Reel Generator',
       voices:      AVAILABLE_VOICES,
@@ -50,6 +67,7 @@ export async function getCreatePage(req, res, db) {
       totalReels,
       walletBalance,
       artGifs,
+      availableMusic,
       razorpayKey: process.env.RAZORPAY_KEY_ID,
     });
   } catch (err) {
@@ -61,6 +79,7 @@ export async function getCreatePage(req, res, db) {
       totalReels:   0,
       walletBalance: 0,
       artGifs:      {},
+      availableMusic: [],
       razorpayKey:  process.env.RAZORPAY_KEY_ID,
     });
   }
