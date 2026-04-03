@@ -275,7 +275,10 @@ await db.query(`
     await db.query(`INSERT IGNORE INTO admin_settings (\`key\`, value) VALUES ('dth_recharge_max', '50000')`);
     await db.query(`INSERT IGNORE INTO admin_settings (\`key\`, value) VALUES ('wallet_cap', '100')`);
     await db.query(`INSERT IGNORE INTO admin_settings (\`key\`, value) VALUES ('reel_image_provider', 'openai')`);
-    await db.query(`INSERT IGNORE INTO admin_settings (\`key\`, value) VALUES ('price_reel_video', '30')`);
+    await db.query(`INSERT IGNORE INTO admin_settings (\`key\`, value) VALUES ('price_reel_video', '350')`);
+    await db.query(`INSERT IGNORE INTO admin_settings (\`key\`, value) VALUES ('price_reel_short', '350')`);
+    await db.query(`INSERT IGNORE INTO admin_settings (\`key\`, value) VALUES ('price_reel_long', '700')`);
+    await db.query(`INSERT IGNORE INTO admin_settings (\`key\`, value) VALUES ('video_provider', 'xai')`);
 
     // ── Homepage editable content defaults ───────────────────────────────────
     const homepageDefaults = [
@@ -584,6 +587,29 @@ await db.query(`
     await db.query(`ALTER TABLE reels ADD COLUMN caption_style VARCHAR(50) DEFAULT 'bold-stroke'`).catch(() => {});
     await db.query(`ALTER TABLE reels ADD COLUMN duration VARCHAR(20) DEFAULT '30-40'`).catch(() => {});
     await db.query(`ALTER TABLE reels ADD COLUMN music_tracks TEXT`).catch(() => {});
+    await db.query(`ALTER TABLE reels MODIFY COLUMN status ENUM('processing','completed','failed','script_ready') DEFAULT 'processing'`).catch(() => {});
+    await db.query(`ALTER TABLE reel_video_payments ADD COLUMN refunded TINYINT(1) NOT NULL DEFAULT 0`).catch(() => {});
+
+    // One-time fix: refund wallet for any failed reels that weren't auto-refunded
+    try {
+      const { rows: unrefunded } = await db.query(`
+        SELECT p.id, p.user_id, p.reel_id, p.amount
+        FROM reel_video_payments p
+        JOIN reels r ON r.id = p.reel_id
+        WHERE r.status = 'failed' AND p.refunded = 0
+      `);
+      for (const pay of unrefunded) {
+        await db.query('UPDATE reel_video_payments SET refunded = 1 WHERE id = ?', [pay.id]);
+        await db.query('UPDATE users SET wallet_balance = wallet_balance + ? WHERE id = ?', [pay.amount, pay.user_id]);
+        await db.query(
+          "INSERT INTO wallet_transactions (user_id, amount, type, reason, ref_id) VALUES (?, ?, 'credit', 'reel_gen_refund', ?)",
+          [pay.user_id, pay.amount, String(pay.reel_id)]
+        );
+        console.log(`[Startup] Retroactive refund: ₹${pay.amount} → user #${pay.user_id} (reel #${pay.reel_id})`);
+      }
+    } catch (e) {
+      console.warn('[Startup] Retroactive refund check failed:', e.message);
+    }
 
     /* ── Text-to-Voice Audios ── */
     await db.query(`
@@ -962,15 +988,17 @@ app.use(compression());
 // ── Serve preset music from DB (persists across Render redeploys) ────────────
 app.get('/music/:filename', async (req, res) => {
   try {
-    const filename = req.params.filename;
+    const filename  = req.params.filename;
     const isPreview = filename.startsWith('preview-');
-    const id = filename.replace(/^preview-/, '').replace(/\.[^.]+$/, '');
-    const col = isPreview ? 'preview_audio' : 'full_audio';
-    const { rows } = await db.query(`SELECT ${col} AS audio FROM reels_music_presets WHERE id = ?`, [id]);
-    if (!rows.length || !rows[0].audio) return res.status(404).end();
+    const id        = filename.replace(/^preview-/, '').replace(/\.[^.]+$/, '');
+    // Fetch both columns so we can fall back to full_audio when preview is missing
+    const { rows } = await db.query(`SELECT full_audio, preview_audio FROM reels_music_presets WHERE id = ?`, [id]);
+    if (!rows.length) return res.status(404).end();
+    const audio = (isPreview && rows[0].preview_audio) ? rows[0].preview_audio : rows[0].full_audio;
+    if (!audio) return res.status(404).end();
     res.set('Content-Type', 'audio/mpeg');
     res.set('Cache-Control', 'public, max-age=86400');
-    res.send(rows[0].audio);
+    res.send(audio);
   } catch { res.status(500).end(); }
 });
 
@@ -3327,21 +3355,24 @@ app.post("/api/reels/video-pay/apply-promo", ensureAuthenticated, async (req, re
   }
 });
 
-/** GET /api/reels/video-pay/price — return current admin-set reel price */
+/** GET /api/reels/video-pay/price — return price for given duration */
 app.get("/api/reels/video-pay/price", ensureAuthenticated, async (req, res) => {
   try {
-    const r = await db.query("SELECT value FROM admin_settings WHERE `key` = 'price_reel_video'");
-    const price = parseInt(r.rows[0]?.value || '30', 10);
+    const duration = req.query.duration || '30-40';
+    const key = duration === '60-70' ? 'price_reel_long' : 'price_reel_short';
+    const r = await db.query("SELECT value FROM admin_settings WHERE `key` = ?", [key]);
+    const price = parseInt(r.rows[0]?.value || (duration === '60-70' ? '700' : '350'), 10);
     res.json({ price });
-  } catch { res.json({ price: 30 }); }
+  } catch { res.json({ price: 350 }); }
 });
 
 /** POST /api/reels/video-pay/create-order — create Razorpay order at admin-set price */
 app.post("/api/reels/video-pay/create-order", ensureAuthenticated, async (req, res) => {
   try {
-    const { couponCode, useWallet } = req.body || {};
-    const priceRes = await db.query("SELECT value FROM admin_settings WHERE `key` = 'price_reel_video'");
-    const basePrice = parseInt(priceRes.rows[0]?.value || '30', 10);
+    const { couponCode, useWallet, duration } = req.body || {};
+    const priceKey  = duration === '60-70' ? 'price_reel_long' : 'price_reel_short';
+    const priceRes  = await db.query("SELECT value FROM admin_settings WHERE `key` = ?", [priceKey]);
+    const basePrice = parseInt(priceRes.rows[0]?.value || (duration === '60-70' ? '700' : '350'), 10);
     let finalAmount = basePrice;
 
     if (couponCode) {

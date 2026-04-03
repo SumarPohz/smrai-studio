@@ -43,11 +43,12 @@ const TONE_MAP = {
   urban:      'gritty, fast-paced, and modern',
   fantasy:    'mystical, epic, and wonder-filled',
   historical: 'authoritative, educational, and vivid',
+  realistic:  'grounded, journalistic, and matter-of-fact — like a true-crime documentary',
 };
 
 const WORD_TARGET = {
-  '30-40': '75 to 100 words',
-  '60-70': '150 to 175 words',
+  '30-40': '80 to 100 words',
+  '60-70': '160 to 185 words',
 };
 
 // ── 60-minute long-form script generation ─────────────────────────────────────
@@ -74,7 +75,7 @@ async function geminiText(prompt, maxTokens = 3500) {
 export async function generateLongScript(topic) {
   if (!geminiModel) {
     console.warn('[GeminiReel] Model not initialised — falling back to OpenAI');
-    return openaiGenerateScript(topic);
+    return openaiGenerateScript(topic, { duration: '60-70' });
   }
 
   try {
@@ -128,8 +129,44 @@ Instructions:
     return fullScript;
   } catch (err) {
     console.error('[GeminiReel] generateLongScript failed:', err.message, '— falling back to OpenAI');
-    return openaiGenerateScript(topic);
+    return openaiGenerateScript(topic, { duration: '60-70' });
   }
+}
+
+// ── Visual scene rewriting ────────────────────────────────────────────────────
+
+/**
+ * Convert narration script chunks into cinematic visual scene descriptions
+ * suitable as prompts for AI video generation.
+ * All chunks are processed in parallel. Falls back to original chunk on any error.
+ *
+ * @param {string[]} chunks   - raw narration text chunks
+ * @param {string}   artStyle - e.g. 'cinematic', 'creepy'
+ * @returns {Promise<string[]>} visual scene descriptions (same length as chunks)
+ */
+export async function rewriteChunksAsVisualScenes(chunks, artStyle = 'cinematic') {
+  if (!geminiModel) return chunks;
+
+  const results = await Promise.all(chunks.map(async chunk => {
+    const tone = TONE_MAP[artStyle] || TONE_MAP.cinematic;
+    const prompt = `You are a cinematographer writing visual prompts for an AI video generator.
+Convert this narration into a vivid visual scene description for a ${tone} style video.
+
+Narration: "${chunk}"
+
+Rules:
+- Describe what the CAMERA SEES — lighting, colors, movement, atmosphere, subjects
+- Under 100 words
+- Vertical 9:16 portrait composition
+- No text overlays, no subtitles, no dialogue
+
+Output only the visual scene description.`;
+    try { return await geminiText(prompt, 180); }
+    catch { return chunk; }
+  }));
+
+  console.log(`[GeminiReel] Rewrote ${chunks.length} script chunks as visual scenes`);
+  return results;
 }
 
 // ── Main export ───────────────────────────────────────────────────────────────
@@ -145,7 +182,7 @@ Instructions:
 export async function generateScript(topic, { language = 'en', artStyle = 'cinematic', duration = '30-40', exScript = '' } = {}) {
   if (!geminiModel) {
     console.warn('[GeminiReel] Model not initialised — falling back to OpenAI');
-    return openaiGenerateScript(topic);
+    return openaiGenerateScript(topic, { language, artStyle, duration, exScript });
   }
 
   const lang       = LANG_MAP[language] || 'English';
@@ -156,24 +193,27 @@ export async function generateScript(topic, { language = 'en', artStyle = 'cinem
     ? `\nStyle & tone reference — match this voice exactly:\n"""\n${exScript.trim()}\n"""\n`
     : '';
 
-  const prompt = `You are a viral faceless short-form video scriptwriter.
-Write a script about: "${topic}"
+  const prompt = `You are a world-class documentary narrator telling gripping true stories for short-form video.
+Write a "Based on a True Story" narrative about: "${topic}"
 
 Requirements:
 - Language: ${lang}
 - Tone: ${tone}
 - Length: ${wordTarget}
-- Format: short punchy lines, one sentence per line (subtitle-ready)
+- Format: one sentence per line — flowing story narrative, not bullet points
+- Open with a jaw-dropping real fact or event that immediately hooks the viewer
+- Build tension through the middle — reveal surprising details, real names, real places, real consequences
+- Write as if narrating a documentary — authoritative, vivid, and emotionally gripping
+- Close with a fact or twist that makes the viewer reflect or share
 - NO emojis, hashtags, stage directions, or speaker labels
-- First line must be a powerful hook that stops the scroll
-- Last line must be a memorable, shareable closing
+- NO phrases like "Based on a true story" — just tell it as the narrator
 ${styleSection}
-Output only the script lines. Nothing else.`;
+Output only the narration sentences. Nothing else.`;
 
   try {
     const result = await geminiModel.generateContent({
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.88, maxOutputTokens: 450 },
+      generationConfig: { temperature: 0.88, maxOutputTokens: 600 },
     });
 
     const text = result.response?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();

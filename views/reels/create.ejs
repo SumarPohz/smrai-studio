@@ -324,6 +324,7 @@
         ['urban',      'Urban',       'linear-gradient(160deg,#111827,#374151,#6b7280)',  '🏙️'],
         ['fantasy',    'Fantasy',     'linear-gradient(160deg,#4a044e,#a21caf,#e879f9)',  '🔮'],
         ['historical', 'Historical',  'linear-gradient(160deg,#451a03,#92400e,#d97706)',  '📜'],
+        ['realistic',  'Realistic',   'linear-gradient(160deg,#1c2526,#2d4a3e,#4a7c59)',  '📷'],
       ].forEach((a,ai) => { %>
       <div class="art-item <%= ai===0?'selected':'' %>" onclick="pickArt('<%= a[0] %>')" data-art="<%= a[0] %>">
         <div class="art-thumb" style="background:<%= a[2] %>;border-radius:9px;position:relative;overflow:hidden;">
@@ -345,106 +346,17 @@
     </div>
   </div>
 
-  <!-- ── STEP 5: Caption Style + Effects & Duration ───────────────────────── -->
+  <!-- ── STEP 5: Effects & Duration ───────────────────────────────────────── -->
   <div id="step-5" class="wiz-step" style="display:none;">
-    <h2 class="step-title">Caption &amp; Effects <span class="step-badge">Step 5 of 5</span></h2>
-    <p class="step-sub">Choose your caption style, effects, and video duration</p>
+    <h2 class="step-title">Effects &amp; Duration <span class="step-badge">Step 5 of 5</span></h2>
+    <p class="step-sub">Choose effects and video duration — captions are added automatically</p>
     <div id="s5err" class="err-box"></div>
 
     <div class="wiz-body">
-    <div style="font-size:14px;font-weight:700;color:#111827;margin-bottom:12px;">Caption Style</div>
-    <div class="cap-grid">
-      <!-- Bold Stroke -->
-      <div class="cap-item selected" onclick="pickCap('bold-stroke')" data-cap="bold-stroke">
-        <div class="cap-preview">
-          <div class="cap-preview-bg" style="background:linear-gradient(160deg,#1e293b,#334155,#1e3a5f);"></div>
-          <div class="cap-preview-scrim"></div>
-          <div class="cap-preview-text">
-            <span style="font-size:.95rem;font-weight:900;color:#fff;text-shadow:-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000,2px 2px 0 #000;letter-spacing:.03em;">CAPTION TEXT</span>
-          </div>
-        </div>
-        <div class="cap-label">Bold Stroke</div>
-      </div>
-      <!-- Red Highlight -->
-      <div class="cap-item" onclick="pickCap('red-highlight')" data-cap="red-highlight">
-        <div class="cap-preview">
-          <div class="cap-preview-bg" style="background:linear-gradient(160deg,#1c0a00,#3b1f0a,#5c2e0e);"></div>
-          <div class="cap-preview-scrim"></div>
-          <div class="cap-preview-text">
-            <span style="font-size:.9rem;font-weight:900;color:#fff;background:rgba(220,38,38,0.9);padding:3px 10px;border-radius:3px;display:inline-block;">CAPTION TEXT</span>
-          </div>
-        </div>
-        <div class="cap-label">Red Highlight</div>
-      </div>
-      <!-- Sleek -->
-      <div class="cap-item" onclick="pickCap('sleek')" data-cap="sleek">
-        <div class="cap-preview">
-          <div class="cap-preview-bg" style="background:linear-gradient(160deg,#111827,#374151,#6b7280);"></div>
-          <div class="cap-preview-scrim"></div>
-          <div class="cap-preview-text">
-            <span style="font-size:.8rem;font-weight:500;color:#fff;letter-spacing:.08em;text-shadow:0 1px 6px rgba(0,0,0,.9),1px 1px 0 #000;">CAPTION TEXT</span>
-          </div>
-        </div>
-        <div class="cap-label">Sleek</div>
-      </div>
-      <!-- Karaoke -->
-      <div class="cap-item" onclick="pickCap('karaoke')" data-cap="karaoke">
-        <div class="cap-preview">
-          <div class="cap-preview-bg" style="background:linear-gradient(160deg,#1e1b4b,#3730a3,#6d28d9);"></div>
-          <div class="cap-preview-scrim"></div>
-          <div class="cap-preview-text">
-            <span style="font-size:.9rem;font-weight:900;color:#fff;background:rgba(109,40,217,0.95);padding:3px 10px;border-radius:5px;display:inline-block;">CAPTION TEXT</span>
-          </div>
-        </div>
-        <div class="cap-label">Karaoke</div>
-      </div>
-      <!-- Majestic -->
-      <div class="cap-item" onclick="pickCap('majestic')" data-cap="majestic">
-        <div class="cap-preview">
-          <div class="cap-preview-bg" style="background:linear-gradient(160deg,#451a03,#92400e,#d97706);"></div>
-          <div class="cap-preview-scrim"></div>
-          <div class="cap-preview-text">
-            <span style="font-size:.95rem;font-weight:800;color:#fbbf24;text-shadow:-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000,2px 2px 0 #000;">CAPTION TEXT</span>
-          </div>
-        </div>
-        <div class="cap-label">Majestic</div>
-      </div>
-      <!-- Beast -->
-      <div class="cap-item" onclick="pickCap('beast')" data-cap="beast">
-        <div class="cap-preview">
-          <div class="cap-preview-bg" style="background:linear-gradient(160deg,#0f172a,#1e293b,#0f172a);"></div>
-          <div class="cap-preview-scrim"></div>
-          <div class="cap-preview-text">
-            <span style="font-size:1rem;font-weight:900;color:#facc15;text-shadow:-3px -3px 0 #000,3px -3px 0 #000,-3px 3px 0 #000,3px 3px 0 #000;letter-spacing:.04em;">CAPTION TEXT</span>
-          </div>
-        </div>
-        <div class="cap-label">Beast</div>
-      </div>
-      <!-- Elegant -->
-      <div class="cap-item" onclick="pickCap('elegant')" data-cap="elegant">
-        <div class="cap-preview">
-          <div class="cap-preview-bg" style="background:linear-gradient(160deg,#0f2027,#203a43,#2c5364);"></div>
-          <div class="cap-preview-scrim"></div>
-          <div class="cap-preview-text">
-            <span style="font-size:.75rem;font-weight:300;color:#fff;letter-spacing:.3em;text-shadow:0 1px 8px rgba(0,0,0,.8);">CAPTION TEXT</span>
-          </div>
-        </div>
-        <div class="cap-label">Elegant</div>
-      </div>
-      <!-- Clarity -->
-      <div class="cap-item" onclick="pickCap('clarity')" data-cap="clarity">
-        <div class="cap-preview">
-          <div class="cap-preview-bg" style="background:linear-gradient(160deg,#1a1a2e,#16213e,#0f3460);"></div>
-          <div class="cap-preview-scrim"></div>
-          <div class="cap-preview-text">
-            <span style="font-size:.85rem;font-weight:500;color:#fff;background:rgba(0,0,0,0.6);padding:4px 10px;border-radius:3px;display:inline-block;">CAPTION TEXT</span>
-          </div>
-        </div>
-        <div class="cap-label">Clarity</div>
-      </div>
+    <div class="cap-grid" style="display:none"><!-- caption picker removed -->
     </div>
 
-    <!-- Effects & Duration — merged into Step 5 -->
+    <!-- Effects & Duration -->
     <div style="margin-top:26px;padding-top:22px;border-top:1px solid #f3f4f6;">
       <div style="font-size:14px;font-weight:700;color:#111827;margin-bottom:14px;">Effects &amp; Duration</div>
       <div class="effect-item">
@@ -466,9 +378,9 @@
           Video Duration
           <svg width="14" height="14" fill="none" stroke="#9ca3af" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
         </label>
-        <select id="durSel" class="wiz-select">
-          <option value="30-40">Short (~30 sec)</option>
-          <option value="60-70">Long (~1 min)</option>
+        <select id="durSel" class="wiz-select" onchange="refreshReelPrice()">
+          <option value="30-40">Short (~45 sec) — ₹350</option>
+          <option value="60-70">Long (~90 sec) — ₹700</option>
         </select>
       </div>
     </div>
@@ -556,9 +468,41 @@
 <script>
 const S = { step:1, niche:'', exScript:'', voice:'alloy', music:[], art:'cinematic', cap:'bold-stroke', effects:{ filmGrain:false, shake:false, animatedHook:false } };
 const needsPayment = <%= totalReels %> > 0;
+
+function saveWizardState() {
+  try {
+    localStorage.setItem('reelWizardState', JSON.stringify({
+      ...S,
+      topic:       document.getElementById('topicInput')?.value  || '',
+      customNiche: document.getElementById('customNiche')?.value || '',
+      language:    document.getElementById('langSel')?.value     || 'en',
+      duration:    document.getElementById('durSel')?.value      || '30-40',
+      savedAt:     Date.now(),
+    }));
+  } catch {}
+}
+function clearWizardState() {
+  try { localStorage.removeItem('reelWizardState'); } catch {}
+}
 let payAppliedCoupon = null;
-let payFinalAmount   = 30;
-let reelBasePrice    = 30; // overwritten on DOMContentLoaded from server
+let payFinalAmount   = 350;
+let reelBasePrice    = 350; // overwritten when duration changes or on DOMContentLoaded
+
+async function refreshReelPrice() {
+  try {
+    const dur = document.getElementById('durSel')?.value || '30-40';
+    const pr  = await fetch(`/api/reels/video-pay/price?duration=${dur}`).then(r => r.json());
+    reelBasePrice  = pr.price || (dur === '60-70' ? 700 : 350);
+    payFinalAmount = reelBasePrice;
+    payAppliedCoupon = null;
+    document.getElementById('payOriginalPrice').style.display = 'none';
+    document.getElementById('payOriginalPrice').textContent   = '₹' + reelBasePrice;
+    document.getElementById('payFinalPrice').textContent      = '₹' + reelBasePrice;
+    document.getElementById('payBtnTxt').textContent          = `Pay ₹${reelBasePrice} & Generate`;
+    const msgEl = document.getElementById('payCouponMsg');
+    if (msgEl) msgEl.textContent = '';
+  } catch {}
+}
 
 // ── Voice preview player ──────────────────────────────────────────────────────
 const PLAY_ICON  = `<svg width="11" height="11" fill="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>`;
@@ -679,6 +623,7 @@ function go(n) {
   document.getElementById('step-'+n).classList.add('active');
   updProg(n);
   window.scrollTo({top:0,behavior:'smooth'});
+  saveWizardState();
 }
 
 function sTab(step, panel) {
@@ -692,32 +637,34 @@ function sTab(step, panel) {
 function pickNiche(n) {
   document.querySelectorAll('.niche-item').forEach(el => el.classList.remove('selected'));
   document.querySelector('[data-niche="'+n+'"]').classList.add('selected');
-  S.niche = n; hideErr('s1err');
+  S.niche = n; hideErr('s1err'); saveWizardState();
 }
 function pickVoice(v) {
   document.querySelectorAll('.voice-item').forEach(el => el.classList.remove('selected'));
   document.querySelector('[data-voice="'+v+'"]').classList.add('selected');
-  S.voice = v;
+  S.voice = v; saveWizardState();
 }
 function toggleMusic(id) {
   const el = document.querySelector('[data-music="'+id+'"]');
   el.classList.toggle('selected');
   const i = S.music.indexOf(id);
   if(i===-1) S.music.push(id); else S.music.splice(i,1);
+  saveWizardState();
 }
 function pickArt(id) {
   document.querySelectorAll('.art-item').forEach(el => el.classList.remove('selected'));
   document.querySelector('[data-art="'+id+'"]').classList.add('selected');
-  S.art = id;
+  S.art = id; saveWizardState();
 }
 function toggleEffect(key, btn) {
   S.effects[key] = !S.effects[key];
   btn.classList.toggle('on', S.effects[key]);
+  saveWizardState();
 }
 function pickCap(id) {
   document.querySelectorAll('.cap-item').forEach(el => el.classList.remove('selected'));
   document.querySelector('[data-cap="'+id+'"]').classList.add('selected');
-  S.cap = id;
+  S.cap = id; saveWizardState();
 }
 function cc(inputId, countId, max) {
   document.getElementById(countId).textContent = document.getElementById(inputId).value.length + '/' + max;
@@ -781,7 +728,7 @@ async function startVideoPay() {
   try {
     const orderRes = await fetch('/api/reels/video-pay/create-order', {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ couponCode: payAppliedCoupon?.code || null, useWallet }),
+      body: JSON.stringify({ couponCode: payAppliedCoupon?.code || null, useWallet, duration: document.getElementById('durSel')?.value || '30-40' }),
     });
     const order = await orderRes.json();
     if (!order.success) throw new Error(order.message || 'Order creation failed');
@@ -861,7 +808,6 @@ async function doGenerate(paymentFields) {
         voice:           S.voice,
         language:        document.getElementById('langSel')?.value || 'en',
         artStyle:        S.art,
-        captionStyle:    S.cap,
         duration:        document.getElementById('durSel')?.value || '30-40',
         music:           S.music,
         effects:         S.effects,
@@ -872,6 +818,7 @@ async function doGenerate(paymentFields) {
     });
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || 'Server error. Please try again.');
+    clearWizardState();
     window.location.href = '/reels/loading/' + data.reel_id;
   } catch(err) {
     showErr('s5err', err.message);
@@ -939,15 +886,48 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch(e) {}
   }
 
-  // Fetch admin-set reel price
-  try {
-    const pr = await fetch('/api/reels/video-pay/price').then(r => r.json());
-    reelBasePrice  = pr.price || 30;
-    payFinalAmount = reelBasePrice;
-    document.getElementById('payOriginalPrice').textContent = '₹' + reelBasePrice;
-    document.getElementById('payFinalPrice').textContent    = '₹' + reelBasePrice;
-    document.getElementById('payBtnTxt').textContent        = `Pay ₹${reelBasePrice} & Generate`;
-  } catch {}
+  // Restore general wizard state from localStorage (handles refresh / network drop)
+  if (!savedState && !pending) {
+    const wizLocal = localStorage.getItem('reelWizardState');
+    if (wizLocal) {
+      try {
+        const ws = JSON.parse(wizLocal);
+        if (Date.now() - (ws.savedAt || 0) < 24 * 60 * 60 * 1000) {
+          if (ws.topic)    { const el = document.getElementById('topicInput'); if (el) el.value = ws.topic; }
+          if (ws.language) { const el = document.getElementById('langSel');   if (el) el.value = ws.language; }
+          if (ws.duration) { const el = document.getElementById('durSel');    if (el) el.value = ws.duration; }
+          if (ws.niche) {
+            const nicheEl = document.querySelector('[data-niche="'+ws.niche+'"]');
+            if (nicheEl) { pickNiche(ws.niche); }
+            else { sTab(1,'b'); const cn = document.getElementById('customNiche'); if (cn) cn.value = ws.customNiche || ws.niche; S.niche = ws.niche; }
+          }
+          if (ws.exScript) S.exScript = ws.exScript;
+          if (ws.voice)    pickVoice(ws.voice);
+          if (ws.music?.length) ws.music.forEach(id => { if (!S.music.includes(id)) toggleMusic(id); });
+          if (ws.art)      pickArt(ws.art);
+          if (ws.cap) {
+            document.querySelectorAll('.cap-item').forEach(el => el.classList.toggle('selected', el.dataset.cap === ws.cap));
+            S.cap = ws.cap;
+          }
+          if (ws.effects) Object.keys(ws.effects).forEach(k => {
+            if (ws.effects[k] !== S.effects[k]) {
+              S.effects[k] = ws.effects[k];
+              document.querySelector('[data-eff="'+k+'"]')?.classList.toggle('active', ws.effects[k]);
+            }
+          });
+          if (ws.step > 1) {
+            document.getElementById('step-1').classList.remove('active');
+            S.step = ws.step;
+            document.getElementById('step-'+ws.step).classList.add('active');
+            updProg(ws.step);
+          }
+        }
+      } catch {}
+    }
+  }
+
+  // Fetch admin-set reel price for current duration
+  await refreshReelPrice();
 
   updProg(1);
   const tp = qp.get('topic');
@@ -956,6 +936,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (match) { pickNiche(tp); }
     else { sTab(1,'b'); document.getElementById('customNiche').value=tp; cc('customNiche','cc1',5000); S.niche=tp; }
   }
+
+  // Auto-save state when user types topic or custom niche
+  document.getElementById('topicInput')?.addEventListener('input', saveWizardState);
+  document.getElementById('customNiche')?.addEventListener('input', saveWizardState);
 
 });
 </script>

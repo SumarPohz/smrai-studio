@@ -10,6 +10,8 @@ import {
   getPricingPage,
   generateReel,
   getReelStatus,
+  approveReel,
+  regenerateScript,
 } from '../controllers/reelController.js';
 import { generateVoicePreview, AVAILABLE_VOICES } from '../services/ttsService.js';
 
@@ -53,8 +55,10 @@ export default function reelsRouter(db) {
   router.get('/pricing',     (req, res) => getPricingPage(req, res, db));
 
   // ── API routes ───────────────────────────────────────────────────────────
-  router.post('/generate',   (req, res) => generateReel(req, res, db));
-  router.get('/:id/status',  (req, res) => getReelStatus(req, res, db));
+  router.post('/generate',              (req, res) => generateReel(req, res, db));
+  router.get('/:id/status',             (req, res) => getReelStatus(req, res, db));
+  router.post('/:id/approve',           (req, res) => approveReel(req, res, db));
+  router.post('/:id/regenerate-script', (req, res) => regenerateScript(req, res, db));
 
   // Custom music upload — returns absolute server path
   router.post('/upload-music', customMusicUpload.single('file'), (req, res) => {

@@ -109,6 +109,63 @@
     transition: opacity 0.2s;
   }
   .btn-retry:hover { opacity: 0.85; }
+
+  /* Script approval card */
+  .approval-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(34,197,94,0.12);
+    border: 1px solid rgba(34,197,94,0.3);
+    color: #86efac;
+    font-size: 12px; font-weight: 600;
+    padding: 4px 10px; border-radius: 20px;
+    margin-bottom: 12px;
+  }
+  .script-textarea {
+    width: 100%;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    color: #e4e4e7;
+    font-size: 14px;
+    line-height: 1.7;
+    padding: 14px;
+    resize: vertical;
+    min-height: 200px;
+    outline: none;
+    transition: border-color 0.2s;
+    font-family: inherit;
+  }
+  .script-textarea:focus { border-color: var(--accent2); }
+  .script-textarea[readonly] { color: #a1a1aa; cursor: default; }
+  .btn-approve {
+    width: 100%;
+    padding: 15px;
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    border: none; border-radius: 12px;
+    color: white; font-weight: 700; font-size: 16px;
+    cursor: pointer; transition: opacity 0.2s;
+  }
+  .btn-approve:hover:not(:disabled) { opacity: 0.88; }
+  .btn-approve:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-secondary {
+    padding: 10px 18px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    color: #a1a1aa; font-size: 14px; font-weight: 500;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .btn-secondary:hover:not(:disabled) { background: rgba(255,255,255,0.1); color: #e4e4e7; }
+  .btn-secondary:disabled { opacity: 0.4; cursor: not-allowed; }
+  .cost-note {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(251,191,36,0.08);
+    border: 1px solid rgba(251,191,36,0.2);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 13px; color: #fcd34d;
+    margin-bottom: 16px;
+  }
 </style>
 
 <!-- NProgress bar -->
@@ -119,42 +176,43 @@
   <div class="orb" style="width:400px;height:400px;background:#7c3aed;opacity:0.10;top:-80px;left:-100px;"></div>
   <div class="orb" style="width:350px;height:350px;background:#a855f7;opacity:0.08;bottom:0;right:-80px;"></div>
 
-  <div style="position:relative;z-index:1;max-width:480px;margin:0 auto;padding:40px 16px;">
+  <div style="position:relative;z-index:1;max-width:520px;margin:0 auto;padding:40px 16px;">
 
-    <!-- Failed state (hidden) -->
+    <!-- Failed state -->
     <div id="failedState" style="display:none;">
       <div class="error-card">
         <div style="font-size:48px;margin-bottom:12px;">😔</div>
         <h2 style="font-size:22px;font-weight:700;color:#fca5a5;margin-bottom:8px;">Generation Failed</h2>
-        <p id="failedMsg" style="color:#71717a;font-size:14px;line-height:1.6;">Something went wrong during reel generation.</p>
+        <p id="failedMsg" style="color:#71717a;font-size:14px;line-height:1.6;margin-bottom:16px;">Something went wrong during reel generation.</p>
+        <div id="refundNotice" style="display:none;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.25);border-radius:12px;padding:14px 16px;margin-bottom:16px;text-align:left;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+            <span style="font-size:18px;">💰</span>
+            <span id="refundMsg" style="font-size:14px;font-weight:600;color:#86efac;"></span>
+          </div>
+          <p style="font-size:12px;color:#4ade80;margin:0;">Your wallet has been credited. You can retry or request a refund from your dashboard.</p>
+        </div>
         <a href="/reels/create" class="btn-retry">← Try Again</a>
       </div>
     </div>
 
     <!-- Processing state -->
     <div id="processingState">
-
-      <!-- Spinner -->
       <div class="spinner-wrap">
         <div class="spinner-ring"></div>
         <div class="spinner-ring"></div>
         <div class="spinner-ring"></div>
         <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:22px;">🎬</div>
       </div>
-
-      <!-- Title -->
       <div class="text-center mb-8">
-        <h2 style="font-size:22px;font-weight:700;color:#f4f4f5;margin-bottom:6px;">Crafting Your Reel…</h2>
-        <p style="font-size:14px;color:#52525b;">This usually takes 3–5 minutes (image generation + video render)</p>
+        <h2 style="font-size:22px;font-weight:700;color:#f4f4f5;margin-bottom:6px;" id="processingTitle">Crafting Your Script…</h2>
+        <p style="font-size:14px;color:#52525b;" id="processingSubtitle">Writing your story and generating metadata</p>
       </div>
-
-      <!-- Steps card -->
       <div class="glass-card p-5 mb-6">
         <div class="step-row pending" id="step-0">
           <div class="step-dot">✍️</div>
           <div>
             <div class="step-title">Writing Script</div>
-            <div class="step-sub">SmrAI Studio crafting your story</div>
+            <div class="step-sub">SmrAI crafting your story</div>
           </div>
         </div>
         <div class="step-row pending" id="step-1">
@@ -165,32 +223,59 @@
           </div>
         </div>
         <div class="step-row pending" id="step-2">
-          <div class="step-dot">🖼️</div>
+          <div class="step-dot">🎬</div>
           <div>
-            <div class="step-title">Generating Images</div>
-            <div class="step-sub">Sumar's Studio Creating Visuals</div>
+            <div class="step-title">Generating Video Clips</div>
+            <div class="step-sub">xAI creating cinematic scenes</div>
           </div>
         </div>
         <div class="step-row pending" id="step-3">
           <div class="step-dot">⚡</div>
           <div>
             <div class="step-title">Merging & Exporting</div>
-            <div class="step-sub">SmrAI Studio compiling your reel</div>
+            <div class="step-sub">Compiling your final reel</div>
           </div>
         </div>
       </div>
-
-      <!-- Rotating tip -->
       <div class="tip-box" id="tipBox">💡 Tip: Specific topics produce better reels than generic ones</div>
-
     </div>
+
+    <!-- Script approval state -->
+    <div id="approvalState" style="display:none;">
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="font-size:40px;margin-bottom:10px;">📝</div>
+        <div class="approval-badge">✓ Script Ready</div>
+        <h2 style="font-size:22px;font-weight:700;color:#f4f4f5;margin-bottom:8px;">Review Your Script</h2>
+        <p style="font-size:14px;color:#71717a;line-height:1.6;">Read your script before we generate the video.<br>Edit or regenerate it for free — video generation only starts on your approval.</p>
+      </div>
+
+      <div class="glass-card p-5 mb-4">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <span style="font-size:13px;font-weight:600;color:#a1a1aa;text-transform:uppercase;letter-spacing:0.05em;">Your Script</span>
+          <button class="btn-secondary" id="editToggleBtn" onclick="toggleEdit()">✏️ Edit</button>
+        </div>
+        <textarea id="scriptTextarea" class="script-textarea" readonly></textarea>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-bottom:16px;">
+        <button class="btn-secondary" id="regenBtn" onclick="regenScript()" style="flex:1;">
+          🔄 Regenerate Script
+        </button>
+      </div>
+
+      <button class="btn-approve" id="approveBtn" onclick="approveScript()">
+        Generate Video →
+      </button>
+    </div>
+
   </div>
 </div>
 
 <script>
-const REEL_ID = <%= reelId %>;
-const POLL_MS = 3000;
+const REEL_ID  = <%= reelId %>;
+const POLL_MS  = 3000;
 let pollTimer, tipTimer, ticks = 0;
+let phase2Started = false;
 
 const TIPS = [
   '💡 Tip: Short, punchy scripts perform best on TikTok and Reels',
@@ -219,19 +304,26 @@ function setStepState(index, state) {
 }
 
 function animateSteps() {
-  // Roughly: step changes every ~22s (7–8 polls × 3s)
-  const step = Math.min(Math.floor(ticks / 7), 3);
-  for (let i = 0; i < 4; i++) {
-    if (i < step)      setStepState(i, 'done');
-    else if (i === step) setStepState(i, 'active');
-    else                setStepState(i, 'pending');
+  if (phase2Started) {
+    // Phase 2: step 0 done, animate steps 1-3
+    setStepState(0, 'done');
+    const step = Math.min(1 + Math.floor(ticks / 8), 3);
+    for (let i = 1; i < 4; i++) {
+      if (i < step)       setStepState(i, 'done');
+      else if (i === step) setStepState(i, 'active');
+      else                 setStepState(i, 'pending');
+    }
+  } else {
+    // Phase 1: only step 0 active
+    setStepState(0, 'active');
   }
 }
 
 function animateProgress() {
-  // Slowly advance the NProgress bar up to ~85% while processing
   const bar = document.getElementById('nprogress');
-  const pct = Math.min(15 + ticks * 3, 85);
+  const pct = phase2Started
+    ? Math.min(25 + ticks * 3, 85)
+    : Math.min(5 + ticks * 3, 18);
   bar.style.width = pct + '%';
 }
 
@@ -244,10 +336,16 @@ async function poll() {
     const res  = await fetch(`/reels/${REEL_ID}/status`);
     const data = await res.json();
 
+    if (data.status === 'script_ready') {
+      clearInterval(pollTimer);
+      clearInterval(tipTimer);
+      showApprovalUI(data.script || '');
+      return;
+    }
+
     if (data.status === 'completed') {
       clearInterval(pollTimer);
       clearInterval(tipTimer);
-      // Complete the progress bar
       document.getElementById('nprogress').style.width = '100%';
       setTimeout(() => { window.location.href = `/reels/result/${REEL_ID}`; }, 400);
       return;
@@ -258,11 +356,94 @@ async function poll() {
       clearInterval(tipTimer);
       document.getElementById('nprogress').style.background = '#ef4444';
       document.getElementById('processingState').style.display = 'none';
+      document.getElementById('approvalState').style.display = 'none';
       document.getElementById('failedState').style.display = 'block';
       document.getElementById('failedMsg').textContent = data.error_message || 'An unexpected error occurred.';
+      if (data.refunded_amount) {
+        document.getElementById('refundNotice').style.display = 'block';
+        document.getElementById('refundMsg').textContent = `₹${data.refunded_amount} refunded to your wallet`;
+      }
     }
   } catch (e) {
     console.warn('[Poll] error:', e.message);
+  }
+}
+
+function showApprovalUI(script) {
+  document.getElementById('processingState').style.display = 'none';
+  document.getElementById('scriptTextarea').value = script;
+  document.getElementById('approvalState').style.display = 'block';
+  document.getElementById('nprogress').style.width = '20%';
+}
+
+function toggleEdit() {
+  const ta  = document.getElementById('scriptTextarea');
+  const btn = document.getElementById('editToggleBtn');
+  const isReadOnly = ta.hasAttribute('readonly');
+  if (isReadOnly) {
+    ta.removeAttribute('readonly');
+    ta.focus();
+    btn.textContent = '✓ Done';
+  } else {
+    ta.setAttribute('readonly', '');
+    btn.textContent = '✏️ Edit';
+  }
+}
+
+async function regenScript() {
+  const btn = document.getElementById('regenBtn');
+  btn.disabled = true;
+  btn.textContent = 'Regenerating…';
+  try {
+    const res  = await fetch(`/reels/${REEL_ID}/regenerate-script`, { method: 'POST' });
+    const data = await res.json();
+    if (data.script) {
+      document.getElementById('scriptTextarea').value = data.script;
+      // Reset to read-only after regeneration
+      document.getElementById('scriptTextarea').setAttribute('readonly', '');
+      document.getElementById('editToggleBtn').textContent = '✏️ Edit';
+    } else {
+      alert(data.error || 'Failed to regenerate. Please try again.');
+    }
+  } catch (e) {
+    alert('Network error. Please try again.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔄 Regenerate Script';
+  }
+}
+
+async function approveScript() {
+  const btn    = document.getElementById('approveBtn');
+  const script = document.getElementById('scriptTextarea').value.trim();
+  btn.disabled = true;
+  btn.textContent = 'Starting video generation…';
+
+  try {
+    const res = await fetch(`/reels/${REEL_ID}/approve`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ script }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || 'Approval failed');
+
+    // Switch back to processing state and resume polling
+    phase2Started = true;
+    ticks = 0;
+    document.getElementById('approvalState').style.display = 'none';
+    document.getElementById('processingState').style.display = 'block';
+    document.getElementById('processingTitle').textContent = 'Generating Your Reel…';
+    document.getElementById('processingSubtitle').textContent = 'This usually takes 3–5 minutes';
+    document.getElementById('nprogress').style.width = '22%';
+    setStepState(0, 'done');
+
+    pollTimer = setInterval(poll, POLL_MS);
+    tipTimer  = setInterval(rotateTip, 8000);
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = 'Generate Video →';
+    alert(e.message);
   }
 }
 

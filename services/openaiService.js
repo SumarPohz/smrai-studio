@@ -11,40 +11,70 @@ function getClient() {
   return _client;
 }
 
+const LANG_MAP = {
+  en: 'English', hi: 'Hindi', es: 'Spanish', fr: 'French',
+  de: 'German', pt: 'Portuguese', ja: 'Japanese', ko: 'Korean',
+};
+
+const TONE_MAP = {
+  cinematic:  'dramatic and suspenseful, like a movie trailer narration',
+  creepy:     'dark, eerie, and unsettling — builds dread',
+  vibrant:    'energetic, upbeat, and punchy',
+  disney:     'whimsical, warm, and family-friendly',
+  nature:     'peaceful, awe-inspiring, and grounded',
+  urban:      'gritty, fast-paced, and modern',
+  fantasy:    'mystical, epic, and wonder-filled',
+  historical: 'authoritative, educational, and vivid',
+  realistic:  'grounded, journalistic, and matter-of-fact — like a true-crime documentary',
+};
+
+const WORD_TARGET = {
+  '30-40': { words: '80 to 100 words', tokens: 180 },
+  '60-70': { words: '160 to 185 words', tokens: 320 },
+};
+
 /**
- * STEP 1 — Generate a viral, line-by-line reel script (~45–60 seconds)
- * Each output line becomes a subtitle in the final video.
+ * STEP 1 — Generate a "Based on a True Story" documentary-narrator reel script.
+ * Supports short (30-40s) and long (60-70s) durations.
  *
  * @param {string} topic
+ * @param {{ language?: string, artStyle?: string, duration?: string, exScript?: string }} opts
  * @returns {Promise<string>} script text
  */
-export async function generateScript(topic) {
+export async function generateScript(topic, { language = 'en', artStyle = 'cinematic', duration = '30-40', exScript = '' } = {}) {
+  const lang       = LANG_MAP[language] || 'English';
+  const tone       = TONE_MAP[artStyle]  || TONE_MAP.cinematic;
+  const target     = WORD_TARGET[duration] || WORD_TARGET['30-40'];
+
+  const styleSection = exScript && exScript.trim().length > 10
+    ? `\nStyle & tone reference — match this voice exactly:\n"""\n${exScript.trim()}\n"""`
+    : '';
+
   const res = await getClient().chat.completions.create({
     model: SCRIPT_MODEL,
     messages: [
       {
         role: 'system',
-        content:
-          'You are a viral short-form video scriptwriter. ' +
-          'Write scripts line-by-line where each line becomes a subtitle. ' +
-          'No emojis, no hashtags, no stage directions. Plain spoken text only.',
+        content: 'You are a world-class documentary narrator telling gripping true stories for short-form video. Write engaging spoken-word prose. No emojis, no hashtags, no stage directions, no speaker labels.',
       },
       {
         role: 'user',
         content:
-          `Topic: "${topic}"\n\n` +
-          'Write a 45–60 second faceless reel script.\n' +
-          'Structure:\n' +
-          '1. Hook — one powerful attention-grabbing opening line\n' +
-          '2. Build curiosity — 2-3 lines\n' +
-          '3. Main content — fast-paced, short punchy lines\n' +
-          '4. Twist or insight — one surprising line\n' +
-          '5. Ending — one memorable closing line\n\n' +
-          'Tone: emotional, engaging, slightly dramatic.\n' +
-          'Output: plain text, one line per subtitle, no labels or emojis.',
+          `Write a "Based on a True Story" narrative about: "${topic}"\n\n` +
+          `Language: ${lang}\n` +
+          `Tone: ${tone}\n` +
+          `Length: ${target.words}\n` +
+          `Format: one sentence per line — flowing story narrative, not bullet points\n` +
+          `- Open with a jaw-dropping real fact or event that immediately hooks the viewer\n` +
+          `- Build tension through the middle — reveal surprising details, real names, real places, real consequences\n` +
+          `- Write as if narrating a documentary — authoritative, vivid, and emotionally gripping\n` +
+          `- Close with a fact or twist that makes the viewer reflect or share\n` +
+          `- NO phrases like "Based on a true story" — just tell it as the narrator\n` +
+          `${styleSection}\n` +
+          `Output only the narration sentences. Nothing else.`,
       },
     ],
-    max_tokens: 350,
+    max_tokens: target.tokens,
     temperature: 0.85,
   });
 

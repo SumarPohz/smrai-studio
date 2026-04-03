@@ -53,21 +53,85 @@ export async function generateVoicePreview(voice) {
  * @param {number} reelId - Used to name the output file
  * @returns {Promise<string>} absolute path to saved MP3
  */
-export async function generateTTS(script, voice, reelId) {
+export async function generateTTS(script, voice, reelId, _retries = 2) {
   const safeVoice = AVAILABLE_VOICES.includes(voice) ? voice : 'alloy';
-  const audioPath = path.resolve(`./public/audio/${reelId}.mp3`);
+  const audioDir  = path.resolve('./public/audio');
+  const audioPath = path.join(audioDir, `${reelId}.mp3`);
 
-  const response = await getClient().audio.speech.create({
-    model: 'tts-1',
-    voice: safeVoice,
-    input: script,
-    speed: 1.0,
-  });
+  await fs.mkdir(audioDir, { recursive: true });
 
-  const buffer = Buffer.from(await response.arrayBuffer());
-  await fs.writeFile(audioPath, buffer);
+  try {
+    const response = await getClient().audio.speech.create({
+      model: 'tts-1',
+      voice: safeVoice,
+      input: script,
+      speed: 1.0,
+    });
 
-  return audioPath;
+    const buffer = Buffer.from(await response.arrayBuffer());
+    await fs.writeFile(audioPath, buffer);
+    return audioPath;
+  } catch (err) {
+    if (_retries > 0 && (err.message === 'terminated' || err.code === 'ECONNRESET')) {
+      console.warn(`[TTS] Request terminated, retrying (${_retries} left)…`);
+      await new Promise(r => setTimeout(r, 3000));
+      return generateTTS(script, voice, reelId, _retries - 1);
+    }
+    throw err;
+  }
+}
+
+/**
+ * Transcribe a TTS audio file with Whisper to get accurate word-level timestamps,
+ * then group words into sentence segments at punctuation boundaries.
+ * Returns null on any error — caller should fall back to WPM-based timing.
+ *
+ * @param {string} audioPath - absolute path to the TTS MP3
+ * @returns {Promise<Array<{text:string, start:number, end:number}>|null>}
+ */
+export async function getWordTimestamps(audioPath) {
+  try {
+    const { createReadStream } = await import('fs');
+    const resp = await getClient().audio.transcriptions.create({
+      file:                    createReadStream(audioPath),
+      model:                   'whisper-1',
+      response_format:         'verbose_json',
+      timestamp_granularities: ['word'],
+    });
+
+    if (!resp.words?.length) return null;
+
+    const segments = [];
+    let segStart = resp.words[0].start;
+    let segWords = [];
+
+    for (const w of resp.words) {
+      segWords.push(w.word);
+      if (/[.!?]['"]?$/.test(w.word.trim())) {
+        segments.push({
+          text:  segWords.join(' '),
+          start: +segStart.toFixed(2),
+          end:   +w.end.toFixed(2),
+        });
+        segStart = w.end;
+        segWords = [];
+      }
+    }
+    // Flush any trailing words not ending in punctuation
+    if (segWords.length) {
+      segments.push({
+        text:  segWords.join(' '),
+        start: +segStart.toFixed(2),
+        end:   +resp.words.at(-1).end.toFixed(2),
+      });
+    }
+
+    console.log(`[TTS] Whisper timestamps: ${segments.length} segments, ${resp.words.length} words`);
+    return { segments, words: resp.words };
+  } catch (err) {
+    console.warn('[TTS] getWordTimestamps failed, falling back to WPM:', err.message);
+    return null;
+  }
 }
 
 // ── Long-form TTS (60-min scripts) ────────────────────────────────────────────

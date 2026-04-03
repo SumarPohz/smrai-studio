@@ -471,17 +471,32 @@
           <div class="adm-price-card">
             <div class="adm-price-card-icon adm-icon-purple"><i class="fas fa-film"></i></div>
             <div class="adm-price-card-info">
-              <h3>AI Reel Video</h3>
-              <p>Per-video price charged to users on the Reels create page</p>
+              <h3>AI Reel — Short Video</h3>
+              <p>~45 sec reel price charged to users</p>
             </div>
             <div class="adm-price-card-input-wrap">
               <span class="adm-price-currency">₹</span>
-              <input type="number" class="adm-price-input" id="price_reel_video" min="1" step="1" placeholder="30" />
+              <input type="number" class="adm-price-input" id="price_reel_short" min="1" step="1" placeholder="350" />
             </div>
-            <button class="adm-price-save-btn" data-key="price_reel_video">
+            <button class="adm-price-save-btn" data-key="price_reel_short">
               <i class="fas fa-check"></i> Save
             </button>
-            <span class="adm-price-status" id="status_price_reel_video" hidden></span>
+            <span class="adm-price-status" id="status_price_reel_short" hidden></span>
+          </div>
+
+          <div class="adm-price-card">
+            <div class="adm-price-card-info">
+              <h3>AI Reel — Long Video</h3>
+              <p>~90 sec reel price charged to users</p>
+            </div>
+            <div class="adm-price-card-input-wrap">
+              <span class="adm-price-currency">₹</span>
+              <input type="number" class="adm-price-input" id="price_reel_long" min="1" step="1" placeholder="700" />
+            </div>
+            <button class="adm-price-save-btn" data-key="price_reel_long">
+              <i class="fas fa-check"></i> Save
+            </button>
+            <span class="adm-price-status" id="status_price_reel_long" hidden></span>
           </div>
 
         </div><!-- /adm-price-grid -->
@@ -814,6 +829,21 @@
           <span id="ripSlider" style="position:absolute;inset:0;background:#d1d5db;border-radius:24px;cursor:pointer;transition:.3s"></span>
           <span id="ripKnob"   style="position:absolute;width:18px;height:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s;pointer-events:none"></span>
         </label>
+      </div>
+
+      <!-- Reel Video Provider -->
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:0.85rem 1rem;margin-bottom:1.25rem;display:flex;align-items:center;justify-content:space-between;gap:1rem">
+        <div>
+          <div style="font-weight:700;color:#166534;font-size:0.85rem">🎬 Reel Video Provider</div>
+          <p style="font-size:0.75rem;color:#15803d;margin:0.2rem 0 0">xAI = Grok &nbsp;·&nbsp; Sora 2 = OpenAI 720p &nbsp;·&nbsp; Sora 2 Pro = OpenAI 1080p &nbsp;·&nbsp; Veo 3.1 = Google Vertex AI</p>
+        </div>
+        <select id="videoProviderSelect" onchange="saveVideoProvider(this.value)"
+          style="border:1px solid #86efac;border-radius:8px;padding:6px 10px;font-size:13px;font-weight:600;color:#166534;background:#f0fdf4;cursor:pointer;outline:none;">
+          <option value="xai">xAI (Grok)</option>
+          <option value="sora-2">OpenAI Sora 2</option>
+          <option value="sora-2-pro">OpenAI Sora 2 Pro</option>
+          <option value="veo">Google Veo 3.1</option>
+        </select>
       </div>
 
       <div class="adm-ads-form-card" style="margin-bottom:1.25rem">
@@ -1914,8 +1944,15 @@
         <div style="font-size:0.78rem;font-weight:700;color:#374151;margin-bottom:0.75rem"><i class="fas fa-music"></i> Preset Music</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:0.75rem">
           <div style="flex:1;min-width:120px">
-            <label style="font-size:0.75rem;color:#6b7280;display:block;margin-bottom:3px">Music ID (e.g. scary)</label>
-            <input id="pmMusicId" placeholder="e.g. scary, happy, storm" style="width:100%;padding:6px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:0.82rem;box-sizing:border-box">
+            <label style="font-size:0.75rem;color:#6b7280;display:block;margin-bottom:3px">Music Track</label>
+            <select id="pmMusicId" style="width:100%;padding:6px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:0.82rem;box-sizing:border-box">
+              <option value="happy">happy — Happy Rhythm</option>
+              <option value="scary">scary — Dark Spirits</option>
+              <option value="storm">storm — Quiet Before Storm</option>
+              <option value="peaceful">peaceful — Peaceful Vibes</option>
+              <option value="symphony">symphony — Brilliant Symphony</option>
+              <option value="shadows">shadows — Breathing Shadows</option>
+            </select>
           </div>
           <div style="flex:1;min-width:140px">
             <label style="font-size:0.75rem;color:#6b7280;display:block;margin-bottom:3px">Full Track MP3</label>
@@ -3758,7 +3795,7 @@ async function loadPricing() {
     const res  = await fetch("/admin/api/settings");
     const data = await res.json();
     if (!data.success) return;
-    ["price_fresher", "price_experienced", "price_developer", "price_ats-friendly", "wallet_cap", "price_reel_video"].forEach(key => {
+    ["price_fresher", "price_experienced", "price_developer", "price_ats-friendly", "wallet_cap", "price_reel_short", "price_reel_long"].forEach(key => {
       const input = document.getElementById(key);
       if (input && data.settings[key] !== undefined) input.value = data.settings[key];
     });
@@ -5244,6 +5281,15 @@ async function saveReelImageProvider(useXai) {
     });
   } catch (_) {}
 }
+async function saveVideoProvider(value) {
+  try {
+    await fetch('/admin/api/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ video_provider: value }),
+    });
+  } catch (_) {}
+}
 
 // ── Tracking scripts ─────────────────────────────────────────────────────────
 async function loadTrackingScripts() {
@@ -5261,6 +5307,8 @@ async function loadTrackingScripts() {
       const ripEnabled = d.settings.reel_image_provider === 'xai';
       const ripToggle  = document.getElementById('reelImgProviderToggle');
       if (ripToggle) { ripToggle.checked = ripEnabled; applyRipToggleUI(ripEnabled); }
+      const vpSelect = document.getElementById('videoProviderSelect');
+      if (vpSelect && d.settings.video_provider) vpSelect.value = d.settings.video_provider;
     }
   } catch (_) {}
 }
@@ -6322,7 +6370,7 @@ async function deleteAdminReel(id, btn) {
 
 // ── Preset Music upload ────────────────────────────────────────────────────
 async function uploadPresetMusic() {
-  const id      = document.getElementById('pmMusicId').value.trim().toLowerCase().replace(/[^a-z0-9_-]/g,'');
+  const id      = document.getElementById('pmMusicId').value;
   const fullF   = document.getElementById('pmFullFile').files[0];
   const prevF   = document.getElementById('pmPreviewFile').files[0];
   const msgEl   = document.getElementById('pmMsg');
