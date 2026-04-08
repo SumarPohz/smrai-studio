@@ -12,12 +12,21 @@ import { GoogleGenAI } from '@google/genai';
 import { rewriteChunksAsVisualScenes } from './geminiReelService.js';
 
 // ── Google Veo client (lazy) ──────────────────────────────────────────────────
-function getGCPProject() {
-  if (process.env.GCP_PROJECT_ID) return process.env.GCP_PROJECT_ID;
+
+// Resolves service account JSON from either raw JSON or Base64-encoded env var
+function getServiceAccountJSON() {
+  if (process.env.GOOGLE_SERVICE_ACCOUNT_B64) {
+    try { return JSON.parse(Buffer.from(process.env.GOOGLE_SERVICE_ACCOUNT_B64, 'base64').toString('utf8')); } catch {}
+  }
   if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
-    try { return JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON).project_id; } catch {}
+    try { return JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON); } catch {}
   }
   return null;
+}
+
+function getGCPProject() {
+  if (process.env.GCP_PROJECT_ID) return process.env.GCP_PROJECT_ID;
+  return getServiceAccountJSON()?.project_id || null;
 }
 
 let _veoClient = null;
@@ -31,18 +40,22 @@ function getVeoClient() {
     return _veoClient;
   }
   // Priority 2: Service account
-  if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
-    const project = getGCPProject();
-    _veoClient = new GoogleGenAI({
-      vertexai: true,
-      project,
-      location,
-      googleAuthOptions: {
-        credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON),
-        scopes: ['https://www.googleapis.com/auth/cloud-platform'],
-      },
-    });
-    return _veoClient;
+  const sa = getServiceAccountJSON();
+  if (sa) {
+    try {
+      _veoClient = new GoogleGenAI({
+        vertexai: true,
+        project:  sa.project_id,
+        location,
+        googleAuthOptions: {
+          credentials: sa,
+          scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+        },
+      });
+      return _veoClient;
+    } catch (e) {
+      console.error('[VideoGen] Failed to init Veo with service account:', e.message);
+    }
   }
   // Priority 3: Generic Google API key
   if (process.env.GOOGLE_API_KEY) {

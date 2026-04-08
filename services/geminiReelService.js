@@ -2,13 +2,22 @@ import { GoogleGenAI } from '@google/genai';
 import { generateScript as openaiGenerateScript } from './openaiService.js';
 
 // ── Gemini client via @google/genai (same SDK used by Veo) ────────────────────
+
+// Resolves service account JSON from either raw JSON or Base64-encoded env var
+function getServiceAccountJSON() {
+  if (process.env.GOOGLE_SERVICE_ACCOUNT_B64) {
+    try { return JSON.parse(Buffer.from(process.env.GOOGLE_SERVICE_ACCOUNT_B64, 'base64').toString('utf8')); } catch {}
+  }
+  if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+    try { return JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON); } catch {}
+  }
+  return null;
+}
+
 let _genai = null;
 function getGCPProject() {
   if (process.env.GCP_PROJECT_ID) return process.env.GCP_PROJECT_ID;
-  if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
-    try { return JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON).project_id; } catch {}
-  }
-  return null;
+  return getServiceAccountJSON()?.project_id || null;
 }
 
 function getGenAI() {
@@ -20,18 +29,22 @@ function getGenAI() {
     return _genai;
   }
   // Priority 2: Vertex AI with service account (billing-enabled project)
-  if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
-    const project = getGCPProject();
-    _genai = new GoogleGenAI({
-      vertexai: true,
-      project,
-      location: 'us-central1',
-      googleAuthOptions: {
-        credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON),
-        scopes: ['https://www.googleapis.com/auth/cloud-platform'],
-      },
-    });
-    return _genai;
+  const sa = getServiceAccountJSON();
+  if (sa) {
+    try {
+      _genai = new GoogleGenAI({
+        vertexai: true,
+        project:  sa.project_id,
+        location: 'us-central1',
+        googleAuthOptions: {
+          credentials: sa,
+          scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+        },
+      });
+      return _genai;
+    } catch (e) {
+      console.error('[GeminiReel] Failed to init Gemini with service account:', e.message);
+    }
   }
   // Priority 3: Free Gemini Developer API key
   const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;

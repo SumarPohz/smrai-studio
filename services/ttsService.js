@@ -15,16 +15,26 @@ function getClient() {
   return _openaiClient;
 }
 
+// ── Shared service account resolver ───────────────────────────────────────────
+function getServiceAccountJSON() {
+  if (process.env.GOOGLE_SERVICE_ACCOUNT_B64) {
+    try { return JSON.parse(Buffer.from(process.env.GOOGLE_SERVICE_ACCOUNT_B64, 'base64').toString('utf8')); } catch {}
+  }
+  if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+    try { return JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON); } catch {}
+  }
+  return null;
+}
+
 // ── Google TTS client ──────────────────────────────────────────────────────────
 // Uses GOOGLE_SERVICE_ACCOUNT_JSON (same creds as Gemini/Veo).
 // Cloud Text-to-Speech API must be enabled in your GCP project.
 let _googleTTSClient = null;
 function getGoogleTTSClient() {
   if (_googleTTSClient) return _googleTTSClient;
-  if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
-    _googleTTSClient = new TextToSpeechClient({
-      credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON),
-    });
+  const sa = getServiceAccountJSON();
+  if (sa) {
+    _googleTTSClient = new TextToSpeechClient({ credentials: sa });
   } else {
     // Fall back to Application Default Credentials (local gcloud auth)
     _googleTTSClient = new TextToSpeechClient();
@@ -194,9 +204,8 @@ export async function getWordTimestamps(audioPath) {
 let _sttClient = null;
 function getSTTClient() {
   if (_sttClient) return _sttClient;
-  _sttClient = process.env.GOOGLE_SERVICE_ACCOUNT_JSON
-    ? new SpeechClient({ credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON) })
-    : new SpeechClient();
+  const sa = getServiceAccountJSON();
+  _sttClient = sa ? new SpeechClient({ credentials: sa }) : new SpeechClient();
   return _sttClient;
 }
 
@@ -312,7 +321,7 @@ export async function generateLongTTS(script, voice, fileId) {
   const finalPath = path.resolve(`./public/audio/${fileId}.mp3`);
   const chunks    = splitIntoChunks(script);
   const partPaths = [];
-  const useGoogle = !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  const useGoogle = !!getServiceAccountJSON();
 
   console.log(`[TTS] Generating ${chunks.length} chunks for ${fileId} (${script.split(/\s+/).length} words) via ${useGoogle ? 'Google Neural2' : 'OpenAI'}`);
 
