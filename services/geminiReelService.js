@@ -284,7 +284,7 @@ ${script}
 
 Respond ONLY with this exact JSON format (no extra text):
 {"title":"","hashtags":["","","","",""],"caption":""}`,
-      config: { temperature: 0.7, maxOutputTokens: 350 },
+      config: { temperature: 0.7, maxOutputTokens: 350, thinkingConfig: { thinkingBudget: 0 } },
     });
 
     // Extract JSON object even if Gemini adds surrounding text or markdown fences
@@ -326,7 +326,7 @@ Script:
 ${script}
 
 Output only the description. Nothing else.`,
-      config: { temperature: 0.75, maxOutputTokens: 250 },
+      config: { temperature: 0.75, maxOutputTokens: 250, thinkingConfig: { thinkingBudget: 0 } },
     });
     const text = (response.text || '').trim();
     console.log(`[Metadata] description generated (${text.length} chars)`);
