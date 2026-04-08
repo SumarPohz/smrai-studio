@@ -120,19 +120,59 @@
 .btn-next:disabled { opacity:.5; cursor:not-allowed; }
 .err-box { display:none; background:rgba(239,68,68,.08); border:1px solid rgba(239,68,68,.25); border-radius:10px; padding:12px 16px; color:#dc2626; font-size:14px; margin-bottom:16px; }
 @keyframes spin { to { transform:rotate(360deg); } }
+
+/* Story hint popup */
+#storyHintOverlay {
+  display:none;position:fixed;inset:0;z-index:9999;
+  background:rgba(0,0,0,.45);backdrop-filter:blur(3px);
+  align-items:center;justify-content:center;padding:20px;
+}
+#storyHintOverlay.open { display:flex; }
+#storyHintModal {
+  background:#fff;border-radius:20px;padding:28px 24px 22px;
+  width:100%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,.18);
+  animation:popIn .22s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes popIn { from{transform:scale(.88);opacity:0} to{transform:scale(1);opacity:1} }
+#storyHintModal .sh-icon { font-size:2.2rem;text-align:center;margin-bottom:10px; }
+#storyHintModal h3 { font-size:1.2rem;font-weight:800;color:#111827;text-align:center;margin:0 0 4px; }
+#storyHintModal p  { font-size:13px;color:#6b7280;text-align:center;margin:0 0 18px; }
+.sh-btn-row { display:flex;gap:10px;margin-top:18px; }
+.sh-skip { flex:1;padding:12px;border:1.5px solid #e5e7eb;border-radius:10px;background:#fff;color:#374151;font-size:15px;font-weight:500;cursor:pointer; }
+.sh-skip:hover { border-color:#9ca3af; }
+.sh-go   { flex:2;padding:12px;border-radius:10px;background:#7c3aed;color:#fff;font-size:15px;font-weight:600;cursor:pointer;border:none; }
+.sh-go:hover { background:#6d28d9; }
 </style>
+
+<!-- Story hint popup -->
+<div id="storyHintOverlay" onclick="if(event.target===this)shConfirm()">
+  <div id="storyHintModal">
+    <div class="sh-icon">🎬</div>
+    <h3 id="shTitle">Any specific story?</h3>
+    <p>Tell us what story to focus on, or skip to let AI choose.</p>
+    <input id="storyHintInput" class="wiz-input" type="text" maxlength="200"
+      placeholder='e.g. "Book of Genesis", "Jack the Ripper"'
+      oninput="S.storyHint=this.value.trim()"
+      onkeydown="if(event.key==='Enter')shConfirm()">
+    <div style="font-size:12px;color:#9ca3af;margin-top:6px;">Leave blank to let AI pick — completely optional</div>
+    <div class="sh-btn-row">
+      <button class="sh-skip" onclick="shConfirm()">Skip</button>
+      <button class="sh-go"   onclick="shConfirm()">Continue →</button>
+    </div>
+  </div>
+</div>
 
 <div id="reel-wizard" style="padding-top:80px;padding-bottom:60px;">
 <div style="max-width:720px;margin:0 auto;padding:0 20px;">
 
   <!-- Progress -->
   <div class="wiz-progress" id="wizProg">
-    <% for(let i=0;i<5;i++){%><div class="wiz-seg" id="seg<%=i%>"></div><%}%>
+    <% for(let i=0;i<4;i++){%><div class="wiz-seg" id="seg<%=i%>"></div><%}%>
   </div>
 
   <!-- ── STEP 1: Niche ──────────────────────────────────────────────────── -->
   <div id="step-1" class="wiz-step active">
-    <h2 class="step-title">Choose your niche <span class="step-badge">Step 1 of 5</span></h2>
+    <h2 class="step-title">Choose your niche <span class="step-badge">Step 1 of 4</span></h2>
     <p class="step-sub">Select a preset or describe your own niche</p>
     <div id="s1err" class="err-box"></div>
 
@@ -200,7 +240,7 @@
 
   <!-- ── STEP 2: Language & Voice ────────────────────────────────────────── -->
   <div id="step-2" class="wiz-step" style="display:none;">
-    <h2 class="step-title">Language &amp; Voice <span class="step-badge">Step 2 of 5</span></h2>
+    <h2 class="step-title">Language &amp; Voice <span class="step-badge">Step 2 of 4</span></h2>
     <p class="step-sub">Choose the language and voice style for your video</p>
 
     <div class="wiz-body">
@@ -255,7 +295,7 @@
 
   <!-- ── STEP 3: Background Music ────────────────────────────────────────── -->
   <div id="step-3" class="wiz-step" style="display:none;">
-    <h2 class="step-title">Background Music <span class="step-badge">Step 3 of 5</span></h2>
+    <h2 class="step-title">Background Music <span class="step-badge">Step 3 of 4</span></h2>
     <p class="step-sub">Choose a preset track or upload your own — makes your video 10× more engaging</p>
 
     <div class="wiz-tabs">
@@ -304,51 +344,13 @@
 
     <div class="wiz-nav">
       <button class="btn-back" onclick="go(2)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg> Back</button>
-      <button class="btn-next" onclick="go(4)">Continue <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></button>
-    </div>
-  </div>
-
-  <!-- ── STEP 4: Art Style ───────────────────────────────────────────────── -->
-  <div id="step-4" class="wiz-step" style="display:none;">
-    <h2 class="step-title">Art Style <span class="step-badge">Step 4 of 5</span></h2>
-    <p class="step-sub">Choose the visual style for your video</p>
-
-    <div class="wiz-body">
-    <div class="art-grid">
-      <% [
-        ['cinematic',  'Cinematic',   'linear-gradient(160deg,#0f172a,#1e293b,#334155)', '🎬'],
-        ['creepy',     'Creepy Comic','linear-gradient(160deg,#1c0a00,#3b1f0a,#5c2e0e)', '👻'],
-        ['vibrant',    'Modern Cartoon','linear-gradient(160deg,#7c3aed,#ec4899,#f97316)', '✨'],
-        ['disney',     'Disney',      'linear-gradient(160deg,#1e3a5f,#2563eb,#60a5fa)',  '🏰'],
-        ['nature',     'Nature',      'linear-gradient(160deg,#052e16,#166534,#4ade80)',  '🌿'],
-        ['urban',      'Urban',       'linear-gradient(160deg,#111827,#374151,#6b7280)',  '🏙️'],
-        ['fantasy',    'Fantasy',     'linear-gradient(160deg,#4a044e,#a21caf,#e879f9)',  '🔮'],
-        ['historical', 'Historical',  'linear-gradient(160deg,#451a03,#92400e,#d97706)',  '📜'],
-        ['realistic',  'Realistic',   'linear-gradient(160deg,#1c2526,#2d4a3e,#4a7c59)',  '📷'],
-      ].forEach((a,ai) => { %>
-      <div class="art-item <%= ai===0?'selected':'' %>" onclick="pickArt('<%= a[0] %>')" data-art="<%= a[0] %>">
-        <div class="art-thumb" style="background:<%= a[2] %>;border-radius:9px;position:relative;overflow:hidden;">
-          <% if (typeof artGifs !== 'undefined' && artGifs[a[0]]) { %>
-            <img src="<%= artGifs[a[0]] %>" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" alt="<%= a[1] %>">
-          <% } else { %>
-            <span style="font-size:2.2rem;"><%= a[3] %></span>
-          <% } %>
-        </div>
-        <div class="art-label"><%= a[1] %></div>
-      </div>
-      <% }) %>
-    </div>
-    </div><!-- /wiz-body -->
-
-    <div class="wiz-nav">
-      <button class="btn-back" onclick="go(3)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg> Back</button>
       <button class="btn-next" onclick="go(5)">Continue <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></button>
     </div>
   </div>
 
   <!-- ── STEP 5: Effects & Duration ───────────────────────────────────────── -->
   <div id="step-5" class="wiz-step" style="display:none;">
-    <h2 class="step-title">Effects &amp; Duration <span class="step-badge">Step 5 of 5</span></h2>
+    <h2 class="step-title">Effects &amp; Duration <span class="step-badge">Step 4 of 4</span></h2>
     <p class="step-sub">Choose effects and video duration — captions are added automatically</p>
     <div id="s5err" class="err-box"></div>
 
@@ -383,11 +385,19 @@
           <option value="60-70">Long (~90 sec) — ₹700</option>
         </select>
       </div>
+      <div style="margin-top:18px;">
+        <label class="wiz-label">Video Speed</label>
+        <select id="speedSel" class="wiz-select" onchange="S.videoSpeed=parseFloat(this.value);saveWizardState()">
+          <option value="1.0">Normal (1×)</option>
+          <option value="0.75">Slow (0.75×)</option>
+          <option value="0.5">Very Slow (0.5×)</option>
+        </select>
+      </div>
     </div>
     </div><!-- /wiz-body -->
 
     <div class="wiz-nav">
-      <button class="btn-back" onclick="go(4)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg> Back</button>
+      <button class="btn-back" onclick="go(3)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg> Back</button>
       <button class="btn-next" id="createBtn" onclick="handleCreate()">
         <span id="createBtnTxt">Generate Video</span>
         <span id="createBtnIco"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></span>
@@ -466,7 +476,7 @@
 </div>
 
 <script>
-const S = { step:1, niche:'', exScript:'', voice:'alloy', music:[], art:'cinematic', cap:'bold-stroke', effects:{ filmGrain:false, shake:false, animatedHook:false } };
+const S = { step:1, niche:'', exScript:'', storyHint:'', voice:'alloy', music:[], art:'cinematic', cap:'bold-stroke', effects:{ filmGrain:false, shake:false, animatedHook:false }, videoSpeed: 1.0 };
 const needsPayment = <%= totalReels %> > 0;
 
 function saveWizardState() {
@@ -575,8 +585,9 @@ function playMusic(id, btn) {
 }
 
 function updProg(n) {
-  for(let i=0;i<5;i++) {
-    document.getElementById('seg'+i).classList.toggle('done', i < n);
+  for(let i=0;i<4;i++) {
+    const el = document.getElementById('seg'+i);
+    if (el) el.classList.toggle('done', i < n);
   }
 }
 
@@ -634,10 +645,41 @@ function sTab(step, panel) {
   tabs.forEach((t,i)   => document.getElementById(t).classList.toggle('active', i===idx));
 }
 
-function pickNiche(n) {
+const NICHE_PLACEHOLDERS = {
+  'Biblical Stories':   '"Book of Genesis", "Noah\'s Ark", "David and Goliath"',
+  'Scary Stories':      '"The Hook Man", "Slender Man", "The Black Eyed Kids"',
+  'History':            '"Fall of Rome", "Cleopatra", "The Black Death"',
+  'True Crime':         '"Jack the Ripper", "Ted Bundy", "The Zodiac Killer"',
+  'Stoic Motivation':   '"Marcus Aurelius", "Epictetus", "The Daily Stoic"',
+  'Finance Tips':       '"Warren Buffett", "Index Funds", "The 4% Rule"',
+  'Motivation':         '"David Goggins", "Elon Musk", "The 5am Club"',
+  'Mythology':          '"Hercules", "Norse Gods", "The Trojan War"',
+  'Anime Stories':      '"Naruto", "Attack on Titan", "Death Note"',
+  'Act of Kindness':    '"Strangers helping strangers", "Random acts of kindness"',
+  'Tech Tips':          '"iPhone hidden features", "ChatGPT tips", "Windows shortcuts"',
+  'Health Hacks':       '"Cold shower benefits", "Intermittent fasting", "Sleep hacks"',
+};
+
+function pickNiche(n, silent) {
   document.querySelectorAll('.niche-item').forEach(el => el.classList.remove('selected'));
-  document.querySelector('[data-niche="'+n+'"]').classList.add('selected');
-  S.niche = n; hideErr('s1err'); saveWizardState();
+  const el = document.querySelector('[data-niche="'+n+'"]');
+  if (el) el.classList.add('selected');
+  S.niche = n;
+  hideErr('s1err');
+  if (silent) { saveWizardState(); return; }
+  // Show popup
+  S.storyHint = '';
+  const inp = document.getElementById('storyHintInput');
+  if (inp) { inp.value = ''; inp.placeholder = NICHE_PLACEHOLDERS[n] || 'e.g. specific story or topic'; }
+  document.getElementById('shTitle').textContent = n + ' — any specific story?';
+  document.getElementById('storyHintOverlay').classList.add('open');
+  setTimeout(() => inp && inp.focus(), 220);
+}
+function shConfirm() {
+  S.storyHint = (document.getElementById('storyHintInput')?.value || '').trim();
+  document.getElementById('storyHintOverlay').classList.remove('open');
+  saveWizardState();
+  go(2);
 }
 function pickVoice(v) {
   document.querySelectorAll('.voice-item').forEach(el => el.classList.remove('selected'));
@@ -807,11 +849,13 @@ async function doGenerate(paymentFields) {
         topic,
         voice:           S.voice,
         language:        document.getElementById('langSel')?.value || 'en',
-        artStyle:        S.art,
+        artStyle:        'realistic',
         duration:        document.getElementById('durSel')?.value || '30-40',
         music:           S.music,
         effects:         S.effects,
-        exScript:        S.exScript || '',
+        videoSpeed:      S.videoSpeed || 1.0,
+        storyHint:       S.storyHint  || '',
+        exScript:        S.exScript   || '',
         customMusicPath,
         ...paymentFields,
       }),
@@ -862,7 +906,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         exScript: p.exScript || '',
         voice:    p.voice    || S.voice,
         music:    p.music    || S.music,
-        art:      p.art      || S.art,
         cap:      p.cap      || S.cap,
         effects:  p.effects  || S.effects,
       });
@@ -870,7 +913,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Restore niche selection visually
       if (p.niche) {
         const nicheEl = document.querySelector('[data-niche="' + p.niche + '"]');
-        if (nicheEl) { pickNiche(p.niche); }
+        if (nicheEl) { pickNiche(p.niche, true); }
         else { sTab(1,'b'); document.getElementById('customNiche').value = p.niche; S.niche = p.niche; }
       }
 
@@ -898,7 +941,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (ws.duration) { const el = document.getElementById('durSel');    if (el) el.value = ws.duration; }
           if (ws.niche) {
             const nicheEl = document.querySelector('[data-niche="'+ws.niche+'"]');
-            if (nicheEl) { pickNiche(ws.niche); }
+            if (nicheEl) { pickNiche(ws.niche, true); }
             else { sTab(1,'b'); const cn = document.getElementById('customNiche'); if (cn) cn.value = ws.customNiche || ws.niche; S.niche = ws.niche; }
           }
           if (ws.exScript) S.exScript = ws.exScript;
@@ -933,7 +976,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const tp = qp.get('topic');
   if (tp) {
     const match = document.querySelector('[data-niche="'+tp+'"]');
-    if (match) { pickNiche(tp); }
+    if (match) { pickNiche(tp, true); }
     else { sTab(1,'b'); document.getElementById('customNiche').value=tp; cc('customNiche','cc1',5000); S.niche=tp; }
   }
 

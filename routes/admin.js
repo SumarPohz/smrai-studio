@@ -4,7 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
 import { TEMPLATES } from "../config/templates-config.js";
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -693,7 +693,7 @@ export default function adminRouter(db) {
   router.patch("/api/settings", async (req, res) => {
     try {
       const PRICE_KEYS   = ["price_fresher", "price_experienced", "price_developer", "price_ats-friendly", "dth_recharge_min", "dth_recharge_max", "wallet_cap", "price_reel_video", "price_reel_short", "price_reel_long"];
-      const GENERAL_KEYS = ["adsense_publisher_id", "facebook_pixel_id", "homepage_ad_slot", "footer_ad_slot", "ads_enabled", "google_translate_enabled", "reel_image_provider", "video_provider"];
+      const GENERAL_KEYS = ["adsense_publisher_id", "facebook_pixel_id", "homepage_ad_slot", "footer_ad_slot", "ads_enabled", "google_translate_enabled", "reel_image_provider", "video_provider", "tts_provider"];
       const ALLOWED_KEYS = [...PRICE_KEYS, ...GENERAL_KEYS];
       const updates = req.body || {};
       const entries = Object.entries(updates).filter(([k]) => ALLOWED_KEYS.includes(k));

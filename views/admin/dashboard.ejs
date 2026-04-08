@@ -846,6 +846,19 @@
         </select>
       </div>
 
+      <!-- Reel TTS Provider -->
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:0.85rem 1rem;margin-bottom:1.25rem;display:flex;align-items:center;justify-content:space-between;gap:1rem">
+        <div>
+          <div style="font-weight:700;color:#1e40af;font-size:0.85rem">🎙️ Reel Voice (TTS) Provider</div>
+          <p style="font-size:0.75rem;color:#3b82f6;margin:0.2rem 0 0">OpenAI = tts-1 (requires OpenAI credits) &nbsp;·&nbsp; Google = Neural2 (uses Google Cloud credits)</p>
+        </div>
+        <select id="ttsProviderSelect" onchange="saveTtsProvider(this.value)"
+          style="border:1px solid #93c5fd;border-radius:8px;padding:6px 10px;font-size:13px;font-weight:600;color:#1e40af;background:#eff6ff;cursor:pointer;outline:none;">
+          <option value="openai">OpenAI TTS</option>
+          <option value="google">Google Neural2</option>
+        </select>
+      </div>
+
       <div class="adm-ads-form-card" style="margin-bottom:1.25rem">
         <h3 class="adm-ads-form-title"><i class="fas fa-code" style="margin-right:0.4rem"></i>Tracking & Ad Networks</h3>
         <p style="font-size:0.8rem;color:#6b7280;margin:0 0 1rem">Enter your IDs — scripts are injected automatically on all pages. Leave blank to disable.</p>
@@ -5290,6 +5303,15 @@ async function saveVideoProvider(value) {
     });
   } catch (_) {}
 }
+async function saveTtsProvider(value) {
+  try {
+    await fetch('/admin/api/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tts_provider: value }),
+    });
+  } catch (_) {}
+}
 
 // ── Tracking scripts ─────────────────────────────────────────────────────────
 async function loadTrackingScripts() {
@@ -5309,6 +5331,8 @@ async function loadTrackingScripts() {
       if (ripToggle) { ripToggle.checked = ripEnabled; applyRipToggleUI(ripEnabled); }
       const vpSelect = document.getElementById('videoProviderSelect');
       if (vpSelect && d.settings.video_provider) vpSelect.value = d.settings.video_provider;
+      const ttsSelect = document.getElementById('ttsProviderSelect');
+      if (ttsSelect && d.settings.tts_provider) ttsSelect.value = d.settings.tts_provider;
     }
   } catch (_) {}
 }

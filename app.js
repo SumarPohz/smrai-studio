@@ -3,7 +3,7 @@ import { createServer } from "http";
 import { Server as SocketServer } from "socket.io";
 import mysql from "mysql2/promise";
 import mysql2Cb from "mysql2";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { Strategy as GoogleStrategy } from "passport-google-oauth2";
@@ -278,7 +278,8 @@ await db.query(`
     await db.query(`INSERT IGNORE INTO admin_settings (\`key\`, value) VALUES ('price_reel_video', '350')`);
     await db.query(`INSERT IGNORE INTO admin_settings (\`key\`, value) VALUES ('price_reel_short', '350')`);
     await db.query(`INSERT IGNORE INTO admin_settings (\`key\`, value) VALUES ('price_reel_long', '700')`);
-    await db.query(`INSERT IGNORE INTO admin_settings (\`key\`, value) VALUES ('video_provider', 'xai')`);
+    await db.query(`INSERT INTO admin_settings (\`key\`, value) VALUES ('video_provider', 'veo') ON DUPLICATE KEY UPDATE value = IF(value = 'xai', 'veo', value)`);
+    await db.query(`INSERT INTO admin_settings (\`key\`, value) VALUES ('tts_provider', 'google') ON DUPLICATE KEY UPDATE value = 'google'`);
 
     // ── Homepage editable content defaults ───────────────────────────────────
     const homepageDefaults = [
@@ -588,6 +589,7 @@ await db.query(`
     await db.query(`ALTER TABLE reels ADD COLUMN duration VARCHAR(20) DEFAULT '30-40'`).catch(() => {});
     await db.query(`ALTER TABLE reels ADD COLUMN music_tracks TEXT`).catch(() => {});
     await db.query(`ALTER TABLE reels MODIFY COLUMN status ENUM('processing','completed','failed','script_ready') DEFAULT 'processing'`).catch(() => {});
+    await db.query(`ALTER TABLE reels ADD COLUMN description TEXT`).catch(() => {});
     await db.query(`ALTER TABLE reel_video_payments ADD COLUMN refunded TINYINT(1) NOT NULL DEFAULT 0`).catch(() => {});
 
     // One-time fix: refund wallet for any failed reels that weren't auto-refunded

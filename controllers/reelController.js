@@ -1,6 +1,5 @@
-import { generateScript }                           from '../services/geminiReelService.js';
-import { generateMetadata }                         from '../services/openaiService.js';
-import { generateTTS, getWordTimestamps, AVAILABLE_VOICES } from '../services/ttsService.js';
+import { generateScript, generateMetadata, generateDescription } from '../services/geminiReelService.js';
+import { generateTTS, getWordTimestamps, getWordTimestampsViaGoogle, AVAILABLE_VOICES } from '../services/ttsService.js';
 import { generateVideoClips, cleanupTempVideos }     from '../services/videoService.js';
 import { mergeReelFromVideos }                      from '../services/ffmpegService.js';
 import path                                         from 'path';
@@ -124,7 +123,7 @@ export async function getResultPage(req, res, db) {
 
   try {
     const { rows } = await db.query(
-      'SELECT id, topic, title, hashtags, caption, video_url, status, created_at FROM reels WHERE id = ? AND user_id = ?',
+      'SELECT id, topic, title, hashtags, caption, description, script, video_url, status, created_at FROM reels WHERE id = ? AND user_id = ?',
       [reelId, req.user.id]
     );
     if (!rows.length) return res.redirect('/reels/create');
@@ -233,10 +232,12 @@ export async function generateReel(req, res, db) {
     topic,
     voice                 = 'alloy',
     language              = 'en',
-    artStyle              = 'cinematic',
+    artStyle              = 'realistic',
     duration              = '30-40',
     music                 = [],
     effects               = {},
+    videoSpeed            = 1.0,
+    storyHint             = '',
     exScript              = '',
     razorpay_order_id,
     razorpay_payment_id,
@@ -345,7 +346,7 @@ export async function generateReel(req, res, db) {
   // Respond immediately — pipeline runs in background
   res.json({ reel_id: reelId, free: isFree });
 
-  setImmediate(() => runPipeline(reelId, topic.trim(), voice, language, artStyle, duration, music, effects, exScript, req.user.id, isFree, db, customMusicPath));
+  setImmediate(() => runPipeline(reelId, topic.trim(), voice, language, artStyle, duration, music, effects, exScript, req.user.id, isFree, db, customMusicPath, videoSpeed, storyHint));
 }
 
 /**
@@ -357,12 +358,12 @@ export async function getReelStatus(req, res, db) {
 
   try {
     const { rows } = await db.query(
-      'SELECT id, status, video_url, error_message, script FROM reels WHERE id = ? AND user_id = ?',
+      'SELECT id, status, video_url, error_message, script, title, caption, hashtags, description FROM reels WHERE id = ? AND user_id = ?',
       [reelId, req.user.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Reel not found' });
 
-    const { status, video_url, error_message, script } = rows[0];
+    const { status, video_url, error_message, script, title, caption, hashtags, description } = rows[0];
 
     // If failed, check if a refund was issued
     let refunded_amount = null;
@@ -378,7 +379,13 @@ export async function getReelStatus(req, res, db) {
       status,
       video_url,
       error_message,
-      ...(status === 'script_ready' ? { script } : {}),
+      ...(status === 'script_ready' ? {
+        script,
+        title:       title       || '',
+        caption:     caption     || '',
+        description: description || '',
+        hashtags:    (() => { try { return JSON.parse(hashtags || '[]'); } catch { return []; } })(),
+      } : {}),
       ...(refunded_amount !== null ? { refunded_amount } : {}),
     });
   } catch (err) {
@@ -405,24 +412,27 @@ async function deletePipelineParams(reelId) {
 
 // ─── Phase 1: Script + Metadata → status: script_ready ───────────────────────
 
-async function runPipeline(reelId, topic, voice, language, artStyle, duration, music, effects, exScript, userId, isFree, db, customMusicPath = null) {
+async function runPipeline(reelId, topic, voice, language, artStyle, duration, music, effects, exScript, userId, isFree, db, customMusicPath = null, videoSpeed = 1.0, storyHint = '') {
   console.log(`[Reels] #${reelId} — Phase 1 start (topic: "${topic}")`);
   try {
     // Step 1: Script
     console.log(`[Reels] #${reelId} — Step 1: Generating script (lang=${language}, art=${artStyle}, dur=${duration})…`);
-    const script = await generateScript(topic, { language, artStyle, duration, exScript });
+    const script = await generateScript(topic, { language, artStyle, duration, exScript, storyHint });
     await db.query('UPDATE reels SET script = ? WHERE id = ?', [script, reelId]);
 
-    // Step 2: Metadata
+    // Step 2: Metadata + Description (run in parallel)
     console.log(`[Reels] #${reelId} — Step 2: Generating metadata…`);
-    const meta = await generateMetadata(script);
+    const [meta, description] = await Promise.all([
+      generateMetadata(script),
+      generateDescription(script),
+    ]);
     await db.query(
-      'UPDATE reels SET title = ?, hashtags = ?, caption = ? WHERE id = ?',
-      [meta.title || '', JSON.stringify(meta.hashtags || []), meta.caption || '', reelId]
+      'UPDATE reels SET title = ?, hashtags = ?, caption = ?, description = ? WHERE id = ?',
+      [meta.title || '', JSON.stringify(meta.hashtags || []), meta.caption || '', description || '', reelId]
     );
 
     // Persist params needed by Phase 2
-    await savePipelineParams(reelId, { voice, artStyle, duration, music, effects, customMusicPath, isFree });
+    await savePipelineParams(reelId, { voice, artStyle, duration, music, effects, customMusicPath, isFree, videoSpeed });
 
     // Signal that script is ready for user review
     await db.query("UPDATE reels SET status = 'script_ready' WHERE id = ?", [reelId]);
@@ -443,7 +453,7 @@ async function runPhase2(reelId, db) {
   let customMusicPathUsed = null;
   try {
     // Load pipeline params saved during Phase 1
-    const { voice, artStyle, duration, music, effects, customMusicPath } = await loadPipelineParams(reelId);
+    const { voice, artStyle, duration, music, effects, customMusicPath, videoSpeed = 1.0 } = await loadPipelineParams(reelId);
 
     // Read script from DB (user may have edited it before approving)
     const { rows: sRows } = await db.query('SELECT script FROM reels WHERE id = ?', [reelId]);
@@ -451,12 +461,22 @@ async function runPhase2(reelId, db) {
     const script = sRows[0].script;
 
     // Step 3: TTS
-    console.log(`[Reels] #${reelId} — Step 3: Generating TTS (voice: ${voice})…`);
-    const audioPath = await generateTTS(script, voice, reelId);
+    const { rows: ttsProvRows } = await db.query(
+      "SELECT value FROM admin_settings WHERE `key` = 'tts_provider'"
+    );
+    const ttsProvider = ttsProvRows[0]?.value || 'openai';
+    console.log(`[Reels] #${reelId} — Step 3: Generating TTS (voice: ${voice}, provider: ${ttsProvider})…`);
+    const audioPath = await generateTTS(script, voice, reelId, ttsProvider);
 
-    // Step 3b: Whisper caption timestamps (word-level for karaoke captions)
-    console.log(`[Reels] #${reelId} — Step 3b: Getting caption timestamps via Whisper…`);
-    const wtResult        = await getWordTimestamps(audioPath);
+    // Step 3b: Word-level timestamps for karaoke captions
+    let wtResult = null;
+    if (ttsProvider === 'google') {
+      console.log(`[Reels] #${reelId} — Step 3b: Getting caption timestamps via Google STT…`);
+      wtResult = await getWordTimestampsViaGoogle(audioPath);
+    } else {
+      console.log(`[Reels] #${reelId} — Step 3b: Getting caption timestamps via Whisper…`);
+      wtResult = await getWordTimestamps(audioPath);
+    }
     const captionSegments = wtResult?.segments || null;
     const captionWords    = wtResult?.words    || null;
 
@@ -466,9 +486,9 @@ async function runPhase2(reelId, db) {
     );
     const videoProvider = pvRows[0]?.value || 'xai';
     const scriptLines = script.split(/\n+/).filter(Boolean);
-    const clipCount   = duration === '60-70' ? 8 : 5;
-    console.log(`[Reels] #${reelId} — Step 4: Generating ${clipCount} clips via ${videoProvider} (artStyle=${artStyle})…`);
+    console.log(`[Reels] #${reelId} — Step 4: Generating clips via ${videoProvider} (artStyle=${artStyle})…`);
     const { clipPaths, audioDurations } = await generateVideoClips(scriptLines, reelId, artStyle, duration, videoProvider);
+    console.log(`[Reels] #${reelId} — Step 4: ${clipPaths.length} clips generated`);
 
     // Step 5: Resolve BGM
     let musicPath     = null;
@@ -491,7 +511,7 @@ async function runPhase2(reelId, db) {
 
     // Step 6: FFmpeg merge
     console.log(`[Reels] #${reelId} — Step 6: Merging ${clipPaths.length} clips (bgm=${musicPath ? musicId : 'none'})…`);
-    await mergeReelFromVideos(reelId, clipPaths, audioPath, script, { effects, musicPath, duration, audioDurations, captionSegments, captionWords });
+    await mergeReelFromVideos(reelId, clipPaths, audioPath, script, { effects, musicPath, duration, audioDurations, captionSegments, captionWords, videoSpeed });
 
     // Step 7: Cleanup
     await cleanupTempVideos(reelId);
@@ -578,8 +598,8 @@ export async function regenerateScript(req, res, db) {
     if (!rows.length) return res.status(404).json({ error: 'Reel not found' });
     if (rows[0].status !== 'script_ready') return res.status(400).json({ error: 'Can only regenerate during script review' });
 
-    const { topic, language, art_style: artStyle, duration } = rows[0];
-    const script = await generateScript(topic, { language, artStyle, duration });
+    const { topic, language, duration } = rows[0];
+    const script = await generateScript(topic, { language, artStyle: 'realistic', duration });
     await db.query('UPDATE reels SET script = ? WHERE id = ?', [script, reelId]);
     res.json({ script });
   } catch (err) {

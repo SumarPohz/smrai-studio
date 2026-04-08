@@ -1,4 +1,6 @@
 import OpenAI from 'openai';
+import { TextToSpeechClient } from '@google-cloud/text-to-speech';
+import { SpeechClient } from '@google-cloud/speech';
 import fs from 'fs/promises';
 import path from 'path';
 import ffmpeg from 'fluent-ffmpeg';
@@ -6,12 +8,39 @@ import ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
 
 ffmpeg.setFfmpegPath(ffmpegInstaller.path);
 
-// Lazy init — dotenv hasn't run yet at import time in ES Modules
-let _client = null;
+// ── OpenAI TTS client ──────────────────────────────────────────────────────────
+let _openaiClient = null;
 function getClient() {
-  if (!_client) _client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  return _client;
+  if (!_openaiClient) _openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  return _openaiClient;
 }
+
+// ── Google TTS client ──────────────────────────────────────────────────────────
+// Uses GOOGLE_SERVICE_ACCOUNT_JSON (same creds as Gemini/Veo).
+// Cloud Text-to-Speech API must be enabled in your GCP project.
+let _googleTTSClient = null;
+function getGoogleTTSClient() {
+  if (_googleTTSClient) return _googleTTSClient;
+  if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+    _googleTTSClient = new TextToSpeechClient({
+      credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON),
+    });
+  } else {
+    // Fall back to Application Default Credentials (local gcloud auth)
+    _googleTTSClient = new TextToSpeechClient();
+  }
+  return _googleTTSClient;
+}
+
+// Maps OpenAI voice names → Google Neural2 voice names (en-US)
+const GOOGLE_VOICE_MAP = {
+  alloy:   'en-US-Neural2-F',  // neutral female
+  echo:    'en-US-Neural2-D',  // male
+  fable:   'en-US-Neural2-G',  // warm female
+  onyx:    'en-US-Neural2-J',  // deep male
+  nova:    'en-US-Neural2-E',  // female
+  shimmer: 'en-US-Neural2-H',  // bright female
+};
 
 export const AVAILABLE_VOICES = ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'];
 
@@ -53,12 +82,25 @@ export async function generateVoicePreview(voice) {
  * @param {number} reelId - Used to name the output file
  * @returns {Promise<string>} absolute path to saved MP3
  */
-export async function generateTTS(script, voice, reelId, _retries = 2) {
+export async function generateTTS(script, voice, reelId, provider = 'openai', _retries = 2) {
   const safeVoice = AVAILABLE_VOICES.includes(voice) ? voice : 'alloy';
   const audioDir  = path.resolve('./public/audio');
   const audioPath = path.join(audioDir, `${reelId}.mp3`);
 
   await fs.mkdir(audioDir, { recursive: true });
+
+  if (provider === 'google') {
+    try {
+      // 60s hard timeout — Google gRPC default is 300s which hangs the whole pipeline
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Google TTS timeout after 60s')), 60_000)
+      );
+      return await Promise.race([generateTTSViaGoogle(script, safeVoice, audioPath), timeout]);
+    } catch (err) {
+      console.warn(`[TTS] Google TTS failed (${err.message}) — falling back to OpenAI TTS`);
+      // Fall through to OpenAI below
+    }
+  }
 
   try {
     const response = await getClient().audio.speech.create({
@@ -75,10 +117,24 @@ export async function generateTTS(script, voice, reelId, _retries = 2) {
     if (_retries > 0 && (err.message === 'terminated' || err.code === 'ECONNRESET')) {
       console.warn(`[TTS] Request terminated, retrying (${_retries} left)…`);
       await new Promise(r => setTimeout(r, 3000));
-      return generateTTS(script, voice, reelId, _retries - 1);
+      return generateTTS(script, voice, reelId, provider, _retries - 1);
     }
     throw err;
   }
+}
+
+async function generateTTSViaGoogle(script, voice, outputPath) {
+  const googleVoice = GOOGLE_VOICE_MAP[voice] || 'en-US-Neural2-F';
+  console.log(`[TTS] Google Neural2 voice: ${googleVoice}`);
+
+  const [response] = await getGoogleTTSClient().synthesizeSpeech({
+    input:       { text: script },
+    voice:       { languageCode: 'en-US', name: googleVoice },
+    audioConfig: { audioEncoding: 'MP3', speakingRate: 1.0 },
+  });
+
+  await fs.writeFile(outputPath, response.audioContent, 'binary');
+  return outputPath;
 }
 
 /**
@@ -130,6 +186,65 @@ export async function getWordTimestamps(audioPath) {
     return { segments, words: resp.words };
   } catch (err) {
     console.warn('[TTS] getWordTimestamps failed, falling back to WPM:', err.message);
+    return null;
+  }
+}
+
+// ── Google Cloud Speech-to-Text timestamps ────────────────────────────────────
+let _sttClient = null;
+function getSTTClient() {
+  if (_sttClient) return _sttClient;
+  _sttClient = process.env.GOOGLE_SERVICE_ACCOUNT_JSON
+    ? new SpeechClient({ credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON) })
+    : new SpeechClient();
+  return _sttClient;
+}
+
+export async function getWordTimestampsViaGoogle(audioPath) {
+  try {
+    const audioBytes = await fs.readFile(audioPath);
+    const [operation] = await getSTTClient().longRunningRecognize({
+      audio:  { content: audioBytes.toString('base64') },
+      config: {
+        encoding:              'MP3',
+        sampleRateHertz:       24000,
+        languageCode:          'en-US',
+        enableWordTimeOffsets: true,
+        model:                 'latest_long',
+      },
+    });
+    const [response] = await operation.promise();
+
+    const words = response.results
+      .flatMap(r => r.alternatives[0]?.words || [])
+      .map(w => ({
+        word:  w.word,
+        start: +((+w.startTime.seconds || 0) + (w.startTime.nanos || 0) / 1e9).toFixed(2),
+        end:   +((+w.endTime.seconds   || 0) + (w.endTime.nanos   || 0) / 1e9).toFixed(2),
+      }));
+
+    if (!words.length) return null;
+
+    // Build sentence segments (same logic as Whisper path)
+    const segments = [];
+    let segStart = words[0].start;
+    let segWords = [];
+    for (const w of words) {
+      segWords.push(w.word);
+      if (/[.!?]['"]?$/.test(w.word.trim())) {
+        segments.push({ text: segWords.join(' '), start: segStart, end: w.end });
+        segStart = w.end;
+        segWords = [];
+      }
+    }
+    if (segWords.length) {
+      segments.push({ text: segWords.join(' '), start: segStart, end: words.at(-1).end });
+    }
+
+    console.log(`[TTS] Google STT timestamps: ${words.length} words, ${segments.length} segments`);
+    return { segments, words };
+  } catch (err) {
+    console.warn('[TTS] getWordTimestampsViaGoogle failed, falling back to WPM:', err.message);
     return null;
   }
 }
@@ -193,32 +308,44 @@ function concatMp3s(inputPaths, outputPath) {
  * @returns {Promise<string>} absolute path to final MP3
  */
 export async function generateLongTTS(script, voice, fileId) {
-  const safeVoice  = AVAILABLE_VOICES.includes(voice) ? voice : 'alloy';
-  const finalPath  = path.resolve(`./public/audio/${fileId}.mp3`);
-  const chunks     = splitIntoChunks(script);
-  const partPaths  = [];
+  const safeVoice = AVAILABLE_VOICES.includes(voice) ? voice : 'alloy';
+  const finalPath = path.resolve(`./public/audio/${fileId}.mp3`);
+  const chunks    = splitIntoChunks(script);
+  const partPaths = [];
+  const useGoogle = !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
 
-  console.log(`[TTS] Generating ${chunks.length} chunks for ${fileId} (${script.split(/\s+/).length} words)`);
+  console.log(`[TTS] Generating ${chunks.length} chunks for ${fileId} (${script.split(/\s+/).length} words) via ${useGoogle ? 'Google Neural2' : 'OpenAI'}`);
 
   for (let i = 0; i < chunks.length; i++) {
     const partPath = path.resolve(`./public/audio/${fileId}-part${i}.mp3`);
-    const response = await getClient().audio.speech.create({
-      model: 'tts-1',
-      voice: safeVoice,
-      input: chunks[i],
-      speed: 1.0,
-    });
-    const buffer = Buffer.from(await response.arrayBuffer());
-    await fs.writeFile(partPath, buffer);
+
+    if (useGoogle) {
+      try {
+        const timeout = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Google TTS timeout')), 60_000)
+        );
+        await Promise.race([generateTTSViaGoogle(chunks[i], safeVoice, partPath), timeout]);
+      } catch (err) {
+        console.warn(`[TTS] Google chunk ${i} failed (${err.message}) — falling back to OpenAI`);
+        const response = await getClient().audio.speech.create({
+          model: 'tts-1', voice: safeVoice, input: chunks[i], speed: 1.0,
+        });
+        await fs.writeFile(partPath, Buffer.from(await response.arrayBuffer()));
+      }
+    } else {
+      const response = await getClient().audio.speech.create({
+        model: 'tts-1', voice: safeVoice, input: chunks[i], speed: 1.0,
+      });
+      await fs.writeFile(partPath, Buffer.from(await response.arrayBuffer()));
+    }
+
     partPaths.push(partPath);
   }
 
   if (partPaths.length === 1) {
-    // Single chunk — just move it to the final path
     await fs.rename(partPaths[0], finalPath);
   } else {
     await concatMp3s(partPaths, finalPath);
-    // Clean up part files
     await Promise.all(partPaths.map(p => fs.unlink(p).catch(() => {})));
   }
 

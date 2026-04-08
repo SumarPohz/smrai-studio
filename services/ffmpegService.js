@@ -44,7 +44,7 @@ function sanitizeLine(text) {
 // Dramatic/emotional words hold 35% longer. Sentence-end punctuation adds a
 // 0.25s pause so the screen briefly clears, mimicking natural speech rhythm.
 function buildSubtitleSegments(script) {
-  const BASE_SPW = 60 / 150;  // ~0.4s per word at 150 WPM
+  const BASE_SPW = 60 / 175;  // ~0.343s per word — matches Google Neural2 TTS pace
   const DRAMATIC = /^(but|wait|listen|however|because|love|truth|real|change|life|time|never|always|every|only|just|now|stop|think|feel|remember|imagine|believe|know|understand|people|world|story|dream|fear|hope|fail|win|lose|moment|chance|choice|power|mind|heart|soul|pain|joy|wrong|right|end|start|begin|yet|still|already)$/i;
 
   const segments = [];
@@ -53,9 +53,9 @@ function buildSubtitleSegments(script) {
   script.split(/\n+/).map(l => l.trim()).filter(Boolean).forEach(line => {
     line.split(/\s+/).filter(Boolean).forEach(w => {
       const bare  = w.replace(/[.,!?;:'"]/g, '');
-      const dur   = DRAMATIC.test(bare) ? BASE_SPW * 1.35 : BASE_SPW;
-      const pause = /[.!?]$/.test(w) ? 0.25 : 0;
-      const GAP   = 0.04;  // brief blank gap between words — visual pulse
+      const dur   = DRAMATIC.test(bare) ? BASE_SPW * 1.1 : BASE_SPW;
+      const pause = /[.!?]$/.test(w) ? 0.1 : 0;
+      const GAP   = 0.03;
 
       segments.push({
         text:  sanitizeLine(w),
@@ -414,6 +414,7 @@ export async function mergeReelFromVideos(reelId, clipPaths, audioPath, script, 
     duration        = '30-40',
     captionSegments = null,
     captionWords    = null,
+    videoSpeed      = 1.0,
   } = options;
 
   const outputPath = path.resolve(`./public/videos/${reelId}.mp4`);
@@ -424,18 +425,21 @@ export async function mergeReelFromVideos(reelId, clipPaths, audioPath, script, 
   const hasAnimatedHook = !!effects.animatedHook;
   const hasBGM         = !!musicPath;
   const n              = clipPaths.length;
-  // Hard cap: never exceed total footage duration (clips × clip length)
-  const clipSec        = duration === '60-70' ? 12 : 10;
+  // Hard cap: detect actual clip length from first clip name, fallback to 8s (Veo) or 10s
+  const clipSec        = duration === '60-70' ? 12 : 8;
   const maxDuration    = n * clipSec;
 
   // Use Whisper-derived timestamps if available, otherwise fall back to WPM estimation
   const segments = captionSegments || buildSentenceSegments(script);
 
-  // Pre-generate ASS karaoke file if Whisper word timestamps are available
+  // Build ASS karaoke file — prefer Whisper words, fall back to WPM word segments
   let assFilePath = null;
-  if (captionWords?.length) {
-    assFilePath = await buildAssFile(captionWords, reelId);
-    console.log(`[FFmpeg] ASS karaoke file ready: ${path.basename(assFilePath)}`);
+  const assWords = captionWords?.length
+    ? captionWords
+    : buildSubtitleSegments(script).map(s => ({ word: s.text, start: s.start, end: s.end }));
+  if (assWords.length) {
+    assFilePath = await buildAssFile(assWords, reelId);
+    console.log(`[FFmpeg] ASS karaoke file ready: ${path.basename(assFilePath)} (${captionWords?.length ? 'Whisper' : 'WPM'})`);
   }
 
   return new Promise((resolve, reject) => {
@@ -483,7 +487,12 @@ export async function mergeReelFromVideos(reelId, clipPaths, audioPath, script, 
     const hookStage   = hasAnimatedHook
       ? `${afterShake}fade=t=in:st=0:d=0.3[vhooked]`
       : null;
-    const drawtextSrc = hasAnimatedHook ? '[vhooked]' : afterShake;
+    const afterHook   = hasAnimatedHook ? '[vhooked]' : afterShake;
+
+    // Video-only slow-motion: scale PTS without touching audio
+    const ptsMult     = videoSpeed > 0 && videoSpeed !== 1.0 ? (1 / videoSpeed).toFixed(4) : null;
+    const speedStage  = ptsMult ? `${afterHook}setpts=${ptsMult}*PTS[vspeed]` : null;
+    const drawtextSrc = ptsMult ? '[vspeed]' : afterHook;
 
     // Karaoke ASS captions (Whisper word timestamps) — or sentence drawtext fallback
     let subtitleFilters;
@@ -525,6 +534,7 @@ export async function mergeReelFromVideos(reelId, clipPaths, audioPath, script, 
       ...xfadeFilters,
       ...(shakeStage      ? [shakeStage]      : []),
       ...(hookStage       ? [hookStage]        : []),
+      ...(speedStage      ? [speedStage]       : []),
       ...subtitleFilters,
       ...(audioFilterPart ? [audioFilterPart] : []),
     ].join(';');

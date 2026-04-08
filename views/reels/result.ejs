@@ -252,6 +252,20 @@
         </div>
         <% } %>
 
+        <!-- Description card -->
+        <% if (reel.description) { %>
+        <div class="glass-card p-5">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <span style="font-size:11px;font-weight:600;letter-spacing:0.08em;color:#52525b;">DESCRIPTION</span>
+            <button class="copy-btn" onclick="copyText(`<%- reel.description.replace(/`/g,'\\`') %>`)">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+              Copy
+            </button>
+          </div>
+          <p style="font-size:14px;color:#d4d4d8;line-height:1.75;"><%- reel.description %></p>
+        </div>
+        <% } %>
+
         <!-- Hashtags card -->
         <% if (reel.hashtagsArr && reel.hashtagsArr.length > 0) { %>
         <div class="glass-card p-5">
@@ -267,6 +281,20 @@
               <span class="hashtag-chip"><%= tag %></span>
             <% }) %>
           </div>
+        </div>
+        <% } %>
+
+        <!-- Script card -->
+        <% if (reel.script) { %>
+        <div class="glass-card p-5">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <span style="font-size:11px;font-weight:600;letter-spacing:0.08em;color:#52525b;">SCRIPT</span>
+            <button class="copy-btn" id="copyScriptBtn" onclick="copyScript()">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+              Copy
+            </button>
+          </div>
+          <div id="scriptText" style="font-size:13px;color:#a1a1aa;line-height:1.75;max-height:180px;overflow-y:auto;white-space:pre-line;padding-right:4px;"><%- reel.script %></div>
         </div>
         <% } %>
 
@@ -393,6 +421,18 @@ function copyText(text) {
     const toast = document.getElementById('toast');
     toast.style.display = 'block';
     setTimeout(() => { toast.style.display = 'none'; }, 2500);
+  });
+}
+function copyScript() {
+  const text = document.getElementById('scriptText')?.innerText || '';
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copyScriptBtn');
+    btn.innerHTML = '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Copied!';
+    btn.style.color = '#86efac';
+    setTimeout(() => {
+      btn.innerHTML = '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg> Copy';
+      btn.style.color = '';
+    }, 2000);
   });
 }
 </script>

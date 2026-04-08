@@ -212,7 +212,7 @@
           <div class="step-dot">✍️</div>
           <div>
             <div class="step-title">Writing Script</div>
-            <div class="step-sub">SmrAI crafting your story</div>
+            <div class="step-sub">SmrAI Studio crafting your story</div>
           </div>
         </div>
         <div class="step-row pending" id="step-1">
@@ -226,7 +226,7 @@
           <div class="step-dot">🎬</div>
           <div>
             <div class="step-title">Generating Video Clips</div>
-            <div class="step-sub">xAI creating cinematic scenes</div>
+            <div class="step-sub">SmrAI Studio generating cinematic scenes</div>
           </div>
         </div>
         <div class="step-row pending" id="step-3">
@@ -245,13 +245,38 @@
       <div style="text-align:center;margin-bottom:24px;">
         <div style="font-size:40px;margin-bottom:10px;">📝</div>
         <div class="approval-badge">✓ Script Ready</div>
-        <h2 style="font-size:22px;font-weight:700;color:#f4f4f5;margin-bottom:8px;">Review Your Script</h2>
-        <p style="font-size:14px;color:#71717a;line-height:1.6;">Read your script before we generate the video.<br>Edit or regenerate it for free — video generation only starts on your approval.</p>
+        <h2 id="approvalTitle" style="font-size:22px;font-weight:700;color:#f4f4f5;margin-bottom:8px;">Review Your Script</h2>
+        <p style="font-size:14px;color:#71717a;line-height:1.6;">Review before we generate the video — edit or regenerate for free.</p>
       </div>
 
+      <!-- Title -->
+      <div id="metaTitle" style="display:none;margin-bottom:12px;padding:14px 16px;background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.25);border-radius:12px;">
+        <div style="font-size:11px;font-weight:600;color:#71717a;letter-spacing:.06em;margin-bottom:4px;">TITLE</div>
+        <div id="metaTitleText" style="font-size:15px;font-weight:700;color:#f4f4f5;"></div>
+      </div>
+
+      <!-- Description -->
+      <div id="metaDesc" style="display:none;margin-bottom:12px;padding:14px 16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;">
+        <div style="font-size:11px;font-weight:600;color:#71717a;letter-spacing:.06em;margin-bottom:6px;">DESCRIPTION</div>
+        <div id="metaDescText" style="font-size:13px;color:#a1a1aa;line-height:1.7;"></div>
+      </div>
+
+      <!-- Caption -->
+      <div id="metaCaption" style="display:none;margin-bottom:12px;padding:14px 16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;">
+        <div style="font-size:11px;font-weight:600;color:#71717a;letter-spacing:.06em;margin-bottom:6px;">CAPTION</div>
+        <div id="metaCaptionText" style="font-size:13px;color:#d4d4d8;font-style:italic;line-height:1.6;"></div>
+      </div>
+
+      <!-- Hashtags -->
+      <div id="metaHashtags" style="display:none;margin-bottom:16px;padding:14px 16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;">
+        <div style="font-size:11px;font-weight:600;color:#71717a;letter-spacing:.06em;margin-bottom:8px;">HASHTAGS</div>
+        <div id="metaHashtagsList" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+      </div>
+
+      <!-- Script -->
       <div class="glass-card p-5 mb-4">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-          <span style="font-size:13px;font-weight:600;color:#a1a1aa;text-transform:uppercase;letter-spacing:0.05em;">Your Script</span>
+          <span style="font-size:13px;font-weight:600;color:#a1a1aa;text-transform:uppercase;letter-spacing:0.05em;">Script</span>
           <button class="btn-secondary" id="editToggleBtn" onclick="toggleEdit()">✏️ Edit</button>
         </div>
         <textarea id="scriptTextarea" class="script-textarea" readonly></textarea>
@@ -339,7 +364,7 @@ async function poll() {
     if (data.status === 'script_ready') {
       clearInterval(pollTimer);
       clearInterval(tipTimer);
-      showApprovalUI(data.script || '');
+      showApprovalUI(data);
       return;
     }
 
@@ -369,11 +394,39 @@ async function poll() {
   }
 }
 
-function showApprovalUI(script) {
+function showApprovalUI(data) {
   document.getElementById('processingState').style.display = 'none';
-  document.getElementById('scriptTextarea').value = script;
+  document.getElementById('scriptTextarea').value = data.script || '';
   document.getElementById('approvalState').style.display = 'block';
   document.getElementById('nprogress').style.width = '20%';
+
+  // Title
+  if (data.title) {
+    document.getElementById('approvalTitle').textContent = data.title;
+    document.getElementById('metaTitleText').textContent = data.title;
+    document.getElementById('metaTitle').style.display = 'block';
+  }
+
+  // Description
+  if (data.description) {
+    document.getElementById('metaDescText').textContent = data.description;
+    document.getElementById('metaDesc').style.display = 'block';
+  }
+
+  // Caption
+  if (data.caption) {
+    document.getElementById('metaCaptionText').textContent = data.caption;
+    document.getElementById('metaCaption').style.display = 'block';
+  }
+
+  // Hashtags
+  if (Array.isArray(data.hashtags) && data.hashtags.length) {
+    const list = document.getElementById('metaHashtagsList');
+    list.innerHTML = data.hashtags.map(h =>
+      `<span style="background:rgba(168,85,247,0.12);border:1px solid rgba(168,85,247,0.3);color:#c4b5fd;font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px;">${h}</span>`
+    ).join('');
+    document.getElementById('metaHashtags').style.display = 'block';
+  }
 }
 
 function toggleEdit() {

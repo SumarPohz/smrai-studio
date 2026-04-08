@@ -12,27 +12,42 @@ import { GoogleGenAI } from '@google/genai';
 import { rewriteChunksAsVisualScenes } from './geminiReelService.js';
 
 // ── Google Veo client (lazy) ──────────────────────────────────────────────────
-// Prefers GOOGLE_API_KEY (Vertex AI Express key) over service-account JSON.
+function getGCPProject() {
+  if (process.env.GCP_PROJECT_ID) return process.env.GCP_PROJECT_ID;
+  if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+    try { return JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON).project_id; } catch {}
+  }
+  return null;
+}
+
 let _veoClient = null;
 function getVeoClient() {
   if (_veoClient) return _veoClient;
-  if (process.env.GOOGLE_API_KEY) {
-    // Vertex AI Express — API key auth (simplest)
-    _veoClient = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
-  } else {
-    // Service account fallback
-    const opts = {
+  const location = process.env.GCP_LOCATION || 'us-central1';
+  // Priority 1: Vertex AI Express — API key
+  const vertexApiKey = process.env.VERTEX_AI_API_KEY;
+  if (vertexApiKey) {
+    _veoClient = new GoogleGenAI({ vertexai: true, apiKey: vertexApiKey });
+    return _veoClient;
+  }
+  // Priority 2: Service account
+  if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+    const project = getGCPProject();
+    _veoClient = new GoogleGenAI({
       vertexai: true,
-      project:  process.env.GCP_PROJECT_ID || 'sumarbha-pohsnem',
-      location: process.env.GCP_LOCATION   || 'us-central1',
-    };
-    if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
-      opts.googleAuthOptions = {
+      project,
+      location,
+      googleAuthOptions: {
         credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON),
         scopes: ['https://www.googleapis.com/auth/cloud-platform'],
-      };
-    }
-    _veoClient = new GoogleGenAI(opts);
+      },
+    });
+    return _veoClient;
+  }
+  // Priority 3: Generic Google API key
+  if (process.env.GOOGLE_API_KEY) {
+    const project = getGCPProject();
+    _veoClient = new GoogleGenAI({ vertexai: true, project, location, apiKey: process.env.GOOGLE_API_KEY });
   }
   return _veoClient;
 }
@@ -143,20 +158,39 @@ export async function generateVideoClips(scriptLines, reelId, artStyle = 'cinema
   const dir = path.resolve(`./public/videos/temp/${reelId}`);
   await fsp.mkdir(dir, { recursive: true });
 
-  const count   = duration === '60-70' ? 8 : 5;
-  const clipSec = duration === '60-70' ? 12 : 10;
-  const WPM     = 150;
+  const clipSec = 8; // Veo always generates 8s clips
+  const WPM     = 175;
 
-  // Divide script into `count` equal scene chunks
-  const chunkSize = Math.ceil(scriptLines.length / count);
-  const rawChunks = Array.from({ length: count }, (_, i) =>
-    scriptLines.slice(i * chunkSize, (i + 1) * chunkSize).join(' ').substring(0, 400).trim()
-  );
-  // Fill any empty chunks (script shorter than clip count) by cycling non-empty ones
-  const nonEmpty = rawChunks.filter(Boolean);
-  const chunks   = rawChunks.map((c, i) => c || nonEmpty[i % nonEmpty.length] || scriptLines.join(' ').substring(0, 400));
+  // Group sentences so each clip covers ~8s of narration (175 WPM × 8/60 ≈ 23 words)
+  const WORDS_PER_CLIP = 23;
+  const fullText  = scriptLines.join(' ');
+  const sentences = fullText
+    .split(/(?<=[.!?])\s+/)
+    .map(s => s.trim())
+    .filter(s => s.length > 10);
 
-  // Per-clip audio duration = word count at WPM — computed from original narration chunks
+  const chunks = [];
+  let group = [], groupWords = 0;
+  for (const sentence of sentences) {
+    const words = sentence.split(/\s+/).length;
+    if (groupWords + words > WORDS_PER_CLIP * 1.5 && group.length > 0) {
+      chunks.push(group.join(' ').substring(0, 500));
+      group = [sentence];
+      groupWords = words;
+    } else {
+      group.push(sentence);
+      groupWords += words;
+    }
+  }
+  if (group.length) chunks.push(group.join(' ').substring(0, 500));
+
+  // Fallback: if sentence splitting failed, use full text as one chunk
+  if (!chunks.length) chunks.push(fullText.substring(0, 500));
+
+  // Clip count is now driven by the script, not hardcoded
+  const count = chunks.length;
+
+  // Per-clip audio duration estimated from word count
   const audioDurations = chunks.map(chunk => {
     const words = chunk.split(/\s+/).filter(Boolean).length;
     return Math.max(+(words / WPM * 60).toFixed(2), 3);
@@ -177,8 +211,10 @@ export async function generateVideoClips(scriptLines, reelId, artStyle = 'cinema
   }
 
   // Rewrite narration chunks as cinematic visual scene descriptions (used by both providers)
-  console.log(`[VideoGen] Reel #${reelId}: rewriting ${count} chunks as visual scenes…`);
-  const visualChunks = await rewriteChunksAsVisualScenes(chunks, artStyle);
+  console.log(`[VideoGen] Reel #${reelId}: ${count} sentence-driven clips, rewriting as visual scenes…`);
+  const rawVisualChunks = await rewriteChunksAsVisualScenes(chunks, artStyle);
+  // Sanitize AFTER Gemini rewrite — Gemini can re-introduce filtered terms (scourged, crucified, etc.)
+  const visualChunks = rawVisualChunks.map(sanitizeForVeo);
 
   let clipPaths;
   if (provider === 'sora-2' || provider === 'sora-2-pro') {
@@ -245,12 +281,74 @@ async function generateClipsViaSora(chunks, count, soraModel, dir, reelId) {
           console.log(`[VideoGen] Reel #${reelId} clip ${i + 1}/${count}: Sora ready`);
           return dest;
         } catch (err) {
-          if (attempt === 2) throw err;
-          console.warn(`[VideoGen] Reel #${reelId} clip ${i + 1}/${count}: ${err.message} — retrying…`);
+          if (attempt === 3) throw err;
+          // On hard policy violation soften the prompt for next attempt
+          if (attempt === 1 && /usage guidelines|violate|blocked/i.test(err.message)) {
+            chunk = `A cinematic documentary scene: ${chunk.replace(/crime|murder|kill|death|blood|victim|suspect|violence|attack|shoot|stab|body|corpse|weapon|gun|knife/gi, 'incident').substring(0, 300)}`;
+          }
+          console.warn(`[VideoGen] Reel #${reelId} clip ${i + 1}/${count}: ${err.message.substring(0, 120)} — retrying…`);
         }
       }
     })
   );
+}
+
+// ── Prompt sanitiser — replaces terms that trigger Veo's RAI filter ─────────────
+const SENSITIVE_TERMS = /\b(murder|kill(?:ing|ed|s)?|blood(?:y)?|corpse|shoot(?:ing)?|shot|stab(?:bing)?|bomb(?:ing)?|gore|mutilat(?:e|ion|ed)|beheading|decapitat(?:e|ion|ed)|torture|scourg(?:ed|ing)?|crucif(?:ix|ied|ixion)|cross\s*beam|bearing\s*(?:a\s*)?cross|nailed\s*to|lash(?:ed|ing)?|flog(?:ged|ging)?|slaughter|massacre|execut(?:ion|e|ed)|wound(?:ed|ing)?|mortal(?:ly)?|dying|bleed(?:ing)?|zombie|vampire|undead|poltergeist|satan(?:ic)?|occult|witch(?:craft)?|porn|nude|naked|sexual|explicit)\b/gi;
+
+function sanitizeForVeo(prompt) {
+  const neutral = {
+    murder:      'tragedy',
+    kill:        'overcome',
+    bloody:      'intense',
+    blood:       'offering',
+    corpse:      'fallen figure',
+    shooting:    'conflict',
+    shot:        'struck',
+    stabbing:    'confrontation',
+    stab:        'confrontation',
+    bombing:     'explosion',
+    bomb:        'explosion',
+    gore:        'intensity',
+    mutilate:    'struggle',
+    beheading:   'ancient trial',
+    decapitate:  'ancient punishment',
+    torture:     'ordeal',
+    scourged:    'weary',
+    scourging:   'struggle',
+    crucifixion: 'solemn moment',
+    crucified:   'standing solemnly',
+    'cross beam':'heavy burden',
+    'bearing':   'carrying',
+    nailed:      'bound',
+    lashed:      'weary',
+    lashing:     'struggle',
+    flogged:     'weary',
+    flogging:    'hardship',
+    slaughter:   'conflict',
+    massacre:    'tragedy',
+    execution:   'judgment',
+    execut:      'judgment',
+    wounded:     'weary',
+    wounding:    'struggle',
+    mortally:    'gravely',
+    dying:       'resting',
+    bleeding:    'weary',
+    zombie:      'wandering figure',
+    vampire:     'mysterious figure',
+    undead:      'mysterious figure',
+    poltergeist: 'mysterious force',
+    satanic:     'ancient',
+    satan:       'dark force',
+    occult:      'ancient ritual',
+    witchcraft:  'ancient practice',
+    witch:       'enigmatic figure',
+  };
+  return prompt.replace(SENSITIVE_TERMS, match => {
+    const lower = match.toLowerCase().replace(/\s+/g, ' ');
+    const key = Object.keys(neutral).find(k => lower.startsWith(k));
+    return key ? neutral[key] : 'solemn moment';
+  });
 }
 
 // ── Google Veo 3.1 clip generation ───────────────────────────────────────────
@@ -260,19 +358,26 @@ async function generateClipsViaVeo(chunks, count, dir, reelId) {
 
   return Promise.all(
     chunks.map(async (chunk, i) => {
-      const dest = path.join(dir, `clip_${i}.mp4`);
-      for (let attempt = 1; attempt <= 2; attempt++) {
+      const dest    = path.join(dir, `clip_${i}.mp4`);
+      let prompt    = chunk; // already sanitized before entering this function
+
+      const original = chunk;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        // Each retry strips more — attempt 2: shorter, attempt 3: bare-bones visual only
+        if (attempt === 2) prompt = `Cinematic scene: ${original.substring(0, 250)}`;
+        if (attempt === 3) prompt = original.substring(0, 150);
+
         try {
           let operation = await client.models.generateVideos({
             model: 'veo-3.1-generate-001',
-            prompt: chunk,
+            prompt,
             config: {
-              aspectRatio:       '9:16',
-              numberOfVideos:    1,
-              durationSeconds:   8,
-              personGeneration:  'allow_all',
-              generateAudio:     false,
-              resolution:        '720p',
+              aspectRatio:      '9:16',
+              numberOfVideos:   1,
+              durationSeconds:  8,
+              personGeneration: 'allow_all',
+              resolution:       '720p',
+              generateAudio:    false,
             },
           });
 
@@ -280,21 +385,31 @@ async function generateClipsViaVeo(chunks, count, dir, reelId) {
           while (!operation.done) {
             if (Date.now() > deadline) throw new Error(`Veo timed out (clip ${i + 1})`);
             await new Promise(r => setTimeout(r, 10000));
-            operation = await client.operations.get(operation);
+            operation = await client.operations.getVideosOperation({ operation });
           }
 
           if (operation.error) throw new Error(`Veo failed (clip ${i + 1}): ${operation.error.message || JSON.stringify(operation.error)}`);
 
-          const uri = operation.result?.generatedVideos?.[0]?.video?.uri;
-          if (!uri) throw new Error(`Veo returned no video URI (clip ${i + 1})`);
+          const generatedVideo = operation.response?.generatedVideos?.[0];
+          const filteredCount  = operation.response?.raiMediaFilteredCount || 0;
 
-          // URI is a signed GCS URL — download it
-          await downloadFile(uri, dest);
+          if (!generatedVideo) {
+            if (filteredCount > 0) {
+              const reasons = operation.response?.raiMediaFilteredReasons?.join(', ') || 'policy';
+              console.warn(`[VideoGen] Reel #${reelId} clip ${i + 1}/${count}: filtered (${reasons}) — retrying with softer prompt…`);
+              throw new Error(`filtered:${reasons}`);
+            }
+            throw new Error(`Veo returned no video (clip ${i + 1})`);
+          }
+
+          await client.files.download({ file: generatedVideo, downloadPath: dest });
           console.log(`[VideoGen] Reel #${reelId} clip ${i + 1}/${count}: Veo ready`);
           return dest;
         } catch (err) {
-          if (attempt === 2) throw err;
-          console.warn(`[VideoGen] Reel #${reelId} clip ${i + 1}/${count}: ${err.message} — retrying…`);
+          if (attempt === 3) throw err;
+          const isNetworkErr = /fetch failed|ECONNRESET|ETIMEDOUT|socket|network/i.test(err.message);
+          if (isNetworkErr) await new Promise(r => setTimeout(r, 5000));
+          console.warn(`[VideoGen] Reel #${reelId} clip ${i + 1}/${count}: ${err.message.substring(0, 120)} — retrying (${attempt}/3)…`);
         }
       }
     })
