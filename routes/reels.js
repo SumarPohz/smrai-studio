@@ -35,6 +35,20 @@ const customMusicUpload = multer({
   fileFilter: (_req, file, cb) => cb(null, /mp3|wav|mpeg|audio/.test(file.mimetype)),
 });
 
+// Multer for person photo upload (used during reel approval for image-to-video)
+const personPhotoDir = path.join(__dirname, '..', 'public', 'videos', 'temp');
+const personPhotoUpload = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, personPhotoDir),
+    filename:    (req, file, cb) => {
+      const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
+      cb(null, `person-${req.params.id}${ext}`);
+    },
+  }),
+  limits:     { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => cb(null, /image\/(jpeg|jpg|png|webp)/.test(file.mimetype)),
+});
+
 export default function reelsRouter(db) {
   const router = express.Router();
 
@@ -57,7 +71,7 @@ export default function reelsRouter(db) {
   // ── API routes ───────────────────────────────────────────────────────────
   router.post('/generate',              (req, res) => generateReel(req, res, db));
   router.get('/:id/status',             (req, res) => getReelStatus(req, res, db));
-  router.post('/:id/approve',           (req, res) => approveReel(req, res, db));
+  router.post('/:id/approve', personPhotoUpload.single('personPhoto'), (req, res) => approveReel(req, res, db));
   router.post('/:id/regenerate-script', (req, res) => regenerateScript(req, res, db));
 
   // Custom music upload — returns absolute server path

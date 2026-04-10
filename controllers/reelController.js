@@ -451,44 +451,47 @@ async function runPipeline(reelId, topic, voice, language, artStyle, duration, m
 async function runPhase2(reelId, db) {
   console.log(`[Reels] #${reelId} — Phase 2 start (user approved)`);
   let customMusicPathUsed = null;
+  let personImagePath     = null; // hoisted so catch block can clean it up
   try {
     // Load pipeline params saved during Phase 1
-    const { voice, artStyle, duration, music, effects, customMusicPath, videoSpeed = 1.0 } = await loadPipelineParams(reelId);
+    const params = await loadPipelineParams(reelId);
+    const { voice, artStyle, duration, music, effects, customMusicPath, videoSpeed = 1.0 } = params;
+    personImagePath = params.personImagePath || null;
 
     // Read script from DB (user may have edited it before approving)
     const { rows: sRows } = await db.query('SELECT script FROM reels WHERE id = ?', [reelId]);
     if (!sRows.length) throw new Error('Reel not found');
     const script = sRows[0].script;
 
-    // Step 3: TTS
-    const { rows: ttsProvRows } = await db.query(
-      "SELECT value FROM admin_settings WHERE `key` = 'tts_provider'"
-    );
-    const ttsProvider = ttsProvRows[0]?.value || 'openai';
-    console.log(`[Reels] #${reelId} — Step 3: Generating TTS (voice: ${voice}, provider: ${ttsProvider})…`);
-    const audioPath = await generateTTS(script, voice, reelId, ttsProvider);
-
-    // Step 3b: Word-level timestamps for karaoke captions
-    let wtResult = null;
-    if (ttsProvider === 'google') {
-      console.log(`[Reels] #${reelId} — Step 3b: Getting caption timestamps via Google STT…`);
-      wtResult = await getWordTimestampsViaGoogle(audioPath);
-    } else {
-      console.log(`[Reels] #${reelId} — Step 3b: Getting caption timestamps via Whisper…`);
-      wtResult = await getWordTimestamps(audioPath);
-    }
-    const captionSegments = wtResult?.segments || null;
-    const captionWords    = wtResult?.words    || null;
-
-    // Step 4: Video clips (provider read from admin settings)
+    // Step 3: Video clips — generate FIRST so we don't spend TTS credits if Veo rejects the script
     const { rows: pvRows } = await db.query(
       "SELECT value FROM admin_settings WHERE `key` = 'video_provider'"
     );
     const videoProvider = pvRows[0]?.value || 'xai';
     const scriptLines = script.split(/\n+/).filter(Boolean);
-    console.log(`[Reels] #${reelId} — Step 4: Generating clips via ${videoProvider} (artStyle=${artStyle})…`);
-    const { clipPaths, audioDurations } = await generateVideoClips(scriptLines, reelId, artStyle, duration, videoProvider);
-    console.log(`[Reels] #${reelId} — Step 4: ${clipPaths.length} clips generated`);
+    console.log(`[Reels] #${reelId} — Step 3: Generating clips via ${videoProvider} (artStyle=${artStyle}${personImagePath ? ', person-image-to-video' : ''})…`);
+    const { clipPaths, audioDurations } = await generateVideoClips(scriptLines, reelId, artStyle, duration, videoProvider, personImagePath);
+    console.log(`[Reels] #${reelId} — Step 3: ${clipPaths.length} clips generated`);
+
+    // Step 4: TTS — only runs if video succeeded
+    const { rows: ttsProvRows } = await db.query(
+      "SELECT value FROM admin_settings WHERE `key` = 'tts_provider'"
+    );
+    const ttsProvider = ttsProvRows[0]?.value || 'openai';
+    console.log(`[Reels] #${reelId} — Step 4: Generating TTS (voice: ${voice}, provider: ${ttsProvider})…`);
+    const audioPath = await generateTTS(script, voice, reelId, ttsProvider);
+
+    // Step 4b: Word-level timestamps for karaoke captions
+    let wtResult = null;
+    if (ttsProvider === 'google') {
+      console.log(`[Reels] #${reelId} — Step 4b: Getting caption timestamps via Google STT…`);
+      wtResult = await getWordTimestampsViaGoogle(audioPath);
+    } else {
+      console.log(`[Reels] #${reelId} — Step 4b: Getting caption timestamps via Whisper…`);
+      wtResult = await getWordTimestamps(audioPath);
+    }
+    const captionSegments = wtResult?.segments || null;
+    const captionWords    = wtResult?.words    || null;
 
     // Step 5: Resolve BGM
     let musicPath     = null;
@@ -510,13 +513,14 @@ async function runPhase2(reelId, db) {
     }
 
     // Step 6: FFmpeg merge
-    console.log(`[Reels] #${reelId} — Step 6: Merging ${clipPaths.length} clips (bgm=${musicPath ? musicId : 'none'})…`);
+    console.log(`[Reels] #${reelId} — Step 6: Merging ${clipPaths.length} clips + audio (bgm=${musicPath ? musicId : 'none'})…`);
     await mergeReelFromVideos(reelId, clipPaths, audioPath, script, { effects, musicPath, duration, audioDurations, captionSegments, captionWords, videoSpeed });
 
     // Step 7: Cleanup
     await cleanupTempVideos(reelId);
     if (tempMusicPath)       await fs.unlink(tempMusicPath).catch(() => {});
     if (customMusicPathUsed) await fs.unlink(customMusicPathUsed).catch(() => {});
+    if (personImagePath)     await fs.unlink(personImagePath).catch(() => {});
     await deletePipelineParams(reelId);
 
     // Step 8: Mark completed
@@ -531,6 +535,7 @@ async function runPhase2(reelId, db) {
     ).catch(() => {});
     await cleanupTempVideos(reelId);
     if (customMusicPathUsed) await fs.unlink(customMusicPathUsed).catch(() => {});
+    if (personImagePath)     await fs.unlink(personImagePath).catch(() => {});
     await deletePipelineParams(reelId);
 
     // ── Auto-refund: add payment back to wallet ───────────────────────────────
@@ -573,6 +578,13 @@ export async function approveReel(req, res, db) {
     // If user edited the script, persist it before Phase 2 reads it
     if (editedScript && editedScript.trim().length > 10) {
       await db.query('UPDATE reels SET script = ? WHERE id = ?', [editedScript.trim(), reelId]);
+    }
+
+    // If a person photo was uploaded, save its path into pipeline params
+    if (req.file) {
+      const existing = await loadPipelineParams(reelId).catch(() => ({}));
+      existing.personImagePath = req.file.path;
+      await savePipelineParams(reelId, existing);
     }
 
     await db.query("UPDATE reels SET status = 'processing' WHERE id = ?", [reelId]);

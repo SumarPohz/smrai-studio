@@ -167,7 +167,7 @@ async function generateOneClip(prompt, clipDuration, artStyle, index) {
  * @param {string}   duration     - '30-40' or '60-70'
  * @returns {Promise<{ clipPaths: string[], audioDurations: number[] }>}
  */
-export async function generateVideoClips(scriptLines, reelId, artStyle = 'cinematic', duration = '30-40', provider = 'xai') {
+export async function generateVideoClips(scriptLines, reelId, artStyle = 'cinematic', duration = '30-40', provider = 'xai', personImagePath = null) {
   const dir = path.resolve(`./public/videos/temp/${reelId}`);
   await fsp.mkdir(dir, { recursive: true });
 
@@ -233,7 +233,7 @@ export async function generateVideoClips(scriptLines, reelId, artStyle = 'cinema
   if (provider === 'sora-2' || provider === 'sora-2-pro') {
     clipPaths = await generateClipsViaSora(visualChunks, count, provider, dir, reelId);
   } else if (provider === 'veo') {
-    clipPaths = await generateClipsViaVeo(visualChunks, count, dir, reelId);
+    clipPaths = await generateClipsViaVeo(visualChunks, count, dir, reelId, personImagePath);
   } else {
     clipPaths = await generateClipsViaXAI(visualChunks, count, clipSec, artStyle, dir, reelId);
   }
@@ -307,82 +307,241 @@ async function generateClipsViaSora(chunks, count, soraModel, dir, reelId) {
 }
 
 // ── Prompt sanitiser — replaces terms that trigger Veo's RAI filter ─────────────
-const SENSITIVE_TERMS = /\b(murder|kill(?:ing|ed|s)?|blood(?:y)?|corpse|shoot(?:ing)?|shot|stab(?:bing)?|bomb(?:ing)?|gore|mutilat(?:e|ion|ed)|beheading|decapitat(?:e|ion|ed)|torture|scourg(?:ed|ing)?|crucif(?:ix|ied|ixion)|cross\s*beam|bearing\s*(?:a\s*)?cross|nailed\s*to|lash(?:ed|ing)?|flog(?:ged|ging)?|slaughter|massacre|execut(?:ion|e|ed)|wound(?:ed|ing)?|mortal(?:ly)?|dying|bleed(?:ing)?|zombie|vampire|undead|poltergeist|satan(?:ic)?|occult|witch(?:craft)?|porn|nude|naked|sexual|explicit)\b/gi;
+const SENSITIVE_TERMS = /\b(murder|kill(?:ing|ed|s)?|blood(?:y)?|corpse|shoot(?:ing)?|shot|stab(?:bing)?|bomb(?:ing)?|gore|mutilat(?:e|ion|ed)|beheading|decapitat(?:e|ion|ed)|torture|scourg(?:ed|ing)?|crucif(?:y|ix|ied|ixion|ying)?|cross\s*beam|bearing\s*(?:a\s*)?cross|nailed\s*to|lash(?:ed|ing)?|flog(?:ged|ging)?|slaughter|massacre|execut(?:ion|e|ed|ing)?|wound(?:ed|ing)?|mortal(?:ly)?|dy(?:ing|e[ds]?)|bleed(?:ing)?|death|dead(?:ly)?|persecut(?:e[ds]?|ing|ion)|martyr(?:s|dom)?|sacrific(?:e[ds]?|ing|ial)|suffer(?:ing|ed|s)?|condemn(?:ed|ation)?|punish(?:ment|ed|ing)?|agon(?:y|izing)|hang(?:ed|ing)|impaled?|stoned|crucify|missile(?:s)?|rocket(?:s)?|launch\s*(?:pad|vehicle)?|spacecraft|satellite(?:s)?|test\s*range|weapon(?:s|ry)?|warhead(?:s)?|warship(?:s)?|nuclear(?:\s+\w+)?|ballistic|armament(?:s)?|munition(?:s)?|detonat(?:e|ion|ing|ed)?|explos(?:ive|ion)|combat|warfare|armed\s+forces|military\s+(?:base|camp|operation|personnel|force)|soldier(?:s)?|army|navy|air\s*force|fighter\s+(?:jet|plane|aircraft)|warplane|gunship|canno(?:n|nade)|artillery|grenade|sniper|hostage|terrorist(?:s|ism)?|jihad|poverty|slum(?:s)?|destitute|impoverished|starv(?:ing|ation)|oppres(?:s(?:ed|ion|ing))?|zombie|vampire|undead|poltergeist|satan(?:ic)?|occult|witch(?:craft)?|porn|nude|naked|sexual|explicit)\b/gi;
+
+const NEUTRAL_MAP = {
+  murder:      'tragedy',
+  kill:        'overcome',
+  bloody:      'intense',
+  blood:       'offering',
+  corpse:      'fallen figure',
+  shooting:    'conflict',
+  shot:        'struck',
+  stabbing:    'confrontation',
+  stab:        'confrontation',
+  bombing:     'explosion',
+  bomb:        'explosion',
+  gore:        'intensity',
+  mutilate:    'struggle',
+  beheading:   'ancient trial',
+  decapitate:  'ancient punishment',
+  torture:     'ordeal',
+  scourged:    'weary',
+  scourging:   'struggle',
+  crucif:      'solemn moment',
+  crucify:     'solemn moment',
+  'cross beam':'heavy burden',
+  'bearing':   'carrying',
+  nailed:      'bound',
+  lashed:      'weary',
+  lashing:     'struggle',
+  flogged:     'weary',
+  flogging:    'hardship',
+  slaughter:   'conflict',
+  massacre:    'tragedy',
+  execut:      'judgment',
+  wounded:     'weary',
+  wounding:    'struggle',
+  mortally:    'gravely',
+  dying:       'at peace',
+  'dye':       'at peace',
+  'died':      'passed',
+  'die':       'depart',
+  'dies':      'departs',
+  death:       'final chapter',
+  dead:        'still',
+  deadly:      'intense',
+  persecuted:  'tested',
+  persecuting: 'challenging',
+  persecution: 'hardship',
+  persecute:   'challenge',
+  martyr:      'devoted follower',
+  martyrdom:   'devotion',
+  sacrifice:   'offering',
+  sacrificial: 'ceremonial',
+  suffering:   'hardship',
+  suffered:    'endured',
+  condemned:   'judged',
+  condemnation:'judgment',
+  punished:    'corrected',
+  punishment:  'consequence',
+  agony:       'anguish',
+  agonizing:   'intense',
+  hanged:      'bound',
+  hanging:     'suspended',
+  impaled:     'struck',
+  stoned:      'confronted',
+  bleeding:    'weary',
+  // Space / aerospace terms Gemini produces for ISRO / Kalam scripts
+  rocket:      'aerospace vehicle',
+  'launch vehicle': 'aerospace vehicle',
+  spacecraft:  'aerial vehicle',
+  satellite:   'scientific device',
+  'launch pad': 'research platform',
+  'test range': 'research facility',
+  warship:     'vessel',
+  soldier:     'person',
+  soldiers:    'people',
+  army:        'national organisation',
+  navy:        'national organisation',
+  'air force': 'national organisation',
+  tank:        'vehicle',
+  // Poverty / hardship terms that trigger visual filter
+  poverty:     'humble surroundings',
+  slum:        'modest neighbourhood',
+  destitute:   'humble',
+  impoverished:'modest',
+  starving:    'determined',
+  starvation:  'hardship',
+  oppression:  'challenge',
+  oppressed:   'challenged',
+  missile:     'aerospace vehicle',
+  missiles:    'aerospace vehicles',
+  weapon:      'technology',
+  weapons:     'technologies',
+  weaponry:    'technology',
+  warhead:     'scientific device',
+  warheads:    'scientific devices',
+  nuclear:     'advanced scientific',
+  ballistic:   'aerospace',
+  armament:    'achievement',
+  armaments:   'achievements',
+  munition:    'device',
+  munitions:   'devices',
+  detonate:    'activate',
+  detonation:  'activation',
+  detonating:  'activating',
+  detonated:   'activated',
+  explosive:   'powerful',
+  explosion:   'launch',
+  combat:      'national effort',
+  warfare:     'national effort',
+  'armed forces': 'national organisation',
+  'military base': 'research facility',
+  'military camp': 'research campus',
+  'military operation': 'national project',
+  'military personnel': 'scientists and engineers',
+  'military force': 'national team',
+  'fighter jet': 'aircraft',
+  'fighter plane': 'aircraft',
+  'fighter aircraft': 'aircraft',
+  warplane:    'aircraft',
+  gunship:     'aircraft',
+  cannon:      'instrument',
+  artillery:   'equipment',
+  grenade:     'device',
+  sniper:      'observer',
+  hostage:     'person',
+  terrorist:   'person',
+  terrorists:  'people',
+  terrorism:   'challenge',
+  jihad:       'pursuit',
+  zombie:      'wandering figure',
+  vampire:     'mysterious figure',
+  undead:      'mysterious figure',
+  poltergeist: 'mysterious force',
+  satanic:     'ancient',
+  satan:       'dark force',
+  occult:      'ancient ritual',
+  witchcraft:  'ancient practice',
+  witch:       'enigmatic figure',
+};
 
 function sanitizeForVeo(prompt) {
-  const neutral = {
-    murder:      'tragedy',
-    kill:        'overcome',
-    bloody:      'intense',
-    blood:       'offering',
-    corpse:      'fallen figure',
-    shooting:    'conflict',
-    shot:        'struck',
-    stabbing:    'confrontation',
-    stab:        'confrontation',
-    bombing:     'explosion',
-    bomb:        'explosion',
-    gore:        'intensity',
-    mutilate:    'struggle',
-    beheading:   'ancient trial',
-    decapitate:  'ancient punishment',
-    torture:     'ordeal',
-    scourged:    'weary',
-    scourging:   'struggle',
-    crucifixion: 'solemn moment',
-    crucified:   'standing solemnly',
-    'cross beam':'heavy burden',
-    'bearing':   'carrying',
-    nailed:      'bound',
-    lashed:      'weary',
-    lashing:     'struggle',
-    flogged:     'weary',
-    flogging:    'hardship',
-    slaughter:   'conflict',
-    massacre:    'tragedy',
-    execution:   'judgment',
-    execut:      'judgment',
-    wounded:     'weary',
-    wounding:    'struggle',
-    mortally:    'gravely',
-    dying:       'resting',
-    bleeding:    'weary',
-    zombie:      'wandering figure',
-    vampire:     'mysterious figure',
-    undead:      'mysterious figure',
-    poltergeist: 'mysterious force',
-    satanic:     'ancient',
-    satan:       'dark force',
-    occult:      'ancient ritual',
-    witchcraft:  'ancient practice',
-    witch:       'enigmatic figure',
-  };
   return prompt.replace(SENSITIVE_TERMS, match => {
     const lower = match.toLowerCase().replace(/\s+/g, ' ');
-    const key = Object.keys(neutral).find(k => lower.startsWith(k));
-    return key ? neutral[key] : 'solemn moment';
+    const key = Object.keys(NEUTRAL_MAP).find(k => lower.startsWith(k));
+    return key ? NEUTRAL_MAP[key] : 'solemn moment';
   });
 }
 
+// Neutral documentary b-roll used when ALL retry attempts are blocked by Veo input filter
+const NEUTRAL_BROLL = [
+  'Aerial slow-motion shot of a coastal Indian town at golden hour, colourful fishing boats, warm light, photorealistic documentary.',
+  'Close-up of a student writing equations in a notebook, warm lamplight, focused expression, cinematic.',
+  'Wide establishing shot of a large government research campus surrounded by lush greenery, institutional, peaceful.',
+  'A young man in simple clothes cycling through a quiet village road at dawn, golden light, aspirational mood.',
+  'Slow cinematic pan over a modern science campus with tall trees, researchers walking, soft morning light.',
+  'A solitary figure in formal attire standing on a stage facing an audience, soft spotlight, inspirational.',
+  'Close-up of hands turning the pages of a thick engineering textbook, warm tones, academic atmosphere.',
+  'Aerial shot of rural Tamil Nadu coastline, blue ocean, fishing villages, golden hour, documentary style.',
+  'Interior of a large university laboratory, students at workstations with computers, warm professional lighting.',
+  'Slow pan across a wall of awards, certificates and framed photographs, warm ambient light, pride and legacy.',
+  'A crowd of students gathered in an open auditorium, attentive, inspired expressions, warm natural light.',
+  'Wide shot of a grand government building at dawn, national flag waving, soft morning light.',
+  'Close-up of a person writing notes at a wooden desk near a window, sunlight streaming in, focused and calm.',
+  'Aerial view of a green Indian village, terracotta rooftops, palm trees, golden morning light.',
+  'A mentor and student in conversation under a large tree on a university campus, warm afternoon light.',
+];
+
+function neutralFallback(clipIndex) {
+  return NEUTRAL_BROLL[clipIndex % NEUTRAL_BROLL.length];
+}
+
 // ── Google Veo 3.1 clip generation ───────────────────────────────────────────
-async function generateClipsViaVeo(chunks, count, dir, reelId) {
-  console.log(`[VideoGen] Reel #${reelId}: generating ${count} Veo 3.1 clips…`);
-  const client = getVeoClient();
+// Semaphore: at most N concurrent Veo operations (avoids 429 quota on large reels)
+function makeSemaphore(max) {
+  let active = 0;
+  const queue = [];
+  return function acquire() {
+    return new Promise(resolve => {
+      const tryRun = () => {
+        if (active < max) { active++; resolve(() => { active--; if (queue.length) queue.shift()(); }); }
+        else queue.push(tryRun);
+      };
+      tryRun();
+    });
+  };
+}
+const VEO_CONCURRENCY = 3; // Vertex AI quota: safe concurrency to avoid per-minute 429s
+
+async function generateClipsViaVeo(chunks, count, dir, reelId, personImagePath = null) {
+  console.log(`[VideoGen] Reel #${reelId}: generating ${count} Veo clips${personImagePath ? ' (image-to-video)' : ''} — max ${VEO_CONCURRENCY} concurrent…`);
+  const client  = getVeoClient();
+  const acquire = makeSemaphore(VEO_CONCURRENCY);
+
+  // Load person image once as base64 (if provided)
+  let personImageData = null;
+  if (personImagePath) {
+    try {
+      const buf  = await fsp.readFile(personImagePath);
+      const ext  = path.extname(personImagePath).toLowerCase().replace('.', '') || 'jpeg';
+      const mime = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+      personImageData = { imageBytes: buf.toString('base64'), mimeType: mime };
+      console.log(`[VideoGen] Reel #${reelId}: person image loaded (${buf.length} bytes, ${mime})`);
+    } catch (e) {
+      console.warn(`[VideoGen] Reel #${reelId}: could not load person image — ${e.message}. Falling back to text-only.`);
+    }
+  }
 
   return Promise.all(
     chunks.map(async (chunk, i) => {
-      const dest    = path.join(dir, `clip_${i}.mp4`);
+      const release = await acquire(); // wait for a slot
+      // Stagger requests within each batch by 2s to prevent quota burst
+      await new Promise(r => setTimeout(r, (i % VEO_CONCURRENCY) * 2000));
+      const dest = path.join(dir, `clip_${i}.mp4`);
       let prompt    = chunk; // already sanitized before entering this function
 
       const original = chunk;
+      let wasBlocked = false; // true if Veo rejected the prompt at input level
+
       for (let attempt = 1; attempt <= 3; attempt++) {
-        // Each retry strips more — attempt 2: shorter, attempt 3: bare-bones visual only
-        if (attempt === 2) prompt = `Cinematic scene: ${original.substring(0, 250)}`;
-        if (attempt === 3) prompt = original.substring(0, 150);
+        if (attempt === 2) {
+          // If Veo blocked the prompt at input level, jump straight to neutral b-roll
+          // (shorter version of the same blocked content will also be blocked)
+          prompt = wasBlocked
+            ? neutralFallback(i)
+            : sanitizeForVeo(`Cinematic scene: ${original.substring(0, 250)}`);
+        }
+        if (attempt === 3) {
+          prompt = neutralFallback(i); // guaranteed-safe fallback
+        }
 
         try {
-          let operation = await client.models.generateVideos({
-            model: 'veo-3.1-generate-001',
+          // Build request — include person image on attempt 1 and 2 (skip on attempt 3 fallback)
+          const useImage = personImageData && attempt <= 2;
+          const requestParams = {
+            model: 'veo-2.0-generate-001', // veo-2 has stable image-to-video support; veo-3.1 text-only
             prompt,
             config: {
               aspectRatio:      '9:16',
@@ -392,7 +551,12 @@ async function generateClipsViaVeo(chunks, count, dir, reelId) {
               resolution:       '720p',
               generateAudio:    false,
             },
-          });
+          };
+          // Use veo-3.1 only when there's no person image (text-to-video)
+          if (!useImage) requestParams.model = 'veo-3.1-generate-001';
+          if (useImage)  requestParams.image  = personImageData;
+
+          let operation = await client.models.generateVideos(requestParams);
 
           const deadline = Date.now() + 25 * 60 * 1000;
           while (!operation.done) {
@@ -417,14 +581,24 @@ async function generateClipsViaVeo(chunks, count, dir, reelId) {
 
           await client.files.download({ file: generatedVideo, downloadPath: dest });
           console.log(`[VideoGen] Reel #${reelId} clip ${i + 1}/${count}: Veo ready`);
+          release();
           return dest;
         } catch (err) {
-          if (attempt === 3) throw err;
-          const isNetworkErr = /fetch failed|ECONNRESET|ETIMEDOUT|socket|network/i.test(err.message);
-          if (isNetworkErr) await new Promise(r => setTimeout(r, 5000));
+          if (attempt === 3) { release(); throw err; }
+          if (/could not be submitted|contains words|violate.*guidelines/i.test(err.message)) {
+            wasBlocked = true; // switch to neutral b-roll on next attempt
+          }
+          // On 429 quota error wait longer before retry
+          const is429 = /429|Quota exceeded/i.test(err.message);
+          if (is429) await new Promise(r => setTimeout(r, 45_000));
+          else {
+            const isNetworkErr = /fetch failed|ECONNRESET|ETIMEDOUT|socket|network/i.test(err.message);
+            if (isNetworkErr) await new Promise(r => setTimeout(r, 5000));
+          }
           console.warn(`[VideoGen] Reel #${reelId} clip ${i + 1}/${count}: ${err.message.substring(0, 120)} — retrying (${attempt}/3)…`);
         }
       }
+      release(); // safety — ensure release even if loop exits without returning
     })
   );
 }

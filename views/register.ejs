@@ -256,6 +256,7 @@
       <% } %>
 
       <form action="/register" method="POST" class="auth-form">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <div>
           <label class="auth-label" for="name">Full Name</label>
           <input class="auth-input" type="text" id="name" name="name" placeholder="John Doe" required />

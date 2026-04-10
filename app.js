@@ -22,9 +22,11 @@ import dotenv from "dotenv";
 import { TEMPLATES, getTemplateById } from "./config/templates-config.js";
 import QRCode from "qrcode";
 import { getFieldsForTemplate, isPhotoTemplate } from "./config/template-fields.js";
-import adminRouter from "./routes/admin.js";
-import reelsRouter from "./routes/reels.js";
-import ttsRouter   from "./routes/tts.js";
+import adminRouter     from "./routes/admin.js";
+import reelsRouter     from "./routes/reels.js";
+import ttsRouter       from "./routes/tts.js";
+import magicLiveRouter from "./routes/magicLive.js";
+import { getOverlay, getSubmitPage, postSubmit } from "./controllers/magicLiveController.js";
 import { removeBackgroundFromImageBase64 } from "remove.bg";
 import compression from "compression";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
@@ -80,6 +82,17 @@ if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
 }
 
 const app = express();
+
+// ── Auth rate limiter — 5 attempts per 15 minutes per IP ──────────────────
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  keyGenerator: ipKeyGenerator,
+  message: { success: false, message: "Too many attempts. Please wait 15 minutes and try again." },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+});
 
 // ── PaySetu transaction rate limiter (per user IP, 10 requests / minute) ──
 const paysetuLimiter = rateLimit({
@@ -903,6 +916,35 @@ await db.query(`
       ('setu',         'Setu (BBPS Only)')
     `).catch(() => {});
 
+    // ── Magic Live ──────────────────────────────────────────────────────────
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS magic_live_settings (
+        id         INT AUTO_INCREMENT PRIMARY KEY,
+        user_id    INT NOT NULL UNIQUE,
+        anim_style ENUM('handwriting','neon','fire','glow') DEFAULT 'neon',
+        anim_speed ENUM('slow','normal','fast') DEFAULT 'normal',
+        is_active  TINYINT(1) DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX (user_id)
+      )
+    `);
+    // Add font_style column if not already present (safe migration)
+    await db.query(
+      `ALTER TABLE magic_live_settings ADD COLUMN font_style VARCHAR(50) NOT NULL DEFAULT 'bold'`
+    ).catch(() => {});
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS magic_live_history (
+        id         INT AUTO_INCREMENT PRIMARY KEY,
+        user_id    INT NOT NULL,
+        name       VARCHAR(255) NOT NULL,
+        source     ENUM('manual','chat') DEFAULT 'manual',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX (user_id),
+        INDEX (created_at)
+      )
+    `);
+
   } catch (err) {
     console.error('[initDb] FAILED:', err.message);
   }
@@ -1067,6 +1109,31 @@ app.use(sessionMiddleware);
 
 app.use(passport.initialize());
 app.use(passport.session());
+
+// ── CSRF protection (session token pattern) ───────────────────────────────
+function csrfGenerateToken(req) {
+  if (!req.session.csrfToken) {
+    req.session.csrfToken = crypto.randomBytes(32).toString("hex");
+  }
+  return req.session.csrfToken;
+}
+
+function doubleCsrfProtection(req, res, next) {
+  const token = req.body?._csrf || req.headers["x-csrf-token"];
+  if (!token || token !== req.session.csrfToken) {
+    if (req.accepts("html")) {
+      return res.status(403).send("Invalid CSRF token. <a href='javascript:history.back()'>Go back</a> and try again.");
+    }
+    return res.status(403).json({ error: "Invalid CSRF token. Please refresh the page and try again." });
+  }
+  next();
+}
+
+// Make CSRF token available to all EJS templates
+app.use((req, res, next) => {
+  res.locals.csrfToken = csrfGenerateToken(req);
+  next();
+});
 
 // ---------- Passport Local Strategy ----------
 passport.use(
@@ -1364,7 +1431,7 @@ app.get("/register", async (req, res) => {
   res.render("register", { refCode, ogTitle, ogDescription, ogUrl, ogImage });
 });
 
-app.post("/register", async (req, res) => {
+app.post("/register", authLimiter, doubleCsrfProtection, async (req, res) => {
   const { name, email, password, referralCode } = req.body;
 
   try {
@@ -1421,7 +1488,7 @@ app.get("/login", (req, res) => {
   res.render("login", { error: null });
 });
 
-app.post("/login", (req, res, next) => {
+app.post("/login", authLimiter, doubleCsrfProtection, (req, res, next) => {
   passport.authenticate("local", (err, user, info) => {
     if (err) {
       return next(err);
@@ -1451,7 +1518,7 @@ app.get("/forgot-password", (req, res) => {
   res.render("forgot-password", { message: null, error: null });
 });
 
-app.post("/forgot-password", async (req, res) => {
+app.post("/forgot-password", authLimiter, doubleCsrfProtection, async (req, res) => {
   const { email } = req.body;
 
   try {
@@ -1506,7 +1573,7 @@ app.get("/reset-password", (req, res) => {
 });
 
 
-app.post("/reset-password", async (req, res) => {
+app.post("/reset-password", authLimiter, doubleCsrfProtection, async (req, res) => {
   const { email, otp, newPassword } = req.body;
 
   try {
@@ -3168,6 +3235,72 @@ app.use("/admin", ensureAdmin, adminRouter(db));
 app.use("/reels", ensureAuthenticated, reelsRouter(db));
 app.use("/tts",   ensureAuthenticated, ttsRouter(db));
 
+// Magic Live — public routes (no auth)
+app.get("/magic-live/overlay", (req, res) => getOverlay(req, res, db));
+app.get("/magic-live/submit",  (req, res) => getSubmitPage(req, res, db));
+app.post("/magic-live/submit", (req, res) => postSubmit(req, res, db, io));
+// Magic Live — protected dashboard/API
+app.use("/magic-live", ensureAuthenticated, (req, res, next) => magicLiveRouter(db, io)(req, res, next));
+
+// ── Admin: Magic Live History API ─────────────────────────────────────────────
+app.get("/api/admin/magic-live/history", ensureAdmin, async (req, res) => {
+  const { page = 1, search = '', user = '' } = req.query;
+  const offset = (parseInt(page) - 1) * 20;
+  try {
+    let where = '1=1';
+    const params = [];
+    if (search) { where += ' AND h.name LIKE ?'; params.push(`%${search}%`); }
+    if (user)   { where += ' AND (u.email LIKE ? OR u.name LIKE ?)'; params.push(`%${user}%`, `%${user}%`); }
+
+    const countRes = await db.query(
+      `SELECT COUNT(*) AS total FROM magic_live_history h
+       LEFT JOIN users u ON u.id = h.user_id WHERE ${where}`,
+      params
+    );
+    const total = countRes.rows[0]?.total || 0;
+
+    const rows = await db.query(
+      `SELECT h.id, h.name, h.source, h.created_at,
+              u.name AS user_name, u.email AS user_email
+       FROM magic_live_history h
+       LEFT JOIN users u ON u.id = h.user_id
+       WHERE ${where}
+       ORDER BY h.created_at DESC LIMIT 20 OFFSET ?`,
+      [...params, offset]
+    );
+    res.json({ rows: rows.rows, total });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete("/api/admin/magic-live/history/:id", ensureAdmin, async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (!id) return res.status(400).json({ error: 'Invalid ID' });
+  try {
+    await db.query('DELETE FROM magic_live_history WHERE id = ?', [id]);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete("/api/admin/magic-live/history/bulk", ensureAdmin, async (req, res) => {
+  const { user } = req.query;
+  if (!user) return res.status(400).json({ error: 'user param required' });
+  try {
+    await db.query(
+      `DELETE h FROM magic_live_history h
+       LEFT JOIN users u ON u.id = h.user_id
+       WHERE u.email LIKE ? OR u.name LIKE ?`,
+      [`%${user}%`, `%${user}%`]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Reel Subscription Payments ────────────────────────────────────────────────
 
 /** GET /api/reels/subscription/status */
@@ -3444,9 +3577,14 @@ app.post("/api/reels/video-pay/create-order", ensureAuthenticated, async (req, r
 /** GET /auth/youtube — start YouTube OAuth consent flow */
 app.get("/auth/youtube", ensureAuthenticated, (req, res) => {
   const clientId    = process.env.GOOGLE_CLIENT_ID;
-  const redirectUri = process.env.APP_URL
-    ? `${process.env.APP_URL}/auth/youtube/callback`
-    : `${req.protocol}://${req.get("host")}/auth/youtube/callback`;
+  const redirectUri = `${req.protocol}://${req.get("host")}/auth/youtube/callback`;
+
+  // Store where to return after connecting
+  const allowed = ['/reels/create', '/magic-live'];
+  const returnTo = req.query.returnTo && allowed.includes(req.query.returnTo)
+    ? req.query.returnTo
+    : '/reels/create';
+  req.session.ytReturnTo = returnTo;
 
   const scopes = [
     "openid",
@@ -3471,11 +3609,14 @@ app.get("/auth/youtube", ensureAuthenticated, (req, res) => {
 /** GET /auth/youtube/callback — exchange code, fetch channel, save */
 app.get("/auth/youtube/callback", ensureAuthenticated, async (req, res) => {
   const { code, error } = req.query;
-  if (error || !code) return res.redirect("/reels/create?step=7&ytError=1");
+  if (error || !code) {
+    const fallback = req.session.ytReturnTo || '/reels/create?step=7';
+    delete req.session.ytReturnTo;
+    const sep = fallback.includes('?') ? '&' : '?';
+    return res.redirect(`${fallback}${sep}ytError=1`);
+  }
 
-  const redirectUri = process.env.APP_URL
-    ? `${process.env.APP_URL}/auth/youtube/callback`
-    : `${req.protocol}://${req.get("host")}/auth/youtube/callback`;
+  const redirectUri = `${req.protocol}://${req.get("host")}/auth/youtube/callback`;
 
   try {
     // Exchange code for tokens
@@ -3499,7 +3640,12 @@ app.get("/auth/youtube/callback", ensureAuthenticated, async (req, res) => {
       { headers: { Authorization: `Bearer ${access_token}` } }
     );
     const channel = ytRes.data.items?.[0];
-    if (!channel) return res.redirect("/reels/create?step=7&ytError=noChannel");
+    if (!channel) {
+      const fallback = req.session.ytReturnTo || '/reels/create?step=7';
+      delete req.session.ytReturnTo;
+      const sep = fallback.includes('?') ? '&' : '?';
+      return res.redirect(`${fallback}${sep}ytError=noChannel`);
+    }
 
     const channelId    = channel.id;
     const channelName  = channel.snippet.title;
@@ -3519,10 +3665,16 @@ app.get("/auth/youtube/callback", ensureAuthenticated, async (req, res) => {
       [req.user.id, channelId, channelName, channelThumb, access_token, refresh_token || null, tokenExpiry]
     );
 
-    res.redirect("/reels/create?step=7&ytConnected=1");
+    const returnTo = req.session.ytReturnTo || '/reels/create?step=7';
+    delete req.session.ytReturnTo;
+    const sep = returnTo.includes('?') ? '&' : '?';
+    res.redirect(`${returnTo}${sep}ytConnected=1`);
   } catch (err) {
     console.error("[YouTube OAuth] callback error:", err.message);
-    res.redirect("/reels/create?step=7&ytError=1");
+    const returnTo = req.session.ytReturnTo || '/reels/create?step=7';
+    delete req.session.ytReturnTo;
+    const sep = returnTo.includes('?') ? '&' : '?';
+    res.redirect(`${returnTo}${sep}ytError=1`);
   }
 });
 
@@ -3699,7 +3851,15 @@ io.use((socket, next) => passport.session()(socket.request, {}, next));
 
 io.on("connection", (socket) => {
   const user = socket.request.user;
-  if (!user) { socket.disconnect(true); return; }
+
+  // Magic Live overlay room — public, no auth required (OBS browser source)
+  socket.on("join-magic", (userId) => {
+    const uid = parseInt(userId, 10);
+    if (uid) socket.join(`magic:${uid}`);
+  });
+
+  // All other handlers require authentication
+  if (!user) return;
 
   socket.on("join-request", async (requestId) => {
     const rid = parseInt(requestId, 10);
@@ -3872,6 +4032,14 @@ app.get("/faq", (req, res) => {
   });
 });
 // About Us
+app.get("/pricing", (req, res) => {
+  res.render("pricing", {
+    pageTitle: "Pricing – SmrAI Studio",
+    pageDescription: "Simple, transparent pricing for AI Reels, Magic Live, and resume tools.",
+    currentUser: req.user || null,
+  });
+});
+
 app.get("/about", (req, res) => {
   res.render("about", {
     pageTitle: "About SmrAI-Studio – AI Resume Builder for Job Seekers in India",

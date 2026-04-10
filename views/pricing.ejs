@@ -1,0 +1,224 @@
+<%- include("partials/header") %>
+
+<style>
+  .pricing-page {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 1rem 4rem;
+  }
+  .pricing-hero {
+    text-align: center;
+    padding: 3rem 1rem 2.5rem;
+  }
+  .pricing-hero h1 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    margin: 0 0 0.75rem;
+    color: var(--text-primary, #1e293b);
+  }
+  .pricing-hero p {
+    font-size: 1.05rem;
+    color: var(--text-muted, #64748b);
+    margin: 0;
+  }
+
+  /* Section headers */
+  .pricing-section-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-primary, #1e293b);
+    margin: 2.5rem 0 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .pricing-section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border-color, #e2e8f0);
+    margin-left: 0.5rem;
+  }
+
+  /* Cards grid */
+  .pricing-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 1rem;
+  }
+  .pricing-card {
+    background: var(--card-bg, #fff);
+    border: 2px solid var(--border-color, #e2e8f0);
+    border-radius: 16px;
+    padding: 1.75rem 1.5rem;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .pricing-card:hover {
+    border-color: #7c3aed;
+    box-shadow: 0 4px 24px rgba(124,58,237,0.1);
+  }
+  .pricing-card.featured {
+    border-color: #7c3aed;
+    box-shadow: 0 4px 24px rgba(124,58,237,0.12);
+  }
+  .featured-badge {
+    position: absolute;
+    top: -13px; left: 50%; transform: translateX(-50%);
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    color: #fff;
+    font-size: 0.72rem; font-weight: 700;
+    padding: 0.22rem 0.85rem;
+    border-radius: 20px;
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .card-icon { font-size: 2rem; margin-bottom: 0.75rem; }
+  .card-name {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin: 0 0 0.2rem;
+    color: var(--text-primary, #1e293b);
+  }
+  .card-tagline {
+    font-size: 0.82rem;
+    color: var(--text-muted, #64748b);
+    margin: 0 0 1rem;
+  }
+  .card-price {
+    font-size: 2.1rem;
+    font-weight: 800;
+    color: #7c3aed;
+    margin: 0 0 0.15rem;
+    line-height: 1;
+  }
+  .card-price sup { font-size: 1.1rem; vertical-align: top; margin-top: 0.3rem; }
+  .card-price .per { font-size: 0.9rem; font-weight: 500; color: var(--text-muted, #64748b); }
+  .card-note {
+    font-size: 0.78rem;
+    color: var(--text-muted, #94a3b8);
+    margin: 0 0 1.25rem;
+  }
+  .card-features {
+    list-style: none;
+    padding: 0; margin: 0 0 1.5rem;
+    flex: 1;
+  }
+  .card-features li {
+    font-size: 0.875rem;
+    padding: 0.3rem 0;
+    color: var(--text-secondary, #475569);
+    display: flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+  }
+  .card-features li .chk { color: #16a34a; font-weight: 700; flex-shrink: 0; }
+  .card-features li .cross { color: #94a3b8; flex-shrink: 0; }
+  .card-btn {
+    display: block;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    text-align: center;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .card-btn:hover { opacity: 0.85; }
+  .card-btn.primary {
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    color: #fff;
+  }
+  .card-btn.outline {
+    background: transparent;
+    border: 2px solid #7c3aed;
+    color: #7c3aed;
+  }
+  .card-btn.ghost {
+    background: var(--border-color, #e2e8f0);
+    color: var(--text-secondary, #475569);
+  }
+
+  @media (max-width: 640px) {
+    .pricing-hero { padding: 1.75rem 0.5rem 1.25rem; }
+    .pricing-hero h1 { font-size: 1.35rem; }
+    .pricing-hero p { font-size: 0.88rem; }
+    .pricing-section-title { font-size: 1rem; margin: 1.5rem 0 0.9rem; }
+    .pricing-grid { grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+    .pricing-card { padding: 1rem 0.75rem; border-radius: 12px; }
+    .card-icon { font-size: 1.4rem; margin-bottom: 0.4rem; }
+    .card-name { font-size: 0.85rem; }
+    .card-tagline { font-size: 0.72rem; margin-bottom: 0.6rem; }
+    .card-price { font-size: 1.5rem; }
+    .card-price sup { font-size: 0.85rem; }
+    .card-price .per { font-size: 0.75rem; }
+    .card-note { font-size: 0.68rem; margin-bottom: 0.75rem; }
+    .card-features li { font-size: 0.75rem; padding: 0.2rem 0; }
+    .card-btn { padding: 0.6rem 0.5rem; font-size: 0.78rem; border-radius: 8px; }
+    .featured-badge { font-size: 0.62rem; padding: 0.18rem 0.6rem; }
+  }
+</style>
+
+<div class="pricing-page">
+  <div class="pricing-hero">
+    <h1>Simple, Transparent Pricing</h1>
+    <p>Pay only for what you use — no hidden fees, no subscriptions required.</p>
+  </div>
+
+  <!-- ── Magic Live ─────────────────────────────────────────────────────── -->
+  <div class="pricing-section-title">🎙️ Magic Live — OBS Overlay for Streamers</div>
+  <div class="pricing-grid">
+
+    <!-- Free -->
+    <div class="pricing-card">
+      <div class="card-icon">🆓</div>
+      <div class="card-name">Free</div>
+      <div class="card-tagline">Try it out, no card needed</div>
+      <div class="card-price"><sup>₹</sup>0</div>
+      <div class="card-note">Forever free</div>
+      <ul class="card-features">
+        <li><span class="chk">✓</span> Live name display on OBS overlay</li>
+        <li><span class="chk">✓</span> YouTube chat integration</li>
+        <li><span class="chk">✓</span> 3 animation styles</li>
+        <li><span class="chk">✓</span> 2 font styles</li>
+        <li><span class="cross">✗</span> Custom fonts (locked)</li>
+        <li><span class="cross">✗</span> Priority queue</li>
+        <li><span class="cross">✗</span> Auto-show mode</li>
+      </ul>
+      <a href="/magic-live" class="card-btn ghost">Get Started Free</a>
+    </div>
+
+    <!-- Pro -->
+    <div class="pricing-card featured">
+      <div class="featured-badge">Most Popular</div>
+      <div class="card-icon">⚡</div>
+      <div class="card-name">Magic Live Pro</div>
+      <div class="card-tagline">For serious streamers & creators</div>
+      <div class="card-price"><sup>₹</sup>99<span class="per">/month</span></div>
+      <div class="card-note">or ₹149 for 30 days — billed via wallet</div>
+      <ul class="card-features">
+        <li><span class="chk">✓</span> Everything in Free</li>
+        <li><span class="chk">✓</span> All 6 premium font styles</li>
+        <li><span class="chk">✓</span> All 4 animation styles (incl. Handwriting)</li>
+        <li><span class="chk">✓</span> Auto-show mode (no clicks needed)</li>
+        <li><span class="chk">✓</span> Priority name queue</li>
+        <li><span class="chk">✓</span> Custom animation speed</li>
+        <li><span class="chk">✓</span> Remove "Powered by SmrAI" branding</li>
+      </ul>
+      <a href="/subscription" class="card-btn primary">Upgrade to Pro →</a>
+    </div>
+
+  </div>
+
+
+
+</div>
+
+<%- include("partials/footer") %>

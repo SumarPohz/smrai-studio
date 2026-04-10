@@ -288,6 +288,30 @@
         </button>
       </div>
 
+      <!-- Person Photo Upload (optional — for image-to-video) -->
+      <div id="personPhotoBox" style="margin-bottom:16px;padding:16px;background:rgba(124,58,237,.06);border:1.5px dashed rgba(124,58,237,.35);border-radius:14px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <span style="font-size:20px;">🖼️</span>
+          <div>
+            <div style="font-size:14px;font-weight:700;color:#e4e4e7;">Add a Person Photo <span style="font-size:12px;font-weight:400;color:#71717a;">(optional)</span></div>
+            <div style="font-size:12px;color:#71717a;margin-top:2px;">Upload a photo of the person and Veo will animate them in the video</div>
+          </div>
+        </div>
+        <label id="photoLabel" style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+          <input type="file" id="personPhotoInput" accept="image/jpeg,image/png,image/webp" style="display:none;" onchange="onPhotoSelected(this)" />
+          <span id="photoBtn" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#27272a;border:1px solid #3f3f46;border-radius:8px;font-size:13px;font-weight:600;color:#d4d4d8;">📁 Choose Photo</span>
+          <span id="photoName" style="font-size:12px;color:#71717a;">No file chosen</span>
+        </label>
+        <div id="photoPreviewWrap" style="display:none;margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <img id="photoPreview" style="width:60px;height:60px;object-fit:cover;border-radius:10px;border:2px solid rgba(124,58,237,.4);" />
+          <div style="flex:1;min-width:0;">
+            <div id="photoPreviewName" style="font-size:13px;color:#e4e4e7;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
+            <button onclick="clearPhoto()" style="font-size:12px;color:#f87171;background:none;border:none;cursor:pointer;padding:0;margin-top:2px;">✕ Remove</button>
+          </div>
+        </div>
+        <p style="font-size:11px;color:#52525b;margin-top:8px;">Best results: clear face, good lighting, front-facing. JPG/PNG/WebP, max 10MB.</p>
+      </div>
+
       <button class="btn-approve" id="approveBtn" onclick="approveScript()">
         Generate Video →
       </button>
@@ -396,7 +420,10 @@ async function poll() {
 
 function showApprovalUI(data) {
   document.getElementById('processingState').style.display = 'none';
-  document.getElementById('scriptTextarea').value = data.script || '';
+  // Don't overwrite textarea if user is actively editing
+  if (!_editing) {
+    document.getElementById('scriptTextarea').value = data.script || '';
+  }
   document.getElementById('approvalState').style.display = 'block';
   document.getElementById('nprogress').style.width = '20%';
 
@@ -429,17 +456,22 @@ function showApprovalUI(data) {
   }
 }
 
+let _editing = false;
 function toggleEdit() {
   const ta  = document.getElementById('scriptTextarea');
   const btn = document.getElementById('editToggleBtn');
-  const isReadOnly = ta.hasAttribute('readonly');
-  if (isReadOnly) {
+  _editing = !_editing;
+  if (_editing) {
     ta.removeAttribute('readonly');
+    ta.style.color = '#f4f4f5';
     ta.focus();
     btn.textContent = '✓ Done';
+    btn.style.color = '#4ade80';
   } else {
     ta.setAttribute('readonly', '');
+    ta.style.color = '';
     btn.textContent = '✏️ Edit';
+    btn.style.color = '';
   }
 }
 
@@ -466,24 +498,53 @@ async function regenScript() {
   }
 }
 
+function onPhotoSelected(input) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById('photoName').textContent = file.name;
+  document.getElementById('photoPreviewName').textContent = file.name;
+  document.getElementById('photoPreviewWrap').style.display = 'flex';
+  const reader = new FileReader();
+  reader.onload = e => document.getElementById('photoPreview').src = e.target.result;
+  reader.readAsDataURL(file);
+}
+
+function clearPhoto() {
+  document.getElementById('personPhotoInput').value = '';
+  document.getElementById('photoName').textContent = 'No file chosen';
+  document.getElementById('photoPreviewWrap').style.display = 'none';
+  document.getElementById('photoPreview').src = '';
+}
+
 async function approveScript() {
   const btn    = document.getElementById('approveBtn');
   const script = document.getElementById('scriptTextarea').value.trim();
+  const photoFile = document.getElementById('personPhotoInput').files[0];
   btn.disabled = true;
-  btn.textContent = 'Starting video generation…';
+  btn.textContent = photoFile ? 'Uploading photo…' : 'Starting video generation…';
 
   try {
-    const res = await fetch(`/reels/${REEL_ID}/approve`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ script }),
-    });
+    let res;
+    if (photoFile) {
+      // Send as multipart/form-data so the image is uploaded with the approval
+      const fd = new FormData();
+      fd.append('script', script);
+      fd.append('personPhoto', photoFile);
+      res = await fetch(`/reels/${REEL_ID}/approve`, { method: 'POST', body: fd });
+    } else {
+      res = await fetch(`/reels/${REEL_ID}/approve`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ script }),
+      });
+    }
     const data = await res.json();
     if (!res.ok || !data.ok) throw new Error(data.error || 'Approval failed');
 
     // Switch back to processing state and resume polling
     phase2Started = true;
     ticks = 0;
+    _editing = false;
     document.getElementById('approvalState').style.display = 'none';
     document.getElementById('processingState').style.display = 'block';
     document.getElementById('processingTitle').textContent = 'Generating Your Reel…';
@@ -499,6 +560,7 @@ async function approveScript() {
     alert(e.message);
   }
 }
+
 
 // Kick off
 setStepState(0, 'active');

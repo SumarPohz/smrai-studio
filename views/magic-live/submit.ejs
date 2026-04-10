@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Send Your Name — Magic Live</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+      min-height: 100vh;
+      font-family: 'Inter', sans-serif;
+      color: #f4f4f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+    .card {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 24px;
+      padding: 40px 32px 36px;
+      width: 100%;
+      max-width: 420px;
+      text-align: center;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    }
+    .magic-icon {
+      font-family: 'Dancing Script', cursive;
+      font-size: 3.2rem;
+      color: #c4b5fd;
+      margin-bottom: 6px;
+      line-height: 1;
+    }
+    .streamer-name {
+      font-size: 0.78rem;
+      color: #a78bfa;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+    h1 {
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: #f4f4f5;
+      margin-bottom: 6px;
+    }
+    .sub {
+      font-size: 0.88rem;
+      color: #a1a1aa;
+      margin-bottom: 28px;
+      line-height: 1.5;
+    }
+    .input-wrap {
+      position: relative;
+      margin-bottom: 16px;
+    }
+    input[type="text"] {
+      width: 100%;
+      background: rgba(255,255,255,0.08);
+      border: 1.5px solid rgba(255,255,255,0.15);
+      border-radius: 14px;
+      padding: 14px 18px;
+      font-size: 1.05rem;
+      font-family: 'Dancing Script', cursive;
+      font-weight: 700;
+      color: #f4f4f5;
+      outline: none;
+      transition: border-color 0.2s, background 0.2s;
+      text-align: center;
+      letter-spacing: 0.03em;
+      -webkit-appearance: none;
+    }
+    input[type="text"]::placeholder { color: #52525b; font-family: 'Inter', sans-serif; font-size: 0.9rem; font-weight: 400; letter-spacing: 0; }
+    input[type="text"]:focus { border-color: #7c3aed; background: rgba(124,58,237,0.1); }
+    .char-count {
+      font-size: 0.72rem;
+      color: #52525b;
+      text-align: right;
+      margin-top: 4px;
+      margin-bottom: 4px;
+    }
+    button[type="submit"] {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #7c3aed, #6d28d9);
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.15s;
+      letter-spacing: 0.03em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    button[type="submit"]:active { transform: scale(0.98); opacity: 0.9; }
+    button[type="submit"]:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* State screens */
+    #stateSuccess, #stateError { display: none; }
+    .state-icon { font-size: 2.8rem; margin-bottom: 14px; }
+    .state-title { font-size: 1.25rem; font-weight: 700; margin-bottom: 8px; }
+    .state-sub   { font-size: 0.88rem; color: #a1a1aa; line-height: 1.5; }
+    .btn-again {
+      margin-top: 22px;
+      padding: 11px 28px;
+      background: rgba(255,255,255,0.08);
+      border: 1.5px solid rgba(255,255,255,0.15);
+      border-radius: 12px;
+      color: #d4d4d8;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-block;
+    }
+    .powered {
+      margin-top: 28px;
+      font-size: 0.72rem;
+      color: rgba(255,255,255,0.25);
+    }
+    .powered a { color: rgba(255,255,255,0.35); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <!-- Form state -->
+    <div id="stateForm">
+      <div class="magic-icon">✦</div>
+      <div class="streamer-name"><%= streamerName %>'s Magic Live</div>
+      <h1>Send Your Name Live ❤️</h1>
+      <p class="sub">Type your name and it will appear on the stream in beautiful handwriting!</p>
+
+      <form id="submitForm" autocomplete="off">
+        <input type="hidden" name="userId" value="<%= targetUserId %>">
+        <div class="input-wrap">
+          <input type="text" id="nameInput" name="name" placeholder="Enter your name…" maxlength="40" required autocomplete="off" autocorrect="off" spellcheck="false">
+        </div>
+        <div class="char-count"><span id="charCount">0</span> / 40</div>
+        <button type="submit" id="submitBtn">
+          <span>✍️</span> Send My Name Live
+        </button>
+      </form>
+    </div>
+
+    <!-- Success state -->
+    <div id="stateSuccess">
+      <div class="state-icon">✅</div>
+      <div class="state-title">You're on the stream! 🎉</div>
+      <p class="state-sub">Your name is being written live right now.<br>Watch the stream to see it!</p>
+      <button class="btn-again" onclick="resetForm()">Send another name</button>
+    </div>
+
+    <!-- Error state -->
+    <div id="stateError">
+      <div class="state-icon">⚠️</div>
+      <div class="state-title" id="errTitle">Oops!</div>
+      <p class="state-sub" id="errMsg">Something went wrong. Please try again.</p>
+      <button class="btn-again" onclick="resetForm()">Try again</button>
+    </div>
+
+    <p class="powered">Powered by <a href="/">SmrAI Studio</a></p>
+  </div>
+
+  <script>
+    const nameInput  = document.getElementById('nameInput');
+    const charCount  = document.getElementById('charCount');
+    const submitBtn  = document.getElementById('submitBtn');
+    const form       = document.getElementById('submitForm');
+
+    nameInput.addEventListener('input', () => {
+      charCount.textContent = nameInput.value.length;
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = nameInput.value.trim();
+      if (!name) return;
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span>⏳</span> Sending…';
+
+      try {
+        const fd = new FormData(form);
+        const res = await fetch('/magic-live/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, userId: fd.get('userId') }),
+        });
+        const d = await res.json();
+
+        if (d.ok) {
+          document.getElementById('stateForm').style.display    = 'none';
+          document.getElementById('stateSuccess').style.display = 'block';
+        } else {
+          document.getElementById('errTitle').textContent = d.error === 'wait'
+            ? 'Please wait a moment ⏳' : 'Could not send';
+          document.getElementById('errMsg').textContent   = d.message || 'Please try again.';
+          document.getElementById('stateForm').style.display  = 'none';
+          document.getElementById('stateError').style.display = 'block';
+        }
+      } catch (err) {
+        document.getElementById('errTitle').textContent = 'Connection error';
+        document.getElementById('errMsg').textContent   = 'Check your internet and try again.';
+        document.getElementById('stateForm').style.display  = 'none';
+        document.getElementById('stateError').style.display = 'block';
+      }
+    });
+
+    function resetForm() {
+      document.getElementById('stateSuccess').style.display = 'none';
+      document.getElementById('stateError').style.display   = 'none';
+      document.getElementById('stateForm').style.display    = 'block';
+      nameInput.value = '';
+      charCount.textContent = '0';
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<span>✍️</span> Send My Name Live';
+      nameInput.focus();
+    }
+
+    nameInput.focus();
+  </script>
+</body>
+</html>

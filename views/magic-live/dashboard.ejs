@@ -1,0 +1,385 @@
+<%- include('../partials/header', { title: 'Magic Live — SmrAI Studio' }) %>
+<script src="/socket.io/socket.io.js"></script>
+
+<style>
+:root { --bg:#09090b; --card:#18181b; --border:#27272a; --purple:#7c3aed; --purple-dim:#4c1d95; }
+body, #ml-page { background:var(--bg); color:#f4f4f5; font-family:'Inter',sans-serif; min-height:100vh; }
+#ml-page { max-width:900px; margin:0 auto; padding:36px 20px 80px; }
+
+/* ── Header ── */
+.ml-header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:28px; }
+.ml-title  { font-size:1.6rem; font-weight:800; display:flex; align-items:center; gap:10px; }
+.status-badge { display:inline-flex; align-items:center; gap:6px; padding:4px 14px; border-radius:999px; font-size:12px; font-weight:700; letter-spacing:.04em; white-space:nowrap; }
+.status-badge.running  { background:#14532d22; border:1.5px solid #16a34a; color:#4ade80; }
+.status-badge.stopped  { background:#7f1d1d22; border:1.5px solid #b91c1c; color:#f87171; }
+.status-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.running .status-dot  { background:#4ade80; box-shadow:0 0 6px #4ade80; }
+.stopped .status-dot  { background:#f87171; }
+
+/* ── Cards ── */
+.ml-card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:20px; margin-bottom:16px; }
+.ml-card-title { font-size:0.82rem; font-weight:700; color:#71717a; text-transform:uppercase; letter-spacing:.06em; margin-bottom:14px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+
+/* ── Inputs & Buttons ── */
+.ml-input { width:100%; background:#09090b; border:1px solid var(--border); border-radius:10px; padding:10px 14px; color:#f4f4f5; font-size:15px; outline:none; transition:border-color .2s; -webkit-appearance:none; }
+.ml-input:focus { border-color:var(--purple); }
+.ml-btn { display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:10px 18px; border-radius:10px; font-size:14px; font-weight:600; border:none; cursor:pointer; transition:opacity .2s; white-space:nowrap; touch-action:manipulation; }
+.ml-btn:active { opacity:.7; }
+.ml-btn-primary { background:var(--purple); color:#fff; }
+.ml-btn-danger  { background:#7f1d1d; color:#fca5a5; }
+.ml-btn-ghost   { background:#27272a; color:#d4d4d8; }
+.ml-btn:disabled { opacity:.4; cursor:not-allowed; }
+.ml-btn-full { width:100%; }
+
+/* ── Manual trigger row ── */
+.manual-row { display:flex; gap:10px; }
+.manual-row .ml-input { flex:1; min-width:0; }
+
+/* ── URL box ── */
+.url-box { display:flex; flex-direction:column; gap:10px; }
+.url-text { background:#09090b; border:1px solid var(--border); border-radius:10px; padding:10px 14px; color:#a1a1aa; font-size:12px; font-family:monospace; word-break:break-all; line-height:1.5; }
+.url-actions { display:flex; gap:8px; }
+.url-actions .ml-btn { flex:1; }
+
+/* ── YouTube status ── */
+.yt-status { display:flex; align-items:flex-start; gap:12px; padding:12px 14px; border-radius:10px; margin-bottom:16px; }
+.yt-connected    { background:#14532d22; border:1px solid #16a34a; }
+.yt-disconnected { background:#1c1c1e;   border:1px solid var(--border); }
+.yt-status-icon { font-size:18px; flex-shrink:0; line-height:1.4; }
+
+/* ── Auto buttons ── */
+.auto-btns { display:flex; gap:10px; flex-wrap:wrap; }
+
+/* ── Queue header ── */
+.queue-header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+.queue-actions { display:flex; gap:8px; }
+.queue-actions .ml-btn { padding:7px 12px; font-size:13px; }
+
+.queue-list { display:flex; flex-direction:column; gap:8px; min-height:40px; }
+.queue-item { display:flex; align-items:center; gap:10px; padding:9px 14px; background:#09090b; border:1px solid var(--border); border-radius:10px; font-size:14px; }
+.queue-item-name { color:#e4e4e7; font-weight:600; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.queue-pos  { color:#52525b; font-size:12px; flex-shrink:0; }
+.queue-empty { color:#52525b; font-size:13px; font-style:italic; }
+
+/* ── Settings ── */
+.select-row { display:flex; gap:12px; margin-bottom:16px; }
+.select-col { flex:1; min-width:0; }
+.select-label { font-size:12px; color:#71717a; display:block; margin-bottom:6px; }
+.ml-select { width:100%; background:#09090b; border:1px solid var(--border); border-radius:10px; padding:10px 14px; color:#f4f4f5; font-size:14px; outline:none; -webkit-appearance:none; appearance:none; cursor:pointer; }
+.ml-select:focus { border-color:var(--purple); }
+.settings-save { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+
+/* ── Page Navigator ── */
+.page-nav { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.page-nav .ml-btn { flex:1; min-width:0; }
+.page-nav-live { background:linear-gradient(135deg,#4c1d95,#2e1065); color:#e9d5ff; }
+
+/* ── PRO banner ── */
+.pro-banner { background:linear-gradient(135deg,#4c1d95,#1e1b4b); border:1px solid #6d28d9; border-radius:14px; padding:18px 20px; display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; margin-bottom:16px; }
+.pro-banner-text h3 { font-size:0.95rem; font-weight:700; margin-bottom:4px; }
+.pro-banner-text p  { font-size:13px; color:#c4b5fd; }
+.pro-btn { background:#7c3aed; color:#fff; padding:9px 18px; border-radius:10px; text-decoration:none; font-weight:700; font-size:14px; white-space:nowrap; flex-shrink:0; }
+
+/* ── Tablet (≤768px) ── */
+@media(max-width:768px) {
+  #ml-page { padding:24px 16px 60px; }
+  .ml-title { font-size:1.4rem; }
+  .ml-card  { padding:16px; }
+}
+
+/* ── Mobile (≤480px) ── */
+@media(max-width:480px) {
+  #ml-page { padding:16px 12px 60px; }
+  .ml-title { font-size:1.25rem; gap:8px; }
+  .ml-card  { padding:14px; border-radius:12px; margin-bottom:12px; }
+
+  /* Manual trigger: stack on very small screens */
+  .manual-row { flex-direction:column; }
+  .manual-row .ml-btn { width:100%; }
+
+  /* Auto buttons: full-width */
+  .auto-btns .ml-btn { flex:1; }
+
+  /* Queue header: stack */
+  .queue-header { flex-direction:column; align-items:flex-start; }
+  .queue-actions { width:100%; }
+  .queue-actions .ml-btn { flex:1; }
+
+  /* Settings selects: stack */
+  .select-row { flex-direction:column; gap:10px; }
+
+  /* Settings save: full-width button */
+  .settings-save .ml-btn { width:100%; }
+
+  /* PRO banner: stack */
+  .pro-banner { flex-direction:column; }
+  .pro-btn { width:100%; text-align:center; }
+
+  /* URL actions */
+  .url-actions .ml-btn { padding:10px 12px; font-size:13px; }
+}
+</style>
+
+<div id="ml-page">
+
+  <!-- Header -->
+  <div class="ml-header">
+    <div class="ml-title">
+      <span>✨</span> Magic Live
+    </div>
+    <div id="statusBadge" class="status-badge stopped">
+      <div class="status-dot"></div>
+      <span id="statusText">Stopped</span>
+    </div>
+  </div>
+
+  <% if (!hasPro) { %>
+  <div class="pro-banner">
+    <div class="pro-banner-text">
+      <h3>Unlock Auto Magic with PRO</h3>
+      <p>Auto Magic reads your YouTube live chat and triggers names automatically.</p>
+    </div>
+    <a href="/pricing" class="pro-btn">Upgrade to PRO</a>
+  </div>
+  <% } %>
+
+  <!-- Overlay URL -->
+  <div class="ml-card">
+    <div class="ml-card-title">🖥️ OBS Overlay URL</div>
+    <div class="url-box">
+      <div class="url-text" id="overlayUrl"></div>
+      <div class="url-actions">
+        <button class="ml-btn ml-btn-ghost" onclick="copyUrl()">Copy</button>
+        <button class="ml-btn ml-btn-ghost" onclick="window.open(document.getElementById('overlayUrl').textContent,'_blank')">Preview</button>
+      </div>
+    </div>
+    <p style="font-size:12px;color:#52525b;margin-top:10px;line-height:1.5;">Add as a Browser Source in OBS at 1920×1080 with transparent background.</p>
+  </div>
+
+  <!-- Manual Trigger -->
+  <div class="ml-card">
+    <div class="ml-card-title">🎯 Show Name on Overlay</div>
+    <div class="manual-row">
+      <input type="text" id="manualName" class="ml-input" placeholder="Enter viewer name…" maxlength="50" />
+      <button class="ml-btn ml-btn-primary" id="sendBtn" onclick="sendName()">❤️ Send Live</button>
+    </div>
+    <p id="manualMsg" style="font-size:13px;margin-top:8px;color:#a1a1aa;min-height:18px;"></p>
+  </div>
+
+  <!-- Auto Magic -->
+  <div class="ml-card">
+    <div class="ml-card-title">🤖 Auto Magic — YouTube Chat</div>
+    <div class="yt-status <%= ytAccount ? 'yt-connected' : 'yt-disconnected' %>">
+      <span class="yt-status-icon"><%= ytAccount ? '✅' : '🔗' %></span>
+      <div>
+        <% if (ytAccount) { %>
+          <div style="font-size:14px;font-weight:600;color:#4ade80;">Connected: <%= ytAccount.channel_name %></div>
+          <div style="font-size:12px;color:#71717a;margin-top:2px;">Detects "magic" in live chat and adds the sender to your queue.</div>
+        <% } else { %>
+          <div style="font-size:14px;font-weight:600;color:#a1a1aa;">No YouTube account connected</div>
+          <div style="font-size:12px;color:#71717a;margin-top:6px;">Connect your YouTube channel to enable Auto Magic.</div>
+          <a href="/auth/youtube?returnTo=/magic-live" style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:8px 16px;background:#ff0000;color:#fff;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M23.5 6.2s-.3-1.9-1.1-2.7c-1.1-1.1-2.3-1.1-2.8-1.2C16.8 2 12 2 12 2s-4.8 0-7.6.3c-.6.1-1.8.1-2.9 1.2C.7 4.3.4 6.2.4 6.2S.1 8.4.1 10.6v2.1c0 2.2.3 4.4.3 4.4s.3 1.9 1.1 2.7c1.1 1.1 2.5 1.1 3.1 1.1C6.8 21.1 12 21.1 12 21.1s4.8 0 7.6-.3c.6-.1 1.8-.1 2.9-1.2.8-.8 1.1-2.7 1.1-2.7s.3-2.2.3-4.4v-2.1c0-2.2-.4-4.4-.4-4.4zM9.7 15.5V8.1l7.6 3.7-7.6 3.7z"/></svg>
+            Connect YouTube
+          </a>
+        <% } %>
+      </div>
+    </div>
+    <div class="auto-btns">
+      <button id="startBtn" class="ml-btn ml-btn-primary" onclick="startAuto()" <%= (!hasPro || !ytAccount) ? 'disabled' : '' %>>
+        ▶ Start Auto Magic
+      </button>
+      <button id="stopBtn" class="ml-btn ml-btn-danger" onclick="stopAuto()" style="display:none;">
+        ■ Stop
+      </button>
+    </div>
+    <% if (!hasPro) { %>
+    <p style="font-size:12px;color:#71717a;margin-top:10px;">PRO subscription required to use Auto Magic.</p>
+    <% } %>
+  </div>
+
+  <!-- Share with Viewers -->
+  <div class="ml-card">
+    <div class="ml-card-title">📲 Share With Viewers</div>
+    <p style="font-size:13px;color:#a1a1aa;margin-bottom:12px;line-height:1.5;">Share this link — viewers open it on their phone and type their name to appear live on your stream.</p>
+    <div class="url-box">
+      <div class="url-text" id="submitUrl"></div>
+      <div class="url-actions">
+        <button class="ml-btn ml-btn-ghost" onclick="copySubmitUrl()">Copy Link</button>
+        <button class="ml-btn ml-btn-ghost" onclick="window.open(document.getElementById('submitUrl').textContent,'_blank')">Preview</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page Navigator -->
+  <div class="ml-card">
+    <div class="ml-card-title">📖 Page Navigator</div>
+    <p style="font-size:13px;color:#a1a1aa;margin-bottom:14px;line-height:1.5;">Flip the overlay to a different page live — show viewers their names from any session page.</p>
+    <div class="page-nav">
+      <button class="ml-btn ml-btn-ghost" onclick="navPage('prev')">← Prev Page</button>
+      <button class="ml-btn page-nav-live" onclick="navPage('live')">▶ Return to Live</button>
+      <button class="ml-btn ml-btn-ghost" onclick="navPage('next')">Next Page →</button>
+    </div>
+    <p id="navMsg" style="font-size:12px;color:#71717a;margin-top:10px;min-height:16px;"></p>
+  </div>
+
+  <!-- Export & Clear -->
+  <div class="ml-card" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+    <div>
+      <div style="font-size:14px;font-weight:600;color:#e4e4e7;">Guestbook PDF</div>
+      <div style="font-size:12px;color:#71717a;margin-top:2px;">Download all names written in this session as a decorated PDF.</div>
+    </div>
+    <a id="pdfBtn" href="#" class="ml-btn ml-btn-ghost" onclick="exportPdf(event)">📄 Export PDF</a>
+  </div>
+
+  <!-- Clear Overlay -->
+  <div class="ml-card" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+    <div>
+      <div style="font-size:14px;font-weight:600;color:#e4e4e7;">Clear Overlay</div>
+      <div style="font-size:12px;color:#71717a;margin-top:2px;">Remove all names currently shown on stream.</div>
+    </div>
+    <button class="ml-btn ml-btn-danger" onclick="clearOverlay()">🗑️ Clear All Names</button>
+  </div>
+
+
+</div>
+
+<script>
+const USER_ID   = <%= currentUser.id %>;
+const overlayBase = `${location.origin}/magic-live/overlay?userId=${USER_ID}`;
+const submitBase  = `${location.origin}/magic-live/submit?u=${USER_ID}`;
+document.getElementById('overlayUrl').textContent = overlayBase;
+document.getElementById('submitUrl').textContent  = submitBase;
+
+// Show YouTube connect result
+(function() {
+  const p = new URLSearchParams(location.search);
+  if (p.get('ytConnected')) {
+    const m = document.getElementById('manualMsg');
+    m.textContent = '✅ YouTube connected!'; m.style.color = '#4ade80';
+    setTimeout(() => m.textContent = '', 4000);
+    history.replaceState({}, '', '/magic-live');
+  } else if (p.get('ytError')) {
+    const m = document.getElementById('manualMsg');
+    const errMsg = p.get('ytError') === 'noChannel'
+      ? '❌ No YouTube channel found on that account. Please use an account with a YouTube channel.'
+      : '❌ YouTube connection failed. Please try again.';
+    m.textContent = errMsg; m.style.color = '#f87171';
+    history.replaceState({}, '', '/magic-live');
+  }
+})();
+
+// ── Socket.io ──────────────────────────────────────────────────────────────
+const socket = io();
+socket.emit('join-magic', USER_ID);
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Status polling ─────────────────────────────────────────────────────────
+async function refreshStatus() {
+  try {
+    const d = await fetch('/magic-live/api/status').then(r => r.json());
+    const badge = document.getElementById('statusBadge');
+    badge.className = 'status-badge ' + (d.running ? 'running' : 'stopped');
+    document.getElementById('statusText').textContent = d.running ? 'Running' : 'Stopped';
+    document.getElementById('startBtn').style.display = d.running ? 'none' : '';
+    document.getElementById('stopBtn').style.display  = d.running ? ''     : 'none';
+  } catch (_) {}
+}
+refreshStatus();
+setInterval(refreshStatus, 5000);
+
+// ── Send name directly to overlay ──────────────────────────────────────────
+async function sendName() {
+  const input = document.getElementById('manualName');
+  const name  = input.value.trim();
+  const msg   = document.getElementById('manualMsg');
+  const btn   = document.getElementById('sendBtn');
+  if (!name) { msg.textContent = 'Please enter a name.'; msg.style.color = '#f87171'; return; }
+
+  btn.disabled = true;
+  const res = await fetch('/magic-live/api/add', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  });
+  const d = await res.json();
+  btn.disabled = false;
+  if (d.ok) {
+    input.value = '';
+    input.focus();
+    msg.textContent = `❤️ "${d.name}" sent to overlay!`;
+    msg.style.color = '#4ade80';
+  } else {
+    msg.textContent = d.error || 'Error';
+    msg.style.color = '#f87171';
+  }
+  setTimeout(() => msg.textContent = '', 2500);
+}
+
+document.getElementById('manualName').addEventListener('keydown', e => {
+  if (e.key === 'Enter') sendName();
+});
+
+// ── Auto Magic ─────────────────────────────────────────────────────────────
+async function startAuto() {
+  const res = await fetch('/magic-live/api/start', { method: 'POST' });
+  const d = await res.json();
+  if (!d.ok) alert(d.error || 'Failed to start');
+  else refreshStatus();
+}
+
+async function stopAuto() {
+  await fetch('/magic-live/api/stop', { method: 'POST' });
+  refreshStatus();
+}
+
+// ── Clear overlay ──────────────────────────────────────────────────────────
+async function clearOverlay() {
+  if (!confirm('Remove all names from the overlay?')) return;
+  await fetch('/magic-live/api/clear', { method: 'POST' });
+}
+
+
+// ── Copy URLs ──────────────────────────────────────────────────────────────
+function copyUrl() {
+  navigator.clipboard.writeText(overlayBase).then(() => alert('Overlay URL copied!'));
+}
+function copySubmitUrl() {
+  navigator.clipboard.writeText(submitBase).then(() => alert('Viewer submit link copied!'));
+}
+
+// ── Page Navigator ─────────────────────────────────────────────────────────
+async function navPage(direction) {
+  const msg = document.getElementById('navMsg');
+  const res = await fetch('/magic-live/api/nav-page', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ direction }),
+  });
+  const d = await res.json();
+  if (d.ok) {
+    const labels = { prev: 'Flipped to previous page', next: 'Flipped to next page', live: 'Returned to live page' };
+    msg.textContent = labels[direction] || 'Page changed';
+    msg.style.color = direction === 'live' ? '#4ade80' : '#a78bfa';
+  } else {
+    msg.textContent = d.error || 'Could not flip page';
+    msg.style.color = '#f87171';
+  }
+  setTimeout(() => msg.textContent = '', 3000);
+}
+
+// ── PDF Export ─────────────────────────────────────────────────────────────
+function exportPdf(e) {
+  e.preventDefault();
+  const btn = document.getElementById('pdfBtn');
+  btn.textContent = '⏳ Generating…';
+  window.location.href = '/magic-live/api/export-pdf';
+  setTimeout(() => { btn.innerHTML = '📄 Export PDF'; }, 3000);
+}
+
+</script>
+
+<%- include('../partials/footer') %>

@@ -98,6 +98,9 @@
       <a href="#reels" class="adm-nav-link" data-section="reels">
         <i class="fas fa-film"></i> Reels
       </a>
+      <a href="#magiclive" class="adm-nav-link" data-section="magiclive">
+        <i class="fas fa-magic"></i> Magic Live
+      </a>
       <a href="/dashboard" class="adm-nav-link adm-nav-back">
         <i class="fas fa-arrow-left"></i> Back to App
       </a>
@@ -2465,6 +2468,29 @@
 </div>
 <% } %>
 
+<!-- ── Section: Magic Live History ────────────────────────────────────────── -->
+<div id="magiclive" class="adm-section-page" hidden>
+  <div class="adm-section-header">
+    <h2><i class="fas fa-magic"></i> Magic Live History</h2>
+    <p class="adm-section-desc">View and delete names written on user streams. Filter by user or search by name.</p>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+    <input type="text" id="mlSearchInput" placeholder="Search name…"
+      style="padding:0.4rem 0.65rem;border:1px solid #d1d5db;border-radius:6px;font-size:0.82rem;width:180px"
+      oninput="loadMlHistory(1)">
+    <input type="text" id="mlUserInput" placeholder="Filter by user email…"
+      style="padding:0.4rem 0.65rem;border:1px solid #d1d5db;border-radius:6px;font-size:0.82rem;width:200px"
+      oninput="loadMlHistory(1)">
+    <button onclick="bulkDeleteMl()" style="padding:0.4rem 0.9rem;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:0.82rem;font-weight:600;cursor:pointer">
+      🗑️ Delete all for user
+    </button>
+  </div>
+
+  <div id="mlHistoryTable" style="font-size:0.85rem;color:#6b7280">Loading…</div>
+  <div id="mlPagination" style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap"></div>
+</div>
+
 <!-- Socket.io + Chart.js -->
 <script src="/socket.io/socket.io.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -2514,6 +2540,7 @@ function showSection(id) {
     if (id === "wallet")                     { loadWalletUsers(1); }
     if (id === "paysetu" && !psLoaded)       { loadPsStats(); loadPsTxns(1); loadPsBillers(); loadPsProviders(); psLoaded = true; }
     if (id === "reels")                      { loadAdminReels(); loadChannelProof(); loadNicheConfig(); loadPresetMusicFiles(); loadArtGifs(); }
+    if (id === "magiclive")                  { loadMlHistory(1); }
   }, 120);
 }
 
@@ -7079,6 +7106,87 @@ document.addEventListener('DOMContentLoaded', () => {
     obs.observe(plansSection, { attributes: true, attributeFilter: ['hidden'] });
   }
 });
+
+// ── Magic Live History ─────────────────────────────────────────────────────
+async function loadMlHistory(page) {
+  const search   = (document.getElementById('mlSearchInput')?.value || '').trim();
+  const userQ    = (document.getElementById('mlUserInput')?.value   || '').trim();
+  const tbody    = document.getElementById('mlHistoryTable');
+  const pagDiv   = document.getElementById('mlPagination');
+  if (!tbody) return;
+  tbody.innerHTML = 'Loading…';
+
+  try {
+    const params = new URLSearchParams({ page: page || 1, search, user: userQ });
+    const d = await fetch('/api/admin/magic-live/history?' + params).then(r => r.json());
+    if (!d.rows || !d.rows.length) {
+      tbody.innerHTML = '<p style="color:#9ca3af;padding:12px 0">No records found.</p>';
+      pagDiv.innerHTML = '';
+      return;
+    }
+
+    let html = `<table style="width:100%;border-collapse:collapse;font-size:0.83rem">
+      <thead><tr style="background:#f9fafb;border-bottom:1px solid #e5e7eb">
+        <th style="padding:8px 10px;text-align:left;font-weight:600;color:#374151">ID</th>
+        <th style="padding:8px 10px;text-align:left;font-weight:600;color:#374151">User</th>
+        <th style="padding:8px 10px;text-align:left;font-weight:600;color:#374151">Name</th>
+        <th style="padding:8px 10px;text-align:left;font-weight:600;color:#374151">Source</th>
+        <th style="padding:8px 10px;text-align:left;font-weight:600;color:#374151">Date</th>
+        <th style="padding:8px 10px;text-align:center;font-weight:600;color:#374151">Delete</th>
+      </tr></thead><tbody>`;
+
+    d.rows.forEach(r => {
+      const dt = new Date(r.created_at).toLocaleString('en-IN', { dateStyle:'short', timeStyle:'short' });
+      html += `<tr style="border-bottom:1px solid #f3f4f6">
+        <td style="padding:7px 10px;color:#9ca3af">${r.id}</td>
+        <td style="padding:7px 10px">
+          <div style="font-weight:600;font-size:0.82rem">${r.user_name||'—'}</div>
+          <div style="font-size:0.72rem;color:#9ca3af">${r.user_email||''}</div>
+        </td>
+        <td style="padding:7px 10px;font-weight:600;color:#4c1d95">${r.name}</td>
+        <td style="padding:7px 10px">
+          <span style="background:${r.source==='chat'?'#dbeafe':'#f3e8ff'};color:${r.source==='chat'?'#1d4ed8':'#6d28d9'};padding:2px 8px;border-radius:99px;font-size:0.72rem;font-weight:600">${r.source}</span>
+        </td>
+        <td style="padding:7px 10px;color:#6b7280;font-size:0.78rem">${dt}</td>
+        <td style="padding:7px 10px;text-align:center">
+          <button onclick="deleteMlRecord(${r.id})"
+            style="padding:4px 10px;background:#fee2e2;color:#dc2626;border:none;border-radius:6px;font-size:0.75rem;font-weight:600;cursor:pointer">Delete</button>
+        </td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    tbody.innerHTML = html;
+
+    // Pagination
+    const totalPages = Math.ceil(d.total / 20);
+    let pHtml = '';
+    for (let p = 1; p <= totalPages; p++) {
+      pHtml += `<button onclick="loadMlHistory(${p})"
+        style="padding:4px 10px;border:1px solid ${p===page?'#7c3aed':'#d1d5db'};background:${p===page?'#7c3aed':'#fff'};color:${p===page?'#fff':'#374151'};border-radius:6px;font-size:0.8rem;cursor:pointer">${p}</button>`;
+    }
+    pagDiv.innerHTML = pHtml;
+  } catch (err) {
+    tbody.innerHTML = '<p style="color:#dc2626">Error loading history</p>';
+  }
+}
+
+async function deleteMlRecord(id) {
+  if (!confirm('Delete this record?')) return;
+  try {
+    await fetch(`/api/admin/magic-live/history/${id}`, { method: 'DELETE' });
+    loadMlHistory(1);
+  } catch (_) { alert('Delete failed'); }
+}
+
+async function bulkDeleteMl() {
+  const userQ = (document.getElementById('mlUserInput')?.value || '').trim();
+  if (!userQ) { alert('Enter a user email in the filter box first'); return; }
+  if (!confirm(`Delete ALL Magic Live history for "${userQ}"?`)) return;
+  try {
+    await fetch(`/api/admin/magic-live/history/bulk?user=${encodeURIComponent(userQ)}`, { method: 'DELETE' });
+    loadMlHistory(1);
+  } catch (_) { alert('Bulk delete failed'); }
+}
 </script>
 
 <%- include("../partials/footer") %>

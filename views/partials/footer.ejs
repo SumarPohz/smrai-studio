@@ -465,5 +465,21 @@
 </script>
 <% } %>
 
+<script>
+// Automatically attach CSRF token to all non-GET fetch requests
+(function () {
+  const _fetch = window.fetch;
+  window.fetch = function (url, opts = {}) {
+    const method = (opts.method || 'GET').toUpperCase();
+    if (method !== 'GET' && method !== 'HEAD') {
+      const token = document.querySelector('meta[name="csrf-token"]')?.content;
+      if (token) {
+        opts.headers = Object.assign({}, opts.headers, { 'x-csrf-token': token });
+      }
+    }
+    return _fetch(url, opts);
+  };
+})();
+</script>
 </body>
 </html>

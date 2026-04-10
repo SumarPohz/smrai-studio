@@ -133,17 +133,72 @@ export async function generateTTS(script, voice, reelId, provider = 'openai', _r
   }
 }
 
+// Split text into chunks that fit within Google TTS 4800-byte limit (safe margin below 5000)
+function splitIntoTTSChunks(text, maxBytes = 4800) {
+  const sentences = text.split(/(?<=[.!?])\s+/);
+  const chunks = [];
+  let current = '';
+
+  for (const sentence of sentences) {
+    const candidate = current ? `${current} ${sentence}` : sentence;
+    if (Buffer.byteLength(candidate, 'utf8') <= maxBytes) {
+      current = candidate;
+    } else {
+      if (current) chunks.push(current.trim());
+      // If a single sentence exceeds limit, split by words
+      if (Buffer.byteLength(sentence, 'utf8') > maxBytes) {
+        const words = sentence.split(/\s+/);
+        let wordChunk = '';
+        for (const word of words) {
+          const wc = wordChunk ? `${wordChunk} ${word}` : word;
+          if (Buffer.byteLength(wc, 'utf8') <= maxBytes) {
+            wordChunk = wc;
+          } else {
+            if (wordChunk) chunks.push(wordChunk.trim());
+            wordChunk = word;
+          }
+        }
+        if (wordChunk) current = wordChunk;
+        else current = '';
+      } else {
+        current = sentence;
+      }
+    }
+  }
+  if (current.trim()) chunks.push(current.trim());
+  return chunks;
+}
+
 async function generateTTSViaGoogle(script, voice, outputPath) {
   const googleVoice = GOOGLE_VOICE_MAP[voice] || 'en-US-Neural2-F';
   console.log(`[TTS] Google Neural2 voice: ${googleVoice}`);
 
-  const [response] = await getGoogleTTSClient().synthesizeSpeech({
-    input:       { text: script },
-    voice:       { languageCode: 'en-US', name: googleVoice },
-    audioConfig: { audioEncoding: 'MP3', speakingRate: 1.0 },
-  });
+  const chunks = splitIntoTTSChunks(script);
 
-  await fs.writeFile(outputPath, response.audioContent, 'binary');
+  if (chunks.length === 1) {
+    // Single chunk — direct call
+    const [response] = await getGoogleTTSClient().synthesizeSpeech({
+      input:       { text: chunks[0] },
+      voice:       { languageCode: 'en-US', name: googleVoice },
+      audioConfig: { audioEncoding: 'MP3', speakingRate: 1.0 },
+    });
+    await fs.writeFile(outputPath, response.audioContent, 'binary');
+    return outputPath;
+  }
+
+  // Multiple chunks — synthesize each and concatenate MP3 buffers
+  console.log(`[TTS] Script too long — splitting into ${chunks.length} chunks`);
+  const buffers = [];
+  for (const chunk of chunks) {
+    const [response] = await getGoogleTTSClient().synthesizeSpeech({
+      input:       { text: chunk },
+      voice:       { languageCode: 'en-US', name: googleVoice },
+      audioConfig: { audioEncoding: 'MP3', speakingRate: 1.0 },
+    });
+    buffers.push(Buffer.from(response.audioContent, 'binary'));
+  }
+  await fs.writeFile(outputPath, Buffer.concat(buffers));
+  console.log(`[TTS] Google TTS chunks merged: ${buffers.length} parts → ${outputPath}`);
   return outputPath;
 }
 
