@@ -8,7 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
-    html, body { width:100vw; height:100vh; overflow:hidden; background:transparent; }
+    html, body { width:100vw; height:100vh; overflow:hidden; background:#0d0020; }
     canvas {
       position:fixed; top:0; left:0;
       width:1920px; height:1080px;
@@ -566,14 +566,15 @@
 
       // glow pass
       ctx.font        = '700 66px ' + FONT_FAMILY;
-      ctx.shadowBlur  = 30;
-      ctx.shadowColor = 'rgba(139,92,246,0.5)';
-      ctx.fillStyle   = 'rgba(76,29,149,0.85)';
+      ctx.shadowBlur  = 40;
+      ctx.shadowColor = 'rgba(167,139,250,0.9)';
+      ctx.fillStyle   = '#c084fc';
       ctx.fillText('✨  ' + HEADER_TEXT + '  ✨', W / 2, 82);
 
       // sharp pass
-      ctx.shadowBlur = 0;
-      ctx.fillStyle  = '#3b0764';
+      ctx.shadowBlur  = 12;
+      ctx.shadowColor = 'rgba(216,180,254,0.7)';
+      ctx.fillStyle   = '#e879f9';
       ctx.fillText('✨  ' + HEADER_TEXT + '  ✨', W / 2, 82);
 
       // decorative rule
@@ -672,7 +673,7 @@
       ctx.font         = 'italic 400 26px ' + FONT_FAMILY;
       ctx.textBaseline = 'alphabetic';
       ctx.textAlign    = 'right';
-      ctx.fillStyle    = 'rgba(139,92,246,0.85)';
+      ctx.fillStyle    = 'rgba(251,191,36,0.8)';
       ctx.fillText(count + ' guests featured tonight', W - 36, H - 52);
       ctx.textAlign    = 'left';
       ctx.restore();
@@ -694,12 +695,15 @@
       ctx.globalAlpha  = alpha;
       setFont(FONT_SIZE);
       ctx.textBaseline = 'alphabetic';
-      ctx.shadowBlur   = 14;
-      ctx.shadowColor  = 'rgba(90,30,130,0.45)';
-      ctx.fillStyle    = '#2c0a4e';
+      // golden glow halo
+      ctx.shadowBlur   = 24;
+      ctx.shadowColor  = 'rgba(251,191,36,0.65)';
+      ctx.fillStyle    = '#fde68a';
       ctx.fillText(text.slice(0, count), x, y);
-      ctx.shadowBlur   = 0;
-      ctx.fillStyle    = '#1a0030';
+      // bright gold crisp pass
+      ctx.shadowBlur   = 8;
+      ctx.shadowColor  = 'rgba(245,197,24,0.5)';
+      ctx.fillStyle    = '#fff4c2';
       ctx.fillText(text.slice(0, count), x, y);
       ctx.restore();
     }
@@ -711,7 +715,7 @@
       ctx.globalAlpha  = alpha;
       setFont(BULLET_SIZE);
       ctx.textBaseline = 'alphabetic';
-      ctx.fillStyle    = 'rgba(139,92,246,0.75)';
+      ctx.fillStyle    = 'rgba(251,191,36,0.88)';
       ctx.fillText('✦', x, y);
       ctx.restore();
     }
@@ -724,7 +728,7 @@
       ctx.textBaseline = 'alphabetic';
       ctx.textAlign    = 'center';
       const onLive  = displayPage === livePageIdx;
-      ctx.fillStyle = onLive ? 'rgba(100,60,160,0.55)' : 'rgba(220,80,80,0.72)';
+      ctx.fillStyle = onLive ? 'rgba(192,132,252,0.85)' : 'rgba(250,100,100,0.9)';
       const label   = onLive
         ? `— Page ${displayPage + 1} —`
         : `— Page ${displayPage + 1}  ·  Live: Pg ${livePageIdx + 1} —`;
