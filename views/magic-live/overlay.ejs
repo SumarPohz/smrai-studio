@@ -19,12 +19,13 @@
   <script>
     (function scaleCanvas() {
       function resize() {
-        var scale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
         var el = document.getElementById('c');
         if (!el) return;
+        var CW = el.width || 1920, CH = el.height || 1080;
+        var scale = Math.min(window.innerWidth / CW, window.innerHeight / CH);
         el.style.transform = 'scale(' + scale + ')';
-        el.style.left = ((window.innerWidth  - 1920 * scale) / 2) + 'px';
-        el.style.top  = ((window.innerHeight - 1080 * scale) / 2) + 'px';
+        el.style.left = ((window.innerWidth  - CW * scale) / 2) + 'px';
+        el.style.top  = ((window.innerHeight - CH * scale) / 2) + 'px';
       }
       window.addEventListener('resize', resize);
       window.addEventListener('load',   resize);
@@ -39,19 +40,28 @@
     const USER_ID = <%- userId %>;
     let   HEADER_TEXT = `<%- headerText %>`;
 
+    // ── Vertical mode ───────────────────────────────────────────────────────
+    const VERTICAL = new URLSearchParams(window.location.search).get('mode') === 'vertical';
+    if (VERTICAL) {
+      const _cv = document.getElementById('c');
+      _cv.width  = 1080;
+      _cv.height = 1920;
+    }
+
     const canvas = document.getElementById('c');
     const ctx    = canvas.getContext('2d');
-    const W = 1920, H = 1080;
+    const W = canvas.width;
+    const H = canvas.height;
 
-    // ── Book layout constants ───────────────────────────────────────────────
+    // ── Book layout constants (vertical-aware) ──────────────────────────────
     const FONT_FAMILY = '"Dancing Script", cursive';
-    const FONT_SIZE   = 62;
-    const BULLET_SIZE = 48;
-    const COL_X       = [110, 1010];
+    const FONT_SIZE   = VERTICAL ? 52  : 62;
+    const BULLET_SIZE = VERTICAL ? 40  : 48;
+    const COL_X       = VERTICAL ? [80, 580] : [110, 1010];
     const BULLET_OFF  = 52;
-    const START_Y     = 178;   // bumped from 160 — gives clearance below header
-    const LINE_H      = 94;
-    const MAX_ROWS    = 9;
+    const START_Y     = VERTICAL ? 230 : 178;
+    const LINE_H      = VERTICAL ? 108 : 94;
+    const MAX_ROWS    = VERTICAL ? 14  : 9;
     const MS_PER_CHAR = 85;
 
     // ── Book state ──────────────────────────────────────────────────────────
