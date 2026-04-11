@@ -77,6 +77,11 @@
     let lastTs      = 0;    // for physics delta
     let ambLoopId   = null; // idle ambient loop
 
+    // ── Subscriber alert state ──────────────────────────────────────────────
+    let subAlert   = null; // { name, startTs }
+    let subParts   = [];   // explosion + glitter particles
+    let shockwaves = [];   // expanding rings { startTs, maxR, color, delay }
+
     // ── Socket ──────────────────────────────────────────────────────────────
     const socket = io();
     socket.emit('join-magic', USER_ID);
@@ -113,6 +118,15 @@
     socket.on('update-header', ({ headerText }) => {
       HEADER_TEXT = headerText;
       drawFrame(performance.now());
+    });
+
+    socket.on('show-subscriber', ({ name }) => {
+      document.fonts.ready.then(() => {
+        doSubscriberAlert(name);
+        // also queue in guestbook
+        nameQueue.push(name);
+        if (!isWriting && !isFlipping) processNext();
+      });
     });
 
     // ── Helpers ─────────────────────────────────────────────────────────────
@@ -174,6 +188,22 @@
         p.life -= dt / (p.maxLife * 16);
         if (p.life <= 0) confParts.splice(i, 1);
       }
+
+      for (let i = subParts.length - 1; i >= 0; i--) {
+        const p = subParts[i];
+        p.x  += p.vx * dt / 16;
+        p.y  += p.vy * dt / 16;
+        if (p.kind === 'burst') {
+          p.vy += 0.32 * dt / 16;
+          p.vx *= Math.pow(0.965, dt / 16);
+        } else {
+          p.vy += 0.08 * dt / 16; // glitter falls gently
+          p.vx += Math.sin(p.y / 60) * 0.04;
+        }
+        p.rot += p.rotSpeed;
+        p.life -= dt / (p.maxLife * 16);
+        if (p.life <= 0) subParts.splice(i, 1);
+      }
     }
 
     function spawnBurst(x, y) {
@@ -212,6 +242,319 @@
           color: COLS[Math.floor(Math.random() * COLS.length)],
         });
       }
+    }
+
+    // ── Subscriber alert engine ──────────────────────────────────────────────
+    const SUB_DUR = 4000;
+
+    function doSubscriberAlert(name) {
+      subAlert = { name, startTs: null };
+      subParts.length = 0;
+      shockwaves.length = 0;
+
+      // Radial burst from center
+      const BCOLS = ['#fbbf24','#f59e0b','#c4b5fd','#f9a8d4','#fff','#67e8f9','#86efac'];
+      for (let i = 0; i < 90; i++) {
+        const angle = (Math.PI * 2 * i / 90) + (Math.random() - 0.5) * 0.25;
+        const spd   = 9 + Math.random() * 22;
+        subParts.push({
+          x: W / 2, y: H / 2,
+          vx: Math.cos(angle) * spd,
+          vy: Math.sin(angle) * spd - 5,
+          life: 1, maxLife: 55 + Math.random() * 45,
+          size: 3 + Math.random() * 7,
+          rot: Math.random() * Math.PI,
+          rotSpeed: (Math.random() - 0.5) * 0.32,
+          color: BCOLS[Math.floor(Math.random() * BCOLS.length)],
+          kind: 'burst',
+        });
+      }
+
+      // Glitter rain from top
+      const GCOLS = ['#fbbf24','#fff','#c4b5fd','#f9a8d4','#67e8f9'];
+      for (let i = 0; i < 70; i++) {
+        subParts.push({
+          x: Math.random() * W,
+          y: -30 - Math.random() * 300,
+          vx: (Math.random() - 0.5) * 2.5,
+          vy: 3 + Math.random() * 7,
+          life: 1, maxLife: 140 + Math.random() * 80,
+          size: 2 + Math.random() * 5,
+          rot: Math.random() * Math.PI * 2,
+          rotSpeed: (Math.random() - 0.5) * 0.18,
+          color: GCOLS[Math.floor(Math.random() * GCOLS.length)],
+          kind: 'glitter',
+        });
+      }
+
+      // Shockwaves
+      shockwaves.push({ startTs: null, delay: 0,   maxR: 700, color: '#fbbf24', lw: 4 });
+      shockwaves.push({ startTs: null, delay: 140, maxR: 960, color: '#a78bfa', lw: 2.5 });
+      shockwaves.push({ startTs: null, delay: 280, maxR: 560, color: '#f9a8d4', lw: 2 });
+    }
+
+    function rRekt(x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.arcTo(x + w, y, x + w, y + r, r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+      ctx.lineTo(x + r, y + h);
+      ctx.arcTo(x, y + h, x, y + h - r, r);
+      ctx.lineTo(x, y + r);
+      ctx.arcTo(x, y, x + r, y, r);
+      ctx.closePath();
+    }
+
+    function drawLightning(x1, y1, x2, y2, alpha) {
+      const SEG = 10;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.lineWidth   = 2.5;
+      ctx.lineCap     = 'round';
+      ctx.shadowBlur  = 18;
+      ctx.shadowColor = '#c4b5fd';
+      ctx.strokeStyle = '#a78bfa';
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      for (let i = 1; i < SEG; i++) {
+        const px = x1 + (x2 - x1) * (i / SEG) + (Math.random() - 0.5) * 80;
+        const py = y1 + (y2 - y1) * (i / SEG) + (Math.random() - 0.5) * 80;
+        ctx.lineTo(px, py);
+      }
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+      ctx.lineWidth   = 1;
+      ctx.strokeStyle = '#fff';
+      ctx.shadowBlur  = 6;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      for (let i = 1; i < SEG; i++) {
+        const px = x1 + (x2 - x1) * (i / SEG) + (Math.random() - 0.5) * 80;
+        const py = y1 + (y2 - y1) * (i / SEG) + (Math.random() - 0.5) * 80;
+        ctx.lineTo(px, py);
+      }
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawSubscriberAlert(ts) {
+      if (!subAlert) return;
+      if (!subAlert.startTs) { subAlert.startTs = ts; return; }
+
+      const age = ts - subAlert.startTs;
+      if (age > SUB_DUR) { subAlert = null; subParts.length = 0; shockwaves.length = 0; return; }
+
+      const t = age / SUB_DUR;
+      const alpha = t < 0.12 ? t / 0.12 : t > 0.78 ? (1 - t) / 0.22 : 1;
+
+      // ── Screen dim ────────────────────────────────────────────────────────
+      ctx.save();
+      ctx.globalAlpha = alpha * 0.52;
+      ctx.fillStyle   = 'rgba(5,0,15,0.7)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+
+      // ── Edge glow ─────────────────────────────────────────────────────────
+      const pulse = 0.55 + 0.45 * Math.sin(age / 160);
+      const eSize = 110;
+      [[0,0,0,eSize,'#fbbf24','down'],[0,H-eSize,0,H,'#a78bfa','up'],
+       [0,0,eSize,0,'#fbbf24','right'],[W-eSize,0,W,0,'#a78bfa','left']
+      ].forEach(([x,y,x2,y2,col,dir]) => {
+        let g;
+        if (dir==='down')  g = ctx.createLinearGradient(0,y,0,y+eSize);
+        else if (dir==='up') g = ctx.createLinearGradient(0,y,0,y+eSize);
+        else if (dir==='right') g = ctx.createLinearGradient(x,0,x+eSize,0);
+        else g = ctx.createLinearGradient(W-eSize,0,W,0);
+        const a = alpha * pulse * 0.55;
+        if (dir==='down'||dir==='right') { g.addColorStop(0,col.replace(')',`,${a})`).replace('rgb','rgba')||`rgba(251,191,36,${a})`); g.addColorStop(1,'rgba(0,0,0,0)'); }
+        else                             { g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,col.replace(')',`,${a})`).replace('rgb','rgba')||`rgba(167,139,250,${a})`); }
+        ctx.fillStyle = g;
+        if (dir==='down')  ctx.fillRect(0,0,W,eSize);
+        else if (dir==='up') ctx.fillRect(0,H-eSize,W,eSize);
+        else if (dir==='right') ctx.fillRect(0,0,eSize,H);
+        else ctx.fillRect(W-eSize,0,eSize,H);
+      });
+
+      // ── Simplified edge glow ──────────────────────────────────────────────
+      ctx.save();
+      ctx.globalAlpha = alpha * pulse * 0.5;
+      const eg1 = ctx.createLinearGradient(0,0,0,eSize);
+      eg1.addColorStop(0,`rgba(251,191,36,0.6)`); eg1.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle = eg1; ctx.fillRect(0,0,W,eSize);
+      const eg2 = ctx.createLinearGradient(0,H-eSize,0,H);
+      eg2.addColorStop(0,'rgba(0,0,0,0)'); eg2.addColorStop(1,'rgba(167,139,250,0.6)');
+      ctx.fillStyle = eg2; ctx.fillRect(0,H-eSize,W,eSize);
+      const eg3 = ctx.createLinearGradient(0,0,eSize,0);
+      eg3.addColorStop(0,`rgba(251,191,36,0.6)`); eg3.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle = eg3; ctx.fillRect(0,0,eSize,H);
+      const eg4 = ctx.createLinearGradient(W-eSize,0,W,0);
+      eg4.addColorStop(0,'rgba(0,0,0,0)'); eg4.addColorStop(1,'rgba(167,139,250,0.6)');
+      ctx.fillStyle = eg4; ctx.fillRect(W-eSize,0,eSize,H);
+      ctx.restore();
+
+      // ── Lightning bolts (first 1.2s) ──────────────────────────────────────
+      if (age < 1200) {
+        const la = alpha * Math.max(0, 1 - age / 1200) * 0.9;
+        const cx = W / 2, cy = H / 2, sp = 120;
+        drawLightning(0,   0,   cx - sp, cy - sp, la);
+        drawLightning(W,   0,   cx + sp, cy - sp, la);
+        drawLightning(0,   H,   cx - sp, cy + sp, la);
+        drawLightning(W,   H,   cx + sp, cy + sp, la);
+      }
+
+      // ── Shockwaves ────────────────────────────────────────────────────────
+      shockwaves.forEach((s, i) => {
+        if (!s.startTs) { s.startTs = ts + (s.delay || 0); return; }
+        if (ts < s.startTs) return;
+        const a2 = ts - s.startTs;
+        if (a2 > 900) return;
+        const st = a2 / 900;
+        const r  = st * s.maxR;
+        ctx.save();
+        ctx.globalAlpha  = (1 - st) * 0.75 * alpha;
+        ctx.strokeStyle  = s.color;
+        ctx.lineWidth    = s.lw * (1 - st * 0.6);
+        ctx.shadowBlur   = 24;
+        ctx.shadowColor  = s.color;
+        ctx.beginPath(); ctx.arc(W / 2, H / 2, r, 0, Math.PI * 2); ctx.stroke();
+        ctx.restore();
+      });
+
+      // ── Banner ────────────────────────────────────────────────────────────
+      const BW = 900, BH = 230;
+      const BX = W / 2 - BW / 2, BY = H / 2 - BH / 2;
+
+      // Bounce-in scale
+      let sc = 1;
+      if (t < 0.2) {
+        const et = t / 0.2;
+        sc = et < 0.65 ? (et / 0.65) * 1.12 : 1.12 - ((et - 0.65) / 0.35) * 0.12;
+      }
+
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.translate(W / 2, H / 2);
+      ctx.scale(sc, sc);
+      ctx.translate(-W / 2, -H / 2);
+
+      // Banner background
+      const bgGrad = ctx.createLinearGradient(BX, BY, BX + BW, BY + BH);
+      bgGrad.addColorStop(0,   'rgba(8,0,20,0.97)');
+      bgGrad.addColorStop(0.5, 'rgba(20,0,45,0.97)');
+      bgGrad.addColorStop(1,   'rgba(8,0,20,0.97)');
+      ctx.shadowBlur  = 70;
+      ctx.shadowColor = '#7c3aed';
+      ctx.fillStyle   = bgGrad;
+      rRekt(BX, BY, BW, BH, 22);
+      ctx.fill();
+      ctx.shadowBlur  = 0;
+
+      // Animated border
+      const shimP = (age % 1600) / 1600;
+      const bGrad = ctx.createLinearGradient(BX + shimP * BW * 2 - BW, BY, BX + shimP * BW * 2, BY + BH);
+      bGrad.addColorStop(0,    '#fbbf24');
+      bGrad.addColorStop(0.25, '#c4b5fd');
+      bGrad.addColorStop(0.5,  '#f9a8d4');
+      bGrad.addColorStop(0.75, '#67e8f9');
+      bGrad.addColorStop(1,    '#fbbf24');
+      ctx.strokeStyle = bGrad;
+      ctx.lineWidth   = 3.5;
+      ctx.shadowBlur  = 18;
+      ctx.shadowColor = '#fbbf24';
+      rRekt(BX, BY, BW, BH, 22);
+      ctx.stroke();
+      ctx.shadowBlur  = 0;
+
+      // Inner glow line
+      ctx.strokeStyle = 'rgba(251,191,36,0.15)';
+      ctx.lineWidth   = 1;
+      rRekt(BX + 6, BY + 6, BW - 12, BH - 12, 18);
+      ctx.stroke();
+
+      // ✦ corner accents
+      const cp = 0.6 + 0.4 * Math.sin(age / 180);
+      ctx.font         = '700 30px ' + FONT_FAMILY;
+      ctx.textBaseline = 'middle';
+      ctx.textAlign    = 'center';
+      ctx.fillStyle    = `rgba(251,191,36,${cp})`;
+      ctx.shadowBlur   = 12; ctx.shadowColor = '#fbbf24';
+      ctx.fillText('✦', BX + 34, H / 2);
+      ctx.fillText('✦', BX + BW - 34, H / 2);
+      ctx.shadowBlur   = 0;
+
+      // "NEW SUBSCRIBER" label
+      ctx.font         = '700 20px "Inter",sans-serif';
+      ctx.textAlign    = 'center';
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillStyle    = '#fbbf24';
+      ctx.shadowBlur   = 14; ctx.shadowColor = '#fbbf24';
+      ctx.fillText('✦   N E W   S U B S C R I B E R   ✦', W / 2, BY + 72);
+      ctx.shadowBlur   = 0;
+
+      // Divider line
+      const dlG = ctx.createLinearGradient(BX + 60, 0, BX + BW - 60, 0);
+      dlG.addColorStop(0, 'rgba(251,191,36,0)');
+      dlG.addColorStop(0.5, 'rgba(251,191,36,0.4)');
+      dlG.addColorStop(1, 'rgba(251,191,36,0)');
+      ctx.strokeStyle = dlG; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(BX + 60, BY + 85); ctx.lineTo(BX + BW - 60, BY + 85); ctx.stroke();
+
+      // Name — golden metallic gradient
+      const nLen    = subAlert.name.length;
+      const nSize   = Math.min(90, Math.max(52, 90 - Math.max(0, nLen - 10) * 3));
+      const nGrad   = ctx.createLinearGradient(W/2 - 360, 0, W/2 + 360, 0);
+      nGrad.addColorStop(0,    '#fff4c2');
+      nGrad.addColorStop(0.2,  '#f5c518');
+      nGrad.addColorStop(0.5,  '#fde68a');
+      nGrad.addColorStop(0.8,  '#c8960c');
+      nGrad.addColorStop(1,    '#fff4c2');
+      ctx.font         = '700 ' + nSize + 'px ' + FONT_FAMILY;
+      ctx.textAlign    = 'center';
+      ctx.textBaseline = 'alphabetic';
+      ctx.shadowBlur   = 28; ctx.shadowColor = '#fbbf24';
+      ctx.fillStyle    = nGrad;
+      ctx.fillText(subAlert.name, W / 2, BY + BH - 46);
+      ctx.shadowBlur   = 0;
+
+      // Shimmer sweep
+      const swP  = (age % 900) / 900;
+      const swG  = ctx.createLinearGradient(BX + swP * (BW + 200) - 120, BY, BX + swP * (BW + 200), BY + BH);
+      swG.addColorStop(0, 'rgba(255,255,255,0)');
+      swG.addColorStop(0.5, 'rgba(255,255,255,0.22)');
+      swG.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = swG;
+      rRekt(BX, BY, BW, BH, 22);
+      ctx.fill();
+
+      ctx.restore();
+
+      // ── Sub particles (drawn after banner so they're on top) ───────────────
+      subParts.forEach(p => {
+        if (p.life <= 0) return;
+        ctx.save();
+        ctx.globalAlpha = p.life * 0.92;
+        ctx.fillStyle   = p.color;
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        const s = p.size * Math.sqrt(p.life);
+        if (p.kind === 'glitter') {
+          // 4-pointed star shape
+          ctx.beginPath();
+          ctx.moveTo(0, -s * 1.6); ctx.lineTo(s * 0.4, -s * 0.4);
+          ctx.lineTo(s * 1.6, 0);  ctx.lineTo(s * 0.4,  s * 0.4);
+          ctx.lineTo(0,  s * 1.6); ctx.lineTo(-s * 0.4, s * 0.4);
+          ctx.lineTo(-s * 1.6, 0); ctx.lineTo(-s * 0.4, -s * 0.4);
+          ctx.closePath(); ctx.fill();
+        } else {
+          ctx.shadowBlur  = 6;
+          ctx.shadowColor = p.color;
+          ctx.fillRect(-s / 2, -s / 2, s, s);
+        }
+        ctx.restore();
+      });
     }
 
     // ── Drawing helpers ──────────────────────────────────────────────────────
@@ -487,6 +830,9 @@
       // particles always on top
       drawBurstParticles();
       drawConfettiParticles();
+
+      // subscriber alert — topmost layer
+      drawSubscriberAlert(now);
     }
 
     // ── Animation loop ───────────────────────────────────────────────────────

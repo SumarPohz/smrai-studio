@@ -71,20 +71,21 @@ export async function getOverlay(req, res, db) {
 
 export async function apiAddName(req, res, db, io) {
   const userId = req.user.id;
-  const { name } = req.body;
+  const { name, isSubscriber } = req.body;
   if (!name || typeof name !== 'string') return res.status(400).json({ error: 'Name required' });
 
   const clean = name.trim().slice(0, 50);
   if (!clean) return res.status(400).json({ error: 'Name required' });
 
-  // Log to history
+  const source = isSubscriber ? 'subscriber' : 'manual';
   db.query(
     'INSERT INTO magic_live_history (user_id, name, source) VALUES (?, ?, ?)',
-    [userId, clean, 'manual']
+    [userId, clean, source]
   ).catch(() => {});
 
-  // Emit directly to overlay — no queue
-  io.to(`magic:${userId}`).emit('show-name', { name: clean });
+  // Subscriber gets a special alert event; regular names go to the guestbook queue
+  const event = isSubscriber ? 'show-subscriber' : 'show-name';
+  io.to(`magic:${userId}`).emit(event, { name: clean });
 
   return res.json({ ok: true, name: clean });
 }

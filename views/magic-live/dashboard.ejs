@@ -69,6 +69,10 @@ body, #ml-page { background:var(--bg); color:#f4f4f5; font-family:'Inter',sans-s
 .ml-select:focus { border-color:var(--purple); }
 .settings-save { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
 
+/* ── Subscriber button ── */
+.ml-btn-sub { background:linear-gradient(135deg,#b45309,#fbbf24,#b45309); color:#1c0a00; font-weight:800; }
+.ml-btn-sub:hover { opacity:.88; }
+
 /* ── Page Navigator ── */
 .page-nav { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
 .page-nav .ml-btn { flex:1; min-width:0; }
@@ -162,6 +166,9 @@ body, #ml-page { background:var(--bg); color:#f4f4f5; font-family:'Inter',sans-s
     <div class="manual-row">
       <input type="text" id="manualName" class="ml-input" placeholder="Enter viewer name…" maxlength="50" />
       <button class="ml-btn ml-btn-primary" id="sendBtn" onclick="sendName()">❤️ Send Live</button>
+    </div>
+    <div class="manual-row" style="margin-top:8px;">
+      <button class="ml-btn ml-btn-sub ml-btn-full" id="subBtn" onclick="sendSubscriber()">⭐ New Subscriber Alert</button>
     </div>
     <p id="manualMsg" style="font-size:13px;margin-top:8px;color:#a1a1aa;min-height:18px;"></p>
   </div>
@@ -361,6 +368,33 @@ function copyUrl() {
 }
 function copySubmitUrl() {
   navigator.clipboard.writeText(submitBase).then(() => alert('Viewer submit link copied!'));
+}
+
+// ── Subscriber Alert ───────────────────────────────────────────────────────
+async function sendSubscriber() {
+  const input = document.getElementById('manualName');
+  const name  = input.value.trim();
+  const msg   = document.getElementById('manualMsg');
+  const btn   = document.getElementById('subBtn');
+  if (!name) { msg.textContent = 'Enter the subscriber name first.'; msg.style.color = '#f87171'; return; }
+
+  btn.disabled = true;
+  const res = await fetch('/magic-live/api/add', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, isSubscriber: true }),
+  });
+  const d = await res.json();
+  btn.disabled = false;
+  if (d.ok) {
+    input.value = '';
+    msg.textContent = `⭐ Subscriber alert sent for "${d.name}"!`;
+    msg.style.color = '#fbbf24';
+  } else {
+    msg.textContent = d.error || 'Error';
+    msg.style.color = '#f87171';
+  }
+  setTimeout(() => msg.textContent = '', 3500);
 }
 
 // ── Overlay Title ──────────────────────────────────────────────────────────
