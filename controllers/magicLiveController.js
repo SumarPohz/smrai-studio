@@ -54,13 +54,14 @@ export async function getDashboard(req, res, db) {
 
 // Public — no auth middleware
 export async function getOverlay(req, res, db) {
-  const userId = parseInt(req.query.userId, 10);
+  const userId   = parseInt(req.query.userId, 10);
   if (!userId) return res.status(400).send('Missing userId');
+  const vertical = req.query.mode === 'vertical';
 
   try {
     const settings   = await getSettings(userId, db);
     const headerText = (settings.header_text || "Tonight's Guests").replace(/</g, '&lt;');
-    res.render('magic-live/overlay', { userId, settings, headerText });
+    res.render('magic-live/overlay', { userId, settings, headerText, vertical });
   } catch (err) {
     console.error('[MagicLive] getOverlay error:', err.message);
     res.status(500).send('Error loading overlay');

@@ -34,19 +34,13 @@
   </script>
 </head>
 <body>
-  <canvas id="c" width="1920" height="1080"></canvas>
+  <canvas id="c" width="<%= vertical ? 1080 : 1920 %>" height="<%= vertical ? 1920 : 1080 %>"></canvas>
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const USER_ID = <%- userId %>;
     let   HEADER_TEXT = `<%- headerText %>`;
 
-    // ── Vertical mode ───────────────────────────────────────────────────────
-    const VERTICAL = new URLSearchParams(window.location.search).get('mode') === 'vertical';
-    if (VERTICAL) {
-      const _cv = document.getElementById('c');
-      _cv.width  = 1080;
-      _cv.height = 1920;
-    }
+    const VERTICAL = <%- vertical ? 'true' : 'false' %>;
 
     const canvas = document.getElementById('c');
     const ctx    = canvas.getContext('2d');
@@ -54,14 +48,15 @@
     const H = canvas.height;
 
     // ── Book layout constants (vertical-aware) ──────────────────────────────
+    // Vertical: single centered column for phone/Shorts streams
     const FONT_FAMILY = '"Dancing Script", cursive';
-    const FONT_SIZE   = VERTICAL ? 52  : 62;
-    const BULLET_SIZE = VERTICAL ? 40  : 48;
-    const COL_X       = VERTICAL ? [80, 580] : [110, 1010];
+    const FONT_SIZE   = VERTICAL ? 58  : 62;
+    const BULLET_SIZE = VERTICAL ? 44  : 48;
+    const COL_X       = VERTICAL ? [160] : [110, 1010];  // single column, centered-left
     const BULLET_OFF  = 52;
-    const START_Y     = VERTICAL ? 230 : 178;
-    const LINE_H      = VERTICAL ? 108 : 94;
-    const MAX_ROWS    = VERTICAL ? 14  : 9;
+    const START_Y     = VERTICAL ? 200 : 178;
+    const LINE_H      = VERTICAL ? 100 : 94;
+    const MAX_ROWS    = VERTICAL ? 16  : 9;
     const MS_PER_CHAR = 85;
 
     // ── Book state ──────────────────────────────────────────────────────────
@@ -749,6 +744,7 @@
     }
 
     function drawDivider(alpha) {
+      if (COL_X.length === 1) return; // no divider in single-column mode
       ctx.save();
       ctx.globalAlpha  = alpha * 0.18;
       ctx.strokeStyle  = '#7c3aed';
@@ -902,7 +898,11 @@
     }
 
     function advancePosition() {
-      if (nextCol === 0) {
+      if (COL_X.length === 1) {
+        // single column (vertical mode)
+        nextRow++;
+        if (nextRow >= MAX_ROWS) doPageFlip();
+      } else if (nextCol === 0) {
         nextRow++;
         if (nextRow >= MAX_ROWS) { nextCol = 1; nextRow = 0; }
       } else {
