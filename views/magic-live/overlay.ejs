@@ -50,9 +50,9 @@
     // ── Book layout constants (vertical-aware) ──────────────────────────────
     // Vertical: single centered column for phone/Shorts streams
     const FONT_FAMILY = '"Dancing Script", cursive';
-    const FONT_SIZE   = VERTICAL ? 58  : 62;
+    const FONT_SIZE   = VERTICAL ? 52  : 62;
     const BULLET_SIZE = VERTICAL ? 44  : 48;
-    const COL_X       = VERTICAL ? [160] : [110, 1010];  // single column, centered-left
+    const COL_X       = VERTICAL ? [80] : [110, 1010];  // single column, left-aligned with margin
     const BULLET_OFF  = 52;
     const START_Y     = VERTICAL ? 200 : 178;
     const LINE_H      = VERTICAL ? 100 : 94;
@@ -570,7 +570,7 @@
       ctx.textBaseline = 'alphabetic';
 
       // glow pass
-      const hSize = VERTICAL ? 46 : 66;
+      const hSize = VERTICAL ? 38 : 66;
       ctx.font        = '700 ' + hSize + 'px ' + FONT_FAMILY;
       ctx.shadowBlur  = 40;
       ctx.shadowColor = 'rgba(167,139,250,0.9)';
