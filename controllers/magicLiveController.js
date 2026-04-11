@@ -185,7 +185,6 @@ export async function apiUpdateHeader(req, res, db, io) {
     res.status(500).json({ error: err.message });
   }
 }
-}
 
 // Kept for Auto Magic internal use
 export async function apiShowNext(req, res, db, io) {
