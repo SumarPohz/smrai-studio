@@ -575,7 +575,8 @@
       ctx.textBaseline = 'alphabetic';
 
       // glow pass
-      ctx.font        = '700 66px ' + FONT_FAMILY;
+      const hSize = VERTICAL ? 46 : 66;
+      ctx.font        = '700 ' + hSize + 'px ' + FONT_FAMILY;
       ctx.shadowBlur  = 40;
       ctx.shadowColor = 'rgba(167,139,250,0.9)';
       ctx.fillStyle   = '#c084fc';
