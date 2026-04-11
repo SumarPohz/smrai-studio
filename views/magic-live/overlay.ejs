@@ -37,6 +37,7 @@
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const USER_ID = <%- userId %>;
+    let   HEADER_TEXT = `<%- headerText %>`;
 
     const canvas = document.getElementById('c');
     const ctx    = canvas.getContext('2d');
@@ -107,6 +108,11 @@
         anim = null; isWriting = false;
       }
       doNavPageFlip(target);
+    });
+
+    socket.on('update-header', ({ headerText }) => {
+      HEADER_TEXT = headerText;
+      drawFrame(performance.now());
     });
 
     // ── Helpers ─────────────────────────────────────────────────────────────
@@ -220,12 +226,12 @@
       ctx.shadowBlur  = 30;
       ctx.shadowColor = 'rgba(139,92,246,0.5)';
       ctx.fillStyle   = 'rgba(76,29,149,0.85)';
-      ctx.fillText("✨  Tonight's Guests  ✨", W / 2, 82);
+      ctx.fillText('✨  ' + HEADER_TEXT + '  ✨', W / 2, 82);
 
       // sharp pass
       ctx.shadowBlur = 0;
       ctx.fillStyle  = '#3b0764';
-      ctx.fillText("✨  Tonight's Guests  ✨", W / 2, 82);
+      ctx.fillText('✨  ' + HEADER_TEXT + '  ✨', W / 2, 82);
 
       // decorative rule
       const rg = ctx.createLinearGradient(W / 2 - 360, 0, W / 2 + 360, 0);

@@ -190,19 +190,39 @@ export async function stopChatPoller(userId, db) {
 
 // ── Settings helpers ──────────────────────────────────────────────────────────
 export async function getSettings(userId, db) {
-  const { rows } = await db.query(
-    'SELECT anim_style, anim_speed, font_style, is_active FROM magic_live_settings WHERE user_id = ? LIMIT 1',
-    [userId]
-  );
-  if (rows.length) return rows[0];
+  try {
+    const { rows } = await db.query(
+      'SELECT anim_style, anim_speed, font_style, is_active, header_text FROM magic_live_settings WHERE user_id = ? LIMIT 1',
+      [userId]
+    );
+    if (rows.length) return rows[0];
+  } catch (_) {
+    // header_text column may not exist yet — fall back
+    const { rows } = await db.query(
+      'SELECT anim_style, anim_speed, font_style, is_active FROM magic_live_settings WHERE user_id = ? LIMIT 1',
+      [userId]
+    );
+    if (rows.length) return rows[0];
+  }
   return { anim_style: 'neon', anim_speed: 'normal', font_style: 'bold', is_active: 0 };
 }
 
-export async function upsertSettings(userId, { animStyle, animSpeed, fontStyle }, db) {
-  await db.query(
-    `INSERT INTO magic_live_settings (user_id, anim_style, anim_speed, font_style)
-     VALUES (?, ?, ?, ?)
-     ON DUPLICATE KEY UPDATE anim_style = VALUES(anim_style), anim_speed = VALUES(anim_speed), font_style = VALUES(font_style)`,
-    [userId, animStyle, animSpeed, fontStyle || 'bold']
-  );
+export async function upsertSettings(userId, { animStyle, animSpeed, fontStyle, headerText }, db) {
+  try {
+    await db.query(
+      `INSERT INTO magic_live_settings (user_id, anim_style, anim_speed, font_style, header_text)
+       VALUES (?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE anim_style = VALUES(anim_style), anim_speed = VALUES(anim_speed),
+         font_style = VALUES(font_style), header_text = VALUES(header_text)`,
+      [userId, animStyle, animSpeed, fontStyle || 'bold', headerText || "Tonight's Guests"]
+    );
+  } catch (_) {
+    // header_text column missing — update without it
+    await db.query(
+      `INSERT INTO magic_live_settings (user_id, anim_style, anim_speed, font_style)
+       VALUES (?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE anim_style = VALUES(anim_style), anim_speed = VALUES(anim_speed), font_style = VALUES(font_style)`,
+      [userId, animStyle, animSpeed, fontStyle || 'bold']
+    );
+  }
 }

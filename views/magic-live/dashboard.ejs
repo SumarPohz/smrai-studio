@@ -211,6 +211,18 @@ body, #ml-page { background:var(--bg); color:#f4f4f5; font-family:'Inter',sans-s
     </div>
   </div>
 
+  <!-- Overlay Title -->
+  <div class="ml-card">
+    <div class="ml-card-title">✏️ Overlay Title</div>
+    <div class="manual-row">
+      <input type="text" id="headerInput" class="ml-input" maxlength="50"
+        placeholder="Tonight's Guests"
+        value="<%= typeof settings !== 'undefined' && settings.header_text ? settings.header_text : 'Tonight\'s Guests' %>" />
+      <button class="ml-btn ml-btn-primary" onclick="saveHeader()">Update Live</button>
+    </div>
+    <p id="headerMsg" style="font-size:13px;margin-top:8px;color:#a1a1aa;min-height:18px;"></p>
+  </div>
+
   <!-- Page Navigator -->
   <div class="ml-card">
     <div class="ml-card-title">📖 Page Navigator</div>
@@ -349,6 +361,27 @@ function copyUrl() {
 }
 function copySubmitUrl() {
   navigator.clipboard.writeText(submitBase).then(() => alert('Viewer submit link copied!'));
+}
+
+// ── Overlay Title ──────────────────────────────────────────────────────────
+async function saveHeader() {
+  const input = document.getElementById('headerInput');
+  const msg   = document.getElementById('headerMsg');
+  const text  = input.value.trim() || "Tonight's Guests";
+  const res   = await fetch('/magic-live/api/update-header', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ headerText: text }),
+  });
+  const d = await res.json();
+  if (d.ok) {
+    msg.textContent = '✅ Overlay title updated live!';
+    msg.style.color = '#4ade80';
+  } else {
+    msg.textContent = d.error || 'Failed to update';
+    msg.style.color = '#f87171';
+  }
+  setTimeout(() => msg.textContent = '', 3000);
 }
 
 // ── Page Navigator ─────────────────────────────────────────────────────────

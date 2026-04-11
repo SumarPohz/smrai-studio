@@ -11,6 +11,7 @@ import {
   apiClearQueue,
   exportPdf,
   apiNavPage,
+  apiUpdateHeader,
 } from '../controllers/magicLiveController.js';
 
 export default function magicLiveRouter(db, io) {
@@ -29,7 +30,8 @@ export default function magicLiveRouter(db, io) {
   router.post('/api/show-next', (req, res) => apiShowNext(req, res, db, io));
   router.post('/api/clear',     (req, res) => apiClearQueue(req, res, io));
   router.get('/api/export-pdf', (req, res) => exportPdf(req, res, db));
-  router.post('/api/nav-page',  (req, res) => apiNavPage(req, res, io));
+  router.post('/api/nav-page',     (req, res) => apiNavPage(req, res, io));
+  router.post('/api/update-header', (req, res) => apiUpdateHeader(req, res, db, io));
 
   return router;
 }

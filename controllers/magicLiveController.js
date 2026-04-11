@@ -58,8 +58,9 @@ export async function getOverlay(req, res, db) {
   if (!userId) return res.status(400).send('Missing userId');
 
   try {
-    const settings = await getSettings(userId, db);
-    res.render('magic-live/overlay', { userId, settings });
+    const settings   = await getSettings(userId, db);
+    const headerText = (settings.header_text || "Tonight's Guests").replace(/</g, '&lt;');
+    res.render('magic-live/overlay', { userId, settings, headerText });
   } catch (err) {
     console.error('[MagicLive] getOverlay error:', err.message);
     res.status(500).send('Error loading overlay');
@@ -163,6 +164,26 @@ export async function apiUpdateSettings(req, res, db) {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+}
+
+export async function apiUpdateHeader(req, res, db, io) {
+  let { headerText } = req.body;
+  if (typeof headerText !== 'string') return res.status(400).json({ error: 'headerText required' });
+  headerText = headerText.trim().slice(0, 80) || "Tonight's Guests";
+  try {
+    const s = await getSettings(req.user.id, db);
+    await upsertSettings(req.user.id, {
+      animStyle:  s.anim_style  || 'neon',
+      animSpeed:  s.anim_speed  || 'normal',
+      fontStyle:  s.font_style  || 'bold',
+      headerText,
+    }, db);
+    io.to(`magic:${req.user.id}`).emit('update-header', { headerText });
+    res.json({ ok: true, headerText });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
 }
 
 // Kept for Auto Magic internal use
