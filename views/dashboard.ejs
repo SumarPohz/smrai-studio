@@ -96,6 +96,48 @@
     <% } %>
   </div>
 
+  <!-- ── YouTube Live Hub ─────────────────────────────────────────────── -->
+  <div class="yt-live-hub">
+    <div class="yt-live-hub-header">
+      <div class="yt-live-hub-icon">▶</div>
+      <div>
+        <h2 class="yt-live-hub-title">YouTube Live</h2>
+        <p class="yt-live-hub-sub">Tools to power your live streams</p>
+      </div>
+    </div>
+    <div class="yt-live-hub-grid">
+
+      <!-- Magic Live -->
+      <a href="/magic-live" class="yt-feature-card">
+        <div class="yt-feature-card-icon">✨</div>
+        <div class="yt-feature-card-body">
+          <div class="yt-feature-card-title">Magic Live</div>
+          <div class="yt-feature-card-desc">OBS overlay · Live chat · Animations</div>
+        </div>
+        <div class="yt-feature-card-arrow">→</div>
+      </a>
+
+      <!-- Alerts — Coming Soon -->
+      <div class="yt-feature-card yt-feature-card--soon">
+        <div class="yt-feature-card-icon">🔔</div>
+        <div class="yt-feature-card-body">
+          <div class="yt-feature-card-title">Alerts <span class="yt-soon-badge">Soon</span></div>
+          <div class="yt-feature-card-desc">Subscriber & donation alerts</div>
+        </div>
+      </div>
+
+      <!-- Analytics — Coming Soon -->
+      <div class="yt-feature-card yt-feature-card--soon">
+        <div class="yt-feature-card-icon">📊</div>
+        <div class="yt-feature-card-body">
+          <div class="yt-feature-card-title">Analytics <span class="yt-soon-badge">Soon</span></div>
+          <div class="yt-feature-card-desc">Live stream performance insights</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
   <!-- ── All Services ─────────────────────────────────────────────────── -->
   <div style="margin-bottom:2rem">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
@@ -452,6 +494,83 @@
 </section>
 
 <style>
+  /* ── YouTube Live Hub ── */
+  .yt-live-hub {
+    background: linear-gradient(135deg, rgba(30,10,60,0.7), rgba(15,5,35,0.8));
+    border: 1px solid rgba(139,92,246,0.25);
+    border-radius: 18px;
+    padding: 1.5rem 1.75rem;
+    margin-bottom: 2rem;
+  }
+  .yt-live-hub-header {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    margin-bottom: 1.25rem;
+  }
+  .yt-live-hub-icon {
+    width: 42px; height: 42px;
+    background: #ff0000;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem; color: #fff; font-weight: 900;
+    flex-shrink: 0;
+  }
+  .yt-live-hub-title {
+    font-size: 1.15rem; font-weight: 800;
+    color: #f1f5f9; margin: 0 0 0.15rem;
+  }
+  .yt-live-hub-sub {
+    font-size: 0.78rem; color: #94a3b8; margin: 0;
+  }
+  .yt-live-hub-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 0.85rem;
+  }
+  .yt-feature-card {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(139,92,246,0.2);
+    border-radius: 12px;
+    padding: 1rem 1.1rem;
+    text-decoration: none;
+    color: inherit;
+    transition: background 0.2s, border-color 0.2s, transform 0.15s;
+    cursor: pointer;
+  }
+  .yt-feature-card:hover:not(.yt-feature-card--soon) {
+    background: rgba(139,92,246,0.12);
+    border-color: rgba(139,92,246,0.5);
+    transform: translateY(-2px);
+  }
+  .yt-feature-card--soon { opacity: 0.5; cursor: default; }
+  .yt-feature-card-icon { font-size: 1.6rem; flex-shrink: 0; }
+  .yt-feature-card-body { flex: 1; min-width: 0; }
+  .yt-feature-card-title {
+    font-size: 0.92rem; font-weight: 700;
+    color: #e2e8f0; display: flex; align-items: center; gap: 0.5rem;
+  }
+  .yt-feature-card-desc { font-size: 0.74rem; color: #94a3b8; margin-top: 0.15rem; }
+  .yt-feature-card-arrow { color: #a78bfa; font-size: 1.1rem; flex-shrink: 0; }
+  .yt-soon-badge {
+    background: rgba(251,191,36,0.15);
+    border: 1px solid rgba(251,191,36,0.3);
+    color: #fbbf24;
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 0.1rem 0.4rem;
+    border-radius: 99px;
+  }
+  @media (max-width: 640px) {
+    .yt-live-hub { padding: 1.1rem; }
+    .yt-live-hub-grid { grid-template-columns: 1fr; }
+  }
+
   /* ── Dashboard Testimonials Marquee ── */
   .dash-testi-wrap {
     overflow: hidden;
