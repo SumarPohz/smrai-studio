@@ -3,6 +3,7 @@ import {
   addToQueue, getQueue, isPollerRunning,
   startChatPoller, stopChatPoller,
   getSettings, upsertSettings,
+  startPoll, endPoll, getPoll,
 } from '../services/magicLiveService.js';
 
 // ── Subscription helper ───────────────────────────────────────────────────────
@@ -269,6 +270,71 @@ export async function postSubmit(req, res, db, io) {
   // Emit to overlay
   io.to(`magic:${targetUserId}`).emit('show-name', { name: clean });
   return res.json({ ok: true });
+}
+
+// ── Shoutout ──────────────────────────────────────────────────────────────────
+
+export function apiShoutout(req, res, io) {
+  const { name } = req.body;
+  if (!name || typeof name !== 'string') return res.status(400).json({ error: 'Name required' });
+  const clean = name.trim().slice(0, 50);
+  if (!clean) return res.status(400).json({ error: 'Name required' });
+  io.to(`magic:${req.user.id}`).emit('show-shoutout', { name: clean });
+  return res.json({ ok: true });
+}
+
+// ── Live Poll ─────────────────────────────────────────────────────────────────
+
+export function apiPollStart(req, res, io) {
+  const { question, options, answer } = req.body;
+  if (!question || typeof question !== 'string') return res.status(400).json({ error: 'Question required' });
+  if (!Array.isArray(options)) return res.status(400).json({ error: 'Options required' });
+  const filtered = options.map(o => String(o || '').trim()).filter(Boolean).slice(0, 4);
+  if (filtered.length < 2) return res.status(400).json({ error: 'At least 2 options required' });
+  const answerIdx = ['A','B','C','D'].indexOf(answer);
+  if (answerIdx < 0 || answerIdx >= filtered.length)
+    return res.status(400).json({ error: 'Select a valid correct answer' });
+
+  const q = question.trim().slice(0, 80);
+  const opts = filtered.map(o => o.slice(0, 40));
+  startPoll(req.user.id, q, opts, answer);
+  // answer is NOT sent to overlay — only revealed after countdown
+  io.to(`magic:${req.user.id}`).emit('poll-start', { question: q, options: opts });
+  return res.json({ ok: true });
+}
+
+export function apiPollReveal(req, res, io) {
+  endPoll(req.user.id);
+  const p = getPoll(req.user.id);
+  io.to(`magic:${req.user.id}`).emit('poll-reveal', {
+    answer: p?.answer,
+    votes:  p?.votes  || [],
+    total:  p?.voters.size || 0,
+  });
+  return res.json({ ok: true, answer: p?.answer });
+}
+
+export function apiPollEnd(req, res, io) {
+  endPoll(req.user.id);
+  const p = getPoll(req.user.id);
+  io.to(`magic:${req.user.id}`).emit('poll-end', {
+    votes: p?.votes || [],
+    total: p?.voters.size || 0,
+  });
+  return res.json({ ok: true });
+}
+
+export function apiPollStatus(req, res) {
+  const p = getPoll(req.user.id);
+  if (!p) return res.json({ active: false });
+  res.json({
+    active:   p.active,
+    question: p.question,
+    options:  p.options,
+    votes:    p.votes,
+    total:    p.voters.size,
+    answer:   p.active ? null : p.answer, // hidden while voting, revealed after
+  });
 }
 
 // ── Page Navigator ────────────────────────────────────────────────────────────

@@ -5,6 +5,38 @@ const userQueues  = new Map(); // userId → string[]
 const userPollers = new Map(); // userId → { intervalId, liveChatId, processedIds: Set, pageToken: string|null, token: string }
 const cooldowns   = new Map(); // userId → Map(viewerName → lastTriggeredMs)
 
+// ── Poll state ────────────────────────────────────────────────────────────────
+const pollState = new Map(); // userId → { question, options, votes, voters, active }
+
+export function startPoll(userId, question, options, answer) {
+  pollState.set(userId, {
+    question,
+    options,
+    answer,            // 'A' | 'B' | 'C' | 'D' — correct answer, kept secret until reveal
+    votes:  new Array(options.length).fill(0),
+    voters: new Set(),  // deduplicate by channel ID
+    active: true,
+  });
+}
+
+export function endPoll(userId) {
+  const p = pollState.get(userId);
+  if (p) p.active = false;
+}
+
+export function castVote(userId, authorId, letterIdx) {
+  const p = pollState.get(userId);
+  if (!p || !p.active) return false;
+  if (p.voters.has(authorId)) return false;
+  p.voters.add(authorId);
+  p.votes[letterIdx]++;
+  return true;
+}
+
+export function getPoll(userId) {
+  return pollState.get(userId) || null;
+}
+
 const MAX_QUEUE     = 20;
 const COOLDOWN_MS   = 60_000; // 1 min per viewer per user
 const POLL_INTERVAL = 8_000;  // 8s
@@ -131,6 +163,23 @@ export async function startChatPoller(userId, accessToken, refreshTokenStr, toke
 
         const text       = item.snippet?.displayMessage || '';
         const authorName = item.authorDetails?.displayName || '';
+
+        // Poll vote detection (runs for every message regardless of "magic" keyword)
+        const poll = getPoll(userId);
+        if (poll && poll.active) {
+          const letter = text.trim().toUpperCase();
+          const vidx = ['A','B','C','D'].indexOf(letter);
+          if (vidx >= 0 && vidx < poll.options.length) {
+            const voted = castVote(userId, item.authorDetails?.channelId || authorName, vidx);
+            if (voted) {
+              io.to(`magic:${userId}`).emit('poll-update', {
+                votes: poll.votes,
+                total: poll.voters.size,
+              });
+            }
+            continue; // don't treat A/B/C/D as a "magic" trigger
+          }
+        }
 
         if (!/\bmagic\b/i.test(text)) continue;
 

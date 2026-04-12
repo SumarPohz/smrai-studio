@@ -73,6 +73,12 @@ body, #ml-page { background:var(--bg); color:#f4f4f5; font-family:'Inter',sans-s
 .ml-btn-sub { background:linear-gradient(135deg,#b45309,#fbbf24,#b45309); color:#1c0a00; font-weight:800; }
 .ml-btn-sub:hover { opacity:.88; }
 
+/* ── Poll answer selector ── */
+.answer-btn { flex:1; padding:9px 6px; border-radius:9px; font-size:14px; font-weight:700; border:2px solid #3f3f46; background:#27272a; color:#a1a1aa; cursor:pointer; transition:all .18s; }
+.answer-btn.selected { border-color:#4ade80; background:#14532d33; color:#4ade80; box-shadow:0 0 10px rgba(74,222,128,0.3); }
+/* ── Poll input lock ── */
+.poll-locked { opacity:.4; pointer-events:none; }
+
 /* ── Page Navigator ── */
 .page-nav { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
 .page-nav .ml-btn { flex:1; min-width:0; }
@@ -168,9 +174,43 @@ body, #ml-page { background:var(--bg); color:#f4f4f5; font-family:'Inter',sans-s
       <button class="ml-btn ml-btn-primary" id="sendBtn" onclick="sendName()">❤️ Send Live</button>
     </div>
     <div class="manual-row" style="margin-top:8px;">
-      <button class="ml-btn ml-btn-sub ml-btn-full" id="subBtn" onclick="sendSubscriber()">⭐ New Subscriber Alert</button>
+      <button class="ml-btn ml-btn-sub" style="flex:1;" id="subBtn" onclick="sendSubscriber()">⭐ Subscriber Alert</button>
+      <button class="ml-btn" style="flex:1;background:linear-gradient(135deg,#0e7490,#06b6d4);color:#fff;" id="btnShoutout" onclick="sendShoutout()">✨ Shoutout</button>
     </div>
     <p id="manualMsg" style="font-size:13px;margin-top:8px;color:#a1a1aa;min-height:18px;"></p>
+  </div>
+
+  <!-- Live Poll -->
+  <div class="ml-card" id="pollCard">
+    <div class="ml-card-title">📊 Live Poll</div>
+    <div id="pollSetup">
+      <p style="font-size:13px;color:#a1a1aa;margin-bottom:12px;line-height:1.5;">Viewers vote by typing <strong style="color:#e4e4e7;">A</strong>, <strong style="color:#e4e4e7;">B</strong>, <strong style="color:#e4e4e7;">C</strong>, or <strong style="color:#e4e4e7;">D</strong> in YouTube chat.</p>
+      <input type="text" id="pollQuestion" class="ml-input" placeholder="Your question…" maxlength="80" style="margin-bottom:8px;" />
+      <input type="text" id="pollOptA" class="ml-input" placeholder="Option A" maxlength="40" style="margin-bottom:8px;" />
+      <input type="text" id="pollOptB" class="ml-input" placeholder="Option B" maxlength="40" style="margin-bottom:8px;" />
+      <input type="text" id="pollOptC" class="ml-input" placeholder="Option C (optional)" maxlength="40" style="margin-bottom:8px;" />
+      <input type="text" id="pollOptD" class="ml-input" placeholder="Option D (optional)" maxlength="40" style="margin-bottom:12px;" />
+      <div style="margin-bottom:12px;">
+        <label style="font-size:12px;color:#71717a;display:block;margin-bottom:7px;">✓ Correct Answer</label>
+        <div style="display:flex;gap:8px;">
+          <button type="button" class="answer-btn" id="ansBtnA" onclick="selectAnswer('A')">A</button>
+          <button type="button" class="answer-btn" id="ansBtnB" onclick="selectAnswer('B')">B</button>
+          <button type="button" class="answer-btn" id="ansBtnC" onclick="selectAnswer('C')">C</button>
+          <button type="button" class="answer-btn" id="ansBtnD" onclick="selectAnswer('D')">D</button>
+        </div>
+      </div>
+      <button class="ml-btn ml-btn-primary ml-btn-full" onclick="startPoll()">▶ Start Poll (60s)</button>
+      <p id="pollSetupMsg" style="font-size:13px;margin-top:8px;color:#f87171;min-height:18px;"></p>
+    </div>
+    <div id="pollLive" style="display:none;">
+      <p id="pollLiveQuestion" style="font-size:14px;font-weight:700;color:#e4e4e7;margin-bottom:10px;"></p>
+      <div style="text-align:center;margin-bottom:10px;">
+        <div id="pollCountdown" style="font-size:42px;font-weight:800;color:#fde68a;line-height:1;font-variant-numeric:tabular-nums;">60</div>
+        <div style="font-size:12px;color:#52525b;margin-top:3px;">seconds remaining</div>
+      </div>
+      <div id="pollResults" style="margin-bottom:14px;"></div>
+      <button class="ml-btn ml-btn-danger ml-btn-full" onclick="emergencyStopPoll()" style="font-size:13px;">⚠ Emergency Stop</button>
+    </div>
   </div>
 
   <!-- Auto Magic -->
@@ -445,6 +485,177 @@ function exportPdf(e) {
   btn.textContent = '⏳ Generating…';
   window.location.href = '/magic-live/api/export-pdf';
   setTimeout(() => { btn.innerHTML = '📄 Export PDF'; }, 3000);
+}
+
+// ── Shoutout ────────────────────────────────────────────────────────────────
+async function sendShoutout() {
+  const input = document.getElementById('manualName');
+  const msg   = document.getElementById('manualMsg');
+  const btn   = document.getElementById('btnShoutout');
+  const name  = input.value.trim();
+  if (!name) { msg.textContent = 'Enter a name first.'; msg.style.color = '#f87171'; return; }
+
+  btn.disabled = true;
+  const res = await fetch('/magic-live/api/shoutout', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  });
+  const d = await res.json();
+  btn.disabled = false;
+  if (d.ok) {
+    input.value = '';
+    msg.textContent = `✨ Shoutout sent for "${name}"!`;
+    msg.style.color = '#06b6d4';
+  } else {
+    msg.textContent = d.error || 'Error sending shoutout';
+    msg.style.color = '#f87171';
+  }
+  setTimeout(() => msg.textContent = '', 3500);
+}
+
+// ── Live Poll ───────────────────────────────────────────────────────────────
+let pollInterval  = null;
+let selectedAnswer = null;
+let pollStartTime  = null;
+
+function selectAnswer(letter) {
+  selectedAnswer = letter;
+  ['A','B','C','D'].forEach(l => {
+    const btn = document.getElementById('ansBtn' + l);
+    if (btn) btn.classList.toggle('selected', l === letter);
+  });
+}
+
+function lockForPoll() {
+  ['manualName','subBtn','btnShoutout'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.add('poll-locked');
+  });
+}
+
+function unlockAfterPoll() {
+  ['manualName','subBtn','btnShoutout'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('poll-locked');
+  });
+}
+
+async function startPoll() {
+  const question = document.getElementById('pollQuestion').value.trim();
+  const opts = [
+    document.getElementById('pollOptA').value.trim(),
+    document.getElementById('pollOptB').value.trim(),
+    document.getElementById('pollOptC').value.trim(),
+    document.getElementById('pollOptD').value.trim(),
+  ];
+  const msg = document.getElementById('pollSetupMsg');
+
+  if (!question) { msg.textContent = 'Question is required.'; return; }
+  const filtered = opts.filter(Boolean);
+  if (filtered.length < 2) { msg.textContent = 'At least 2 options required.'; return; }
+  if (!selectedAnswer) { msg.textContent = 'Select the correct answer (A/B/C/D).'; return; }
+
+  // Validate selected answer is within available options
+  const ansIdx = ['A','B','C','D'].indexOf(selectedAnswer);
+  if (ansIdx < 0 || ansIdx >= filtered.length) {
+    msg.textContent = 'Correct answer must match one of the filled options.'; return;
+  }
+
+  const res = await fetch('/magic-live/api/poll/start', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ question, options: filtered, answer: selectedAnswer }),
+  });
+  const d = await res.json();
+  if (!d.ok) { msg.textContent = d.error || 'Failed to start poll.'; return; }
+
+  pollStartTime = Date.now();
+  document.getElementById('pollLiveQuestion').textContent = question;
+  document.getElementById('pollSetup').style.display = 'none';
+  document.getElementById('pollLive').style.display  = '';
+  lockForPoll();
+
+  pollInterval = setInterval(refreshPollResults, 1000);
+  refreshPollResults();
+}
+
+async function refreshPollResults() {
+  try {
+    const d = await fetch('/magic-live/api/poll/status').then(r => r.json());
+    if (d.active === undefined) return;
+
+    // Update countdown
+    const elapsed   = pollStartTime ? Date.now() - pollStartTime : 0;
+    const remaining = Math.max(0, 60000 - elapsed);
+    const secLeft   = Math.ceil(remaining / 1000);
+    const cdEl = document.getElementById('pollCountdown');
+    if (cdEl) {
+      cdEl.textContent = secLeft;
+      cdEl.style.color = secLeft <= 10 ? '#f87171' : secLeft <= 20 ? '#fb923c' : '#fde68a';
+    }
+
+    // Render vote bars
+    const labels = ['A','B','C','D'];
+    const colors = ['#06b6d4','#a78bfa','#f9a8d4','#fbbf24'];
+    const total  = d.total || 0;
+    const container = document.getElementById('pollResults');
+    container.innerHTML = (d.options || []).map((opt, i) => {
+      const votes   = d.votes?.[i] || 0;
+      const pct     = total > 0 ? Math.round(votes / total * 100) : 0;
+      const isRight = !d.active && d.answer && labels[i] === d.answer;
+      const col     = isRight ? '#4ade80' : colors[i];
+      return `<div style="margin-bottom:10px;${!d.active && !isRight ? 'opacity:.4;' : ''}">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:13px;font-weight:700;color:${col};">${labels[i]}: ${opt}</span>
+          <span style="font-size:13px;color:${isRight ? '#4ade80' : '#fde68a'};font-weight:700;">${pct}% (${votes})</span>
+        </div>
+        <div style="background:#27272a;border-radius:6px;height:8px;overflow:hidden;">
+          <div style="height:100%;border-radius:6px;background:${col};width:${pct}%;transition:width .4s ease;"></div>
+        </div>
+      </div>`;
+    }).join('') + `<div style="font-size:12px;color:#52525b;margin-top:6px;">${total} vote${total !== 1 ? 's' : ''} total</div>`;
+
+    // Poll ended (reveal done) — unlock and reset
+    if (!d.active) {
+      clearInterval(pollInterval);
+      pollInterval = null;
+      unlockAfterPoll();
+      // Brief delay then reset to setup view
+      setTimeout(() => {
+        document.getElementById('pollSetup').style.display = '';
+        document.getElementById('pollLive').style.display  = 'none';
+        resetPollForm();
+      }, 8000);
+    }
+  } catch (_) {}
+}
+
+function resetPollForm() {
+  ['pollQuestion','pollOptA','pollOptB','pollOptC','pollOptD'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('pollResults').innerHTML = '';
+  document.getElementById('pollSetupMsg').textContent = '';
+  selectedAnswer = null;
+  pollStartTime  = null;
+  ['A','B','C','D'].forEach(l => {
+    const btn = document.getElementById('ansBtn' + l);
+    if (btn) btn.classList.remove('selected');
+  });
+}
+
+async function emergencyStopPoll() {
+  clearInterval(pollInterval);
+  pollInterval = null;
+  await fetch('/magic-live/api/poll/reveal', { method: 'POST' });
+  unlockAfterPoll();
+  setTimeout(() => {
+    document.getElementById('pollSetup').style.display = '';
+    document.getElementById('pollLive').style.display  = 'none';
+    resetPollForm();
+  }, 8000);
 }
 
 </script>

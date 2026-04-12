@@ -12,6 +12,11 @@ import {
   exportPdf,
   apiNavPage,
   apiUpdateHeader,
+  apiShoutout,
+  apiPollStart,
+  apiPollReveal,
+  apiPollEnd,
+  apiPollStatus,
 } from '../controllers/magicLiveController.js';
 
 export default function magicLiveRouter(db, io) {
@@ -32,6 +37,15 @@ export default function magicLiveRouter(db, io) {
   router.get('/api/export-pdf', (req, res) => exportPdf(req, res, db));
   router.post('/api/nav-page',     (req, res) => apiNavPage(req, res, io));
   router.post('/api/update-header', (req, res) => apiUpdateHeader(req, res, db, io));
+
+  // Shoutout
+  router.post('/api/shoutout',     (req, res) => apiShoutout(req, res, io));
+
+  // Live Poll
+  router.post('/api/poll/start',   (req, res) => apiPollStart(req, res, io));
+  router.post('/api/poll/reveal',  (req, res) => apiPollReveal(req, res, io));
+  router.post('/api/poll/end',     (req, res) => apiPollEnd(req, res, io));
+  router.get('/api/poll/status',   (req, res) => apiPollStatus(req, res));
 
   return router;
 }

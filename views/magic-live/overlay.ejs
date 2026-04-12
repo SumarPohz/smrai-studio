@@ -58,9 +58,9 @@
     const BULLET_SIZE = VERTICAL ? 42  : 48;
     const COL_X       = VERTICAL ? [80] : [110, 1010];
     const BULLET_OFF  = 52;
-    const START_Y     = VERTICAL ? 200 : 178;
+    const START_Y     = VERTICAL ? 296 : 178; // extra top clearance in vertical for YouTube UI
     const LINE_H      = VERTICAL ? 100 : 94;
-    const MAX_ROWS    = VERTICAL ? 16  : 9;
+    const MAX_ROWS    = VERTICAL ? 12  : 9;
     const MS_PER_CHAR = 85;
 
     // ── Book state ──────────────────────────────────────────────────────────
@@ -90,6 +90,27 @@
     let subAlert   = null; // { name, startTs }
     let subParts   = [];   // explosion + glitter particles
     let shockwaves = [];   // expanding rings { startTs, maxR, color, delay }
+
+    // ── Shoutout card state ──────────────────────────────────────────────────
+    let shoutAlert = null; // { name, startTs }
+    const SHOUT_DUR = 4700; // total ms the card is visible
+
+    // ── Live poll state ──────────────────────────────────────────────────────
+    let pollData      = null;   // { question, options, votes, total, endTs }
+    let pollAlpha     = 0;      // fade progress 0–1
+    let pollFadingIn  = false;
+    let pollFadeTs    = null;   // timestamp when fade started
+    let pollDisplay   = [];     // smoothed vote values for animation
+    let pollAnswer    = null;   // correct answer letter, set on reveal
+    let pollStartTs   = null;   // set on first draw frame
+    let pollRevealing = false;  // answer reveal phase
+    let pollRevealTs  = null;   // when reveal animation started
+    let pollPaused    = false;  // blocks name queue while poll is active
+    let pollAutoRevealSent = false; // guard so fetch only fires once
+    let pollBurstFired = false;  // sparkle burst fires once on reveal
+    const POLL_FADE     = 400;
+    const POLL_DURATION = 60_000;  // 60s voting window
+    const REVEAL_DUR    = 7_000;   // answer stays visible 7s then fades
 
     // ── Socket ──────────────────────────────────────────────────────────────
     const socket = io();
@@ -136,6 +157,45 @@
         nameQueue.push(name);
         if (!isWriting && !isFlipping) processNext();
       });
+    });
+
+    socket.on('show-shoutout', ({ name }) => {
+      document.fonts.ready.then(() => { doShoutoutAlert(name); });
+    });
+
+    socket.on('poll-start', ({ question, options }) => {
+      pollData      = { question, options, votes: new Array(options.length).fill(0), total: 0, endTs: null };
+      pollDisplay   = new Array(options.length).fill(0);
+      pollAnswer    = null;
+      pollStartTs   = null;
+      pollRevealing = false; pollRevealTs = null;
+      pollAutoRevealSent = false;
+      pollBurstFired = false;
+      pollFadingIn  = true; pollFadeTs = null; pollAlpha = 0;
+      pollPaused    = true;
+      ensureAmbientLoop();
+    });
+
+    socket.on('poll-update', ({ votes, total }) => {
+      if (pollData) { pollData.votes = votes; pollData.total = total; }
+    });
+
+    socket.on('poll-reveal', ({ answer, votes, total }) => {
+      if (!pollData) return;
+      if (votes) pollData.votes = votes;
+      if (total !== undefined) pollData.total = total;
+      pollAnswer    = answer;
+      pollRevealing = true;
+      pollRevealTs  = null;
+      pollData.endTs = performance.now();
+    });
+
+    socket.on('poll-end', ({ votes, total }) => {
+      if (pollData) {
+        if (votes) pollData.votes = votes;
+        if (total !== undefined) pollData.total = total;
+        pollData.endTs = pollData.endTs || performance.now();
+      }
     });
 
     // ── Helpers ─────────────────────────────────────────────────────────────
@@ -300,6 +360,450 @@
       shockwaves.push({ startTs: null, delay: 0,   maxR: 700, color: '#fbbf24', lw: 4 });
       shockwaves.push({ startTs: null, delay: 140, maxR: 960, color: '#a78bfa', lw: 2.5 });
       shockwaves.push({ startTs: null, delay: 280, maxR: 560, color: '#f9a8d4', lw: 2 });
+    }
+
+    // ── Shoutout card engine ─────────────────────────────────────────────────
+    function doShoutoutAlert(name) {
+      shoutAlert = { name, startTs: null };
+      // Burst particles at card center (bottom-third of screen)
+      spawnBurst(W / 2, H * 0.62);
+    }
+
+    function drawShoutoutAlert(ts) {
+      if (!shoutAlert) return;
+      if (!shoutAlert.startTs) { shoutAlert.startTs = ts; return; }
+
+      const age = ts - shoutAlert.startTs;
+      if (age > SHOUT_DUR) { shoutAlert = null; return; }
+
+      const SLIDE_IN  = 380;
+      const SLIDE_OUT = 320;
+      const HOLD_END  = SHOUT_DUR - SLIDE_OUT;
+
+      // slide progress: 0 = fully off right, 1 = fully on screen
+      let slide, alpha;
+      if (age < SLIDE_IN) {
+        const p  = age / SLIDE_IN;
+        // ease-out cubic
+        slide = 1 - Math.pow(1 - p, 3);
+        alpha = p;
+      } else if (age > HOLD_END) {
+        const p  = (age - HOLD_END) / SLIDE_OUT;
+        // ease-in cubic
+        slide = 1 - Math.pow(p, 3);
+        alpha = 1 - p;
+      } else {
+        slide = 1;
+        alpha = 1;
+      }
+
+      const CW = VERTICAL ? W * 0.88 : 820;
+      const CH = VERTICAL ? 200 : 210;
+      const CX = W / 2 - CW / 2 + (1 - slide) * (W / 2 + CW); // slides from right
+      const CY = H * 0.52 - CH / 2;
+
+      ctx.save();
+      ctx.globalAlpha = alpha;
+
+      // Card background — cyan-to-teal gradient
+      const bg = ctx.createLinearGradient(CX, CY, CX + CW, CY + CH);
+      bg.addColorStop(0,   '#083344');
+      bg.addColorStop(0.4, '#0e7490');
+      bg.addColorStop(1,   '#083344');
+      ctx.shadowBlur  = 60;
+      ctx.shadowColor = 'rgba(6,182,212,0.55)';
+      ctx.fillStyle   = bg;
+      rRekt(CX, CY, CW, CH, 20);
+      ctx.fill();
+      ctx.shadowBlur  = 0;
+
+      // Animated border shimmer
+      const shimP = (age % 1200) / 1200;
+      const bGrad = ctx.createLinearGradient(CX + shimP * (CW + 300) - 200, CY, CX + shimP * (CW + 300), CY + CH);
+      bGrad.addColorStop(0,    '#06b6d4');
+      bGrad.addColorStop(0.3,  '#67e8f9');
+      bGrad.addColorStop(0.6,  '#a5f3fc');
+      bGrad.addColorStop(1,    '#06b6d4');
+      ctx.strokeStyle = bGrad;
+      ctx.lineWidth   = 3;
+      ctx.shadowBlur  = 14; ctx.shadowColor = '#06b6d4';
+      rRekt(CX, CY, CW, CH, 20);
+      ctx.stroke();
+      ctx.shadowBlur  = 0;
+
+      // Shimmer sweep
+      const swP = (age % 700) / 700;
+      const swG = ctx.createLinearGradient(CX + swP * (CW + 160) - 100, CY, CX + swP * (CW + 160), CY + CH);
+      swG.addColorStop(0, 'rgba(255,255,255,0)');
+      swG.addColorStop(0.5, 'rgba(255,255,255,0.18)');
+      swG.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = swG;
+      rRekt(CX, CY, CW, CH, 20);
+      ctx.fill();
+
+      // "✨ SHOUTOUT TO" label
+      ctx.font         = '700 ' + (VERTICAL ? 20 : 24) + 'px "Inter",sans-serif';
+      ctx.textAlign    = 'center';
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillStyle    = 'rgba(255,255,255,0.9)';
+      ctx.shadowBlur   = 10; ctx.shadowColor = 'rgba(6,182,212,0.8)';
+      ctx.fillText('✨  S H O U T O U T  T O  ✨', W / 2, CY + (VERTICAL ? 52 : 60));
+      ctx.shadowBlur   = 0;
+
+      // Divider
+      const dg = ctx.createLinearGradient(CX + 40, 0, CX + CW - 40, 0);
+      dg.addColorStop(0, 'rgba(6,182,212,0)');
+      dg.addColorStop(0.5, 'rgba(6,182,212,0.5)');
+      dg.addColorStop(1, 'rgba(6,182,212,0)');
+      ctx.strokeStyle = dg; ctx.lineWidth = 1;
+      const dy = CY + (VERTICAL ? 62 : 72);
+      ctx.beginPath(); ctx.moveTo(CX + 40, dy); ctx.lineTo(CX + CW - 40, dy); ctx.stroke();
+
+      // Name
+      const nLen   = shoutAlert.name.length;
+      const nSize  = VERTICAL ? Math.min(70, Math.max(44, 70 - Math.max(0, nLen - 12) * 2.5))
+                               : Math.min(82, Math.max(52, 82 - Math.max(0, nLen - 12) * 3));
+      const nGrad  = ctx.createLinearGradient(W / 2 - 300, 0, W / 2 + 300, 0);
+      nGrad.addColorStop(0,   '#fff4c2');
+      nGrad.addColorStop(0.2, '#f5c518');
+      nGrad.addColorStop(0.5, '#fde68a');
+      nGrad.addColorStop(0.8, '#c8960c');
+      nGrad.addColorStop(1,   '#fff4c2');
+      ctx.font         = '700 ' + nSize + 'px ' + FONT_FAMILY;
+      ctx.textAlign    = 'center';
+      ctx.textBaseline = 'alphabetic';
+      ctx.shadowBlur   = 24; ctx.shadowColor = 'rgba(251,191,36,0.75)';
+      ctx.fillStyle    = nGrad;
+      ctx.fillText(shoutAlert.name, W / 2, CY + CH - (VERTICAL ? 28 : 36));
+      ctx.shadowBlur   = 0;
+
+      ctx.textAlign = 'left';
+      ctx.restore();
+    }
+
+    // ── Live poll bar chart ───────────────────────────────────────────────────
+    const POLL_COLORS = ['#06b6d4','#a78bfa','#f9a8d4','#fbbf24'];
+    const POLL_LABELS = ['A','B','C','D'];
+
+    function drawPoll(ts) {
+      if (!pollData) return;
+
+      // Set start timestamp on first frame
+      if (!pollStartTs) pollStartTs = ts;
+
+      // Fade in
+      if (pollFadingIn) {
+        if (!pollFadeTs) pollFadeTs = ts;
+        pollAlpha = Math.min(1, (ts - pollFadeTs) / POLL_FADE);
+        if (pollAlpha >= 1) { pollFadingIn = false; pollFadeTs = null; }
+      }
+
+      // Auto-reveal when countdown hits zero
+      const elapsed   = ts - pollStartTs;
+      const remaining = Math.max(0, POLL_DURATION - elapsed);
+      if (remaining <= 0 && !pollRevealing && !pollAutoRevealSent) {
+        pollAutoRevealSent = true;
+        fetch('/magic-live/api/poll/reveal', { method: 'POST' }).catch(() => {});
+      }
+
+      // Reveal phase: set reveal timestamp, then fade out after REVEAL_DUR
+      if (pollRevealing) {
+        if (!pollRevealTs) pollRevealTs = ts;
+        const sinceReveal = ts - pollRevealTs;
+        if (sinceReveal > REVEAL_DUR) {
+          if (!pollFadeTs) pollFadeTs = ts;
+          pollAlpha = Math.max(0, 1 - (ts - pollFadeTs) / POLL_FADE);
+          if (pollAlpha <= 0) {
+            pollData = null; pollAlpha = 0; pollFadeTs = null;
+            pollBurstFired = false; pollPaused = false;
+            if (nameQueue.length) processNext();
+            return;
+          }
+        }
+      }
+
+      if (pollAlpha <= 0) return;
+
+      // Smooth display values toward actual votes (lerp)
+      const totalVotes = pollData.votes.reduce((s, v) => s + v, 0);
+      for (let i = 0; i < pollData.options.length; i++) {
+        const target = pollData.votes[i] || 0;
+        if (pollDisplay[i] === undefined) pollDisplay[i] = 0;
+        pollDisplay[i] += (target - pollDisplay[i]) * 0.08;
+      }
+
+      // ── Layout: large centered engagement panel ──────────────────────────────
+      const nOpts    = pollData.options.length;
+      const HDR_SIZE = VERTICAL ? 17 : 19;
+      const Q_SIZE   = VERTICAL ? 30 : 36;
+      const L_SIZE   = VERTICAL ? 24 : 28;
+      const OPT_SIZE = VERTICAL ? 17 : 20;
+      const PCT_SIZE = VERTICAL ? 18 : 22;
+      const BAR_H    = VERTICAL ? 48 : 58;
+      const ROW_GAP  = VERTICAL ? 66 : 80;
+      const PAD_X    = VERTICAL ? 52 : 64;
+      const PAD_TOP  = VERTICAL ? 22 : 26;
+      const PAD_BOT  = VERTICAL ? 32 : 40;
+      const LABEL_W  = VERTICAL ? 38 : 46;
+      const PCT_W    = VERTICAL ? 68 : 80;
+      const GAP      = 12;
+      const ARC_R    = VERTICAL ? 34 : 40;
+      const HDR_H    = Math.max(ARC_R * 2 + 8, HDR_SIZE + 20);
+
+      // Panel: 80-84% width, vertically centered on canvas
+      const PW = Math.round(W * (VERTICAL ? 0.84 : 0.80));
+      const PX = Math.round(W / 2 - PW / 2);
+      const PH = PAD_TOP + HDR_H + 14 + Q_SIZE + 20 + nOpts * ROW_GAP + PAD_BOT;
+      const PY = Math.round(H / 2 - PH / 2);
+
+      const BAR_X = PX + PAD_X + LABEL_W + GAP;
+      const BAR_W = PW - PAD_X * 2 - LABEL_W - GAP * 2 - PCT_W;
+
+      // Correct answer index (-1 during voting)
+      const correctIdx = (pollRevealing && pollAnswer)
+        ? ['A','B','C','D'].indexOf(pollAnswer) : -1;
+
+      ctx.save();
+      ctx.globalAlpha = pollAlpha;
+
+      // Screen dim — poll takes over the canvas
+      ctx.fillStyle = 'rgba(0,0,0,0.62)';
+      ctx.fillRect(0, 0, W, H);
+
+      // Panel background
+      const panBg = ctx.createLinearGradient(PX, PY, PX, PY + PH);
+      panBg.addColorStop(0, 'rgba(10,3,28,0.97)');
+      panBg.addColorStop(1, 'rgba(5,1,16,0.99)');
+      ctx.shadowBlur  = 70;
+      ctx.shadowColor = 'rgba(124,58,237,0.55)';
+      ctx.fillStyle   = panBg;
+      rRekt(PX, PY, PW, PH, 24);
+      ctx.fill();
+      ctx.shadowBlur  = 0;
+
+      // Panel border
+      const borderG = ctx.createLinearGradient(PX, PY, PX + PW, PY + PH);
+      borderG.addColorStop(0,   'rgba(124,58,237,0.7)');
+      borderG.addColorStop(0.5, 'rgba(167,139,250,0.9)');
+      borderG.addColorStop(1,   'rgba(124,58,237,0.7)');
+      ctx.strokeStyle = borderG;
+      ctx.lineWidth   = 2;
+      rRekt(PX, PY, PW, PH, 24);
+      ctx.stroke();
+
+      // ── Header: "LIVE POLL" label + countdown arc ────────────────────────────
+      const HDR_CY = PY + PAD_TOP + HDR_H / 2;
+
+      ctx.font         = '700 ' + HDR_SIZE + 'px "Inter",sans-serif';
+      ctx.textAlign    = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle    = '#a78bfa';
+      ctx.shadowBlur   = 14; ctx.shadowColor = 'rgba(167,139,250,0.65)';
+      ctx.fillText('\uD83D\uDCCA  LIVE POLL', PX + PAD_X, HDR_CY);
+      ctx.shadowBlur   = 0;
+
+      // Countdown arc (hidden during reveal)
+      if (!pollRevealing) {
+        const arcCX   = PX + PW - PAD_X - ARC_R;
+        const secLeft = Math.ceil(remaining / 1000);
+        const progress = 1 - remaining / POLL_DURATION;
+        const urgColor = secLeft <= 10 ? '#ef4444' : secLeft <= 20 ? '#f97316' : '#a78bfa';
+
+        // Track ring
+        ctx.beginPath();
+        ctx.arc(arcCX, HDR_CY, ARC_R, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+        ctx.lineWidth   = VERTICAL ? 5 : 6;
+        ctx.stroke();
+
+        // Progress arc (fills clockwise from top as time passes)
+        const arcG = ctx.createLinearGradient(arcCX - ARC_R, HDR_CY - ARC_R, arcCX + ARC_R, HDR_CY + ARC_R);
+        arcG.addColorStop(0, urgColor);
+        arcG.addColorStop(1, secLeft <= 10 ? '#fca5a5' : '#fde68a');
+        ctx.beginPath();
+        ctx.arc(arcCX, HDR_CY, ARC_R, -Math.PI / 2, -Math.PI / 2 + progress * Math.PI * 2);
+        ctx.strokeStyle = arcG;
+        ctx.lineWidth   = VERTICAL ? 5 : 6;
+        ctx.lineCap     = 'round';
+        ctx.stroke();
+        ctx.lineCap     = 'butt';
+
+        // Seconds number inside arc
+        ctx.font         = '700 ' + (VERTICAL ? 19 : 23) + 'px "Inter",sans-serif';
+        ctx.textAlign    = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle    = secLeft <= 10 ? '#ef4444' : '#fde68a';
+        ctx.shadowBlur   = 10; ctx.shadowColor = urgColor;
+        ctx.fillText(String(secLeft), arcCX, HDR_CY);
+        ctx.shadowBlur   = 0;
+      }
+
+      // ── Question ─────────────────────────────────────────────────────────────
+      const Q_Y = PY + PAD_TOP + HDR_H + 14 + Q_SIZE;
+      ctx.font         = '700 ' + Q_SIZE + 'px "Inter",sans-serif';
+      ctx.textAlign    = 'center';
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillStyle    = '#ffffff';
+      ctx.shadowBlur   = 16; ctx.shadowColor = 'rgba(124,58,237,0.55)';
+      ctx.fillText(pollData.question, W / 2, Q_Y);
+      ctx.shadowBlur   = 0;
+
+      // Divider
+      const dg = ctx.createLinearGradient(PX + 36, 0, PX + PW - 36, 0);
+      dg.addColorStop(0, 'rgba(124,58,237,0)');
+      dg.addColorStop(0.5, 'rgba(167,139,250,0.5)');
+      dg.addColorStop(1, 'rgba(124,58,237,0)');
+      ctx.strokeStyle = dg; ctx.lineWidth = 1;
+      const divY = Q_Y + 16;
+      ctx.beginPath(); ctx.moveTo(PX + 36, divY); ctx.lineTo(PX + PW - 36, divY); ctx.stroke();
+
+      const BARS_Y = divY + 20;
+
+      // ── Vote bars ─────────────────────────────────────────────────────────────
+      for (let i = 0; i < nOpts; i++) {
+        const rowY    = BARS_Y + i * ROW_GAP;
+        const isRight = correctIdx >= 0 && i === correctIdx;
+        const isWrong = correctIdx >= 0 && i !== correctIdx;
+        const col     = isRight ? '#4ade80' : POLL_COLORS[i];
+        const pct     = totalVotes > 0 ? pollDisplay[i] / totalVotes : 0;
+        const barW    = Math.round(BAR_W * pct);
+        const actual  = pollData.votes[i] || 0;
+        const pctTxt  = totalVotes > 0 ? Math.round(actual / totalVotes * 100) + '%' : '\u2013';
+        const textY   = rowY + BAR_H - (VERTICAL ? 11 : 13);
+
+        ctx.save();
+
+        // Dim wrong options during reveal
+        if (isWrong) ctx.globalAlpha = pollAlpha * 0.22;
+
+        // Correct option: bounce scale from row centre
+        if (isRight) {
+          const sinceRev = pollRevealTs ? ts - pollRevealTs : 0;
+          const bounce   = sinceRev < 500 ? 1 + Math.sin((sinceRev / 500) * Math.PI) * 0.05 : 1;
+          const cx2 = BAR_X + BAR_W / 2;
+          const cy2 = rowY + BAR_H / 2;
+          ctx.translate(cx2, cy2); ctx.scale(bounce, bounce); ctx.translate(-cx2, -cy2);
+
+          // Fire sparkle burst once on reveal
+          if (!pollBurstFired && pollRevealTs && ts - pollRevealTs < 80) {
+            pollBurstFired = true;
+            spawnBurst(BAR_X + Math.min(barW, BAR_W) / 2, rowY + BAR_H / 2);
+          }
+        }
+
+        // Letter label
+        ctx.font         = '700 ' + L_SIZE + 'px "Inter",sans-serif';
+        ctx.textAlign    = 'center';
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillStyle    = col;
+        ctx.shadowBlur   = isRight ? 16 : 8; ctx.shadowColor = col;
+        ctx.fillText(POLL_LABELS[i], PX + PAD_X + LABEL_W / 2, textY);
+        ctx.shadowBlur   = 0;
+
+        // Track
+        ctx.fillStyle = isRight ? 'rgba(74,222,128,0.12)' : 'rgba(255,255,255,0.07)';
+        rRekt(BAR_X, rowY, BAR_W, BAR_H, BAR_H / 2);
+        ctx.fill();
+
+        // Filled bar
+        if (barW > 0) {
+          const bg2 = ctx.createLinearGradient(BAR_X, 0, BAR_X + Math.max(barW, BAR_H), 0);
+          if (isRight) {
+            bg2.addColorStop(0, '#22c55ebb'); bg2.addColorStop(1, '#4ade80');
+          } else {
+            bg2.addColorStop(0, col + 'bb'); bg2.addColorStop(1, col);
+          }
+          ctx.fillStyle  = bg2;
+          ctx.shadowBlur = isRight ? 22 : 10; ctx.shadowColor = col;
+          rRekt(BAR_X, rowY, Math.max(barW, BAR_H), BAR_H, BAR_H / 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        }
+
+        // Option text clipped inside bar track
+        ctx.save();
+        ctx.font         = OPT_SIZE + 'px "Inter",sans-serif';
+        ctx.textAlign    = 'left'; ctx.textBaseline = 'alphabetic';
+        ctx.fillStyle    = barW > 80 ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.5)';
+        ctx.beginPath(); rRekt(BAR_X, rowY, BAR_W, BAR_H, BAR_H / 2); ctx.clip();
+        ctx.fillText(pollData.options[i], BAR_X + 16, textY);
+        ctx.restore();
+
+        // Percentage
+        ctx.font         = '700 ' + PCT_SIZE + 'px "Inter",sans-serif';
+        ctx.textAlign    = 'right'; ctx.textBaseline = 'alphabetic';
+        ctx.fillStyle    = isRight ? '#4ade80' : '#fde68a';
+        ctx.shadowBlur   = 5;
+        ctx.shadowColor  = isRight ? 'rgba(74,222,128,0.5)' : 'rgba(251,191,36,0.5)';
+        ctx.fillText(pctTxt, PX + PW - PAD_X + 4, textY);
+        ctx.shadowBlur   = 0;
+
+        ctx.restore();
+      }
+
+      // ── Footer ────────────────────────────────────────────────────────────────
+      const footerY = PY + PH - (VERTICAL ? 12 : 16);
+      ctx.font         = (VERTICAL ? 14 : 16) + 'px "Inter",sans-serif';
+      ctx.textAlign    = 'center'; ctx.textBaseline = 'alphabetic';
+      ctx.fillStyle    = 'rgba(156,163,175,0.55)';
+      ctx.fillText(
+        pollData.endTs !== null
+          ? '\u2736 Final Results  \u00B7  ' + pollData.total + ' vote' + (pollData.total !== 1 ? 's' : '')
+          : pollData.total + ' vote' + (pollData.total !== 1 ? 's' : ''),
+        W / 2, footerY
+      );
+
+      // ── Reveal badge ──────────────────────────────────────────────────────────
+      if (pollRevealing && pollRevealTs && pollAnswer && correctIdx >= 0) {
+        const sinceRev    = ts - pollRevealTs;
+        const badgeAlpha  = Math.min(1, sinceRev / 280);
+        const badgeBounce = sinceRev < 600 ? 1 + Math.sin((sinceRev / 600) * Math.PI) * 0.10 : 1;
+        const correctOpt  = pollData.options[correctIdx] || '';
+
+        const BDG_W  = Math.min(PW - 80, VERTICAL ? 680 : 740);
+        const BDG_H  = VERTICAL ? 86 : 100;
+        const BDG_X  = Math.round(W / 2 - BDG_W / 2);
+        const BDG_CY = PY + PAD_TOP + HDR_H + 8 + Q_SIZE / 2;
+        const BDG_Y  = Math.round(BDG_CY - BDG_H / 2);
+
+        ctx.save();
+        ctx.globalAlpha = pollAlpha * badgeAlpha;
+        ctx.translate(W / 2, BDG_CY);
+        ctx.scale(badgeBounce, badgeBounce);
+        ctx.translate(-W / 2, -BDG_CY);
+
+        // Badge background
+        const bdgG = ctx.createLinearGradient(BDG_X, BDG_Y, BDG_X + BDG_W, BDG_Y + BDG_H);
+        bdgG.addColorStop(0, '#14532d');
+        bdgG.addColorStop(1, '#166534');
+        ctx.shadowBlur  = 36; ctx.shadowColor = 'rgba(74,222,128,0.65)';
+        ctx.fillStyle   = bdgG;
+        rRekt(BDG_X, BDG_Y, BDG_W, BDG_H, 18);
+        ctx.fill();
+
+        ctx.strokeStyle = '#4ade80'; ctx.lineWidth = 2.5; ctx.shadowBlur = 0;
+        rRekt(BDG_X, BDG_Y, BDG_W, BDG_H, 18);
+        ctx.stroke();
+
+        // "Correct Answer!" line
+        ctx.font         = '700 ' + (VERTICAL ? 17 : 20) + 'px "Inter",sans-serif';
+        ctx.textAlign    = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillStyle    = '#bbf7d0';
+        ctx.shadowBlur   = 8; ctx.shadowColor = '#4ade80';
+        ctx.fillText('\u2713  Correct Answer!', W / 2, BDG_Y + BDG_H * 0.32);
+
+        // Answer letter + option text
+        ctx.font         = '700 ' + (VERTICAL ? 24 : 28) + 'px "Inter",sans-serif';
+        ctx.fillStyle    = '#ffffff';
+        ctx.shadowBlur   = 12;
+        ctx.fillText(pollAnswer + ':  ' + correctOpt, W / 2, BDG_Y + BDG_H * 0.72);
+        ctx.shadowBlur   = 0;
+
+        ctx.restore();
+      }
+
+      ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+      ctx.restore();
     }
 
     function rRekt(x, y, w, h, r) {
@@ -578,13 +1082,17 @@
       ctx.shadowBlur  = 40;
       ctx.shadowColor = 'rgba(167,139,250,0.9)';
       ctx.fillStyle   = '#c084fc';
-      ctx.fillText('✨  ' + HEADER_TEXT + '  ✨', W / 2, 82);
+      // vertical needs more top clearance — YouTube UI covers ~120px at top
+      const HDR_Y  = VERTICAL ? 196 : 82;
+      const RULE_Y = VERTICAL ? 212 : 96;
+
+      ctx.fillText('✨  ' + HEADER_TEXT + '  ✨', W / 2, HDR_Y);
 
       // sharp pass
       ctx.shadowBlur  = 12;
       ctx.shadowColor = 'rgba(216,180,254,0.7)';
       ctx.fillStyle   = '#e879f9';
-      ctx.fillText('✨  ' + HEADER_TEXT + '  ✨', W / 2, 82);
+      ctx.fillText('✨  ' + HEADER_TEXT + '  ✨', W / 2, HDR_Y);
 
       // decorative rule
       const rg = ctx.createLinearGradient(W / 2 - 360, 0, W / 2 + 360, 0);
@@ -594,8 +1102,8 @@
       ctx.strokeStyle = rg;
       ctx.lineWidth   = 1.5;
       ctx.beginPath();
-      ctx.moveTo(W / 2 - 360, 96);
-      ctx.lineTo(W / 2 + 360, 96);
+      ctx.moveTo(W / 2 - 360, RULE_Y);
+      ctx.lineTo(W / 2 + 360, RULE_Y);
       ctx.stroke();
 
       ctx.textAlign = 'left';
@@ -683,7 +1191,7 @@
       ctx.textBaseline = 'alphabetic';
       ctx.textAlign    = 'right';
       ctx.fillStyle    = 'rgba(251,191,36,0.8)';
-      ctx.fillText(count + ' guests featured tonight', W - 36, H - 52);
+      ctx.fillText(count + ' guests featured tonight', W - 36, VERTICAL ? H - 140 : H - 52);
       ctx.textAlign    = 'left';
       ctx.restore();
     }
@@ -741,7 +1249,7 @@
       const label   = onLive
         ? `— Page ${displayPage + 1} —`
         : `— Page ${displayPage + 1}  ·  Live: Pg ${livePageIdx + 1} —`;
-      ctx.fillText(label, W / 2, H - 52);
+      ctx.fillText(label, W / 2, VERTICAL ? H - 140 : H - 52);
       ctx.textAlign = 'left';
       ctx.restore();
     }
@@ -845,8 +1353,14 @@
       drawBurstParticles();
       drawConfettiParticles();
 
-      // subscriber alert — topmost layer
+      // live poll — above guestbook, below subscriber/shoutout
+      drawPoll(now);
+
+      // subscriber alert
       drawSubscriberAlert(now);
+
+      // shoutout card — topmost layer
+      drawShoutoutAlert(now);
     }
 
     // ── Animation loop ───────────────────────────────────────────────────────
@@ -914,7 +1428,7 @@
     }
 
     function processNext() {
-      if (!nameQueue.length || isWriting || isFlipping) return;
+      if (!nameQueue.length || isWriting || isFlipping || pollPaused) return;
       isWriting = true;
       const name = nameQueue.shift();
       if (animId) { cancelAnimationFrame(animId); animId = null; }
@@ -930,7 +1444,11 @@
     function ensureAmbientLoop() {
       if (ambLoopId) return;
       function loop(ts) {
-        if (isWriting || isFlipping) { ambLoopId = null; return; }
+        const pollActive = pollData !== null || shoutAlert !== null;
+        if (isWriting || isFlipping) {
+          // keep running if poll/shoutout still need drawing
+          if (!pollActive) { ambLoopId = null; return; }
+        }
         updatePhysics(ts);
         drawFrame(ts);
         ambLoopId = requestAnimationFrame(loop);
