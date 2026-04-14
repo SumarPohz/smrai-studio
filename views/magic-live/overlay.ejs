@@ -37,7 +37,21 @@
   </script>
 </head>
 <body>
+  <!-- Standby screen (shown when session is OFF) -->
+  <div id="standby" style="display:<%- sessionActive ? 'none' : 'flex' %>;position:fixed;inset:0;background:#000;z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:16px;">
+    <div style="width:64px;height:64px;border-radius:50%;background:#18181b;border:2px solid #27272a;display:flex;align-items:center;justify-content:center;font-size:28px;">✨</div>
+    <div style="color:#3f3f46;font-family:sans-serif;font-size:18px;font-weight:600;letter-spacing:.08em;">STANDBY</div>
+  </div>
+  <!-- Audio unlock hint — fades out after first interaction -->
+  <div id="audioHint" style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+    background:rgba(0,0,0,0.72);border:1px solid rgba(255,255,255,0.12);
+    color:rgba(255,255,255,0.7);font-family:sans-serif;font-size:13px;font-weight:600;
+    padding:8px 20px;border-radius:999px;letter-spacing:.04em;z-index:99998;
+    pointer-events:none;transition:opacity 1.2s ease;white-space:nowrap;">
+    🔊 Tap / click anywhere to activate audio
+  </div>
   <canvas id="c" width="1920" height="1080"></canvas>
+  <audio id="bgMusic" loop style="display:none;"></audio>
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const USER_ID = <%- userId %>;
@@ -108,9 +122,85 @@
     let pollPaused    = false;  // blocks name queue while poll is active
     let pollAutoRevealSent = false; // guard so fetch only fires once
     let pollBurstFired = false;  // sparkle burst fires once on reveal
-    const POLL_FADE     = 400;
-    const POLL_DURATION = 60_000;  // 60s voting window
+    const POLL_FADE = 400;
+    let   POLL_DURATION = 60_000;  // updated dynamically from poll-start event
     const REVEAL_DUR    = 7_000;   // answer stays visible 7s then fades
+
+    // ── Sound effects (Web Audio API) ───────────────────────────────────────
+    let audioCtx = null;
+    function getAudioCtx() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      return audioCtx;
+    }
+
+    // ── Audio unlock (browsers block audio until first user gesture) ─────────
+    let audioUnlocked = false;
+    function unlockAudio() {
+      if (audioUnlocked) return;
+      try {
+        const ctx2 = getAudioCtx();
+        if (ctx2.state === 'suspended') ctx2.resume();
+        audioUnlocked = true;
+        // Retry background music if it was blocked at startup
+        const bgAudio = document.getElementById('bgMusic');
+        if (pendingMusicId && bgAudio.paused) {
+          if (!bgAudio.src || bgAudio.src === location.href) {
+            bgAudio.src = `/music/${pendingMusicId}.mp3`;
+          }
+          bgAudio.play().catch(() => {});
+        }
+        // Hide the hint
+        const hint = document.getElementById('audioHint');
+        if (hint) { hint.style.opacity = '0'; setTimeout(() => hint.remove(), 1300); }
+      } catch(e) {}
+    }
+    // Listen for any interaction — fires once then removes itself
+    ['click','touchstart','keydown'].forEach(ev =>
+      document.addEventListener(ev, unlockAudio, { once: false })
+    );
+
+    let lastTickSec = -1; // track second changes for tick sound
+
+    function playTick(urgent = false) {
+      try {
+        const ctx2 = getAudioCtx();
+        if (ctx2.state === 'suspended') { ctx2.resume(); }
+        const o = ctx2.createOscillator();
+        const g = ctx2.createGain();
+        o.connect(g); g.connect(ctx2.destination);
+        o.type = 'sine';
+        o.frequency.value = urgent ? 1100 : 820;
+        const now = ctx2.currentTime;
+        g.gain.setValueAtTime(urgent ? 0.35 : 0.2, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+        o.start(now); o.stop(now + 0.07);
+        // Retry bg music after AudioContext unlocks
+        const bgAudio = document.getElementById('bgMusic');
+        if (pendingMusicId && bgAudio.paused && bgAudio.src) {
+          bgAudio.play().catch(() => {});
+        }
+      } catch(e) {}
+    }
+
+    function playCorrectSound() {
+      try {
+        const ctx2 = getAudioCtx();
+        // Ascending C-E-G-C arpeggio (C5, E5, G5, C6)
+        [523, 659, 784, 1047].forEach((freq, i) => {
+          setTimeout(() => {
+            const o = ctx2.createOscillator();
+            const g = ctx2.createGain();
+            o.connect(g); g.connect(ctx2.destination);
+            o.type = 'sine';
+            o.frequency.value = freq;
+            const now = ctx2.currentTime;
+            g.gain.setValueAtTime(0.45, now);
+            g.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+            o.start(now); o.stop(now + 0.35);
+          }, i * 130);
+        });
+      } catch(e) {}
+    }
 
     // ── Socket ──────────────────────────────────────────────────────────────
     const socket = io();
@@ -163,13 +253,15 @@
       document.fonts.ready.then(() => { doShoutoutAlert(name); });
     });
 
-    socket.on('poll-start', ({ question, options }) => {
+    socket.on('poll-start', ({ question, options, duration }) => {
+      POLL_DURATION = ((duration && [30,45,60].includes(duration)) ? duration : 60) * 1000;
       pollData      = { question, options, votes: new Array(options.length).fill(0), total: 0, endTs: null };
       pollDisplay   = new Array(options.length).fill(0);
       pollAnswer    = null;
       pollStartTs   = null;
       pollRevealing = false; pollRevealTs = null;
       pollAutoRevealSent = false;
+      lastTickSec = -1;
       pollBurstFired = false;
       pollFadingIn  = true; pollFadeTs = null; pollAlpha = 0;
       pollPaused    = true;
@@ -188,6 +280,8 @@
       pollRevealing = true;
       pollRevealTs  = null;
       pollData.endTs = performance.now();
+      lastTickSec = -1; // reset tick tracker
+      playCorrectSound();
     });
 
     socket.on('poll-end', ({ votes, total }) => {
@@ -197,6 +291,32 @@
         pollData.endTs = pollData.endTs || performance.now();
       }
     });
+
+    socket.on('session-toggle', ({ active }) => {
+      document.getElementById('standby').style.display = active ? 'none' : 'flex';
+      if (!active) {
+        playBgMusic(null);
+      }
+    });
+
+    let pendingMusicId = null;
+
+    function playBgMusic(musicId) {
+      const a = document.getElementById('bgMusic');
+      if (!musicId) { a.pause(); a.src = ''; pendingMusicId = null; return; }
+      pendingMusicId = musicId;
+      if (a.src !== location.origin + `/music/${musicId}.mp3`) {
+        a.src = `/music/${musicId}.mp3`;
+      }
+      a.volume = 0.08;
+      a.loop   = true;
+      const p  = a.play();
+      if (p) p.catch(() => {
+        // Autoplay blocked — will retry on first tick/interaction
+      });
+    }
+
+    socket.on('loop-music', ({ musicId }) => playBgMusic(musicId));
 
     // ── Helpers ─────────────────────────────────────────────────────────────
     function cancelAnim() {
@@ -501,6 +621,16 @@
       // Auto-reveal when countdown hits zero
       const elapsed   = ts - pollStartTs;
       const remaining = Math.max(0, POLL_DURATION - elapsed);
+
+      // Tick sound every second during countdown
+      if (!pollRevealing && remaining > 0) {
+        const secNow = Math.ceil(remaining / 1000);
+        if (secNow !== lastTickSec) {
+          lastTickSec = secNow;
+          playTick(secNow <= 10);
+        }
+      }
+
       if (remaining <= 0 && !pollRevealing && !pollAutoRevealSent) {
         pollAutoRevealSent = true;
         fetch('/magic-live/api/poll/reveal', { method: 'POST' }).catch(() => {});
@@ -535,10 +665,10 @@
       // ── Layout: large centered engagement panel ──────────────────────────────
       const nOpts    = pollData.options.length;
       const HDR_SIZE = VERTICAL ? 17 : 19;
-      const Q_SIZE   = VERTICAL ? 30 : 36;
-      const L_SIZE   = VERTICAL ? 24 : 28;
-      const OPT_SIZE = VERTICAL ? 17 : 20;
-      const PCT_SIZE = VERTICAL ? 18 : 22;
+      const Q_SIZE   = VERTICAL ? 36 : 44;
+      const L_SIZE   = VERTICAL ? 30 : 36;
+      const OPT_SIZE = VERTICAL ? 22 : 28;
+      const PCT_SIZE = VERTICAL ? 22 : 26;
       const BAR_H    = VERTICAL ? 48 : 58;
       const ROW_GAP  = VERTICAL ? 66 : 80;
       const PAD_X    = VERTICAL ? 52 : 64;
@@ -763,7 +893,8 @@
         const BDG_W  = Math.min(PW - 80, VERTICAL ? 680 : 740);
         const BDG_H  = VERTICAL ? 86 : 100;
         const BDG_X  = Math.round(W / 2 - BDG_W / 2);
-        const BDG_CY = PY + PAD_TOP + HDR_H + 8 + Q_SIZE / 2;
+        // Position badge in the centre of the bars zone — below question + divider
+        const BDG_CY = BARS_Y + Math.round((nOpts * ROW_GAP) / 2);
         const BDG_Y  = Math.round(BDG_CY - BDG_H / 2);
 
         ctx.save();

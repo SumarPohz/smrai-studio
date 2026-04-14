@@ -4,7 +4,11 @@
 <style>
 :root { --bg:#09090b; --card:#18181b; --border:#27272a; --purple:#7c3aed; --purple-dim:#4c1d95; }
 body, #ml-page { background:var(--bg); color:#f4f4f5; font-family:'Inter',sans-serif; min-height:100vh; }
-#ml-page { max-width:900px; margin:0 auto; padding:36px 20px 80px; }
+#ml-page { max-width:1400px; margin:0 auto; padding:24px 20px 60px; }
+
+/* ── Desktop 3-column grid ── */
+.ml-grid { display:grid; grid-template-columns:300px 1fr 280px; gap:16px; align-items:start; }
+.ml-col  { display:flex; flex-direction:column; gap:16px; min-width:0; overflow:hidden; }
 
 /* ── Header ── */
 .ml-header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:28px; }
@@ -17,7 +21,7 @@ body, #ml-page { background:var(--bg); color:#f4f4f5; font-family:'Inter',sans-s
 .stopped .status-dot  { background:#f87171; }
 
 /* ── Cards ── */
-.ml-card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:20px; margin-bottom:16px; }
+.ml-card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:20px; min-width:0; overflow:hidden; }
 .ml-card-title { font-size:0.82rem; font-weight:700; color:#71717a; text-transform:uppercase; letter-spacing:.06em; margin-bottom:14px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 
 /* ── Inputs & Buttons ── */
@@ -32,8 +36,9 @@ body, #ml-page { background:var(--bg); color:#f4f4f5; font-family:'Inter',sans-s
 .ml-btn-full { width:100%; }
 
 /* ── Manual trigger row ── */
-.manual-row { display:flex; gap:10px; }
+.manual-row { display:flex; gap:8px; flex-wrap:wrap; }
 .manual-row .ml-input { flex:1; min-width:0; }
+.manual-row .ml-btn { flex-shrink:0; white-space:nowrap; }
 
 /* ── URL box ── */
 .url-box { display:flex; flex-direction:column; gap:10px; }
@@ -78,6 +83,9 @@ body, #ml-page { background:var(--bg); color:#f4f4f5; font-family:'Inter',sans-s
 .answer-btn.selected { border-color:#4ade80; background:#14532d33; color:#4ade80; box-shadow:0 0 10px rgba(74,222,128,0.3); }
 /* ── Poll input lock ── */
 .poll-locked { opacity:.4; pointer-events:none; }
+/* ── Loop Wizard ── */
+#loopWizard { display:none; }
+#loopWizard.open { display:flex; }
 
 /* ── Page Navigator ── */
 .page-nav { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
@@ -90,42 +98,29 @@ body, #ml-page { background:var(--bg); color:#f4f4f5; font-family:'Inter',sans-s
 .pro-banner-text p  { font-size:13px; color:#c4b5fd; }
 .pro-btn { background:#7c3aed; color:#fff; padding:9px 18px; border-radius:10px; text-decoration:none; font-weight:700; font-size:14px; white-space:nowrap; flex-shrink:0; }
 
-/* ── Tablet (≤768px) ── */
-@media(max-width:768px) {
-  #ml-page { padding:24px 16px 60px; }
-  .ml-title { font-size:1.4rem; }
-  .ml-card  { padding:16px; }
+/* ── Tablet (≤1024px): 2-column ── */
+@media(max-width:1024px) {
+  .ml-grid { grid-template-columns:1fr 1fr; }
+  .ml-col-center { order:-1; grid-column:1/-1; }
 }
 
-/* ── Mobile (≤480px) ── */
-@media(max-width:480px) {
+/* ── Mobile (≤640px): single column ── */
+@media(max-width:640px) {
   #ml-page { padding:16px 12px 60px; }
+  .ml-grid { grid-template-columns:1fr; }
+  .ml-col-center { order:0; grid-column:auto; }
   .ml-title { font-size:1.25rem; gap:8px; }
-  .ml-card  { padding:14px; border-radius:12px; margin-bottom:12px; }
-
-  /* Manual trigger: stack on very small screens */
+  .ml-card  { padding:14px; border-radius:12px; }
   .manual-row { flex-direction:column; }
   .manual-row .ml-btn { width:100%; }
-
-  /* Auto buttons: full-width */
   .auto-btns .ml-btn { flex:1; }
-
-  /* Queue header: stack */
   .queue-header { flex-direction:column; align-items:flex-start; }
   .queue-actions { width:100%; }
   .queue-actions .ml-btn { flex:1; }
-
-  /* Settings selects: stack */
   .select-row { flex-direction:column; gap:10px; }
-
-  /* Settings save: full-width button */
   .settings-save .ml-btn { width:100%; }
-
-  /* PRO banner: stack */
   .pro-banner { flex-direction:column; }
   .pro-btn { width:100%; text-align:center; }
-
-  /* URL actions */
   .url-actions .ml-btn { padding:10px 12px; font-size:13px; }
 }
 </style>
@@ -137,9 +132,18 @@ body, #ml-page { background:var(--bg); color:#f4f4f5; font-family:'Inter',sans-s
     <div class="ml-title">
       <span>✨</span> Magic Live
     </div>
-    <div id="statusBadge" class="status-badge stopped">
-      <div class="status-dot"></div>
-      <span id="statusText">Stopped</span>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <button id="sessionToggleBtn" onclick="toggleSession()"
+        style="padding:8px 20px;border-radius:8px;font-size:13px;font-weight:700;border:none;cursor:pointer;transition:all .2s;letter-spacing:.04em;
+               background:<%- sessionActive ? '#14532d' : '#7f1d1d' %>;
+               color:<%- sessionActive ? '#4ade80' : '#f87171' %>;
+               border:1.5px solid <%- sessionActive ? '#16a34a' : '#b91c1c' %>;">
+        <%- sessionActive ? '🟢 LIVE' : '⚫ OFF AIR' %>
+      </button>
+      <div id="statusBadge" class="status-badge stopped">
+        <div class="status-dot"></div>
+        <span id="statusText">Stopped</span>
+      </div>
     </div>
   </div>
 
@@ -153,154 +157,320 @@ body, #ml-page { background:var(--bg); color:#f4f4f5; font-family:'Inter',sans-s
   </div>
   <% } %>
 
-  <!-- Overlay URL -->
-  <div class="ml-card">
-    <div class="ml-card-title">🖥️ OBS Overlay URL</div>
-    <div class="url-box">
-      <div class="url-text" id="overlayUrl"></div>
-      <div class="url-actions">
-        <button class="ml-btn ml-btn-ghost" onclick="copyUrl()">Copy</button>
-        <button class="ml-btn ml-btn-ghost" onclick="window.open(document.getElementById('overlayUrl').textContent,'_blank')">Preview</button>
+  <div class="ml-grid">
+
+    <!-- ── LEFT COLUMN ── -->
+    <div class="ml-col ml-col-left">
+
+      <!-- OBS Overlay URL -->
+      <div class="ml-card">
+        <div class="ml-card-title">🖥️ OBS Overlay URL</div>
+        <div class="url-box">
+          <div class="url-text" id="overlayUrl"></div>
+          <div class="url-actions">
+            <button class="ml-btn ml-btn-ghost" onclick="copyUrl()">Copy</button>
+            <button class="ml-btn ml-btn-ghost" onclick="window.open(document.getElementById('overlayUrl').textContent,'_blank')">Preview</button>
+          </div>
+        </div>
+        <p style="font-size:12px;color:#52525b;margin-top:10px;line-height:1.5;">Add as a Browser Source in OBS at 1920×1080 with transparent background.</p>
       </div>
-    </div>
-    <p style="font-size:12px;color:#52525b;margin-top:10px;line-height:1.5;">Add as a Browser Source in OBS at 1920×1080 with transparent background.</p>
-  </div>
 
-  <!-- Manual Trigger -->
-  <div class="ml-card">
-    <div class="ml-card-title">🎯 Show Name on Overlay</div>
-    <div class="manual-row">
-      <input type="text" id="manualName" class="ml-input" placeholder="Enter viewer name…" maxlength="50" />
-      <button class="ml-btn ml-btn-primary" id="sendBtn" onclick="sendName()">❤️ Send Live</button>
-    </div>
-    <div class="manual-row" style="margin-top:8px;">
-      <button class="ml-btn ml-btn-sub" style="flex:1;" id="subBtn" onclick="sendSubscriber()">⭐ Subscriber Alert</button>
-      <button class="ml-btn" style="flex:1;background:linear-gradient(135deg,#0e7490,#06b6d4);color:#fff;" id="btnShoutout" onclick="sendShoutout()">✨ Shoutout</button>
-    </div>
-    <p id="manualMsg" style="font-size:13px;margin-top:8px;color:#a1a1aa;min-height:18px;"></p>
-  </div>
+      <!-- Manual Trigger -->
+      <div class="ml-card">
+        <div class="ml-card-title">🎯 Show Name on Overlay</div>
+        <div class="manual-row">
+          <input type="text" id="manualName" class="ml-input" placeholder="Enter viewer name…" maxlength="50" />
+          <button class="ml-btn ml-btn-primary" id="sendBtn" onclick="sendName()">❤️ Send Live</button>
+        </div>
+        <div class="manual-row" style="margin-top:8px;">
+          <button class="ml-btn ml-btn-sub" style="flex:1;" id="subBtn" onclick="sendSubscriber()">⭐ Subscriber Alert</button>
+          <button class="ml-btn" style="flex:1;background:linear-gradient(135deg,#0e7490,#06b6d4);color:#fff;" id="btnShoutout" onclick="sendShoutout()">✨ Shoutout</button>
+        </div>
+        <p id="manualMsg" style="font-size:13px;margin-top:8px;color:#a1a1aa;min-height:18px;"></p>
+      </div>
 
-  <!-- Live Poll -->
-  <div class="ml-card" id="pollCard">
-    <div class="ml-card-title">📊 Live Poll</div>
-    <div id="pollSetup">
-      <p style="font-size:13px;color:#a1a1aa;margin-bottom:12px;line-height:1.5;">Viewers vote by typing <strong style="color:#e4e4e7;">A</strong>, <strong style="color:#e4e4e7;">B</strong>, <strong style="color:#e4e4e7;">C</strong>, or <strong style="color:#e4e4e7;">D</strong> in YouTube chat.</p>
-      <input type="text" id="pollQuestion" class="ml-input" placeholder="Your question…" maxlength="80" style="margin-bottom:8px;" />
-      <input type="text" id="pollOptA" class="ml-input" placeholder="Option A" maxlength="40" style="margin-bottom:8px;" />
-      <input type="text" id="pollOptB" class="ml-input" placeholder="Option B" maxlength="40" style="margin-bottom:8px;" />
-      <input type="text" id="pollOptC" class="ml-input" placeholder="Option C (optional)" maxlength="40" style="margin-bottom:8px;" />
-      <input type="text" id="pollOptD" class="ml-input" placeholder="Option D (optional)" maxlength="40" style="margin-bottom:12px;" />
-      <div style="margin-bottom:12px;">
-        <label style="font-size:12px;color:#71717a;display:block;margin-bottom:7px;">✓ Correct Answer</label>
+      <!-- Quiz Bank -->
+      <div class="ml-card" id="quizBankCard">
+        <div class="ml-card-title">📂 Quiz Bank
+          <span id="quizCountBadge" style="margin-left:auto;font-size:11px;font-weight:600;color:#a78bfa;background:#4c1d9522;padding:3px 10px;border-radius:999px;">0 remaining</span>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+          <label class="ml-btn ml-btn-ghost" style="cursor:pointer;flex:1;min-width:100px;">
+            📁 Choose CSV
+            <input type="file" id="quizFileInput" accept=".csv" style="display:none;" onchange="uploadQuizFile()" />
+          </label>
+          <a href="/magic-live-quiz-template.csv" download class="ml-btn ml-btn-ghost" style="flex:1;min-width:100px;text-decoration:none;">⬇ Template</a>
+        </div>
+        <p id="quizUploadMsg" style="font-size:13px;color:#a1a1aa;min-height:18px;margin-bottom:10px;"></p>
         <div style="display:flex;gap:8px;">
-          <button type="button" class="answer-btn" id="ansBtnA" onclick="selectAnswer('A')">A</button>
-          <button type="button" class="answer-btn" id="ansBtnB" onclick="selectAnswer('B')">B</button>
-          <button type="button" class="answer-btn" id="ansBtnC" onclick="selectAnswer('C')">C</button>
-          <button type="button" class="answer-btn" id="ansBtnD" onclick="selectAnswer('D')">D</button>
+          <button class="ml-btn ml-btn-primary" style="flex:1;" onclick="loadNextQuestion()">🎲 Load Next Question</button>
+          <button class="ml-btn ml-btn-ghost" onclick="resetQuizBank()" title="Mark all questions as unused">↺ Reset</button>
         </div>
       </div>
-      <button class="ml-btn ml-btn-primary ml-btn-full" onclick="startPoll()">▶ Start Poll (60s)</button>
-      <p id="pollSetupMsg" style="font-size:13px;margin-top:8px;color:#f87171;min-height:18px;"></p>
-    </div>
-    <div id="pollLive" style="display:none;">
-      <p id="pollLiveQuestion" style="font-size:14px;font-weight:700;color:#e4e4e7;margin-bottom:10px;"></p>
-      <div style="text-align:center;margin-bottom:10px;">
-        <div id="pollCountdown" style="font-size:42px;font-weight:800;color:#fde68a;line-height:1;font-variant-numeric:tabular-nums;">60</div>
-        <div style="font-size:12px;color:#52525b;margin-top:3px;">seconds remaining</div>
-      </div>
-      <div id="pollResults" style="margin-bottom:14px;"></div>
-      <button class="ml-btn ml-btn-danger ml-btn-full" onclick="emergencyStopPoll()" style="font-size:13px;">⚠ Emergency Stop</button>
-    </div>
-  </div>
 
-  <!-- Auto Magic -->
-  <div class="ml-card">
-    <div class="ml-card-title">🤖 Auto Magic — YouTube Chat</div>
-    <div class="yt-status <%= ytAccount ? 'yt-connected' : 'yt-disconnected' %>">
-      <span class="yt-status-icon"><%= ytAccount ? '✅' : '🔗' %></span>
-      <div>
-        <% if (ytAccount) { %>
-          <div style="font-size:14px;font-weight:600;color:#4ade80;">Connected: <%= ytAccount.channel_name %></div>
-          <div style="font-size:12px;color:#71717a;margin-top:2px;">Detects "magic" in live chat and adds the sender to your queue.</div>
-        <% } else { %>
-          <div style="font-size:14px;font-weight:600;color:#a1a1aa;">No YouTube account connected</div>
-          <div style="font-size:12px;color:#71717a;margin-top:6px;">Connect your YouTube channel to enable Auto Magic.</div>
-          <a href="/auth/youtube?returnTo=/magic-live" style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:8px 16px;background:#ff0000;color:#fff;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M23.5 6.2s-.3-1.9-1.1-2.7c-1.1-1.1-2.3-1.1-2.8-1.2C16.8 2 12 2 12 2s-4.8 0-7.6.3c-.6.1-1.8.1-2.9 1.2C.7 4.3.4 6.2.4 6.2S.1 8.4.1 10.6v2.1c0 2.2.3 4.4.3 4.4s.3 1.9 1.1 2.7c1.1 1.1 2.5 1.1 3.1 1.1C6.8 21.1 12 21.1 12 21.1s4.8 0 7.6-.3c.6-.1 1.8-.1 2.9-1.2.8-.8 1.1-2.7 1.1-2.7s.3-2.2.3-4.4v-2.1c0-2.2-.4-4.4-.4-4.4zM9.7 15.5V8.1l7.6 3.7-7.6 3.7z"/></svg>
-            Connect YouTube
-          </a>
+      <!-- Name Bank & Auto Shoutout -->
+      <div class="ml-card" id="nameBankCard">
+        <div class="ml-card-title">🎭 Auto Shoutout
+          <span id="nameCountBadge" style="margin-left:auto;font-size:11px;font-weight:600;color:#06b6d4;background:#0e749022;padding:3px 10px;border-radius:999px;">200+ built-in</span>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <label class="ml-btn ml-btn-ghost" style="cursor:pointer;flex:1;">
+            📁 Custom Names CSV
+            <input type="file" id="namesFileInput" accept=".csv" style="display:none;" onchange="uploadNamesFile()" />
+          </label>
+        </div>
+        <p id="namesUploadMsg" style="font-size:13px;color:#a1a1aa;min-height:18px;margin-bottom:12px;"></p>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div>
+            <div style="font-size:13px;font-weight:600;color:#e4e4e7;">Random Shoutout</div>
+            <div style="font-size:12px;color:#71717a;">Fire fake shoutouts for algorithm</div>
+          </div>
+          <button id="randomShoutoutToggle" onclick="toggleRandomShoutout()"
+            style="padding:7px 18px;border-radius:8px;font-size:13px;font-weight:700;border:none;cursor:pointer;transition:all .2s;background:#27272a;color:#71717a;">
+            OFF
+          </button>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+          <label style="font-size:12px;color:#71717a;white-space:nowrap;">Every</label>
+          <input type="number" id="shoutoutInterval" class="ml-input" value="120" min="30" max="600" style="width:70px;" />
+          <label style="font-size:12px;color:#71717a;white-space:nowrap;">seconds</label>
+        </div>
+        <div style="border-top:1px solid #27272a;padding-top:12px;">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <label style="font-size:12px;color:#71717a;white-space:nowrap;">✓ After poll: shoutout top</label>
+            <input type="number" id="correctShoutoutCount" class="ml-input" value="5" min="0" max="20" style="width:56px;" />
+            <label style="font-size:12px;color:#71717a;white-space:nowrap;">correct</label>
+          </div>
+          <p style="font-size:11px;color:#52525b;margin-top:6px;">Set to 0 to disable. Fires after poll reveal.</p>
+        </div>
+        <button class="ml-btn ml-btn-primary ml-btn-full" style="margin-top:12px;" onclick="saveShoutoutSettings()">💾 Save Settings</button>
+        <p id="shoutoutSettingsMsg" style="font-size:13px;color:#a1a1aa;min-height:18px;margin-top:8px;"></p>
+      </div>
+
+    </div><!-- /ml-col-left -->
+
+    <!-- ── CENTER COLUMN ── -->
+    <div class="ml-col ml-col-center">
+
+      <!-- Auto Loop -->
+      <div class="ml-card" id="autoLoopCard">
+        <div class="ml-card-title">🔁 Auto Loop
+          <span id="loopStatusBadge" style="margin-left:auto;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;background:#27272a;color:#71717a;">IDLE</span>
+        </div>
+        <p style="font-size:13px;color:#a1a1aa;margin-bottom:14px;line-height:1.6;">Fully automatic — loads questions, runs polls, reveals answers, fires shoutouts. No clicks needed.</p>
+        <div style="display:flex;gap:8px;">
+          <button id="loopStartBtn"  class="ml-btn ml-btn-primary" style="flex:1;font-size:15px;padding:13px;" onclick="openLoopWizard()">🔁 Start Auto Loop</button>
+          <button id="loopPauseBtn"  class="ml-btn" style="display:none;flex:1;font-size:15px;padding:13px;background:linear-gradient(135deg,#92400e,#b45309);color:#fde68a;" onclick="pauseLoop()">⏸ Pause</button>
+          <button id="loopResumeBtn" class="ml-btn ml-btn-primary" style="display:none;flex:1;font-size:15px;padding:13px;" onclick="resumeLoop()">▶ Resume</button>
+          <button id="loopStopBtn"   class="ml-btn ml-btn-danger"  style="display:none;font-size:15px;padding:13px;" onclick="stopAutoLoop()">⏹</button>
+        </div>
+        <p id="loopMsg" style="font-size:13px;color:#a1a1aa;margin-top:10px;min-height:18px;"></p>
+      </div>
+
+      <!-- Live Poll -->
+      <div class="ml-card" id="pollCard">
+        <div class="ml-card-title">📊 Live Poll <span id="pollLoopLabel" style="font-size:11px;color:#52525b;font-weight:500;margin-left:4px;"></span></div>
+        <div id="pollSetup">
+          <p style="font-size:13px;color:#a1a1aa;margin-bottom:12px;line-height:1.5;">Viewers vote by typing <strong style="color:#e4e4e7;">A</strong>, <strong style="color:#e4e4e7;">B</strong>, or <strong style="color:#e4e4e7;">C</strong> in YouTube chat.</p>
+          <input type="text" id="pollQuestion" class="ml-input" placeholder="Your question…" maxlength="80" style="margin-bottom:8px;" />
+          <input type="text" id="pollOptA" class="ml-input" placeholder="Option A" maxlength="40" style="margin-bottom:8px;" />
+          <input type="text" id="pollOptB" class="ml-input" placeholder="Option B" maxlength="40" style="margin-bottom:8px;" />
+          <input type="text" id="pollOptC" class="ml-input" placeholder="Option C (optional)" maxlength="40" style="margin-bottom:12px;" />
+          <div style="margin-bottom:12px;">
+            <label style="font-size:12px;color:#71717a;display:block;margin-bottom:7px;">✓ Correct Answer</label>
+            <div style="display:flex;gap:8px;">
+              <button type="button" class="answer-btn" id="ansBtnA" onclick="selectAnswer('A')">A</button>
+              <button type="button" class="answer-btn" id="ansBtnB" onclick="selectAnswer('B')">B</button>
+              <button type="button" class="answer-btn" id="ansBtnC" onclick="selectAnswer('C')">C</button>
+            </div>
+          </div>
+          <button class="ml-btn ml-btn-primary ml-btn-full" onclick="startPoll()">▶ Start Poll (60s)</button>
+          <p id="pollSetupMsg" style="font-size:13px;margin-top:8px;color:#f87171;min-height:18px;"></p>
+        </div>
+        <div id="pollLive" style="display:none;">
+          <p id="pollLiveQuestion" style="font-size:18px;font-weight:800;color:#e4e4e7;margin-bottom:12px;line-height:1.4;"></p>
+          <div style="text-align:center;margin-bottom:10px;">
+            <div id="pollCountdown" style="font-size:42px;font-weight:800;color:#fde68a;line-height:1;font-variant-numeric:tabular-nums;">60</div>
+            <div style="font-size:12px;color:#52525b;margin-top:3px;">seconds remaining</div>
+          </div>
+          <div id="pollResults" style="margin-bottom:14px;"></div>
+          <button class="ml-btn ml-btn-danger ml-btn-full" onclick="emergencyStopPoll()" style="font-size:13px;">⚠ Emergency Stop</button>
+        </div>
+      </div>
+
+      <!-- Auto Magic -->
+      <div class="ml-card">
+        <div class="ml-card-title">🤖 Auto Magic — YouTube Chat</div>
+        <div class="yt-status <%= ytAccount ? 'yt-connected' : 'yt-disconnected' %>">
+          <span class="yt-status-icon"><%= ytAccount ? '✅' : '🔗' %></span>
+          <div>
+            <% if (ytAccount) { %>
+              <div style="font-size:14px;font-weight:600;color:#4ade80;">Connected: <%= ytAccount.channel_name %></div>
+              <div style="font-size:12px;color:#71717a;margin-top:2px;">Detects "magic" in live chat and adds the sender to your queue.</div>
+            <% } else { %>
+              <div style="font-size:14px;font-weight:600;color:#a1a1aa;">No YouTube account connected</div>
+              <div style="font-size:12px;color:#71717a;margin-top:6px;">Connect your YouTube channel to enable Auto Magic.</div>
+              <a href="/auth/youtube?returnTo=/magic-live" style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:8px 16px;background:#ff0000;color:#fff;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M23.5 6.2s-.3-1.9-1.1-2.7c-1.1-1.1-2.3-1.1-2.8-1.2C16.8 2 12 2 12 2s-4.8 0-7.6.3c-.6.1-1.8.1-2.9 1.2C.7 4.3.4 6.2.4 6.2S.1 8.4.1 10.6v2.1c0 2.2.3 4.4.3 4.4s.3 1.9 1.1 2.7c1.1 1.1 2.5 1.1 3.1 1.1C6.8 21.1 12 21.1 12 21.1s4.8 0 7.6-.3c.6-.1 1.8-.1 2.9-1.2.8-.8 1.1-2.7 1.1-2.7s.3-2.2.3-4.4v-2.1c0-2.2-.4-4.4-.4-4.4zM9.7 15.5V8.1l7.6 3.7-7.6 3.7z"/></svg>
+                Connect YouTube
+              </a>
+            <% } %>
+          </div>
+        </div>
+        <div class="auto-btns">
+          <button id="startBtn" class="ml-btn ml-btn-primary" onclick="startAuto()" <%= (!hasPro || !ytAccount) ? 'disabled' : '' %>>
+            ▶ Start Auto Magic
+          </button>
+          <button id="stopBtn" class="ml-btn ml-btn-danger" onclick="stopAuto()" style="display:none;">
+            ■ Stop
+          </button>
+        </div>
+        <% if (!hasPro) { %>
+        <p style="font-size:12px;color:#71717a;margin-top:10px;">PRO subscription required to use Auto Magic.</p>
         <% } %>
       </div>
-    </div>
-    <div class="auto-btns">
-      <button id="startBtn" class="ml-btn ml-btn-primary" onclick="startAuto()" <%= (!hasPro || !ytAccount) ? 'disabled' : '' %>>
-        ▶ Start Auto Magic
-      </button>
-      <button id="stopBtn" class="ml-btn ml-btn-danger" onclick="stopAuto()" style="display:none;">
-        ■ Stop
-      </button>
-    </div>
-    <% if (!hasPro) { %>
-    <p style="font-size:12px;color:#71717a;margin-top:10px;">PRO subscription required to use Auto Magic.</p>
-    <% } %>
-  </div>
 
-  <!-- Share with Viewers -->
-  <div class="ml-card">
-    <div class="ml-card-title">📲 Share With Viewers</div>
-    <p style="font-size:13px;color:#a1a1aa;margin-bottom:12px;line-height:1.5;">Share this link — viewers open it on their phone and type their name to appear live on your stream.</p>
-    <div class="url-box">
-      <div class="url-text" id="submitUrl"></div>
-      <div class="url-actions">
-        <button class="ml-btn ml-btn-ghost" onclick="copySubmitUrl()">Copy Link</button>
-        <button class="ml-btn ml-btn-ghost" onclick="window.open(document.getElementById('submitUrl').textContent,'_blank')">Preview</button>
+    </div><!-- /ml-col-center -->
+
+    <!-- ── RIGHT COLUMN ── -->
+    <div class="ml-col ml-col-right">
+
+      <!-- Guest Queue -->
+      <div class="ml-card">
+        <div class="queue-header">
+          <div class="ml-card-title" style="margin-bottom:0;">🎟️ Guest Queue <span id="queueCount" style="font-size:11px;color:#52525b;font-weight:500;margin-left:4px;"></span></div>
+          <div class="queue-actions">
+            <button class="ml-btn ml-btn-primary" onclick="showNext()">▶ Show Next</button>
+            <button class="ml-btn ml-btn-ghost" onclick="clearQueue()">🗑 Clear</button>
+          </div>
+        </div>
+        <div id="queueList" class="queue-list" style="margin-top:12px;">
+          <% if (queue && queue.length) { %>
+            <% queue.forEach((name, i) => { %>
+              <div class="queue-item">
+                <span class="queue-pos">#<%= i+1 %></span>
+                <span class="queue-item-name"><%= name %></span>
+              </div>
+            <% }) %>
+          <% } else { %>
+            <div class="queue-empty">Queue is empty</div>
+          <% } %>
+        </div>
+      </div>
+
+      <!-- Overlay Title -->
+      <div class="ml-card">
+        <div class="ml-card-title">✏️ Overlay Title</div>
+        <div class="manual-row">
+          <input type="text" id="headerInput" class="ml-input" maxlength="50"
+            placeholder="Q&A — Only 20% Can Answer!"
+            value="<%= typeof settings !== 'undefined' && settings.header_text ? settings.header_text : 'Q&A — Only 20% Can Answer!' %>" />
+          <button class="ml-btn ml-btn-primary" onclick="saveHeader()">Update</button>
+        </div>
+        <p id="headerMsg" style="font-size:13px;margin-top:8px;color:#a1a1aa;min-height:18px;"></p>
+      </div>
+
+      <!-- Page Navigator -->
+      <div class="ml-card">
+        <div class="ml-card-title">📖 Page Navigator</div>
+        <div class="page-nav">
+          <button class="ml-btn ml-btn-ghost" onclick="navPage('prev')">← Prev</button>
+          <button class="ml-btn page-nav-live" onclick="navPage('live')">▶ Live</button>
+          <button class="ml-btn ml-btn-ghost" onclick="navPage('next')">Next →</button>
+        </div>
+        <p id="navMsg" style="font-size:12px;color:#71717a;margin-top:10px;min-height:16px;"></p>
+      </div>
+
+      <!-- Share with Viewers -->
+      <div class="ml-card">
+        <div class="ml-card-title">📲 Share With Viewers</div>
+        <div class="url-box">
+          <div class="url-text" id="submitUrl"></div>
+          <div class="url-actions">
+            <button class="ml-btn ml-btn-ghost" onclick="copySubmitUrl()">Copy</button>
+            <button class="ml-btn ml-btn-ghost" onclick="window.open(document.getElementById('submitUrl').textContent,'_blank')">Preview</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Export & Clear -->
+      <div class="ml-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+          <div style="font-size:13px;font-weight:600;color:#e4e4e7;">Guestbook PDF</div>
+          <a id="pdfBtn" href="#" class="ml-btn ml-btn-ghost" style="font-size:13px;padding:8px 14px;" onclick="exportPdf(event)">📄 Export</a>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+          <div style="font-size:13px;font-weight:600;color:#e4e4e7;">Clear Overlay</div>
+          <button class="ml-btn ml-btn-danger" style="font-size:13px;padding:8px 14px;" onclick="clearOverlay()">🗑️ Clear Names</button>
+        </div>
+      </div>
+
+    </div><!-- /ml-col-right -->
+
+  </div><!-- /ml-grid -->
+
+</div>
+
+<!-- Auto Loop Wizard -->
+<div id="loopWizard" style="position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#18181b;border:1.5px solid #27272a;border-radius:20px;padding:28px;width:min(520px,94vw);box-shadow:0 8px 50px rgba(0,0,0,0.7);">
+
+    <!-- Step indicators -->
+    <div style="display:flex;gap:8px;margin-bottom:24px;">
+      <div id="wiz-s1" style="flex:1;height:4px;border-radius:2px;background:#7c3aed;transition:background .3s;"></div>
+      <div id="wiz-s2" style="flex:1;height:4px;border-radius:2px;background:#27272a;transition:background .3s;"></div>
+      <div id="wiz-s3" style="flex:1;height:4px;border-radius:2px;background:#27272a;transition:background .3s;"></div>
+    </div>
+
+    <!-- Step 1: Q&A CSV -->
+    <div id="wizStep1">
+      <div style="font-size:16px;font-weight:700;color:#e4e4e7;margin-bottom:4px;">Step 1 of 3 — Questions</div>
+      <div style="font-size:12px;color:#71717a;margin-bottom:18px;">Upload your Q&A CSV or continue with existing questions.</div>
+      <div id="wizQuizStatus" style="font-size:14px;font-weight:600;color:#a78bfa;background:#4c1d9522;border:1px solid #4c1d95;border-radius:10px;padding:12px 16px;margin-bottom:14px;">Loading…</div>
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <label class="ml-btn ml-btn-ghost" style="cursor:pointer;flex:1;">
+          📁 Upload CSV
+          <input type="file" id="wizQuizFile" accept=".csv" style="display:none;" onchange="wizUploadCsv()" />
+        </label>
+        <a href="/magic-live-quiz-template.csv" download class="ml-btn ml-btn-ghost" style="flex:1;text-decoration:none;">⬇ Template</a>
+      </div>
+      <p id="wizCsvMsg" style="font-size:13px;color:#a1a1aa;min-height:18px;margin-bottom:16px;"></p>
+      <div style="display:flex;justify-content:space-between;">
+        <button class="ml-btn ml-btn-ghost" style="padding:10px 20px;" onclick="closeLoopWizard()">✕ Cancel</button>
+        <button id="wizNext1" class="ml-btn ml-btn-primary" style="padding:10px 24px;" onclick="wizGoStep(2)" disabled>Next →</button>
       </div>
     </div>
-  </div>
 
-  <!-- Overlay Title -->
-  <div class="ml-card">
-    <div class="ml-card-title">✏️ Overlay Title</div>
-    <div class="manual-row">
-      <input type="text" id="headerInput" class="ml-input" maxlength="50"
-        placeholder="Tonight's Guests"
-        value="<%= typeof settings !== 'undefined' && settings.header_text ? settings.header_text : 'Tonight\'s Guests' %>" />
-      <button class="ml-btn ml-btn-primary" onclick="saveHeader()">Update Live</button>
+    <!-- Step 2: Music -->
+    <div id="wizStep2" style="display:none;">
+      <div style="font-size:16px;font-weight:700;color:#e4e4e7;margin-bottom:4px;">Step 2 of 3 — Background Music</div>
+      <div style="font-size:12px;color:#71717a;margin-bottom:18px;">Pick a track that plays on the overlay during the session.</div>
+      <div id="wizMusicList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;max-height:260px;overflow-y:auto;">
+        <div style="color:#52525b;font-size:13px;">Loading music…</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;gap:8px;">
+        <button class="ml-btn ml-btn-ghost" onclick="wizGoStep(1)">← Back</button>
+        <button class="ml-btn ml-btn-primary" style="padding:10px 24px;" onclick="wizGoStep(3)">Next →</button>
+      </div>
     </div>
-    <p id="headerMsg" style="font-size:13px;margin-top:8px;color:#a1a1aa;min-height:18px;"></p>
-  </div>
 
-  <!-- Page Navigator -->
-  <div class="ml-card">
-    <div class="ml-card-title">📖 Page Navigator</div>
-    <p style="font-size:13px;color:#a1a1aa;margin-bottom:14px;line-height:1.5;">Flip the overlay to a different page live — show viewers their names from any session page.</p>
-    <div class="page-nav">
-      <button class="ml-btn ml-btn-ghost" onclick="navPage('prev')">← Prev Page</button>
-      <button class="ml-btn page-nav-live" onclick="navPage('live')">▶ Return to Live</button>
-      <button class="ml-btn ml-btn-ghost" onclick="navPage('next')">Next Page →</button>
+    <!-- Step 3: Timer -->
+    <div id="wizStep3" style="display:none;">
+      <div style="font-size:16px;font-weight:700;color:#e4e4e7;margin-bottom:4px;">Step 3 of 3 — Question Timer</div>
+      <div style="font-size:12px;color:#71717a;margin-bottom:18px;">How long should each question run before the answer reveals?</div>
+      <div style="display:flex;gap:10px;margin-bottom:20px;">
+        <button class="wiz-timer-btn ml-btn ml-btn-ghost" data-secs="30" onclick="wizSetTimer(30,this)" style="flex:1;padding:16px 0;font-size:18px;font-weight:800;">30s</button>
+        <button class="wiz-timer-btn ml-btn ml-btn-ghost" data-secs="45" onclick="wizSetTimer(45,this)" style="flex:1;padding:16px 0;font-size:18px;font-weight:800;">45s</button>
+        <button class="wiz-timer-btn ml-btn ml-btn-primary" data-secs="60" onclick="wizSetTimer(60,this)" style="flex:1;padding:16px 0;font-size:18px;font-weight:800;">60s</button>
+      </div>
+      <p style="font-size:12px;color:#52525b;margin-bottom:18px;">Shorter = faster sessions. 60s gives viewers more time to vote.</p>
+      <div style="display:flex;justify-content:space-between;gap:8px;">
+        <button class="ml-btn ml-btn-ghost" onclick="wizGoStep(2)">← Back</button>
+        <button class="ml-btn ml-btn-primary" style="flex:1;font-size:15px;padding:13px;" onclick="wizGoLive()">🚀 Go Live</button>
+      </div>
     </div>
-    <p id="navMsg" style="font-size:12px;color:#71717a;margin-top:10px;min-height:16px;"></p>
+
   </div>
-
-  <!-- Export & Clear -->
-  <div class="ml-card" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-    <div>
-      <div style="font-size:14px;font-weight:600;color:#e4e4e7;">Guestbook PDF</div>
-      <div style="font-size:12px;color:#71717a;margin-top:2px;">Download all names written in this session as a decorated PDF.</div>
-    </div>
-    <a id="pdfBtn" href="#" class="ml-btn ml-btn-ghost" onclick="exportPdf(event)">📄 Export PDF</a>
-  </div>
-
-  <!-- Clear Overlay -->
-  <div class="ml-card" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-    <div>
-      <div style="font-size:14px;font-weight:600;color:#e4e4e7;">Clear Overlay</div>
-      <div style="font-size:12px;color:#71717a;margin-top:2px;">Remove all names currently shown on stream.</div>
-    </div>
-    <button class="ml-btn ml-btn-danger" onclick="clearOverlay()">🗑️ Clear All Names</button>
-  </div>
-
-
 </div>
 
 <script>
@@ -441,7 +611,7 @@ async function sendSubscriber() {
 async function saveHeader() {
   const input = document.getElementById('headerInput');
   const msg   = document.getElementById('headerMsg');
-  const text  = input.value.trim() || "Tonight's Guests";
+  const text  = input.value.trim() || "Q&A — Only 20% Can Answer!";
   const res   = await fetch('/magic-live/api/update-header', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -528,14 +698,14 @@ function selectAnswer(letter) {
 }
 
 function lockForPoll() {
-  ['manualName','subBtn','btnShoutout'].forEach(id => {
+  ['manualName','sendBtn','subBtn','btnShoutout'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.add('poll-locked');
   });
 }
 
 function unlockAfterPoll() {
-  ['manualName','subBtn','btnShoutout'].forEach(id => {
+  ['manualName','sendBtn','subBtn','btnShoutout'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.remove('poll-locked');
   });
@@ -547,14 +717,13 @@ async function startPoll() {
     document.getElementById('pollOptA').value.trim(),
     document.getElementById('pollOptB').value.trim(),
     document.getElementById('pollOptC').value.trim(),
-    document.getElementById('pollOptD').value.trim(),
   ];
   const msg = document.getElementById('pollSetupMsg');
 
   if (!question) { msg.textContent = 'Question is required.'; return; }
   const filtered = opts.filter(Boolean);
   if (filtered.length < 2) { msg.textContent = 'At least 2 options required.'; return; }
-  if (!selectedAnswer) { msg.textContent = 'Select the correct answer (A/B/C/D).'; return; }
+  if (!selectedAnswer) { msg.textContent = 'Select the correct answer (A/B/C).'; return; }
 
   // Validate selected answer is within available options
   const ansIdx = ['A','B','C','D'].indexOf(selectedAnswer);
@@ -607,8 +776,8 @@ async function refreshPollResults() {
       const col     = isRight ? '#4ade80' : colors[i];
       return `<div style="margin-bottom:10px;${!d.active && !isRight ? 'opacity:.4;' : ''}">
         <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
-          <span style="font-size:13px;font-weight:700;color:${col};">${labels[i]}: ${opt}</span>
-          <span style="font-size:13px;color:${isRight ? '#4ade80' : '#fde68a'};font-weight:700;">${pct}% (${votes})</span>
+          <span style="font-size:15px;font-weight:800;color:${col};">${labels[i]}: ${opt}</span>
+          <span style="font-size:15px;color:${isRight ? '#4ade80' : '#fde68a'};font-weight:700;">${pct}% (${votes})</span>
         </div>
         <div style="background:#27272a;border-radius:6px;height:8px;overflow:hidden;">
           <div style="height:100%;border-radius:6px;background:${col};width:${pct}%;transition:width .4s ease;"></div>
@@ -616,23 +785,29 @@ async function refreshPollResults() {
       </div>`;
     }).join('') + `<div style="font-size:12px;color:#52525b;margin-top:6px;">${total} vote${total !== 1 ? 's' : ''} total</div>`;
 
-    // Poll ended (reveal done) — unlock and reset
+    // Poll ended (reveal done) — fire random shoutouts immediately, no popup
     if (!d.active) {
       clearInterval(pollInterval);
       pollInterval = null;
       unlockAfterPoll();
-      // Brief delay then reset to setup view
+      if (!loopRunning) {
+        fetch('/magic-live/api/poll/winners', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ names: [] }),
+        }).catch(() => {});
+      }
+      // Reset form after reveal animation + winner shoutouts play out
       setTimeout(() => {
         document.getElementById('pollSetup').style.display = '';
         document.getElementById('pollLive').style.display  = 'none';
         resetPollForm();
-      }, 8000);
+      }, 18000);
     }
   } catch (_) {}
 }
 
 function resetPollForm() {
-  ['pollQuestion','pollOptA','pollOptB','pollOptC','pollOptD'].forEach(id => {
+  ['pollQuestion','pollOptA','pollOptB','pollOptC'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -657,6 +832,516 @@ async function emergencyStopPoll() {
     resetPollForm();
   }, 8000);
 }
+
+// ── Quiz Bank ────────────────────────────────────────────────────────────────
+async function refreshQuizCount() {
+  try {
+    const d = await fetch('/magic-live/api/quiz/count').then(r => r.json());
+    const badge = document.getElementById('quizCountBadge');
+    if (badge) badge.textContent = (d.remaining || 0) + ' / ' + (d.total || 0) + ' remaining';
+  } catch (_) {}
+}
+
+async function uploadQuizFile() {
+  const input = document.getElementById('quizFileInput');
+  const msg   = document.getElementById('quizUploadMsg');
+  if (!input.files.length) return;
+  const fd = new FormData();
+  fd.append('file', input.files[0]);
+  msg.textContent = 'Uploading…'; msg.style.color = '#a1a1aa';
+  try {
+    const d = await fetch('/magic-live/api/quiz/upload', { method: 'POST', body: fd }).then(r => r.json());
+    if (d.ok) {
+      msg.textContent = '✅ ' + d.count + ' questions uploaded!'; msg.style.color = '#4ade80';
+      refreshQuizCount();
+    } else {
+      msg.textContent = '❌ ' + (d.error || 'Upload failed'); msg.style.color = '#f87171';
+    }
+  } catch (_) { msg.textContent = '❌ Network error'; msg.style.color = '#f87171'; }
+  input.value = '';
+}
+
+async function loadNextQuestion() {
+  const d = await fetch('/magic-live/api/quiz/next').then(r => r.json());
+  const msg = document.getElementById('quizUploadMsg');
+  if (!d.question) {
+    msg.textContent = '♻ All questions used — bank has been reset!'; msg.style.color = '#fde68a';
+    refreshQuizCount();
+    return;
+  }
+  document.getElementById('pollQuestion').value = d.question;
+  document.getElementById('pollOptA').value     = d.option_a;
+  document.getElementById('pollOptB').value = d.option_b;
+  document.getElementById('pollOptC').value = d.option_c || '';
+  selectAnswer(d.answer);
+  refreshQuizCount();
+  msg.textContent = '✅ Question loaded!'; msg.style.color = '#4ade80';
+  document.getElementById('pollCard').scrollIntoView({ behavior: 'smooth' });
+}
+
+async function resetQuizBank() {
+  const d = await fetch('/magic-live/api/quiz/reset', { method: 'POST' }).then(r => r.json());
+  const msg = document.getElementById('quizUploadMsg');
+  msg.textContent = '↺ Reset — ' + (d.count || 0) + ' questions available'; msg.style.color = '#a78bfa';
+  refreshQuizCount();
+}
+
+// ── Name Bank ────────────────────────────────────────────────────────────────
+async function refreshNamesCount() {
+  try {
+    const d = await fetch('/magic-live/api/names/count').then(r => r.json());
+    const badge = document.getElementById('nameCountBadge');
+    if (badge) badge.textContent = d.count > 0 ? d.count + ' names' : '200+ built-in';
+  } catch (_) {}
+}
+
+async function uploadNamesFile() {
+  const input = document.getElementById('namesFileInput');
+  const msg   = document.getElementById('namesUploadMsg');
+  if (!input.files.length) return;
+  const fd = new FormData();
+  fd.append('file', input.files[0]);
+  msg.textContent = 'Uploading…'; msg.style.color = '#a1a1aa';
+  try {
+    const d = await fetch('/magic-live/api/names/upload', { method: 'POST', body: fd }).then(r => r.json());
+    if (d.ok) {
+      msg.textContent = '✅ ' + d.count + ' names loaded!'; msg.style.color = '#4ade80';
+      refreshNamesCount();
+    } else {
+      msg.textContent = '❌ ' + (d.error || 'Upload failed'); msg.style.color = '#f87171';
+    }
+  } catch (_) { msg.textContent = '❌ Network error'; msg.style.color = '#f87171'; }
+  input.value = '';
+}
+
+// ── Session Toggle ────────────────────────────────────────────────────────────
+let sessionActive = <%- sessionActive ? 'true' : 'false' %>;
+
+async function toggleSession() {
+  sessionActive = !sessionActive;
+  const btn = document.getElementById('sessionToggleBtn');
+  if (sessionActive) {
+    btn.textContent = '🟢 LIVE';
+    btn.style.background = '#14532d';
+    btn.style.color = '#4ade80';
+    btn.style.borderColor = '#16a34a';
+  } else {
+    btn.textContent = '⚫ OFF AIR';
+    btn.style.background = '#7f1d1d';
+    btn.style.color = '#f87171';
+    btn.style.borderColor = '#b91c1c';
+  }
+  await fetch('/magic-live/api/session/toggle', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ active: sessionActive }),
+  });
+}
+
+let randomShoutoutOn = <%- settings.random_shoutout_enabled ? 'true' : 'false' %>;
+
+async function toggleRandomShoutout() {
+  randomShoutoutOn = !randomShoutoutOn;
+  const btn = document.getElementById('randomShoutoutToggle');
+  btn.textContent = randomShoutoutOn ? 'ON' : 'OFF';
+  btn.style.background  = randomShoutoutOn ? '#14532d' : '#27272a';
+  btn.style.color       = randomShoutoutOn ? '#4ade80' : '#71717a';
+  btn.style.border      = randomShoutoutOn ? '1.5px solid #16a34a' : 'none';
+  await saveShoutoutSettings();
+}
+
+async function saveShoutoutSettings() {
+  const intervalSecs        = parseInt(document.getElementById('shoutoutInterval').value) || 120;
+  const correctShoutoutCount = parseInt(document.getElementById('correctShoutoutCount').value) ?? 5;
+  const msg = document.getElementById('shoutoutSettingsMsg');
+  try {
+    const d = await fetch('/magic-live/api/settings/random-shoutout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: randomShoutoutOn, intervalSecs, correctShoutoutCount }),
+    }).then(r => r.json());
+    if (d.ok) { msg.textContent = '✅ Saved'; msg.style.color = '#4ade80'; }
+    else      { msg.textContent = '❌ Save failed'; msg.style.color = '#f87171'; }
+  } catch (_) { msg.textContent = '❌ Network error'; msg.style.color = '#f87171'; }
+  setTimeout(() => { msg.textContent = ''; }, 3000);
+}
+
+// ── Guest Queue ───────────────────────────────────────────────────────────────
+function renderQueue(q) {
+  const list = document.getElementById('queueList');
+  const cnt  = document.getElementById('queueCount');
+  if (!list) return;
+  if (!q || q.length === 0) {
+    list.innerHTML = '<div class="queue-empty">Queue is empty</div>';
+    if (cnt) cnt.textContent = '';
+  } else {
+    list.innerHTML = q.map((name, i) =>
+      `<div class="queue-item"><span class="queue-pos">#${i+1}</span><span class="queue-item-name">${escHtml(name)}</span></div>`
+    ).join('');
+    if (cnt) cnt.textContent = `(${q.length})`;
+  }
+}
+
+async function showNext() {
+  const res = await fetch('/magic-live/api/show-next', { method: 'POST' });
+  const d   = await res.json();
+  if (!d.ok && d.error) console.warn(d.error);
+}
+
+async function clearQueue() {
+  if (!confirm('Clear the entire queue?')) return;
+  await fetch('/magic-live/api/clear', { method: 'POST' });
+}
+
+socket.on('queue-update', q => renderQueue(q));
+
+// ── Auto Loop Wizard ──────────────────────────────────────────────────────────
+let wizSelectedMusic = null; // null = no music
+let wizQuizCount     = 0;
+
+async function openLoopWizard() {
+  document.getElementById('loopWizard').classList.add('open');
+  wizGoStep(1);
+}
+
+function closeLoopWizard() {
+  document.getElementById('loopWizard').classList.remove('open');
+  // Stop any music preview
+  wizStopPreview();
+}
+
+async function wizGoStep(n) {
+  ['wizStep1','wizStep2','wizStep3'].forEach((id, i) => {
+    document.getElementById(id).style.display = i + 1 === n ? '' : 'none';
+  });
+  ['wiz-s1','wiz-s2','wiz-s3'].forEach((id, i) => {
+    document.getElementById(id).style.background = i < n ? '#7c3aed' : '#27272a';
+  });
+  if (n === 1) await wizLoadStep1();
+  if (n === 2) await wizLoadStep2();
+}
+
+let loopPollDuration = 60; // seconds — set in step 3
+
+function wizSetTimer(secs, el) {
+  loopPollDuration = secs;
+  document.querySelectorAll('.wiz-timer-btn').forEach(b => {
+    b.classList.toggle('ml-btn-primary', b.dataset.secs == secs);
+    b.classList.toggle('ml-btn-ghost',   b.dataset.secs != secs);
+  });
+}
+
+async function wizLoadStep1() {
+  const status = document.getElementById('wizQuizStatus');
+  const next   = document.getElementById('wizNext1');
+  status.textContent = 'Checking…'; status.style.borderColor = '#27272a'; status.style.color = '#a1a1aa';
+  try {
+    const d = await fetch('/magic-live/api/quiz/count').then(r => r.json());
+    wizQuizCount = d.remaining || 0;
+    if (wizQuizCount > 0) {
+      status.textContent  = `✅ ${wizQuizCount} questions ready`;
+      status.style.borderColor = '#16a34a'; status.style.color = '#4ade80';
+      next.disabled = false;
+    } else {
+      status.textContent  = '⚠ No questions — upload a CSV to continue';
+      status.style.borderColor = '#b91c1c'; status.style.color = '#f87171';
+      next.disabled = true;
+    }
+  } catch (_) {
+    status.textContent = '❌ Failed to load count'; next.disabled = true;
+  }
+}
+
+async function wizUploadCsv() {
+  const input = document.getElementById('wizQuizFile');
+  const msg   = document.getElementById('wizCsvMsg');
+  if (!input.files.length) return;
+  const fd = new FormData();
+  fd.append('file', input.files[0]);
+  msg.textContent = 'Uploading…'; msg.style.color = '#a1a1aa';
+  try {
+    const d = await fetch('/magic-live/api/quiz/upload', { method: 'POST', body: fd }).then(r => r.json());
+    if (d.ok) {
+      msg.textContent = `✅ ${d.count} questions uploaded!`; msg.style.color = '#4ade80';
+      refreshQuizCount();
+      await wizLoadStep1();
+    } else {
+      msg.textContent = '❌ ' + (d.error || 'Upload failed'); msg.style.color = '#f87171';
+    }
+  } catch (_) { msg.textContent = '❌ Network error'; msg.style.color = '#f87171'; }
+  input.value = '';
+}
+
+let wizPreviewAudio = null;
+let wizPreviewId    = null;
+
+async function wizLoadStep2() {
+  const list = document.getElementById('wizMusicList');
+  list.innerHTML = '<div style="color:#52525b;font-size:13px;">Loading music…</div>';
+  try {
+    const d = await fetch('/magic-live/api/music/list').then(r => r.json());
+    const items = [{ id: null, name: 'No Music', gradient: 'linear-gradient(135deg,#27272a,#18181b)' }, ...(d.list || [])];
+    list.innerHTML = items.map(m => `
+      <div class="wiz-music-item ${wizSelectedMusic === m.id ? 'selected' : ''}"
+           onclick="wizSelectMusic(${m.id ? `'${m.id}'` : 'null'}, this)"
+           style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;
+                  border:1.5px solid ${wizSelectedMusic === m.id ? '#7c3aed' : '#27272a'};
+                  cursor:pointer;transition:border-color .2s;background:#09090b;">
+        <div style="width:36px;height:36px;border-radius:8px;flex-shrink:0;background:${m.gradient};"></div>
+        <div style="flex:1;font-size:13px;font-weight:600;color:#e4e4e7;">${escHtml(m.name)}</div>
+        ${m.id ? `<button id="prevBtn-${m.id}" onclick="event.stopPropagation();wizPreview('${m.id}',this)"
+          style="background:#27272a;border:none;color:#a1a1aa;border-radius:8px;padding:5px 10px;cursor:pointer;font-size:12px;">▶ Preview</button>` : ''}
+      </div>`).join('');
+  } catch (_) {
+    list.innerHTML = '<div style="color:#f87171;font-size:13px;">Failed to load music</div>';
+  }
+}
+
+function wizSelectMusic(id, el) {
+  wizSelectedMusic = id;
+  document.querySelectorAll('.wiz-music-item').forEach(e => {
+    e.style.borderColor = '#27272a';
+  });
+  el.style.borderColor = '#7c3aed';
+}
+
+function wizStopPreview() {
+  if (wizPreviewAudio) { wizPreviewAudio.pause(); wizPreviewAudio = null; }
+  if (wizPreviewId) {
+    const btn = document.getElementById(`prevBtn-${wizPreviewId}`);
+    if (btn) btn.textContent = '▶ Preview';
+    wizPreviewId = null;
+  }
+}
+
+function wizPreview(id, btn) {
+  // Same track playing → stop (toggle off)
+  if (wizPreviewId === id) { wizStopPreview(); return; }
+  // Different track → stop old, start new
+  wizStopPreview();
+  wizPreviewId = id;
+  btn.textContent = '⏹ Stop';
+  function startAudio(src, vol) {
+    wizPreviewAudio = new Audio(src);
+    wizPreviewAudio.volume = vol;
+    wizPreviewAudio.onended = () => { wizPreviewId = null; wizPreviewAudio = null; btn.textContent = '▶ Preview'; };
+    wizPreviewAudio.play().catch(() => {});
+  }
+  const previewSrc = `/music/preview-${id}.mp3`;
+  const testAudio  = new Audio(previewSrc);
+  testAudio.addEventListener('error', () => startAudio(`/music/${id}.mp3`, 0.3));
+  testAudio.addEventListener('canplaythrough', () => {
+    testAudio.pause();
+    startAudio(previewSrc, 0.5);
+  }, { once: true });
+  testAudio.load();
+}
+
+
+
+async function wizGoLive() {
+  wizStopPreview();
+  closeLoopWizard();
+  socket.emit('loop-music', { musicId: wizSelectedMusic });
+  await startAutoLoop();
+}
+
+// ── Auto Loop ─────────────────────────────────────────────────────────────────
+let loopRunning   = false;
+let loopPaused    = false;
+let loopTimeout   = null;
+let loopQuestion  = 0;
+
+function setLoopStatus(text, color) {
+  const badge = document.getElementById('loopStatusBadge');
+  const msg   = document.getElementById('loopMsg');
+  if (badge) { badge.textContent = text; badge.style.background = color + '22'; badge.style.color = color; }
+  if (msg)   { msg.textContent = text === 'IDLE' ? '' : text; msg.style.color = color; }
+}
+
+async function startAutoLoop() {
+  const d = await fetch('/magic-live/api/quiz/count').then(r => r.json()).catch(() => ({}));
+  if ((d.remaining || 0) === 0) {
+    await fetch('/magic-live/api/quiz/reset', { method: 'POST' }).catch(() => {});
+    refreshQuizCount();
+  }
+  loopRunning  = true;
+  loopPaused   = false;
+  loopQuestion = 0;
+  document.getElementById('loopStartBtn').style.display  = 'none';
+  document.getElementById('loopPauseBtn').style.display  = '';
+  document.getElementById('loopResumeBtn').style.display = 'none';
+  document.getElementById('loopStopBtn').style.display   = '';
+  setLoopStatus('RUNNING', '#4ade80');
+  runLoopIteration();
+}
+
+function stopAutoLoop() {
+  loopRunning = false;
+  loopPaused  = false;
+  if (loopTimeout) { clearTimeout(loopTimeout); loopTimeout = null; }
+  document.getElementById('loopPauseBtn').style.display  = 'none';
+  document.getElementById('loopResumeBtn').style.display = 'none';
+  if (pollInterval) {
+    clearInterval(pollInterval); pollInterval = null;
+    fetch('/magic-live/api/poll/reveal', { method: 'POST' }).catch(() => {});
+  }
+  // Stop overlay music
+  socket.emit('loop-music', { musicId: null });
+  // Show STANDBY on overlay if session was live
+  if (sessionActive) {
+    sessionActive = false;
+    const sBtn = document.getElementById('sessionToggleBtn');
+    if (sBtn) {
+      sBtn.textContent = '🔴 OFF AIR';
+      sBtn.style.background   = '#7f1d1d';
+      sBtn.style.color        = '#f87171';
+      sBtn.style.borderColor  = '#b91c1c';
+    }
+    fetch('/magic-live/api/session/toggle', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active: false }),
+    }).catch(() => {});
+  }
+  unlockAfterPoll();
+  document.getElementById('pollSetup').style.display = '';
+  document.getElementById('pollLive').style.display  = 'none';
+  resetPollForm();
+  document.getElementById('loopStartBtn').style.display = '';
+  document.getElementById('loopStopBtn').style.display  = 'none';
+  const lbl = document.getElementById('pollLoopLabel');
+  if (lbl) lbl.textContent = '';
+  setLoopStatus('IDLE', '#71717a');
+  const badge = document.getElementById('loopStatusBadge');
+  if (badge) { badge.style.background = '#27272a'; badge.style.color = '#71717a'; }
+}
+
+function pauseLoop() {
+  if (!loopRunning || loopPaused) return;
+  loopPaused  = true;
+  loopRunning = false;
+  if (loopTimeout) { clearTimeout(loopTimeout); loopTimeout = null; }
+  if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+  // Unlock all manual controls so user can post questions, answers, shoutouts freely
+  unlockAfterPoll();
+  document.getElementById('pollSetup').style.display = '';
+  document.getElementById('pollLive').style.display  = 'none';
+  resetPollForm();
+  document.getElementById('loopPauseBtn').style.display  = 'none';
+  document.getElementById('loopResumeBtn').style.display = '';
+  setLoopStatus(`⏸ Paused after Q${loopQuestion} — manual mode`, '#f59e0b');
+}
+
+function resumeLoop() {
+  if (!loopPaused) return;
+  loopPaused  = false;
+  loopRunning = true;
+  document.getElementById('loopResumeBtn').style.display = 'none';
+  document.getElementById('loopPauseBtn').style.display  = '';
+  setLoopStatus('RUNNING', '#4ade80');
+  runLoopIteration();
+}
+
+async function runLoopIteration() {
+  if (!loopRunning) return;
+
+  // Step 1: Load next question
+  setLoopStatus('Loading question…', '#a78bfa');
+  const q = await fetch('/magic-live/api/quiz/next').then(r => r.json()).catch(() => ({}));
+
+  if (!q.question) {
+    // All questions done — loop complete
+    setLoopStatus('✅ All questions done!', '#4ade80');
+    loopRunning = false;
+    document.getElementById('loopStartBtn').style.display = '';
+    document.getElementById('loopStopBtn').style.display  = 'none';
+    refreshQuizCount();
+    return;
+  }
+
+  loopQuestion++;
+  refreshQuizCount();
+
+  // Fill poll form
+  document.getElementById('pollQuestion').value = q.question;
+  document.getElementById('pollOptA').value     = q.option_a;
+  document.getElementById('pollOptB').value     = q.option_b;
+  document.getElementById('pollOptC').value     = q.option_c || '';
+  selectAnswer(q.answer);
+
+  const lbl = document.getElementById('pollLoopLabel');
+  if (lbl) lbl.textContent = `(Q${loopQuestion})`;
+
+  // Step 2: Start poll
+  setLoopStatus(`Q${loopQuestion}: Poll running…`, '#fde68a');
+  const opts = [q.option_a, q.option_b, q.option_c].filter(Boolean);
+  await fetch('/magic-live/api/poll/start', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ question: q.question, options: opts, answer: q.answer, duration: loopPollDuration }),
+  }).catch(() => {});
+
+  pollStartTime = Date.now();
+  document.getElementById('pollLiveQuestion').textContent = q.question;
+  document.getElementById('pollSetup').style.display = 'none';
+  document.getElementById('pollLive').style.display  = '';
+  lockForPoll();
+  pollInterval = setInterval(refreshPollResults, 1000);
+
+  // Step 3: Auto-reveal after selected timer duration
+  loopTimeout = setTimeout(async () => {
+    if (!loopRunning) return;
+    clearInterval(pollInterval); pollInterval = null;
+    setLoopStatus(`Q${loopQuestion}: Revealing answer…`, '#f9a8d4');
+    await fetch('/magic-live/api/poll/reveal', { method: 'POST' }).catch(() => {});
+    unlockAfterPoll();
+
+    // Step 4: Fire shoutouts AFTER answer has shown + faded (7s reveal + 3s buffer = 10s)
+    setTimeout(() => {
+      if (!loopRunning && !loopPaused) return;
+      fetch('/magic-live/api/poll/winners', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ names: [] }),
+      }).catch(() => {});
+    }, 10000);
+
+    // Step 5: Wait for answer(10s) + N shoutouts×4.7s + 300ms buffer
+    const numShoutouts = parseInt(document.getElementById('correctShoutoutCount').value) || 5;
+    const waitMs = 10000 + (numShoutouts * 4700) + 300;
+
+    setLoopStatus(`Q${loopQuestion}: Loading next question…`, '#06b6d4');
+
+    // Reset poll UI
+    setTimeout(() => {
+      document.getElementById('pollSetup').style.display = '';
+      document.getElementById('pollLive').style.display  = 'none';
+      resetPollForm();
+    }, 2000);
+
+    loopTimeout = setTimeout(() => {
+      if (!loopRunning || loopPaused) return;
+      runLoopIteration(); // next question
+    }, waitMs);
+
+  }, loopPollDuration * 1000);
+}
+
+// Restore saved shoutout settings
+(function initShoutoutUI() {
+  const intervalEl = document.getElementById('shoutoutInterval');
+  const countEl    = document.getElementById('correctShoutoutCount');
+  if (intervalEl) intervalEl.value = <%- settings.random_shoutout_interval || 120 %>;
+  if (countEl)    countEl.value    = <%- settings.correct_shoutout_count ?? 5 %>;
+  const btn = document.getElementById('randomShoutoutToggle');
+  if (btn && randomShoutoutOn) {
+    btn.textContent   = 'ON';
+    btn.style.background  = '#14532d';
+    btn.style.color       = '#4ade80';
+    btn.style.border      = '1.5px solid #16a34a';
+  }
+})();
 
 </script>
 

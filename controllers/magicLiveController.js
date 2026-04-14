@@ -1,9 +1,13 @@
 import PDFDocument from 'pdfkit';
+import fs from 'fs';
 import {
   addToQueue, getQueue, isPollerRunning,
   startChatPoller, stopChatPoller,
   getSettings, upsertSettings,
   startPoll, endPoll, getPoll,
+  getCorrectVoterNames,
+  startRandomShoutout, stopRandomShoutout,
+  getRandomBuiltinNames,
 } from '../services/magicLiveService.js';
 
 // ── Subscription helper ───────────────────────────────────────────────────────
@@ -22,12 +26,18 @@ async function hasActiveSubscription(userId, db) {
 
 // ── Page routes ───────────────────────────────────────────────────────────────
 
-export async function getDashboard(req, res, db) {
+export async function getDashboard(req, res, db, io) {
   try {
     const userId   = req.user.id;
     const settings = await getSettings(userId, db);
     const running  = isPollerRunning(userId);
     const queue    = getQueue(userId);
+
+    // Re-arm random shoutout timer after server restart
+    if (settings.random_shoutout_enabled) {
+      const intervalMs = (settings.random_shoutout_interval || 120) * 1000;
+      startRandomShoutout(userId, intervalMs, db, io);
+    }
 
     // YouTube connection status
     const { rows } = await db.query(
@@ -39,6 +49,8 @@ export async function getDashboard(req, res, db) {
 
     const sub = await hasActiveSubscription(userId, db);
 
+    const sessionActive = !!(settings.session_active ?? 0);
+
     res.render('magic-live/dashboard', {
       currentUser: req.user,
       settings,
@@ -46,6 +58,7 @@ export async function getDashboard(req, res, db) {
       queue,
       ytAccount,
       hasPro: !!sub,
+      sessionActive,
     });
   } catch (err) {
     console.error('[MagicLive] getDashboard error:', err.message);
@@ -60,9 +73,10 @@ export async function getOverlay(req, res, db) {
   const vertical = req.query.mode === 'vertical';
 
   try {
-    const settings   = await getSettings(userId, db);
-    const headerText = (settings.header_text || "Tonight's Guests").replace(/</g, '&lt;');
-    res.render('magic-live/overlay', { userId, settings, headerText, vertical });
+    const settings      = await getSettings(userId, db);
+    const headerText    = (settings.header_text || "Q&A \u2014 Only 20% Can Answer!").replace(/</g, '&lt;');
+    const sessionActive = !!(settings.session_active ?? 0);
+    res.render('magic-live/overlay', { userId, settings, headerText, vertical, sessionActive });
   } catch (err) {
     console.error('[MagicLive] getOverlay error:', err.message);
     res.status(500).send('Error loading overlay');
@@ -172,7 +186,7 @@ export async function apiUpdateSettings(req, res, db) {
 export async function apiUpdateHeader(req, res, db, io) {
   let { headerText } = req.body;
   if (typeof headerText !== 'string') return res.status(400).json({ error: 'headerText required' });
-  headerText = headerText.trim().slice(0, 80) || "Tonight's Guests";
+  headerText = headerText.trim().slice(0, 80) || "Q&A \u2014 Only 20% Can Answer!";
   try {
     const s = await getSettings(req.user.id, db);
     await upsertSettings(req.user.id, {
@@ -286,7 +300,7 @@ export function apiShoutout(req, res, io) {
 // ── Live Poll ─────────────────────────────────────────────────────────────────
 
 export function apiPollStart(req, res, io) {
-  const { question, options, answer } = req.body;
+  const { question, options, answer, duration } = req.body;
   if (!question || typeof question !== 'string') return res.status(400).json({ error: 'Question required' });
   if (!Array.isArray(options)) return res.status(400).json({ error: 'Options required' });
   const filtered = options.map(o => String(o || '').trim()).filter(Boolean).slice(0, 4);
@@ -295,15 +309,16 @@ export function apiPollStart(req, res, io) {
   if (answerIdx < 0 || answerIdx >= filtered.length)
     return res.status(400).json({ error: 'Select a valid correct answer' });
 
-  const q = question.trim().slice(0, 80);
+  const q    = question.trim().slice(0, 80);
   const opts = filtered.map(o => o.slice(0, 40));
+  const dur  = [30, 45, 60].includes(Number(duration)) ? Number(duration) : 60;
   startPoll(req.user.id, q, opts, answer);
   // answer is NOT sent to overlay — only revealed after countdown
-  io.to(`magic:${req.user.id}`).emit('poll-start', { question: q, options: opts });
+  io.to(`magic:${req.user.id}`).emit('poll-start', { question: q, options: opts, duration: dur });
   return res.json({ ok: true });
 }
 
-export function apiPollReveal(req, res, io) {
+export async function apiPollReveal(req, res, io, db) {
   endPoll(req.user.id);
   const p = getPoll(req.user.id);
   io.to(`magic:${req.user.id}`).emit('poll-reveal', {
@@ -477,4 +492,264 @@ export async function exportPdf(req, res, db) {
   }
 
   doc.end();
+}
+
+// ── Quiz Bank ─────────────────────────────────────────────────────────────────
+
+// Simple CSV parser — handles quoted fields containing commas
+function parseCsvLine(line) {
+  const result = [];
+  let cur = '';
+  let inQuote = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuote && line[i + 1] === '"') { cur += '"'; i++; }
+      else inQuote = !inQuote;
+    } else if (ch === ',' && !inQuote) {
+      result.push(cur.trim()); cur = '';
+    } else {
+      cur += ch;
+    }
+  }
+  result.push(cur.trim());
+  return result;
+}
+
+export async function apiQuizUpload(req, res, db) {
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+  try {
+    const content = fs.readFileSync(req.file.path, 'utf8');
+    fs.unlink(req.file.path, () => {}); // clean up temp file
+
+    const lines = content.replace(/\r/g, '').split('\n').filter(Boolean);
+    if (lines.length < 2) return res.status(400).json({ error: 'File is empty or has no data rows' });
+
+    const rows = [];
+    const VALID_ANSWERS = new Set(['A','B','C','D']);
+
+    for (let i = 1; i < lines.length; i++) {
+      const cols = parseCsvLine(lines[i]).map(c => c.replace(/^"|"$/g, '').trim());
+      // Fixed format: question, option_a, option_b, option_c, answer  (always 5 columns)
+      if (cols.length < 5) continue;
+      const [question, option_a, option_b, option_c, answer] = cols;
+      if (!question || !option_a || !option_b || !option_c) continue;
+      const ans = answer.toUpperCase();
+      if (!VALID_ANSWERS.has(ans)) continue;
+      // A/B/C only — answer must be within 3 options
+      if (ans === 'D') continue;
+      rows.push([req.user.id, question.slice(0,255), option_a.slice(0,100),
+                 option_b.slice(0,100), option_c.slice(0,100), null, ans]);
+    }
+
+    if (rows.length === 0) return res.status(400).json({ error: 'No valid rows found. Check the format.' });
+
+    await db.query('DELETE FROM magic_live_quiz_bank WHERE user_id = ?', [req.user.id]);
+    for (const row of rows) {
+      await db.query(
+        'INSERT INTO magic_live_quiz_bank (user_id,question,option_a,option_b,option_c,option_d,answer) VALUES (?,?,?,?,?,?,?)',
+        row
+      );
+    }
+    return res.json({ ok: true, count: rows.length });
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to process file' });
+  }
+}
+
+export async function apiQuizNext(req, res, db) {
+  const userId = req.user.id;
+  try {
+    let { rows } = await db.query(
+      'SELECT * FROM magic_live_quiz_bank WHERE user_id = ? AND used = 0 ORDER BY RAND() LIMIT 1',
+      [userId]
+    );
+    // If all used, reset and retry
+    if (!rows.length) {
+      await db.query('UPDATE magic_live_quiz_bank SET used = 0 WHERE user_id = ?', [userId]);
+      ({ rows } = await db.query(
+        'SELECT * FROM magic_live_quiz_bank WHERE user_id = ? AND used = 0 ORDER BY RAND() LIMIT 1',
+        [userId]
+      ));
+    }
+    if (!rows.length) return res.json({ question: null, remaining: 0 });
+
+    const q = rows[0];
+    await db.query('UPDATE magic_live_quiz_bank SET used = 1 WHERE id = ?', [q.id]);
+    const { rows: countRows } = await db.query(
+      'SELECT COUNT(*) AS cnt FROM magic_live_quiz_bank WHERE user_id = ? AND used = 0', [userId]
+    );
+    return res.json({
+      question: q.question,
+      option_a: q.option_a,
+      option_b: q.option_b,
+      option_c: q.option_c || '',
+      option_d: q.option_d || '',
+      answer:   q.answer,
+      remaining: countRows[0].cnt,
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'DB error' });
+  }
+}
+
+export async function apiQuizReset(req, res, db) {
+  await db.query('UPDATE magic_live_quiz_bank SET used = 0 WHERE user_id = ?', [req.user.id]).catch(() => {});
+  const { rows } = await db.query(
+    'SELECT COUNT(*) AS cnt FROM magic_live_quiz_bank WHERE user_id = ?', [req.user.id]
+  );
+  return res.json({ ok: true, count: rows[0]?.cnt || 0 });
+}
+
+export async function apiQuizCount(req, res, db) {
+  try {
+    const { rows } = await db.query(
+      'SELECT COUNT(*) AS total, SUM(used=0) AS remaining FROM magic_live_quiz_bank WHERE user_id = ?',
+      [req.user.id]
+    );
+    return res.json({ total: rows[0].total || 0, remaining: rows[0].remaining || 0 });
+  } catch (_) {
+    return res.json({ total: 0, remaining: 0 });
+  }
+}
+
+// ── Name Bank ─────────────────────────────────────────────────────────────────
+
+export async function apiNamesUpload(req, res, db) {
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+  try {
+    const content = fs.readFileSync(req.file.path, 'utf8');
+    fs.unlink(req.file.path, () => {});
+
+    const names = content.replace(/\r/g, '').split('\n')
+      .map(l => l.replace(/^"|"$/g, '').trim())
+      .filter(n => n && n.length <= 100)
+      .slice(0, 500); // cap at 500 names
+
+    if (names.length === 0) return res.status(400).json({ error: 'No valid names found' });
+
+    await db.query('DELETE FROM magic_live_name_bank WHERE user_id = ?', [req.user.id]);
+    for (const name of names) {
+      await db.query('INSERT INTO magic_live_name_bank (user_id, name) VALUES (?, ?)', [req.user.id, name]);
+    }
+    return res.json({ ok: true, count: names.length });
+  } catch (_) {
+    return res.status(500).json({ error: 'Failed to process file' });
+  }
+}
+
+export async function apiNamesCount(req, res, db) {
+  try {
+    const { rows } = await db.query(
+      'SELECT COUNT(*) AS cnt FROM magic_live_name_bank WHERE user_id = ?', [req.user.id]
+    );
+    return res.json({ count: rows[0]?.cnt || 0 });
+  } catch (_) {
+    return res.json({ count: 0 });
+  }
+}
+
+// ── Random Shoutout Toggle ────────────────────────────────────────────────────
+
+export async function apiPollWinners(req, res, io, db) {
+  const userId = req.user.id;
+  let names = (req.body.names || []).map(n => String(n).trim()).filter(Boolean).slice(0, 20);
+
+  // If admin submitted empty list, use random names now
+  if (names.length === 0) {
+    try {
+      const { rows: s } = await db.query(
+        'SELECT correct_shoutout_count FROM magic_live_settings WHERE user_id = ?',
+        [userId]
+      );
+      const maxCount = s[0]?.correct_shoutout_count ?? 5;
+      if (maxCount > 0) {
+        // Try name bank first, fall back to built-in pool
+        const { rows: nb } = await db.query(
+          'SELECT name FROM magic_live_name_bank WHERE user_id = ? ORDER BY RAND() LIMIT ?',
+          [userId, maxCount]
+        ).catch(() => ({ rows: [] }));
+        if (nb.length > 0) {
+          names = nb.map(r => r.name);
+        } else {
+          names = getRandomBuiltinNames(maxCount);
+        }
+      }
+    } catch (_) {
+      names = getRandomBuiltinNames(5);
+    }
+  }
+
+  names.forEach((name, i) => {
+    setTimeout(() => io.to(`magic:${userId}`).emit('show-shoutout', { name }), i * 3000);
+  });
+
+  return res.json({ ok: true, count: names.length });
+}
+
+export async function apiToggleRandomShoutout(req, res, db, io) {
+  const { enabled, intervalSecs, correctShoutoutCount } = req.body;
+  const userId = req.user.id;
+  const isEnabled = !!enabled;
+  const interval  = Math.max(30, Math.min(600, parseInt(intervalSecs) || 120));
+  const csc       = Math.max(0, Math.min(20, parseInt(correctShoutoutCount) ?? 5));
+
+  await db.query(
+    `INSERT INTO magic_live_settings (user_id, random_shoutout_enabled, random_shoutout_interval, correct_shoutout_count)
+     VALUES (?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE
+       random_shoutout_enabled  = VALUES(random_shoutout_enabled),
+       random_shoutout_interval = VALUES(random_shoutout_interval),
+       correct_shoutout_count   = VALUES(correct_shoutout_count)`,
+    [userId, isEnabled ? 1 : 0, interval, csc]
+  ).catch(() => {});
+
+  if (isEnabled) {
+    startRandomShoutout(userId, interval * 1000, db, io);
+  } else {
+    stopRandomShoutout(userId);
+  }
+
+  return res.json({ ok: true, enabled: isEnabled, intervalSecs: interval, correctShoutoutCount: csc });
+}
+
+// ── Music List (for Auto Loop wizard) ────────────────────────────────────────
+const MUSIC_META = {
+  happy:    { name: 'Happy Rhythm',        gradient: 'linear-gradient(135deg,#f59e0b,#ef4444)' },
+  scary:    { name: 'Dark Spirits',         gradient: 'linear-gradient(135deg,#7f1d1d,#450a0a)' },
+  storm:    { name: 'Quiet Before Storm',   gradient: 'linear-gradient(135deg,#6366f1,#4338ca)' },
+  peaceful: { name: 'Peaceful Vibes',       gradient: 'linear-gradient(135deg,#22c55e,#16a34a)' },
+  symphony: { name: 'Brilliant Symphony',   gradient: 'linear-gradient(135deg,#8b5cf6,#7c3aed)' },
+  shadows:  { name: 'Breathing Shadows',    gradient: 'linear-gradient(135deg,#312e81,#1e1b4b)' },
+};
+
+export async function apiMusicList(req, res, db) {
+  try {
+    const { rows } = await db.query(
+      `SELECT id FROM reels_music_presets WHERE full_audio IS NOT NULL`
+    );
+    const list = rows.map(r => ({
+      id:       r.id,
+      name:     MUSIC_META[r.id]?.name     || r.id,
+      gradient: MUSIC_META[r.id]?.gradient || 'linear-gradient(135deg,#27272a,#18181b)',
+    }));
+    return res.json({ ok: true, list });
+  } catch (_) {
+    return res.json({ ok: true, list: [] });
+  }
+}
+
+// ── Session Toggle (overlay ON/OFF) ──────────────────────────────────────────
+export async function apiSessionToggle(req, res, db, io) {
+  const userId = req.user.id;
+  const active = !!req.body.active;
+
+  await db.query(
+    `INSERT INTO magic_live_settings (user_id, session_active) VALUES (?, ?)
+     ON DUPLICATE KEY UPDATE session_active = VALUES(session_active)`,
+    [userId, active ? 1 : 0]
+  ).catch(() => {});
+
+  io.to(`magic:${userId}`).emit('session-toggle', { active });
+  return res.json({ ok: true, active });
 }

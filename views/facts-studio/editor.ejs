@@ -1,0 +1,832 @@
+<%- include('../partials/header', { title: 'Facts Studio — SmrAI Studio' }) %>
+
+<style>
+:root { --bg:#09090b; --card:#18181b; --border:#27272a; --accent:#7c3aed; }
+body, #fs-page { background:var(--bg); color:#f4f4f5; font-family:'Inter',sans-serif; min-height:100vh; }
+#fs-page { max-width:1400px; margin:0 auto; padding:24px 20px 60px; }
+
+/* ── Header ── */
+.fs-header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:24px; }
+.fs-title  { font-size:1.5rem; font-weight:800; display:flex; align-items:center; gap:10px; }
+
+/* ── 3-panel grid ── */
+.fs-grid { display:grid; grid-template-columns:290px 1fr 270px; gap:16px; align-items:start; }
+@media(max-width:1100px) { .fs-grid { grid-template-columns:260px 1fr 240px; } }
+@media(max-width:820px)  { .fs-grid { grid-template-columns:1fr; } }
+
+/* ── Cards ── */
+.fs-card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:18px; }
+.fs-label { font-size:0.75rem; font-weight:700; color:#71717a; text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px; display:block; }
+.fs-input {
+  width:100%; background:#09090b; border:1px solid var(--border); border-radius:8px;
+  color:#f4f4f5; font-size:14px; padding:9px 12px; box-sizing:border-box; outline:none;
+  font-family:inherit; transition:border-color .15s;
+}
+.fs-input:focus { border-color:var(--accent); }
+.fs-section { margin-top:16px; }
+
+/* ── Body editor ── */
+#bodyEditor {
+  width:100%; min-height:130px; background:#09090b; border:1px solid var(--border); border-radius:8px;
+  color:#f4f4f5; font-size:14px; padding:10px 12px; box-sizing:border-box; outline:none;
+  line-height:1.6; white-space:pre-wrap; word-break:break-word;
+  font-family:inherit; cursor:text;
+}
+#bodyEditor:focus { border-color:var(--accent); }
+#bodyEditor span[data-color] { font-weight:700; }
+
+/* ── Color chips ── */
+.color-chips { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+.color-chip {
+  width:28px; height:28px; border-radius:50%; cursor:pointer; border:2.5px solid transparent;
+  transition:transform .12s, border-color .12s; flex-shrink:0;
+}
+.color-chip:hover, .color-chip.active { transform:scale(1.2); border-color:#fff; }
+
+/* ── Buttons ── */
+.fs-btn {
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  padding:9px 16px; border-radius:8px; font-size:13px; font-weight:600;
+  cursor:pointer; border:none; transition:opacity .15s, transform .1s; white-space:nowrap;
+}
+.fs-btn:active { transform:scale(.97); }
+.fs-btn:disabled { opacity:.45; cursor:not-allowed; }
+.fs-btn-primary  { background:var(--accent); color:#fff; }
+.fs-btn-outline  { background:transparent; border:1.5px solid var(--border); color:#d4d4d8; }
+.fs-btn-outline:hover { border-color:var(--accent); color:#c4b5fd; }
+.fs-btn-danger   { background:#7f1d1d; color:#fca5a5; }
+.fs-btn-green    { background:#14532d; color:#4ade80; }
+.fs-btn-full     { width:100%; }
+
+/* ── Canvas preview wrapper ── */
+#previewWrap {
+  display:flex; align-items:center; justify-content:center;
+  background:#000; border-radius:16px; overflow:hidden; position:relative;
+  min-height:300px;
+}
+#previewCanvas {
+  display:block; max-width:100%; max-height:70vh;
+  /* actual size 1080×1920, scaled by CSS */
+  width:auto; height:auto;
+}
+.preview-label {
+  position:absolute; top:10px; left:14px;
+  font-size:11px; font-weight:700; color:rgba(255,255,255,.5); letter-spacing:.08em;
+  pointer-events:none;
+}
+
+/* ── Background selector ── */
+.bg-type-row { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
+.bg-type-btn {
+  padding:6px 14px; border-radius:6px; font-size:12px; font-weight:600;
+  cursor:pointer; border:1.5px solid var(--border); color:#a1a1aa; background:transparent;
+  transition:border-color .15s, color .15s;
+}
+.bg-type-btn.active { border-color:var(--accent); color:#c4b5fd; background:rgba(124,58,237,.12); }
+
+/* ── Recording indicator ── */
+#recIndicator {
+  display:none; position:absolute; top:10px; right:14px;
+  background:#ef4444; color:#fff; font-size:11px; font-weight:700;
+  padding:3px 10px; border-radius:999px; letter-spacing:.06em;
+  animation: recBlink 1s ease-in-out infinite;
+}
+@keyframes recBlink { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+/* ── Drafts panel ── */
+.draft-card {
+  background:#09090b; border:1px solid var(--border); border-radius:10px;
+  padding:12px; cursor:pointer; transition:border-color .15s;
+  margin-bottom:10px;
+}
+.draft-card:hover { border-color:var(--accent); }
+.draft-card-title { font-size:13px; font-weight:700; color:#f4f4f5; margin-bottom:4px; }
+.draft-card-body  { font-size:12px; color:#71717a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.draft-card-date  { font-size:11px; color:#52525b; margin-top:4px; }
+.draft-actions    { display:flex; gap:6px; margin-top:8px; }
+
+/* ── Modal (saved drafts) ── */
+#draftsModal {
+  display:none; position:fixed; inset:0; background:rgba(0,0,0,.7);
+  z-index:200; align-items:center; justify-content:center;
+}
+#draftsModal.open { display:flex; }
+#draftsInner {
+  background:var(--card); border:1px solid var(--border); border-radius:18px;
+  padding:24px; width:min(500px,94vw); max-height:80vh; overflow-y:auto;
+}
+
+/* ── Status msg ── */
+#fsMsg { font-size:13px; color:#a1a1aa; min-height:18px; margin-top:8px; }
+</style>
+
+<div id="fs-page">
+
+  <!-- Header -->
+  <div class="fs-header">
+    <div class="fs-title">🎬 Facts Studio</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="fs-btn fs-btn-outline" onclick="openDrafts()">📂 My Saved (<span id="draftCount"><%- drafts.length %></span>)</button>
+      <a href="/dashboard" class="fs-btn fs-btn-outline">← Dashboard</a>
+    </div>
+  </div>
+
+  <div class="fs-grid">
+
+    <!-- ── LEFT: Text Editor ── -->
+    <div style="display:flex;flex-direction:column;gap:14px;">
+
+      <!-- Title -->
+      <div class="fs-card">
+        <span class="fs-label">Title</span>
+        <input id="titleInput" class="fs-input" value="DID YOU KNOW?" maxlength="60" oninput="scheduleRender()" />
+        <div class="fs-section">
+          <span class="fs-label">Title Color</span>
+          <div class="color-chips" id="titleColorChips">
+            <div class="color-chip active" style="background:#22c55e;" data-color="#22c55e" onclick="setTitleColor(this)"></div>
+            <div class="color-chip" style="background:#ef4444;" data-color="#ef4444" onclick="setTitleColor(this)"></div>
+            <div class="color-chip" style="background:#f59e0b;" data-color="#f59e0b" onclick="setTitleColor(this)"></div>
+            <div class="color-chip" style="background:#f9a8d4;" data-color="#f9a8d4" onclick="setTitleColor(this)"></div>
+            <div class="color-chip" style="background:#67e8f9;" data-color="#67e8f9" onclick="setTitleColor(this)"></div>
+            <div class="color-chip" style="background:#ffffff;" data-color="#ffffff" onclick="setTitleColor(this)"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Body + Highlights -->
+      <div class="fs-card">
+        <span class="fs-label">Fact / Body Text</span>
+        <div id="bodyEditor" contenteditable="true" spellcheck="true"
+             oninput="scheduleRender()"
+             onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();document.execCommand('insertLineBreak');}">At 145 km/h, a football doesn't hit a goalkeeper's glove — it sinks into it. That half-centimeter of latex grips the spin, absorbs the impact, kills the rebound. Bare hands never could.</div>
+
+        <div class="fs-section">
+          <span class="fs-label">Highlight selected text</span>
+          <div class="color-chips" id="highlightChips">
+            <div class="color-chip" style="background:#ef4444;" data-color="#ef4444" title="Red — shocking" onclick="applyHighlight(this.dataset.color)"></div>
+            <div class="color-chip" style="background:#22c55e;" data-color="#22c55e" title="Green — key fact" onclick="applyHighlight(this.dataset.color)"></div>
+            <div class="color-chip" style="background:#f59e0b;" data-color="#f59e0b" title="Amber — numbers/stats" onclick="applyHighlight(this.dataset.color)"></div>
+            <div class="color-chip" style="background:#f9a8d4;" data-color="#f9a8d4" title="Pink — superlative" onclick="applyHighlight(this.dataset.color)"></div>
+            <div class="color-chip" style="background:#67e8f9;" data-color="#67e8f9" title="Cyan — technical" onclick="applyHighlight(this.dataset.color)"></div>
+            <div class="color-chip" style="background:#71717a;" data-color="remove" title="Remove highlight" onclick="applyHighlight('remove')" style="background:linear-gradient(135deg,#3f3f46,#52525b);">✕</div>
+          </div>
+          <div style="margin-top:10px;">
+            <button class="fs-btn fs-btn-outline fs-btn-full" onclick="aiHighlight()">✨ AI Auto-Highlight</button>
+          </div>
+        </div>
+      </div>
+
+      <input type="hidden" id="currentDraftId" value="" />
+      <p id="fsMsg"></p>
+    </div>
+
+    <!-- ── CENTER: Live Preview ── -->
+    <div class="fs-card" style="padding:12px;">
+      <div id="previewWrap">
+        <span class="preview-label">PREVIEW · 1080×1920</span>
+        <span id="recIndicator">● REC</span>
+        <canvas id="previewCanvas" width="1080" height="1920"></canvas>
+      </div>
+    </div>
+
+    <!-- ── RIGHT: Background + Export ── -->
+    <div style="display:flex;flex-direction:column;gap:14px;">
+
+      <!-- Background -->
+      <div class="fs-card">
+        <span class="fs-label">Background</span>
+        <div class="bg-type-row">
+          <button class="bg-type-btn active" data-type="color" onclick="setBgType('color', this)">Color</button>
+          <button class="bg-type-btn" data-type="image" onclick="setBgType('image', this)">Image</button>
+          <button class="bg-type-btn" data-type="video" onclick="setBgType('video', this)">Video</button>
+        </div>
+
+        <!-- Color picker -->
+        <div id="bgColorPanel">
+          <input type="color" id="bgColorInput" value="#000000" style="width:100%;height:40px;border:none;border-radius:8px;cursor:pointer;background:transparent;"
+                 oninput="scheduleRender()" />
+        </div>
+
+        <!-- Image/Video upload -->
+        <div id="bgUploadPanel" style="display:none;">
+          <label style="display:block;border:1.5px dashed var(--border);border-radius:8px;padding:20px;text-align:center;cursor:pointer;color:#71717a;font-size:13px;" for="bgFileInput">
+            📁 Click to upload<br><small id="uploadHint">JPG, PNG, MP4, WebM</small>
+          </label>
+          <input type="file" id="bgFileInput" style="display:none;" accept="image/*,video/*" onchange="uploadBg(this)" />
+          <div id="bgPreviewThumb" style="display:none;margin-top:8px;border-radius:8px;overflow:hidden;max-height:120px;">
+            <img id="bgThumbImg" src="" style="width:100%;object-fit:cover;display:none;" />
+            <video id="bgThumbVid" src="" style="width:100%;object-fit:cover;display:none;" muted loop playsinline></video>
+          </div>
+        </div>
+      </div>
+
+      <!-- Layout Modes -->
+      <div class="fs-card">
+        <span class="fs-label">Layout</span>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <button id="flipModeBtn" class="fs-btn fs-btn-outline fs-btn-full" onclick="toggleFlipMode()">🔃 Flip Layout: OFF</button>
+          <button id="liveModeBtn" class="fs-btn fs-btn-outline fs-btn-full" onclick="toggleLiveMode()">🔴 Live Mode: OFF</button>
+        </div>
+        <p style="font-size:11px;color:#52525b;margin-top:6px;">Flip moves gradient &amp; text to top. Live shifts text up above comments.</p>
+      </div>
+
+      <!-- Export -->
+      <div class="fs-card">
+        <span class="fs-label">Export</span>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <button class="fs-btn fs-btn-primary fs-btn-full" onclick="exportPng()">📷 Download PNG</button>
+          <button class="fs-btn fs-btn-outline fs-btn-full" id="recBtn" onclick="toggleRecording()">🎬 Record 5s Video</button>
+        </div>
+      </div>
+
+      <!-- Save -->
+      <div class="fs-card">
+        <span class="fs-label">Draft</span>
+        <button class="fs-btn fs-btn-green fs-btn-full" onclick="saveDraft()">💾 Save Draft</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ── Drafts Modal ── -->
+<div id="draftsModal">
+  <div id="draftsInner">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div style="font-size:1rem;font-weight:800;">📂 Saved Drafts</div>
+      <button class="fs-btn fs-btn-outline" onclick="closeDrafts()">✕</button>
+    </div>
+    <div id="draftsList"></div>
+  </div>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+let titleColor  = '#22c55e';
+let bgType      = 'color';
+let bgColorVal  = '#000000';
+let bgImageEl   = null;   // HTMLImageElement
+let bgVideoEl   = null;   // HTMLVideoElement
+let bgUrl       = '';
+let rafId       = null;
+let renderScheduled = false;
+
+// Live mode — shifts text up to avoid YouTube live comment zone
+let liveMode = false;
+function toggleLiveMode() {
+  liveMode = !liveMode;
+  const btn = document.getElementById('liveModeBtn');
+  btn.textContent = liveMode ? '🔴 Live Mode: ON' : '🔴 Live Mode: OFF';
+  btn.style.borderColor = liveMode ? '#ef4444' : '';
+  btn.style.color       = liveMode ? '#fca5a5' : '';
+  scheduleRender();
+}
+
+// Flip mode — gradient + text moves to top instead of bottom
+let flipMode = false;
+function toggleFlipMode() {
+  flipMode = !flipMode;
+  const btn = document.getElementById('flipModeBtn');
+  btn.textContent = flipMode ? '🔃 Flip Layout: ON' : '🔃 Flip Layout: OFF';
+  btn.style.borderColor = flipMode ? '#a78bfa' : '';
+  btn.style.color       = flipMode ? '#c4b5fd' : '';
+  scheduleRender();
+}
+
+// Recording
+let mediaRec    = null;
+let recChunks   = [];
+let isRecording = false;
+
+const canvas   = document.getElementById('previewCanvas');
+const ctx      = canvas.getContext('2d');
+const W = 1080, H = 1920;
+
+// ── Title color ────────────────────────────────────────────────────────────────
+function setTitleColor(el) {
+  document.querySelectorAll('#titleColorChips .color-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  titleColor = el.dataset.color;
+  scheduleRender();
+}
+
+// ── Highlight mechanism ────────────────────────────────────────────────────────
+let savedRange = null;
+
+document.getElementById('bodyEditor').addEventListener('mouseup', () => { saveRange(); });
+document.getElementById('bodyEditor').addEventListener('keyup', () => { saveRange(); });
+
+function saveRange() {
+  const sel = window.getSelection();
+  if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
+    savedRange = sel.getRangeAt(0).cloneRange();
+  }
+}
+
+function applyHighlight(color) {
+  const editor = document.getElementById('bodyEditor');
+  editor.focus();
+
+  // Restore saved selection if needed
+  if (savedRange) {
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(savedRange);
+    savedRange = null;
+  }
+
+  const sel = window.getSelection();
+  if (!sel || sel.isCollapsed) return;
+
+  if (color === 'remove') {
+    document.execCommand('removeFormat');
+  } else {
+    // Wrap selection in a colored span
+    const range = sel.getRangeAt(0);
+    const span  = document.createElement('span');
+    span.dataset.color = color;
+    span.style.color   = color;
+    span.style.fontWeight = '700';
+    try {
+      range.surroundContents(span);
+    } catch {
+      // Partial selection across elements — use insertHTML fallback
+      const fragment = range.extractContents();
+      span.appendChild(fragment);
+      range.insertNode(span);
+    }
+    sel.removeAllRanges();
+  }
+  scheduleRender();
+}
+
+// AI auto-highlight
+async function aiHighlight() {
+  const btn  = event.target;
+  const text = document.getElementById('bodyEditor').innerText.trim();
+  if (!text) return showMsg('Enter some body text first.');
+
+  btn.disabled = true; btn.textContent = '⏳ Thinking…';
+  try {
+    const res  = await fetch('/facts-studio/ai-highlight', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ text }),
+    });
+    const d = await res.json();
+    if (!d.ok) throw new Error(d.error);
+
+    // Apply highlights: for each word, find it in the editor and wrap it
+    const editor = document.getElementById('bodyEditor');
+    let html = editor.innerHTML;
+    d.highlights.forEach(({ word, color }) => {
+      if (!word || !color) return;
+      // Escape regex special chars
+      const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const re = new RegExp(`(?<![data-color][^>]*>)(${escaped})`, 'gi');
+      html = html.replace(re, `<span data-color="${color}" style="color:${color};font-weight:700;">$1</span>`);
+    });
+    editor.innerHTML = html;
+    scheduleRender();
+    showMsg('✨ AI highlights applied!', '#4ade80');
+  } catch(e) {
+    showMsg('AI highlight failed.', '#f87171');
+  } finally {
+    btn.disabled = false; btn.textContent = '✨ AI Auto-Highlight';
+  }
+}
+
+// ── Background ────────────────────────────────────────────────────────────────
+function setBgType(type, el) {
+  bgType = type;
+  document.querySelectorAll('.bg-type-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('bgColorPanel').style.display  = type === 'color'  ? '' : 'none';
+  document.getElementById('bgUploadPanel').style.display = type !== 'color'  ? '' : 'none';
+  scheduleRender();
+}
+
+async function uploadBg(input) {
+  if (!input.files[0]) return;
+  const file   = input.files[0];
+  const isVid  = file.type.startsWith('video/');
+
+  // Show local thumbnail immediately (no upload needed for preview)
+  const localUrl = URL.createObjectURL(file);
+  document.getElementById('bgPreviewThumb').style.display = '';
+  const imgEl = document.getElementById('bgThumbImg');
+  const vidEl = document.getElementById('bgThumbVid');
+
+  if (isVid) {
+    imgEl.style.display = 'none';
+    vidEl.src = localUrl; vidEl.style.display = ''; vidEl.play();
+    bgVideoEl = vidEl;
+    bgImageEl = null;
+    bgType = 'video';
+  } else {
+    vidEl.style.display = 'none';
+    imgEl.src = localUrl; imgEl.style.display = '';
+    const img = new Image();
+    img.onload = () => { bgImageEl = img; bgVideoEl = null; bgType = 'image'; scheduleRender(); };
+    img.src = localUrl;
+    return;
+  }
+  bgType = isVid ? 'video' : 'image';
+  scheduleRender();
+
+  // Also upload to server so it can be saved with draft
+  const fd = new FormData();
+  fd.append('bg', file);
+  try {
+    const res = await fetch('/facts-studio/upload-bg', { method:'POST', body:fd });
+    const d   = await res.json();
+    if (d.ok) bgUrl = d.url;
+  } catch {}
+}
+
+// ── Canvas render ─────────────────────────────────────────────────────────────
+function scheduleRender() {
+  if (!renderScheduled) {
+    renderScheduled = true;
+    requestAnimationFrame(() => { renderScheduled = false; drawCanvas(); });
+  }
+}
+
+function drawCanvas() {
+  ctx.clearRect(0, 0, W, H);
+
+  // ── 1. Background — always fills full canvas ──────────────────────────────
+  if (bgType === 'color') {
+    ctx.fillStyle = document.getElementById('bgColorInput').value || '#111111';
+    ctx.fillRect(0, 0, W, H);
+  } else if (bgType === 'image' && bgImageEl) {
+    const ratio = Math.max(W / bgImageEl.naturalWidth, H / bgImageEl.naturalHeight);
+    const bw = bgImageEl.naturalWidth  * ratio;
+    const bh = bgImageEl.naturalHeight * ratio;
+    ctx.drawImage(bgImageEl, (W - bw) / 2, (H - bh) / 2, bw, bh);
+  } else if (bgType === 'video' && bgVideoEl && bgVideoEl.readyState >= 2) {
+    const ratio = Math.max(W / bgVideoEl.videoWidth, H / bgVideoEl.videoHeight);
+    const bw = bgVideoEl.videoWidth  * ratio;
+    const bh = bgVideoEl.videoHeight * ratio;
+    ctx.drawImage(bgVideoEl, (W - bw) / 2, (H - bh) / 2, bw, bh);
+  } else {
+    ctx.fillStyle = '#111'; ctx.fillRect(0, 0, W, H);
+  }
+
+  // ── 2. Gradient — bottom dark (default) or top dark (flip mode) ─────────
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  if (flipMode) {
+    // Dark zone at TOP — gradient fades from black down to transparent
+    grad.addColorStop(0,    'rgba(0,0,0,1.0)');
+    grad.addColorStop(0.15, 'rgba(0,0,0,0.94)');
+    grad.addColorStop(0.28, 'rgba(0,0,0,0.82)');
+    grad.addColorStop(0.42, 'rgba(0,0,0,0.55)');
+    grad.addColorStop(0.62, 'rgba(0,0,0,0.0)');
+    grad.addColorStop(1.0,  'rgba(0,0,0,0.0)');
+  } else {
+    // Dark zone at BOTTOM (Shorts style)
+    grad.addColorStop(0,    'rgba(0,0,0,0.0)');
+    grad.addColorStop(0.38, 'rgba(0,0,0,0.0)');
+    grad.addColorStop(0.58, 'rgba(0,0,0,0.55)');
+    grad.addColorStop(0.72, 'rgba(0,0,0,0.82)');
+    grad.addColorStop(0.85, 'rgba(0,0,0,0.94)');
+    grad.addColorStop(1.0,  'rgba(0,0,0,1.0)');
+  }
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // ── 3. Text layout ────────────────────────────────────────────────────────
+  const SIDE_PAD   = 72;
+  const MAX_W      = W - SIDE_PAD * 2;
+  const TITLE_SIZE = 96;
+  const BODY_SIZE  = 58;
+  const LINE_H     = BODY_SIZE * 1.5;
+
+  const segments  = parseBodySegments();
+  const bodyLines = measureBodyLines(segments, MAX_W, BODY_SIZE);
+  const bodyH     = bodyLines.length * LINE_H;
+
+  let titleTop, bodyTop;
+  if (flipMode) {
+    // Text anchored to top dark zone
+    titleTop = 90;
+    bodyTop  = titleTop + TITLE_SIZE * 1.3 + 28;
+  } else {
+    // Text anchored to bottom dark zone; live mode shifts it up
+    const BLOCK_BOTTOM = liveMode ? H - 420 : H - 90;
+    bodyTop  = BLOCK_BOTTOM - bodyH;
+    titleTop = bodyTop - TITLE_SIZE * 1.3 - 28;
+  }
+
+  // Title
+  const TITLE = document.getElementById('titleInput').value || 'DID YOU KNOW?';
+  ctx.save();
+  ctx.font         = `bold ${TITLE_SIZE}px Impact, 'Arial Black', sans-serif`;
+  ctx.textAlign    = 'left';
+  ctx.textBaseline = 'top';
+  ctx.shadowColor  = titleColor;
+  ctx.shadowBlur   = 24;
+  ctx.fillStyle    = titleColor;
+  wrapText(ctx, TITLE.toUpperCase(), SIDE_PAD, titleTop, MAX_W, TITLE_SIZE * 1.22);
+  ctx.restore();
+
+  // Body text
+  drawBodyLines(bodyLines, SIDE_PAD, bodyTop, BODY_SIZE, LINE_H);
+
+  // If video bg: keep animating
+  if (bgType === 'video' && bgVideoEl) scheduleRender();
+}
+
+// Simple single-color word-wrap helper (for title)
+function wrapText(c, text, x, y, maxW, lineH) {
+  const words = text.split(' ');
+  let line = '', curY = y;
+  for (const w of words) {
+    const test = line ? line + ' ' + w : w;
+    if (c.measureText(test).width > maxW && line) {
+      c.fillText(line, x, curY);
+      line = w; curY += lineH;
+    } else { line = test; }
+  }
+  if (line) c.fillText(line, x, curY);
+}
+
+// Pre-measure body text into line objects (for bottom-anchor positioning)
+function measureBodyLines(segments, maxW, fontSize) {
+  const font   = `bold ${fontSize}px Arial, sans-serif`;
+  const tmp    = document.createElement('canvas').getContext('2d');
+  tmp.font     = font;
+  const words  = [];
+  for (const seg of segments) {
+    const parts = seg.text.split(/(\n)/);
+    for (const p of parts) {
+      if (p === '\n') words.push({ text: '\n', color: seg.color });
+      else p.split(/\s+/).filter(Boolean).forEach(w => words.push({ text: w, color: seg.color }));
+    }
+  }
+  const lines = [];
+  let cur = [];
+  let curW = 0;
+  for (let i = 0; i < words.length; i++) {
+    const { text, color } = words[i];
+    if (text === '\n') { lines.push(cur); cur = []; curW = 0; continue; }
+    const space  = cur.length ? ' ' : '';
+    const wWidth = tmp.measureText(space + text).width;
+    if (curW + wWidth > maxW && cur.length) {
+      lines.push(cur); cur = [{ text, color, space: '' }]; curW = tmp.measureText(text).width;
+    } else {
+      cur.push({ text, color, space }); curW += wWidth;
+    }
+  }
+  if (cur.length) lines.push(cur);
+  return lines;
+}
+
+// Draw pre-measured lines onto main canvas
+function drawBodyLines(lines, x, y, fontSize, lineH) {
+  ctx.save();
+  ctx.font         = `bold ${fontSize}px Arial, sans-serif`;
+  ctx.textBaseline = 'top';
+  ctx.textAlign    = 'left';
+  lines.forEach((line, li) => {
+    let curX = x;
+    const curY = y + li * lineH;
+    line.forEach(({ text, color, space }) => {
+      ctx.shadowColor = 'rgba(0,0,0,0.9)';
+      ctx.shadowBlur  = 10;
+      ctx.fillStyle   = color || '#ffffff';
+      ctx.fillText(space + text, curX, curY);
+      curX += ctx.measureText(space + text).width;
+    });
+  });
+  ctx.restore();
+}
+
+// Parse contenteditable HTML into [{text, color}] segments
+function parseBodySegments() {
+  const editor = document.getElementById('bodyEditor');
+  const segs   = [];
+
+  function walk(node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      segs.push({ text: node.textContent, color: null });
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      const color = node.dataset?.color || null;
+      if (color && node.tagName === 'SPAN') {
+        segs.push({ text: node.innerText || node.textContent, color });
+      } else if (node.tagName === 'BR') {
+        segs.push({ text: '\n', color: null });
+      } else {
+        node.childNodes.forEach(walk);
+        // Block-level elements add newline after
+        if (['DIV','P'].includes(node.tagName)) segs.push({ text: '\n', color: null });
+      }
+    }
+  }
+  editor.childNodes.forEach(walk);
+  return segs;
+}
+
+
+// ── Export ────────────────────────────────────────────────────────────────────
+function exportPng() {
+  drawCanvas();
+  canvas.toBlob(blob => {
+    const a  = document.createElement('a');
+    a.href   = URL.createObjectURL(blob);
+    a.download = 'fact-studio.png';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }, 'image/png');
+}
+
+let recTimeout = null;
+
+function toggleRecording() {
+  if (isRecording) { stopRecording(); return; }
+
+  if (bgType === 'video' && bgVideoEl) bgVideoEl.play();
+
+  const supported = typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported;
+  const mimeType  = (supported && MediaRecorder.isTypeSupported('video/webm;codecs=vp9'))
+    ? 'video/webm;codecs=vp9'
+    : 'video/webm';
+
+  try {
+    const stream = canvas.captureStream(30);
+    mediaRec  = new MediaRecorder(stream, { mimeType });
+    recChunks = [];
+    mediaRec.ondataavailable = e => { if (e.data.size) recChunks.push(e.data); };
+    mediaRec.onstop = downloadWebm;
+    mediaRec.start(200);
+    isRecording = true;
+    document.getElementById('recBtn').textContent = '⏹ Stop Recording';
+    document.getElementById('recIndicator').style.display = '';
+    // Start animation loop for recording
+    animLoop();
+    recTimeout = setTimeout(stopRecording, 5000);
+  } catch(e) {
+    showMsg('Recording not supported in this browser.', '#f87171');
+  }
+}
+
+function stopRecording() {
+  if (!isRecording) return;
+  clearTimeout(recTimeout);
+  isRecording = false;
+  mediaRec?.stop();
+  cancelAnimationFrame(rafId);
+  document.getElementById('recBtn').textContent = '🎬 Record 5s Video';
+  document.getElementById('recIndicator').style.display = 'none';
+}
+
+function animLoop() {
+  if (!isRecording) return;
+  drawCanvas();
+  rafId = requestAnimationFrame(animLoop);
+}
+
+function downloadWebm() {
+  const blob = new Blob(recChunks, { type: 'video/webm' });
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = 'fact-studio.webm';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showMsg('✅ Video downloaded!', '#4ade80');
+}
+
+// ── Save / Load Drafts ────────────────────────────────────────────────────────
+async function saveDraft() {
+  const id     = document.getElementById('currentDraftId').value || null;
+  const title  = document.getElementById('titleInput').value.trim() || 'DID YOU KNOW?';
+  const body   = document.getElementById('bodyEditor').innerText.trim();
+  if (!body) return showMsg('Enter some text first.');
+
+  // Extract highlights from spans
+  const highlights = [];
+  document.querySelectorAll('#bodyEditor span[data-color]').forEach(s => {
+    highlights.push({ word: s.textContent, color: s.dataset.color });
+  });
+
+  const payload = {
+    id, title, title_color: titleColor, body,
+    highlights,
+    bg_type:  bgType,
+    bg_value: bgType === 'color' ? document.getElementById('bgColorInput').value : (bgUrl || ''),
+  };
+
+  try {
+    const res = await fetch('/facts-studio/save', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload),
+    });
+    const d = await res.json();
+    if (!d.ok) throw new Error(d.error);
+    document.getElementById('currentDraftId').value = d.id;
+    showMsg('✅ Draft saved!', '#4ade80');
+    refreshDraftCount();
+  } catch(e) {
+    showMsg('Save failed: ' + e.message, '#f87171');
+  }
+}
+
+async function refreshDraftCount() {
+  try {
+    const res = await fetch('/facts-studio/list');
+    const d   = await res.json();
+    if (d.ok) document.getElementById('draftCount').textContent = d.drafts.length;
+  } catch {}
+}
+
+async function openDrafts() {
+  document.getElementById('draftsModal').classList.add('open');
+  const res = await fetch('/facts-studio/list');
+  const d   = await res.json();
+  const list = document.getElementById('draftsList');
+  if (!d.ok || !d.drafts.length) {
+    list.innerHTML = '<p style="color:#71717a;font-size:13px;text-align:center;">No saved drafts yet.</p>';
+    return;
+  }
+  list.innerHTML = d.drafts.map(dr => `
+    <div class="draft-card" id="draft-${dr.id}">
+      <div class="draft-card-title">${escHtml(dr.title)}</div>
+      <div class="draft-card-body">${escHtml(dr.body)}</div>
+      <div class="draft-card-date">${new Date(dr.created_at).toLocaleDateString()}</div>
+      <div class="draft-actions">
+        <button class="fs-btn fs-btn-primary" style="font-size:12px;padding:5px 12px;" onclick="loadDraft(${JSON.stringify(dr).replace(/"/g,'&quot;')})">✏️ Edit</button>
+        <button class="fs-btn fs-btn-danger"  style="font-size:12px;padding:5px 12px;" onclick="deleteDraft(${dr.id})">🗑</button>
+      </div>
+    </div>`).join('');
+  document.getElementById('draftCount').textContent = d.drafts.length;
+}
+
+function closeDrafts() { document.getElementById('draftsModal').classList.remove('open'); }
+
+function loadDraft(dr) {
+  document.getElementById('titleInput').value = dr.title || 'DID YOU KNOW?';
+  document.getElementById('currentDraftId').value = dr.id;
+
+  // Set body text (plain, highlights re-applied below)
+  const editor = document.getElementById('bodyEditor');
+  editor.innerText = dr.body || '';
+
+  // Re-apply highlight spans
+  if (dr.highlights && typeof dr.highlights === 'string') {
+    try { dr.highlights = JSON.parse(dr.highlights); } catch {}
+  }
+  if (Array.isArray(dr.highlights)) {
+    let html = editor.innerHTML;
+    dr.highlights.forEach(({ word, color }) => {
+      if (!word || !color) return;
+      const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      html = html.replace(new RegExp(escaped, 'g'),
+        `<span data-color="${color}" style="color:${color};font-weight:700;">${word}</span>`);
+    });
+    editor.innerHTML = html;
+  }
+
+  // Title color
+  titleColor = dr.title_color || '#22c55e';
+  document.querySelectorAll('#titleColorChips .color-chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.color === titleColor);
+  });
+
+  // Background
+  bgType = dr.bg_type || 'color';
+  document.querySelectorAll('.bg-type-btn').forEach(b => b.classList.toggle('active', b.dataset.type === bgType));
+  document.getElementById('bgColorPanel').style.display  = bgType === 'color' ? '' : 'none';
+  document.getElementById('bgUploadPanel').style.display = bgType !== 'color' ? '' : 'none';
+  if (bgType === 'color') document.getElementById('bgColorInput').value = dr.bg_value || '#000000';
+
+  closeDrafts();
+  scheduleRender();
+  showMsg('Draft loaded.', '#a1a1aa');
+}
+
+async function deleteDraft(id) {
+  if (!confirm('Delete this draft?')) return;
+  const res = await fetch(`/facts-studio/${id}`, { method:'DELETE' });
+  const d   = await res.json();
+  if (d.ok) {
+    document.getElementById(`draft-${id}`)?.remove();
+    const remaining = document.querySelectorAll('#draftsList .draft-card').length;
+    document.getElementById('draftCount').textContent = remaining;
+    if (!remaining) document.getElementById('draftsList').innerHTML =
+      '<p style="color:#71717a;font-size:13px;text-align:center;">No saved drafts yet.</p>';
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function showMsg(msg, color = '#a1a1aa') {
+  const el = document.getElementById('fsMsg');
+  el.textContent = msg; el.style.color = color;
+  setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 3500);
+}
+function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+document.getElementById('bgColorInput').addEventListener('input', scheduleRender);
+scheduleRender();
+</script>
+
+<%- include('../partials/footer') %>

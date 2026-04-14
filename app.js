@@ -26,6 +26,7 @@ import adminRouter     from "./routes/admin.js";
 import reelsRouter     from "./routes/reels.js";
 import ttsRouter       from "./routes/tts.js";
 import magicLiveRouter from "./routes/magicLive.js";
+import factsStudioRouter from "./routes/factsStudio.js";
 import { getOverlay, getSubmitPage, postSubmit } from "./controllers/magicLiveController.js";
 import { removeBackgroundFromImageBase64 } from "remove.bg";
 import compression from "compression";
@@ -942,6 +943,51 @@ await db.query(`
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         INDEX (user_id),
         INDEX (created_at)
+      )
+    `);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS magic_live_quiz_bank (
+        id         INT AUTO_INCREMENT PRIMARY KEY,
+        user_id    INT NOT NULL,
+        question   VARCHAR(255) NOT NULL,
+        option_a   VARCHAR(100) NOT NULL,
+        option_b   VARCHAR(100) NOT NULL,
+        option_c   VARCHAR(100) DEFAULT NULL,
+        option_d   VARCHAR(100) DEFAULT NULL,
+        answer     CHAR(1) NOT NULL,
+        used       TINYINT(1) DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX (user_id),
+        INDEX (user_id, used)
+      )
+    `);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS magic_live_name_bank (
+        id      INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        name    VARCHAR(100) NOT NULL,
+        INDEX (user_id)
+      )
+    `);
+    // Safe migrations for new settings columns
+    await db.query(`ALTER TABLE magic_live_settings ADD COLUMN random_shoutout_enabled TINYINT(1) DEFAULT 0`).catch(() => {});
+    await db.query(`ALTER TABLE magic_live_settings ADD COLUMN random_shoutout_interval INT DEFAULT 120`).catch(() => {});
+    await db.query(`ALTER TABLE magic_live_settings ADD COLUMN correct_shoutout_count INT DEFAULT 5`).catch(() => {});
+    await db.query(`ALTER TABLE magic_live_settings ADD COLUMN session_active TINYINT(1) DEFAULT 0`).catch(() => {});
+
+    // ── Facts Studio ────────────────────────────────────────────────────────
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS facts_studio (
+        id          INT AUTO_INCREMENT PRIMARY KEY,
+        user_id     INT NOT NULL,
+        title       VARCHAR(100) NOT NULL DEFAULT 'DID YOU KNOW?',
+        title_color VARCHAR(20)  DEFAULT '#22c55e',
+        body        TEXT         NOT NULL,
+        highlights  JSON,
+        bg_type     ENUM('color','image','video') DEFAULT 'color',
+        bg_value    TEXT,
+        created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_user (user_id, created_at)
       )
     `);
 
@@ -3238,9 +3284,15 @@ app.use("/tts",   ensureAuthenticated, ttsRouter(db));
 // Magic Live — public routes (no auth)
 app.get("/magic-live/overlay", (req, res) => getOverlay(req, res, db));
 app.get("/magic-live/submit",  (req, res) => getSubmitPage(req, res, db));
+app.get("/magic-live-quiz-template.csv", (req, res) => {
+  res.download(path.join(__dirname, "public", "magic-live-quiz-template.csv"), "quiz-template.csv");
+});
 app.post("/magic-live/submit", (req, res) => postSubmit(req, res, db, io));
 // Magic Live — protected dashboard/API
-app.use("/magic-live", ensureAuthenticated, (req, res, next) => magicLiveRouter(db, io)(req, res, next));
+app.use("/magic-live", ensureAuthenticated, (req, res, next) => magicLiveRouter(db, io, upload)(req, res, next));
+
+// Facts Studio
+app.use("/facts-studio", ensureAuthenticated, factsStudioRouter(db, upload));
 
 // ── Admin: Magic Live History API ─────────────────────────────────────────────
 app.get("/api/admin/magic-live/history", ensureAdmin, async (req, res) => {
@@ -3856,6 +3908,12 @@ io.on("connection", (socket) => {
   socket.on("join-magic", (userId) => {
     const uid = parseInt(userId, 10);
     if (uid) socket.join(`magic:${uid}`);
+  });
+
+  // Background music relay — dashboard emits, server forwards to overlay room
+  socket.on("loop-music", ({ musicId }) => {
+    if (!user) return;
+    io.to(`magic:${user.id}`).emit("loop-music", { musicId: musicId || null });
   });
 
   // All other handlers require authentication
