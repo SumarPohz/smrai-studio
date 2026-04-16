@@ -27,6 +27,7 @@ import reelsRouter     from "./routes/reels.js";
 import ttsRouter       from "./routes/tts.js";
 import magicLiveRouter from "./routes/magicLive.js";
 import factsStudioRouter from "./routes/factsStudio.js";
+import studioRouter      from "./routes/studio.js";
 import { getOverlay, getSubmitPage, postSubmit } from "./controllers/magicLiveController.js";
 import { removeBackgroundFromImageBase64 } from "remove.bg";
 import compression from "compression";
@@ -974,6 +975,20 @@ await db.query(`
     await db.query(`ALTER TABLE magic_live_settings ADD COLUMN random_shoutout_interval INT DEFAULT 120`).catch(() => {});
     await db.query(`ALTER TABLE magic_live_settings ADD COLUMN correct_shoutout_count INT DEFAULT 5`).catch(() => {});
     await db.query(`ALTER TABLE magic_live_settings ADD COLUMN session_active TINYINT(1) DEFAULT 0`).catch(() => {});
+
+    // ── Video Studio ─────────────────────────────────────────────────────────
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS studio_projects (
+        id             INT AUTO_INCREMENT PRIMARY KEY,
+        user_id        INT NOT NULL,
+        name           VARCHAR(200) DEFAULT 'Untitled Project',
+        layers         JSON,
+        total_duration INT DEFAULT 30,
+        created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_user (user_id, updated_at)
+      )
+    `);
 
     // ── Facts Studio ────────────────────────────────────────────────────────
     await db.query(`
@@ -3293,6 +3308,9 @@ app.use("/magic-live", ensureAuthenticated, (req, res, next) => magicLiveRouter(
 
 // Facts Studio
 app.use("/facts-studio", ensureAuthenticated, factsStudioRouter(db, upload));
+
+// Video Studio
+app.use("/studio", ensureAuthenticated, studioRouter(db, upload));
 
 // ── Admin: Magic Live History API ─────────────────────────────────────────────
 app.get("/api/admin/magic-live/history", ensureAdmin, async (req, res) => {

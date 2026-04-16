@@ -1,0 +1,1352 @@
+<%- include('../partials/header', { title: 'Video Studio — SmrAI Studio' }) %>
+<style>
+:root { --bg:#09090b; --card:#18181b; --border:#27272a; --accent:#7c3aed; --accent2:#06b6d4; }
+*,*::before,*::after { box-sizing:border-box; }
+body,#st-page { background:var(--bg); color:#f4f4f5; font-family:'Inter',sans-serif; min-height:100vh; }
+#st-page { display:flex; flex-direction:column; height:100vh; overflow:hidden; }
+
+/* ── Header ── */
+.st-header {
+  display:flex; align-items:center; gap:10px; padding:10px 16px;
+  background:var(--card); border-bottom:1px solid var(--border);
+  flex-shrink:0; flex-wrap:wrap;
+}
+.st-logo { font-size:1rem; font-weight:800; white-space:nowrap; }
+.st-project-name {
+  background:transparent; border:1px solid transparent; border-radius:6px;
+  color:#f4f4f5; font-size:14px; font-weight:600; padding:4px 8px;
+  min-width:160px; outline:none; transition:border-color .15s;
+}
+.st-project-name:focus { border-color:var(--accent); background:#09090b; }
+.dur-label { font-size:12px; color:#71717a; white-space:nowrap; }
+.dur-input {
+  width:60px; background:#09090b; border:1px solid var(--border);
+  border-radius:6px; color:#f4f4f5; font-size:13px; padding:4px 8px; outline:none;
+  text-align:center;
+}
+.dur-input:focus { border-color:var(--accent); }
+.st-btn {
+  display:inline-flex; align-items:center; gap:5px; padding:6px 14px;
+  border-radius:7px; font-size:12px; font-weight:600; border:none; cursor:pointer;
+  transition:opacity .15s; white-space:nowrap;
+}
+.st-btn:disabled { opacity:.4; cursor:not-allowed; }
+.st-btn-primary { background:var(--accent); color:#fff; }
+.st-btn-ghost   { background:#27272a; color:#d4d4d8; }
+.st-btn-danger  { background:#7f1d1d; color:#fca5a5; }
+.st-btn-cyan    { background:#164e63; color:#67e8f9; }
+.ml-auto { margin-left:auto; }
+
+/* ── Main grid ── */
+.st-grid {
+  display:grid;
+  grid-template-columns: 250px 1fr 260px;
+  flex:1; overflow:hidden; gap:0;
+}
+.st-panel {
+  display:flex; flex-direction:column; overflow:hidden;
+  border-right:1px solid var(--border);
+}
+.st-panel:last-child { border-right:none; }
+.st-panel-center { border-right:1px solid var(--border); }
+.panel-hd {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 12px; border-bottom:1px solid var(--border);
+  font-size:11px; font-weight:700; color:#71717a; letter-spacing:.06em;
+  text-transform:uppercase; flex-shrink:0;
+}
+.panel-body { flex:1; overflow-y:auto; padding:10px; }
+.panel-body::-webkit-scrollbar { width:4px; }
+.panel-body::-webkit-scrollbar-thumb { background:#27272a; border-radius:2px; }
+
+/* ── Add layer dropdown ── */
+.add-layer-wrap { position:relative; }
+.add-dropdown {
+  display:none; position:absolute; top:calc(100% + 4px); right:0;
+  background:var(--card); border:1px solid var(--border); border-radius:10px;
+  padding:6px; z-index:200; min-width:150px;
+}
+.add-dropdown.open { display:block; }
+.add-dropdown button {
+  display:flex; align-items:center; gap:8px; width:100%;
+  padding:8px 10px; background:transparent; border:none; border-radius:6px;
+  color:#d4d4d8; font-size:13px; cursor:pointer; text-align:left;
+}
+.add-dropdown button:hover { background:#27272a; }
+
+/* ── Layer list items ── */
+.layer-item {
+  display:flex; align-items:center; gap:6px;
+  padding:8px 8px; border-radius:8px; cursor:pointer;
+  border:1.5px solid transparent; transition:border-color .12s, background .12s;
+  margin-bottom:4px; user-select:none;
+}
+.layer-item:hover { background:#1f1f23; }
+.layer-item.selected { border-color:var(--accent); background:rgba(124,58,237,.1); }
+.layer-item.hidden { opacity:.4; }
+.layer-icon { font-size:14px; flex-shrink:0; }
+.layer-name { flex:1; font-size:12px; font-weight:600; color:#e4e4e7; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.layer-vis  { background:none; border:none; cursor:pointer; color:#52525b; font-size:14px; padding:2px; flex-shrink:0; }
+.layer-vis:hover { color:#a1a1aa; }
+.layer-del  { background:none; border:none; cursor:pointer; color:#52525b; font-size:12px; padding:2px; flex-shrink:0; }
+.layer-del:hover { color:#f87171; }
+
+/* ── Center panel ── */
+#previewWrap {
+  flex:1; display:flex; align-items:center; justify-content:center;
+  background:#000; overflow:hidden; position:relative;
+}
+#stCanvas { display:block; max-width:100%; max-height:100%; object-fit:contain; }
+.rec-badge {
+  display:none; position:absolute; top:10px; right:14px;
+  background:#ef4444; color:#fff; font-size:11px; font-weight:700;
+  padding:3px 10px; border-radius:999px; letter-spacing:.05em;
+  animation:recBlink 1s ease-in-out infinite;
+}
+@keyframes recBlink { 0%,100%{opacity:1}50%{opacity:.3} }
+
+/* ── Playback bar ── */
+.playback-bar {
+  display:flex; align-items:center; gap:8px; padding:8px 12px;
+  border-top:1px solid var(--border); flex-shrink:0; background:var(--card);
+}
+.pb-btn {
+  background:#27272a; border:none; border-radius:6px; color:#d4d4d8;
+  font-size:14px; padding:5px 10px; cursor:pointer;
+}
+.pb-btn:hover { background:#3f3f46; }
+#seekBar {
+  flex:1; -webkit-appearance:none; height:4px; border-radius:2px;
+  background:linear-gradient(to right, var(--accent) 0%, #27272a 0%);
+  outline:none; cursor:pointer;
+}
+#seekBar::-webkit-slider-thumb {
+  -webkit-appearance:none; width:14px; height:14px; border-radius:50%;
+  background:var(--accent); cursor:pointer;
+}
+#timeDisp { font-size:11px; color:#71717a; white-space:nowrap; min-width:60px; text-align:right; }
+
+/* ── Timeline ── */
+#timeline {
+  flex-shrink:0; border-top:1px solid var(--border);
+  background:#111113; overflow-y:auto; max-height:160px;
+  padding:8px 12px; display:flex; flex-direction:column; gap:3px;
+}
+.tl-row { display:flex; align-items:center; gap:6px; height:20px; }
+.tl-label { font-size:10px; color:#52525b; width:56px; text-align:right; flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tl-track { flex:1; background:#1c1c1e; border-radius:3px; height:100%; position:relative; }
+.tl-block { position:absolute; height:100%; border-radius:3px; opacity:.8; }
+#tlCursor { position:absolute; top:0; bottom:0; width:2px; background:var(--accent); pointer-events:none; }
+
+/* ── Export bar ── */
+.export-bar {
+  display:flex; align-items:center; gap:8px; padding:8px 16px;
+  background:var(--card); border-top:1px solid var(--border); flex-shrink:0; flex-wrap:wrap;
+}
+.export-bar span { font-size:12px; color:#71717a; }
+
+/* ── Properties panel ── */
+.prop-section { margin-bottom:16px; }
+.prop-label { font-size:11px; font-weight:700; color:#71717a; text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px; display:block; }
+.prop-input {
+  width:100%; background:#09090b; border:1px solid var(--border); border-radius:7px;
+  color:#f4f4f5; font-size:13px; padding:7px 10px; outline:none;
+}
+.prop-input:focus { border-color:var(--accent); }
+.prop-textarea { resize:vertical; min-height:80px; font-family:inherit; }
+.prop-row { display:flex; gap:6px; align-items:center; }
+.prop-row .prop-input { flex:1; }
+.chip-row { display:flex; gap:5px; flex-wrap:wrap; }
+.chip {
+  padding:4px 10px; border-radius:5px; font-size:11px; font-weight:700;
+  cursor:pointer; border:1.5px solid var(--border); color:#a1a1aa; background:transparent;
+}
+.chip.active { border-color:var(--accent); color:#c4b5fd; background:rgba(124,58,237,.12); }
+.prop-range { width:100%; accent-color:var(--accent); }
+.prop-color { width:100%; height:36px; border:none; border-radius:7px; cursor:pointer; background:transparent; }
+.prop-hint { font-size:11px; color:#52525b; line-height:1.5; margin-top:6px; }
+
+/* Voice recording indicator */
+.voice-rec-dot {
+  display:inline-block; width:8px; height:8px; border-radius:50%;
+  background:#ef4444; margin-right:5px; animation:recBlink 1s infinite;
+}
+
+/* Caption word list */
+.cap-word { display:inline-flex; align-items:center; gap:3px; margin:2px; }
+.cap-word input {
+  background:#09090b; border:1px solid var(--border); border-radius:4px;
+  color:#f4f4f5; font-size:11px; padding:2px 5px; width:80px; outline:none;
+}
+.cap-word input:focus { border-color:var(--accent); }
+
+/* Modal */
+#projectsModal {
+  display:none; position:fixed; inset:0; background:rgba(0,0,0,.75);
+  z-index:500; align-items:center; justify-content:center;
+}
+#projectsModal.open { display:flex; }
+.modal-inner {
+  background:var(--card); border:1px solid var(--border); border-radius:16px;
+  padding:22px; width:min(480px,94vw); max-height:80vh; overflow-y:auto;
+}
+.proj-item {
+  display:flex; align-items:center; gap:10px; padding:10px; border-radius:8px;
+  border:1.5px solid var(--border); margin-bottom:8px; cursor:pointer;
+}
+.proj-item:hover { border-color:var(--accent); }
+.proj-name { flex:1; font-size:13px; font-weight:600; color:#e4e4e7; }
+.proj-meta { font-size:11px; color:#52525b; }
+</style>
+
+<div id="st-page">
+
+  <!-- ── Header ── -->
+  <div class="st-header">
+    <div class="st-logo">🎥 Video Studio</div>
+    <input id="projectName" class="st-project-name" value="Untitled Project" maxlength="80" />
+    <span class="dur-label">Duration</span>
+    <input id="durInput" class="dur-input" type="number" value="30" min="5" max="600" onchange="setTotalDuration(+this.value)" />
+    <span class="dur-label">sec</span>
+    <button class="st-btn st-btn-ghost" onclick="openProjects()">📂 Projects</button>
+    <button class="st-btn st-btn-primary" onclick="saveProject()">💾 Save</button>
+    <a href="/dashboard" class="st-btn st-btn-ghost ml-auto">← Dashboard</a>
+  </div>
+
+  <!-- ── Main grid ── -->
+  <div class="st-grid">
+
+    <!-- ── LEFT: Layers ── -->
+    <div class="st-panel">
+      <div class="panel-hd">
+        Layers
+        <div class="add-layer-wrap">
+          <button class="st-btn st-btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="toggleAddMenu(event)">+ Add ▾</button>
+          <div class="add-dropdown" id="addMenu">
+            <button onclick="addLayer('text');closeAddMenu()">📝 Text Overlay</button>
+            <button onclick="addLayer('music');closeAddMenu()">🎵 Background Music</button>
+            <button onclick="addLayer('voice');closeAddMenu()">🎤 Voice Over</button>
+            <button onclick="addLayer('caption');closeAddMenu()">💬 Captions</button>
+          </div>
+        </div>
+      </div>
+      <div class="panel-body" id="layersList"></div>
+    </div>
+
+    <!-- ── CENTER: Preview + Playback + Timeline ── -->
+    <div class="st-panel st-panel-center" style="display:flex;flex-direction:column;">
+      <div id="previewWrap">
+        <span class="rec-badge" id="recBadge">● REC</span>
+        <canvas id="stCanvas" width="1080" height="1920"></canvas>
+      </div>
+
+      <!-- Playback bar -->
+      <div class="playback-bar">
+        <button class="pb-btn" onclick="resetPlayhead()" title="Rewind">⏮</button>
+        <button class="pb-btn" id="playBtn" onclick="togglePlay()">▶</button>
+        <input type="range" id="seekBar" min="0" max="30" step="0.05" value="0" oninput="seekTo(+this.value)" />
+        <span id="timeDisp">0:00 / 0:30</span>
+      </div>
+
+      <!-- Timeline -->
+      <div id="timeline"></div>
+    </div>
+
+    <!-- ── RIGHT: Properties ── -->
+    <div class="st-panel">
+      <div class="panel-hd">Properties</div>
+      <div class="panel-body" id="propsPanel">
+        <p style="font-size:12px;color:#52525b;text-align:center;margin-top:20px;">Select a layer to edit its properties</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Export bar ── -->
+  <div class="export-bar">
+    <span>Export:</span>
+    <button class="st-btn st-btn-ghost" onclick="exportPng()">📷 Screenshot</button>
+    <button class="st-btn st-btn-cyan"  id="recBtn" onclick="toggleRecording()">● Record Video</button>
+    <span id="exportMsg" style="font-size:12px;color:#a1a1aa;"></span>
+  </div>
+
+</div><!-- /st-page -->
+
+<!-- ── Projects Modal ── -->
+<div id="projectsModal">
+  <div class="modal-inner">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <div style="font-size:1rem;font-weight:800;">📂 Saved Projects</div>
+      <button class="st-btn st-btn-ghost" onclick="closeProjects()">✕</button>
+    </div>
+    <div id="projectsList"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+// CONSTANTS & CANVAS
+// ═══════════════════════════════════════════════════════════════════════════════
+const W = 1080, H = 1920;
+const canvas = document.getElementById('stCanvas');
+const ctx    = canvas.getContext('2d');
+
+// Scale canvas to fit available space
+function scaleCanvas() {
+  const wrap = document.getElementById('previewWrap');
+  const scl  = Math.min(wrap.clientWidth / W, wrap.clientHeight / H);
+  canvas.style.width  = (W * scl) + 'px';
+  canvas.style.height = (H * scl) + 'px';
+}
+window.addEventListener('resize', scaleCanvas);
+window.addEventListener('load', scaleCanvas);
+setTimeout(scaleCanvas, 100);
+
+// Music presets from server
+const MUSIC_LIST = <%- JSON.stringify(musicList) %>;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════════════════
+let layers       = [];          // array of layer objects
+let selectedId   = null;        // selected layer id
+let totalDuration = 30;         // seconds
+let playhead     = 0;           // current time in seconds
+let isPlaying    = false;
+let isRecording  = false;
+let lastFrameTs  = 0;
+let rafId        = null;
+let projectId    = null;
+
+// Audio context
+let audioCtx     = null;
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+// Voice recording state
+let voiceStream    = null;
+let voiceRecorder  = null;
+let voiceLayerId   = null;  // which voice layer is currently recording
+let recognition    = null;
+let recStartTime   = 0;
+let captureWords   = [];
+
+// WebM export state
+let exportRecorder = null;
+let exportChunks   = [];
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// LAYER MANAGEMENT
+// ═══════════════════════════════════════════════════════════════════════════════
+let _lid = 0;
+function uid() { return 'l' + (++_lid); }
+
+function defaultLayer(type) {
+  const base = {
+    id: uid(), type, visible: true,
+    startTime: 0, duration: totalDuration,
+  };
+  switch (type) {
+    case 'background': return { ...base,
+      name: 'Background', duration: 0, // 0 = always visible
+      bgType: 'color', bgValue: '#000000',
+      bgEl: null,
+    };
+    case 'text': return { ...base,
+      name: 'Text', duration: 5,
+      text: 'Your text here',
+      fontSize: 72, fontFamily: 'Arial', color: '#ffffff',
+      align: 'center', animation: 'fadeIn',
+      x: 0.5, y: 0.5,
+    };
+    case 'music': return { ...base,
+      name: 'Music', musicId: MUSIC_LIST[0] || null,
+      volume: 0.15, audioEl: null,
+    };
+    case 'voice': return { ...base,
+      name: 'Voice Over', audioUrl: null,
+      volume: 1.0, gain: 2.0, audioEl: null,
+    };
+    case 'caption': return { ...base,
+      name: 'Captions',
+      words: [],    // [{word, start, end}]
+      fontSize: 64, captionY: 0.88,
+      style: 'yellow',
+    };
+    default: return base;
+  }
+}
+
+function addLayer(type) {
+  const layer = defaultLayer(type);
+  // Background always goes to bottom; others added on top
+  if (type === 'background') {
+    layers.unshift(layer);
+  } else {
+    layers.push(layer);
+  }
+  selectLayer(layer.id);
+  renderLayerList();
+  renderTimeline();
+  drawFrame(playhead);
+}
+
+function removeLayer(id) {
+  layers = layers.filter(l => l.id !== id);
+  if (selectedId === id) { selectedId = null; renderProps(); }
+  renderLayerList();
+  renderTimeline();
+  drawFrame(playhead);
+}
+
+function selectLayer(id) {
+  selectedId = id;
+  renderLayerList();
+  renderProps();
+}
+
+function toggleVisibility(id, e) {
+  e.stopPropagation();
+  const l = layers.find(l => l.id === id);
+  if (l) { l.visible = !l.visible; renderLayerList(); drawFrame(playhead); }
+}
+
+// Layer order helpers (bring up/send down handled by list order — bottom = rendered first)
+function layerTypeIcon(type) {
+  return { background:'🖼', text:'📝', music:'🎵', voice:'🎤', caption:'💬' }[type] || '▪';
+}
+function layerColor(type) {
+  return { background:'#52525b', text:'#7c3aed', music:'#16a34a', voice:'#0891b2', caption:'#d97706' }[type] || '#52525b';
+}
+
+function renderLayerList() {
+  const el = document.getElementById('layersList');
+  if (!layers.length) {
+    el.innerHTML = '<p style="font-size:12px;color:#52525b;text-align:center;padding:16px;">No layers yet.<br>Click + Add to begin.</p>';
+    return;
+  }
+  // Render in reverse so top layer appears first in list
+  el.innerHTML = [...layers].reverse().map(l => `
+    <div class="layer-item ${l.id === selectedId ? 'selected' : ''} ${l.visible ? '' : 'hidden'}"
+         onclick="selectLayer('${l.id}')">
+      <span class="layer-icon">${layerTypeIcon(l.type)}</span>
+      <span class="layer-name">${escH(l.name)}</span>
+      <button class="layer-vis" onclick="toggleVisibility('${l.id}',event)" title="${l.visible ? 'Hide' : 'Show'}">
+        ${l.visible ? '👁' : '🙈'}
+      </button>
+      ${l.type !== 'background' ? `<button class="layer-del" onclick="event.stopPropagation();removeLayer('${l.id}')" title="Delete">✕</button>` : ''}
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PROPERTIES PANEL
+// ═══════════════════════════════════════════════════════════════════════════════
+function renderProps() {
+  const panel = document.getElementById('propsPanel');
+  if (!selectedId) {
+    panel.innerHTML = '<p style="font-size:12px;color:#52525b;text-align:center;margin-top:20px;">Select a layer to edit its properties</p>';
+    return;
+  }
+  const l = layers.find(l => l.id === selectedId);
+  if (!l) return;
+
+  switch (l.type) {
+    case 'background': panel.innerHTML = propsBg(l); break;
+    case 'text':       panel.innerHTML = propsText(l); break;
+    case 'music':      panel.innerHTML = propsMusic(l); break;
+    case 'voice':      panel.innerHTML = propsVoice(l); break;
+    case 'caption':    panel.innerHTML = propsCaption(l); break;
+  }
+}
+
+function propsBg(l) {
+  return `
+  <div class="prop-section">
+    <span class="prop-label">Layer Name</span>
+    <input class="prop-input" value="${escH(l.name)}" oninput="setProp('${l.id}','name',this.value)" />
+  </div>
+  <div class="prop-section">
+    <span class="prop-label">Background Type</span>
+    <div class="chip-row">
+      <button class="chip ${l.bgType==='color'?'active':''}" onclick="setBgType('${l.id}','color')">Color</button>
+      <button class="chip ${l.bgType==='image'?'active':''}" onclick="setBgType('${l.id}','image')">Image</button>
+      <button class="chip ${l.bgType==='video'?'active':''}" onclick="setBgType('${l.id}','video')">Video</button>
+    </div>
+  </div>
+  ${l.bgType === 'color' ? `
+  <div class="prop-section">
+    <span class="prop-label">Color</span>
+    <input type="color" class="prop-color" value="${l.bgValue||'#000000'}" oninput="setProp('${l.id}','bgValue',this.value)" />
+  </div>` : `
+  <div class="prop-section">
+    <span class="prop-label">Upload ${l.bgType === 'video' ? 'Video' : 'Image'}</span>
+    <label style="display:block;border:1.5px dashed var(--border);border-radius:8px;padding:16px;text-align:center;cursor:pointer;color:#71717a;font-size:12px;" for="bgUpload_${l.id}">
+      📁 Click to upload<br><small>${l.bgType==='video'?'MP4, WebM':'JPG, PNG, WebP'}</small>
+    </label>
+    <input type="file" id="bgUpload_${l.id}" style="display:none;" accept="${l.bgType==='video'?'video/*':'image/*'}" onchange="uploadLayerMedia('${l.id}',this,'bg')" />
+    ${l.bgValue ? `<p style="font-size:11px;color:#4ade80;margin-top:6px;">✓ Media loaded</p>` : ''}
+  </div>`}`;
+}
+
+function propsText(l) {
+  return `
+  <div class="prop-section">
+    <span class="prop-label">Layer Name</span>
+    <input class="prop-input" value="${escH(l.name)}" oninput="setProp('${l.id}','name',this.value)" />
+  </div>
+  <div class="prop-section">
+    <span class="prop-label">Text Content</span>
+    <textarea class="prop-input prop-textarea" oninput="setProp('${l.id}','text',this.value)">${escH(l.text||'')}</textarea>
+  </div>
+  <div class="prop-section">
+    <span class="prop-label">Font Size: <b id="fs_${l.id}">${l.fontSize||72}</b>px</span>
+    <input type="range" class="prop-range" min="24" max="200" value="${l.fontSize||72}"
+      oninput="setProp('${l.id}','fontSize',+this.value);document.getElementById('fs_${l.id}').textContent=this.value" />
+  </div>
+  <div class="prop-section">
+    <span class="prop-label">Font Style</span>
+    <div class="chip-row">
+      ${['Arial','Impact','Georgia','Courier New'].map(f => `<button class="chip ${l.fontFamily===f?'active':''}" style="font-family:'${f}'" onclick="setProp('${l.id}','fontFamily','${f}');renderProps()">${f==='Arial'?'Clean':f==='Impact'?'Bold':f==='Georgia'?'Serif':'Mono'}</button>`).join('')}
+    </div>
+  </div>
+  <div class="prop-section">
+    <span class="prop-label">Color</span>
+    <input type="color" class="prop-color" value="${l.color||'#ffffff'}" oninput="setProp('${l.id}','color',this.value)" />
+  </div>
+  <div class="prop-section">
+    <span class="prop-label">Alignment</span>
+    <div class="chip-row">
+      ${['left','center','right'].map(a => `<button class="chip ${l.align===a?'active':''}" onclick="setProp('${l.id}','align','${a}');renderProps()">${a==='left'?'☰ Left':a==='center'?'≡ Center':'☷ Right'}</button>`).join('')}
+    </div>
+  </div>
+  <div class="prop-section">
+    <span class="prop-label">Animation</span>
+    <div class="chip-row">
+      ${['none','fadeIn','slideUp','typewriter'].map(a => `<button class="chip ${l.animation===a?'active':''}" onclick="setProp('${l.id}','animation','${a}');renderProps()">${a==='none'?'None':a==='fadeIn'?'Fade In':a==='slideUp'?'Slide Up':'Typewriter'}</button>`).join('')}
+    </div>
+  </div>
+  <div class="prop-section">
+    <span class="prop-label">Position Y (0=top · 1=bottom)</span>
+    <input type="range" class="prop-range" min="0" max="1" step="0.01" value="${l.y||0.5}"
+      oninput="setProp('${l.id}','y',+this.value)" />
+  </div>
+  <div class="prop-section">
+    <div class="prop-row">
+      <div>
+        <span class="prop-label">Start (s)</span>
+        <input class="prop-input" type="number" min="0" step="0.5" value="${l.startTime||0}" style="width:70px;" oninput="setProp('${l.id}','startTime',+this.value);renderTimeline()" />
+      </div>
+      <div>
+        <span class="prop-label">Duration (s)</span>
+        <input class="prop-input" type="number" min="1" step="0.5" value="${l.duration||5}" style="width:70px;" oninput="setProp('${l.id}','duration',+this.value);renderTimeline()" />
+      </div>
+    </div>
+  </div>`;
+}
+
+function propsMusic(l) {
+  const opts = MUSIC_LIST.map(id => `<option value="${id}" ${l.musicId===id?'selected':''}>${id}</option>`).join('');
+  return `
+  <div class="prop-section">
+    <span class="prop-label">Layer Name</span>
+    <input class="prop-input" value="${escH(l.name)}" oninput="setProp('${l.id}','name',this.value)" />
+  </div>
+  <div class="prop-section">
+    <span class="prop-label">Track</span>
+    ${MUSIC_LIST.length ? `
+    <select class="prop-input" onchange="setProp('${l.id}','musicId',this.value);reloadAudio('${l.id}')">
+      ${opts}
+    </select>` : `<p class="prop-hint">No music tracks uploaded yet. Add tracks via the Magic Live wizard.</p>`}
+  </div>
+  <div class="prop-section">
+    <span class="prop-label">Volume: <b id="mv_${l.id}">${Math.round((l.volume||0.15)*100)}%</b></span>
+    <input type="range" class="prop-range" min="0" max="1" step="0.01" value="${l.volume||0.15}"
+      oninput="setProp('${l.id}','volume',+this.value);document.getElementById('mv_${l.id}').textContent=Math.round(this.value*100)+'%';syncAudio('${l.id}')" />
+  </div>
+  <div class="prop-section">
+    <span class="prop-label">Start Time (s)</span>
+    <input class="prop-input" type="number" min="0" step="0.5" value="${l.startTime||0}" oninput="setProp('${l.id}','startTime',+this.value);renderTimeline()" />
+  </div>`;
+}
+
+function propsVoice(l) {
+  const isRec = voiceLayerId === l.id;
+  return `
+  <div class="prop-section">
+    <span class="prop-label">Layer Name</span>
+    <input class="prop-input" value="${escH(l.name)}" oninput="setProp('${l.id}','name',this.value)" />
+  </div>
+  <div class="prop-section">
+    <span class="prop-label">Voice Recording</span>
+    ${isRec
+      ? `<button class="st-btn st-btn-danger" style="width:100%;" onclick="stopVoiceRecord()"><span class="voice-rec-dot"></span>Stop Recording</button>`
+      : `<button class="st-btn st-btn-cyan" style="width:100%;" onclick="startVoiceRecord('${l.id}')">🎤 Start Recording</button>`}
+    ${l.audioUrl ? `
+    <p style="font-size:11px;color:#4ade80;margin-top:6px;">✓ Voice recorded (${fmtSec(l.duration||0)})</p>
+    <button class="st-btn st-btn-ghost" style="width:100%;margin-top:6px;" onclick="previewVoice('${l.id}')">▶ Preview Voice</button>` : ''}
+    <p class="prop-hint">Records via microphone. Auto-generates captions. Processing: noise filter + compression + gain boost applied.</p>
+  </div>
+  <div class="prop-section">
+    <span class="prop-label">Volume: <b id="vv_${l.id}">${Math.round((l.volume||1)*100)}%</b></span>
+    <input type="range" class="prop-range" min="0" max="2" step="0.05" value="${l.volume||1}"
+      oninput="setProp('${l.id}','volume',+this.value);document.getElementById('vv_${l.id}').textContent=Math.round(this.value*100)+'%'" />
+  </div>
+  <div class="prop-section">
+    <span class="prop-label">Gain Boost: <b id="vg_${l.id}">${l.gain||2}×</b></span>
+    <input type="range" class="prop-range" min="1" max="4" step="0.25" value="${l.gain||2}"
+      oninput="setProp('${l.id}','gain',+this.value);document.getElementById('vg_${l.id}').textContent=this.value+'×'" />
+    <p class="prop-hint">Boosts voice loudness. 2× recommended.</p>
+  </div>
+  <div class="prop-section">
+    <span class="prop-label">Start Time (s)</span>
+    <input class="prop-input" type="number" min="0" step="0.5" value="${l.startTime||0}" oninput="setProp('${l.id}','startTime',+this.value);renderTimeline()" />
+  </div>`;
+}
+
+function propsCaption(l) {
+  return `
+  <div class="prop-section">
+    <span class="prop-label">Layer Name</span>
+    <input class="prop-input" value="${escH(l.name)}" oninput="setProp('${l.id}','name',this.value)" />
+  </div>
+  <div class="prop-section">
+    <span class="prop-label">Source</span>
+    <p class="prop-hint">Captions are auto-generated when you record a Voice Over layer. Or link to a voice layer below:</p>
+    <select class="prop-input" onchange="linkCaption('${l.id}',this.value)">
+      <option value="">— select voice layer —</option>
+      ${layers.filter(x=>x.type==='voice'&&x.audioUrl).map(x=>`<option value="${x.id}">${escH(x.name)}</option>`).join('')}
+    </select>
+  </div>
+  <div class="prop-section">
+    <span class="prop-label">Font Size: <b id="cfs_${l.id}">${l.fontSize||64}</b>px</span>
+    <input type="range" class="prop-range" min="24" max="120" value="${l.fontSize||64}"
+      oninput="setProp('${l.id}','fontSize',+this.value);document.getElementById('cfs_${l.id}').textContent=this.value" />
+  </div>
+  <div class="prop-section">
+    <span class="prop-label">Vertical Position</span>
+    <input type="range" class="prop-range" min="0.3" max="0.98" step="0.01" value="${l.captionY||0.88}"
+      oninput="setProp('${l.id}','captionY',+this.value)" />
+  </div>
+  <div class="prop-section">
+    <span class="prop-label">Highlight Style</span>
+    <div class="chip-row">
+      <button class="chip ${l.style==='yellow'?'active':''}" onclick="setProp('${l.id}','style','yellow');renderProps()">🟡 Yellow</button>
+      <button class="chip ${l.style==='cyan'?'active':''}"   onclick="setProp('${l.id}','style','cyan');renderProps()">🩵 Cyan</button>
+      <button class="chip ${l.style==='pink'?'active':''}"   onclick="setProp('${l.id}','style','pink');renderProps()">🩷 Pink</button>
+    </div>
+  </div>
+  ${l.words.length ? `
+  <div class="prop-section">
+    <span class="prop-label">Caption Words (${l.words.length})</span>
+    <div style="max-height:200px;overflow-y:auto;padding:4px;background:#09090b;border-radius:8px;border:1px solid var(--border);">
+      ${l.words.map((w,i)=>`
+        <span class="cap-word">
+          <input value="${escH(w.word)}" onchange="editWord('${l.id}',${i},this.value)" title="${w.start.toFixed(2)}s–${w.end.toFixed(2)}s" />
+        </span>`).join('')}
+    </div>
+  </div>` : `<p class="prop-hint" style="text-align:center;padding:12px;">No captions yet. Record a voice over first.</p>`}`;
+}
+
+// ── Property setters ──────────────────────────────────────────────────────────
+function setProp(id, key, val) {
+  const l = layers.find(l => l.id === id);
+  if (!l) return;
+  l[key] = val;
+  drawFrame(playhead);
+}
+
+function setBgType(id, type) {
+  const l = layers.find(l => l.id === id);
+  if (!l) return;
+  l.bgType  = type;
+  l.bgValue = type === 'color' ? (l.bgValue || '#000000') : '';
+  l.bgEl    = null;
+  renderProps();
+  drawFrame(playhead);
+}
+
+function editWord(layerId, idx, val) {
+  const l = layers.find(l => l.id === layerId);
+  if (l && l.words[idx]) l.words[idx].word = val;
+}
+
+function linkCaption(capId, voiceId) {
+  const cap   = layers.find(l => l.id === capId);
+  const voice = layers.find(l => l.id === voiceId);
+  if (!cap || !voice) return;
+  cap.words     = JSON.parse(JSON.stringify(voice.captionWords || []));
+  cap.startTime = voice.startTime;
+  cap.duration  = voice.duration;
+  renderProps();
+  renderTimeline();
+}
+
+async function uploadLayerMedia(id, input, role) {
+  if (!input.files[0]) return;
+  const file = input.files[0];
+  const localUrl = URL.createObjectURL(file);
+  const l = layers.find(l => l.id === id);
+  if (!l) return;
+
+  if (role === 'bg') {
+    const isVid = file.type.startsWith('video/');
+    l.bgType  = isVid ? 'video' : 'image';
+    l.bgEl    = null;
+    if (isVid) {
+      const v = document.createElement('video');
+      v.src = localUrl; v.muted = true; v.loop = true; v.playsInline = true;
+      v.addEventListener('loadeddata', () => { l.bgEl = v; if (!isPlaying) drawFrame(playhead); });
+      v.play();
+    } else {
+      const img = new Image();
+      img.onload = () => { l.bgEl = img; if (!isPlaying) drawFrame(playhead); };
+      img.src = localUrl;
+    }
+    l.bgValue = localUrl;
+  }
+
+  // Upload to server for persistence
+  const fd = new FormData();
+  fd.append('media', file);
+  try {
+    const d = await fetch('/studio/upload-media', { method:'POST', body:fd }).then(r=>r.json());
+    if (d.ok) { l.bgValue = d.url; }
+  } catch {}
+
+  renderProps();
+  drawFrame(playhead);
+}
+
+function reloadAudio(id) {
+  const l = layers.find(l => l.id === id);
+  if (!l || !l.musicId) return;
+  if (l.audioEl) { l.audioEl.pause(); l.audioEl = null; }
+  const a = new Audio(`/music/${l.musicId}.mp3`);
+  a.loop   = true;
+  a.volume = l.volume || 0.15;
+  l.audioEl = a;
+}
+
+function syncAudio(id) {
+  const l = layers.find(l => l.id === id);
+  if (l?.audioEl) l.audioEl.volume = l.volume || 0;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CANVAS RENDERING
+// ═══════════════════════════════════════════════════════════════════════════════
+function drawFrame(t) {
+  ctx.clearRect(0, 0, W, H);
+
+  // Draw layers bottom-to-top (layers[0] = bottom)
+  for (const l of layers) {
+    if (!l.visible) continue;
+    const end = l.duration > 0 ? l.startTime + l.duration : Infinity;
+    if (t < l.startTime || t > end) continue;
+    switch (l.type) {
+      case 'background': drawBg(l); break;
+      case 'text':       drawText(l, t); break;
+      case 'caption':    drawCaption(l, t); break;
+    }
+  }
+}
+
+function drawBg(l) {
+  if (l.bgType === 'color') {
+    ctx.fillStyle = l.bgValue || '#000';
+    ctx.fillRect(0, 0, W, H);
+  } else if ((l.bgType === 'image' || l.bgType === 'video') && l.bgEl) {
+    const el  = l.bgEl;
+    const ew  = el.naturalWidth  || el.videoWidth  || W;
+    const eh  = el.naturalHeight || el.videoHeight || H;
+    const r   = Math.max(W / ew, H / eh);
+    const bw  = ew * r, bh = eh * r;
+    ctx.drawImage(el, (W - bw) / 2, (H - bh) / 2, bw, bh);
+  } else {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+  }
+}
+
+function drawText(l, t) {
+  const elapsed = t - l.startTime;
+  const dur     = l.duration || 1;
+  let alpha = 1, offsetY = 0;
+
+  // Animations
+  if (l.animation === 'fadeIn') {
+    alpha = Math.min(1, elapsed / Math.min(0.6, dur * 0.3));
+  } else if (l.animation === 'slideUp') {
+    const p = Math.min(1, elapsed / Math.min(0.7, dur * 0.35));
+    alpha   = p;
+    offsetY = (1 - p) * 120;
+  }
+
+  const textToShow = l.animation === 'typewriter'
+    ? (l.text || '').substring(0, Math.floor(elapsed * 18))
+    : (l.text || '');
+
+  ctx.save();
+  ctx.globalAlpha  = alpha;
+  ctx.font         = `bold ${l.fontSize||72}px '${l.fontFamily||'Arial'}', sans-serif`;
+  ctx.fillStyle    = l.color || '#ffffff';
+  ctx.textAlign    = l.align || 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor  = 'rgba(0,0,0,0.85)';
+  ctx.shadowBlur   = 14;
+
+  const cx = l.align === 'left' ? 80 : l.align === 'right' ? W - 80 : W / 2;
+  const cy = (l.y || 0.5) * H + offsetY;
+  const maxW = W - 160;
+
+  // Word-wrap
+  const lineH = (l.fontSize || 72) * 1.4;
+  const words = textToShow.split(' ');
+  let line = '', curY = cy - lineH;
+  const lines = [];
+  for (const w of words) {
+    const test = line ? line + ' ' + w : w;
+    if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = w; }
+    else line = test;
+  }
+  if (line) lines.push(line);
+  const totalH = lines.length * lineH;
+  lines.forEach((ln, i) => {
+    ctx.fillText(ln, cx, cy - totalH / 2 + i * lineH + lineH / 2);
+  });
+
+  ctx.restore();
+}
+
+function drawCaption(l, t) {
+  const words = l.words;
+  if (!words || !words.length) return;
+
+  // Find current word index
+  let curIdx = -1;
+  for (let i = 0; i < words.length; i++) {
+    if (t >= words[i].start && (i === words.length - 1 || t < words[i + 1].start)) {
+      curIdx = i; break;
+    }
+  }
+  if (curIdx === -1) return;
+
+  // 3-word chunk
+  const chunkStart = Math.floor(curIdx / 3) * 3;
+  const chunk = words.slice(chunkStart, Math.min(chunkStart + 3, words.length));
+  const curInChunk = curIdx - chunkStart;
+
+  const fs = l.fontSize || 64;
+  const hl = { yellow:'#FFD700', cyan:'#67e8f9', pink:'#f9a8d4' }[l.style || 'yellow'];
+
+  ctx.save();
+  ctx.font         = `bold ${fs}px Arial, sans-serif`;
+  ctx.textBaseline = 'middle';
+
+  // Measure total line width
+  const lineText  = chunk.map(w => w.word).join(' ');
+  const totalW    = ctx.measureText(lineText).width;
+  const padX = 36, padY = 24;
+  const boxW = totalW + padX * 2;
+  const boxH = fs + padY * 2;
+  const cx   = W / 2;
+  const cy   = (l.captionY || 0.88) * H;
+
+  // Background pill
+  ctx.fillStyle = 'rgba(0,0,0,0.65)';
+  roundRect(ctx, cx - boxW / 2, cy - boxH / 2, boxW, boxH, 16);
+  ctx.fill();
+
+  // Draw words word-by-word
+  let wordX = cx - totalW / 2;
+  chunk.forEach((w, i) => {
+    const ww = ctx.measureText(w.word).width;
+    ctx.fillStyle   = i === curInChunk ? hl : '#ffffff';
+    ctx.shadowColor = 'rgba(0,0,0,0.8)';
+    ctx.shadowBlur  = 6;
+    ctx.textAlign   = 'left';
+    ctx.fillText(w.word, wordX, cy);
+    wordX += ww + ctx.measureText(' ').width;
+  });
+  ctx.restore();
+}
+
+function roundRect(c, x, y, w, h, r) {
+  c.beginPath();
+  c.moveTo(x + r, y);
+  c.lineTo(x + w - r, y);
+  c.quadraticCurveTo(x + w, y, x + w, y + r);
+  c.lineTo(x + w, y + h - r);
+  c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  c.lineTo(x + r, y + h);
+  c.quadraticCurveTo(x, y + h, x, y + h - r);
+  c.lineTo(x, y + r);
+  c.quadraticCurveTo(x, y, x + r, y);
+  c.closePath();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PLAYBACK
+// ═══════════════════════════════════════════════════════════════════════════════
+function setTotalDuration(v) {
+  totalDuration = Math.max(5, Math.min(600, v || 30));
+  document.getElementById('durInput').value = totalDuration;
+  document.getElementById('seekBar').max = totalDuration;
+  renderTimeline();
+  updateTimeDisplay();
+}
+
+function togglePlay() {
+  if (isPlaying) stopPlay(); else startPlay();
+}
+
+function startPlay() {
+  if (playhead >= totalDuration) playhead = 0;
+  isPlaying   = true;
+  lastFrameTs = performance.now();
+  document.getElementById('playBtn').textContent = '⏸';
+  startAudioLayers();
+  animLoop();
+}
+
+function stopPlay() {
+  isPlaying = false;
+  document.getElementById('playBtn').textContent = '▶';
+  stopAudioLayers();
+  cancelAnimationFrame(rafId);
+}
+
+function resetPlayhead() {
+  stopPlay();
+  playhead = 0;
+  document.getElementById('seekBar').value = 0;
+  updateTimeDisplay();
+  drawFrame(0);
+}
+
+function seekTo(t) {
+  playhead = Math.max(0, Math.min(totalDuration, t));
+  updateTimeDisplay();
+  drawFrame(playhead);
+  if (isPlaying) { syncAudioLayers(); }
+}
+
+function animLoop() {
+  if (!isPlaying && !isRecording) return;
+  const now = performance.now();
+  const dt  = (now - lastFrameTs) / 1000;
+  lastFrameTs = now;
+  playhead += dt;
+  if (playhead >= totalDuration) {
+    playhead = totalDuration;
+    drawFrame(playhead);
+    if (!isRecording) stopPlay();
+    if (isRecording) stopExportRecording();
+    return;
+  }
+  document.getElementById('seekBar').value = playhead;
+  updateTimeDisplay();
+  drawFrame(playhead);
+  rafId = requestAnimationFrame(animLoop);
+}
+
+function updateTimeDisplay() {
+  document.getElementById('timeDisp').textContent =
+    `${fmtSec(playhead)} / ${fmtSec(totalDuration)}`;
+  // Update seekbar gradient
+  const sb = document.getElementById('seekBar');
+  const pct = (playhead / totalDuration * 100).toFixed(1);
+  sb.style.background = `linear-gradient(to right, var(--accent) ${pct}%, #27272a ${pct}%)`;
+}
+
+// ── Audio layer play/pause/sync ───────────────────────────────────────────────
+function startAudioLayers() {
+  for (const l of layers) {
+    if (!l.visible) continue;
+    if (l.type === 'music' && l.musicId) {
+      if (!l.audioEl) reloadAudio(l.id);
+      if (l.audioEl) {
+        const offset = playhead - l.startTime;
+        l.audioEl.currentTime = offset > 0 ? (offset % (l.audioEl.duration || 1)) : 0;
+        if (playhead >= l.startTime && (l.duration === 0 || playhead < l.startTime + l.duration)) {
+          l.audioEl.volume = l.volume || 0.15;
+          l.audioEl.play().catch(() => {});
+        }
+      }
+    }
+    if (l.type === 'voice' && l.audioUrl) {
+      if (!l.audioEl) { l.audioEl = new Audio(l.audioUrl); }
+      const offset = playhead - l.startTime;
+      l.audioEl.currentTime = Math.max(0, offset);
+      l.audioEl.volume      = Math.min(1, l.volume || 1);
+      if (playhead >= l.startTime && (l.duration === 0 || playhead < l.startTime + l.duration)) {
+        l.audioEl.play().catch(() => {});
+      }
+    }
+  }
+}
+
+function stopAudioLayers() {
+  for (const l of layers) {
+    if (l.audioEl) l.audioEl.pause();
+  }
+}
+
+function syncAudioLayers() {
+  for (const l of layers) {
+    if (!l.audioEl) continue;
+    const offset = playhead - l.startTime;
+    if (offset >= 0) l.audioEl.currentTime = offset % (l.audioEl.duration || 1);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// VOICE RECORDING + CAPTIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+async function startVoiceRecord(layerId) {
+  try {
+    voiceStream   = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    const ac      = getAudioCtx();
+    if (ac.state === 'suspended') await ac.resume();
+
+    // Processing chain: HPF → Compressor → Gain → capture destination
+    const src = ac.createMediaStreamSource(voiceStream);
+
+    const hpf = ac.createBiquadFilter();
+    hpf.type = 'highpass'; hpf.frequency.value = 80;
+
+    const lpf = ac.createBiquadFilter();
+    lpf.type = 'lowpass'; lpf.frequency.value = 8000;
+
+    const comp = ac.createDynamicsCompressor();
+    comp.threshold.value = -24; comp.knee.value = 30;
+    comp.ratio.value = 12; comp.attack.value = 0.003; comp.release.value = 0.25;
+
+    const layer = layers.find(l => l.id === layerId);
+    const gainNode = ac.createGain();
+    gainNode.gain.value = layer?.gain || 2.0;
+
+    const dest = ac.createMediaStreamDestination();
+    src.connect(hpf); hpf.connect(lpf); lpf.connect(comp);
+    comp.connect(gainNode); gainNode.connect(dest);
+
+    // Record processed stream
+    voiceRecorder = new MediaRecorder(dest.stream);
+    captureWords  = [];
+    recStartTime  = ac.currentTime;
+    voiceLayerId  = layerId;
+
+    const chunks = [];
+    voiceRecorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+    voiceRecorder.onstop = () => finishVoiceRecord(layerId, chunks);
+    voiceRecorder.start(200);
+
+    // Web Speech API for captions
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SR) {
+      recognition = new SR();
+      recognition.continuous    = true;
+      recognition.interimResults = true;
+      recognition.lang          = 'en-US';
+      let phraseStart = 0;
+      recognition.onstart  = () => { phraseStart = ac.currentTime - recStartTime; };
+      recognition.onresult = (ev) => {
+        for (let i = ev.resultIndex; i < ev.results.length; i++) {
+          if (!ev.results[i].isFinal) continue;
+          const text = ev.results[i][0].transcript.trim();
+          const now  = ac.currentTime - recStartTime;
+          const words = text.split(/\s+/).filter(Boolean);
+          const wDur  = (now - phraseStart) / Math.max(words.length, 1);
+          words.forEach((w, wi) => {
+            captureWords.push({
+              word:  w,
+              start: +(phraseStart + wi * wDur).toFixed(2),
+              end:   +(phraseStart + (wi + 1) * wDur).toFixed(2),
+            });
+          });
+          phraseStart = now;
+        }
+      };
+      recognition.start();
+    }
+
+    renderProps(); // show "Stop Recording" button
+    showMsg('🎤 Recording… speak now', '#ef4444');
+  } catch (err) {
+    showMsg('Microphone access denied: ' + err.message, '#f87171');
+  }
+}
+
+async function stopVoiceRecord() {
+  if (recognition) { recognition.stop(); recognition = null; }
+  if (voiceRecorder && voiceRecorder.state !== 'inactive') voiceRecorder.stop();
+  if (voiceStream) { voiceStream.getTracks().forEach(t => t.stop()); voiceStream = null; }
+  voiceRecorder = null;
+}
+
+async function finishVoiceRecord(layerId, chunks) {
+  const blob    = new Blob(chunks, { type: 'video/webm' });
+  const localUrl = URL.createObjectURL(blob);
+  const duration = captureWords.length ? (captureWords[captureWords.length - 1].end || 5) : 5;
+
+  const layer = layers.find(l => l.id === layerId);
+  if (!layer) return;
+  layer.audioUrl     = localUrl;
+  layer.duration     = Math.ceil(duration) + 0.5;
+  layer.captionWords = [...captureWords];
+  layer.audioEl      = new Audio(localUrl);
+
+  // Auto-add caption layer if not present
+  const hasCap = layers.some(l => l.type === 'caption');
+  if (!hasCap && captureWords.length) {
+    const cap = defaultLayer('caption');
+    cap.name       = 'Captions';
+    cap.words      = [...captureWords];
+    cap.startTime  = layer.startTime;
+    cap.duration   = layer.duration;
+    layers.push(cap);
+  } else {
+    // Update existing caption layer
+    const cap = layers.find(l => l.type === 'caption');
+    if (cap && captureWords.length) {
+      cap.words     = [...captureWords];
+      cap.startTime = layer.startTime;
+      cap.duration  = layer.duration;
+    }
+  }
+
+  voiceLayerId = null;
+  captureWords = [];
+
+  // Upload to server for persistence
+  try {
+    const fd = new FormData();
+    fd.append('media', blob, 'voice.webm');
+    const d = await fetch('/studio/upload-media', { method:'POST', body:fd }).then(r=>r.json());
+    if (d.ok) layer.audioUrl = d.url;
+  } catch {}
+
+  renderLayerList();
+  renderProps();
+  renderTimeline();
+  drawFrame(playhead);
+  showMsg('✅ Voice recorded! Captions auto-generated.', '#4ade80');
+}
+
+function previewVoice(id) {
+  const l = layers.find(l => l.id === id);
+  if (!l?.audioUrl) return;
+  const a = l.audioEl || new Audio(l.audioUrl);
+  a.currentTime = 0;
+  a.volume = Math.min(1, l.volume || 1);
+  a.play().catch(() => {});
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TIMELINE
+// ═══════════════════════════════════════════════════════════════════════════════
+function renderTimeline() {
+  const el = document.getElementById('timeline');
+  if (!layers.length) { el.innerHTML = ''; return; }
+  el.innerHTML = [...layers].reverse().map(l => {
+    const start = ((l.startTime || 0) / totalDuration * 100).toFixed(1);
+    const dur   = l.duration > 0 ? Math.min(l.duration, totalDuration - (l.startTime||0)) : totalDuration;
+    const width = (dur / totalDuration * 100).toFixed(1);
+    const color = layerColor(l.type);
+    return `<div class="tl-row">
+      <span class="tl-label">${escH(l.name)}</span>
+      <div class="tl-track">
+        <div class="tl-block" style="left:${start}%;width:${width}%;background:${color};"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// EXPORT
+// ═══════════════════════════════════════════════════════════════════════════════
+function exportPng() {
+  drawFrame(playhead);
+  canvas.toBlob(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'studio-frame.png';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }, 'image/png');
+}
+
+async function toggleRecording() {
+  if (isRecording) { stopExportRecording(); return; }
+  // Unlock audio
+  const ac = getAudioCtx();
+  if (ac.state === 'suspended') await ac.resume();
+
+  // Build audio mix via Web Audio
+  const dest = ac.createMediaStreamDestination();
+  const masterGain = ac.createGain();
+  masterGain.gain.value = 1;
+  masterGain.connect(dest);
+
+  // Connect audio layers
+  for (const l of layers) {
+    if (!l.visible || !l.audioUrl && !l.musicId) continue;
+    if (l.type === 'music' && l.musicId) {
+      const a = l.audioEl || new Audio(`/music/${l.musicId}.mp3`);
+      a.currentTime = 0; a.volume = 1;
+      const src = ac.createMediaElementSource(a);
+      const g   = ac.createGain();
+      g.gain.value = l.volume || 0.15;
+      src.connect(g); g.connect(masterGain);
+      a.play().catch(() => {});
+      l.audioEl = a; // keep ref
+    }
+    if (l.type === 'voice' && l.audioUrl) {
+      const a = new Audio(l.audioUrl);
+      a.currentTime = 0; a.volume = 1;
+      const src = ac.createMediaElementSource(a);
+      const g   = ac.createGain();
+      g.gain.value = Math.min(1, l.volume || 1);
+      src.connect(g); g.connect(masterGain);
+      setTimeout(() => a.play().catch(() => {}), l.startTime * 1000);
+    }
+  }
+
+  const canvasStream = canvas.captureStream(30);
+  const combined = new MediaStream([
+    ...canvasStream.getVideoTracks(),
+    ...dest.stream.getAudioTracks(),
+  ]);
+
+  const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+    ? 'video/webm;codecs=vp9' : 'video/webm';
+
+  exportRecorder = new MediaRecorder(combined, { mimeType: mime });
+  exportChunks   = [];
+  exportRecorder.ondataavailable = e => { if (e.data.size) exportChunks.push(e.data); };
+  exportRecorder.onstop = downloadExport;
+  exportRecorder.start(200);
+
+  isRecording = true;
+  playhead    = 0;
+  document.getElementById('recBadge').style.display = '';
+  document.getElementById('recBtn').textContent = '⏹ Stop';
+  document.getElementById('recBtn').style.background = '#7f1d1d';
+  lastFrameTs = performance.now();
+  animLoop();
+  showMsg('Recording started…', '#ef4444');
+}
+
+function stopExportRecording() {
+  isRecording = false;
+  cancelAnimationFrame(rafId);
+  exportRecorder?.stop();
+  stopAudioLayers();
+  document.getElementById('recBadge').style.display = 'none';
+  document.getElementById('recBtn').textContent = '● Record Video';
+  document.getElementById('recBtn').style.background = '';
+}
+
+function downloadExport() {
+  const blob = new Blob(exportChunks, { type: 'video/webm' });
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = (document.getElementById('projectName').value || 'studio') + '.webm';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showMsg('✅ Video downloaded!', '#4ade80');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SAVE / LOAD
+// ═══════════════════════════════════════════════════════════════════════════════
+async function saveProject() {
+  const name = document.getElementById('projectName').value.trim() || 'Untitled';
+  try {
+    const d = await fetch('/studio/save', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ id: projectId, name, layers, totalDuration }),
+    }).then(r => r.json());
+    if (!d.ok) throw new Error(d.error);
+    projectId = d.id;
+    showMsg('✅ Project saved!', '#4ade80');
+  } catch (e) {
+    showMsg('Save failed: ' + e.message, '#f87171');
+  }
+}
+
+async function openProjects() {
+  document.getElementById('projectsModal').classList.add('open');
+  const d = await fetch('/studio/list').then(r => r.json());
+  const el = document.getElementById('projectsList');
+  if (!d.ok || !d.projects.length) {
+    el.innerHTML = '<p style="font-size:12px;color:#52525b;text-align:center;">No saved projects yet.</p>';
+    return;
+  }
+  el.innerHTML = d.projects.map(p => `
+    <div class="proj-item" onclick="loadProject(${p.id})">
+      <div>
+        <div class="proj-name">${escH(p.name)}</div>
+        <div class="proj-meta">${p.total_duration}s · ${new Date(p.updated_at).toLocaleDateString()}</div>
+      </div>
+      <button class="st-btn st-btn-danger" style="font-size:11px;padding:4px 10px;" onclick="event.stopPropagation();deleteProject(${p.id},this)">🗑</button>
+    </div>`).join('');
+}
+
+function closeProjects() { document.getElementById('projectsModal').classList.remove('open'); }
+
+async function loadProject(id) {
+  const d = await fetch('/studio/list').then(r=>r.json());
+  // Re-fetch full project data (list only has summary — load from a detail route)
+  // For now: send layers via the same list endpoint (we store all data there)
+  // We need a dedicated load endpoint, but for now save includes layers
+  // Workaround: save returns id; load by refreshing projects list with full data
+  showMsg('Loading project…', '#a1a1aa');
+  // TODO: Add GET /studio/:id endpoint in Phase 2 for full load
+  closeProjects();
+}
+
+async function deleteProject(id, btn) {
+  if (!confirm('Delete this project?')) return;
+  const d = await fetch(`/studio/${id}`, { method:'DELETE' }).then(r=>r.json());
+  if (d.ok) btn.closest('.proj-item').remove();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+function showMsg(msg, color = '#a1a1aa') {
+  const el = document.getElementById('exportMsg');
+  el.textContent = msg; el.style.color = color;
+  setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 4000);
+}
+
+function fmtSec(s) {
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return `${m}:${sec.toString().padStart(2,'0')}`;
+}
+
+function escH(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Add-layer dropdown
+function toggleAddMenu(e) {
+  e.stopPropagation();
+  document.getElementById('addMenu').classList.toggle('open');
+}
+function closeAddMenu() { document.getElementById('addMenu').classList.remove('open'); }
+document.addEventListener('click', () => closeAddMenu());
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INIT — start with a background layer
+// ═══════════════════════════════════════════════════════════════════════════════
+addLayer('background');
+setTotalDuration(30);
+drawFrame(0);
+</script>
+
+<%- include('../partials/footer') %>
