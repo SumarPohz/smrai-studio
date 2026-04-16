@@ -318,20 +318,20 @@ input[type=range].music-vol {
         <span class="fs-label">Export</span>
         <div style="display:flex;flex-direction:column;gap:8px;">
           <button class="fs-btn fs-btn-primary fs-btn-full" onclick="exportPng()">📷 Download PNG</button>
-          <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;">
-            <button class="fs-dur-btn active" data-dur="5"   onclick="setRecDur(5,this)"  >5s</button>
-            <button class="fs-dur-btn"        data-dur="15"  onclick="setRecDur(15,this)" >15s</button>
-            <button class="fs-dur-btn"        data-dur="30"  onclick="setRecDur(30,this)" >30s</button>
-            <button class="fs-dur-btn"        data-dur="60"  onclick="setRecDur(60,this)" >1m</button>
-            <button class="fs-dur-btn"        data-dur="120" onclick="setRecDur(120,this)">2m</button>
-            <button class="fs-dur-btn"        data-dur="180" onclick="setRecDur(180,this)">3m</button>
-            <button class="fs-dur-btn"        id="durCustomBtn" onclick="showCustomDur()">+</button>
-          </div>
-          <div id="customDurRow" style="display:none;align-items:center;gap:6px;margin-bottom:8px;">
-            <input type="number" id="customDurInput" min="1" max="600"
-              class="fs-input" placeholder="sec" style="width:70px;padding:5px 8px;font-size:13px;" />
-            <span style="font-size:12px;color:#71717a;">seconds</span>
-            <button class="fs-btn fs-btn-primary" style="padding:5px 12px;font-size:12px;" onclick="applyCustomDur()">Set</button>
+          <!-- Duration input — always visible -->
+          <div style="margin:4px 0 6px;">
+            <span class="fs-label" style="margin-bottom:6px;">Video Duration</span>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <input type="number" id="durMins" min="0" max="59" value="0"
+                class="fs-input" style="width:60px;text-align:center;padding:7px 6px;font-size:15px;font-weight:700;"
+                oninput="syncDuration()" />
+              <span style="font-size:12px;color:#71717a;">min</span>
+              <input type="number" id="durSecs" min="0" max="59" value="5"
+                class="fs-input" style="width:60px;text-align:center;padding:7px 6px;font-size:15px;font-weight:700;"
+                oninput="syncDuration()" />
+              <span style="font-size:12px;color:#71717a;">sec</span>
+              <span id="durTotal" style="font-size:11px;color:#71717a;white-space:nowrap;">= 5s</span>
+            </div>
           </div>
           <button class="fs-btn fs-btn-outline fs-btn-full" id="recBtn" onclick="toggleRecording()">🎬 Record 5s Video</button>
           <!-- Recording progress bar -->
@@ -435,25 +435,13 @@ function setBodyAlign(align, el) {
   el.classList.add('active');
   scheduleRender();
 }
-function setRecDur(secs, el) {
-  recDuration = secs;
-  document.querySelectorAll('.fs-dur-btn').forEach(b => b.classList.remove('active'));
-  el.classList.add('active');
-  document.getElementById('customDurRow').style.display = 'none';
-  if (!isRecording) document.getElementById('recBtn').textContent = `🎬 Record ${formatDur(secs)}`;
-}
-function showCustomDur() {
-  document.getElementById('customDurRow').style.display = 'flex';
-  document.getElementById('customDurInput').focus();
-}
-function applyCustomDur() {
-  const secs = parseInt(document.getElementById('customDurInput').value);
-  if (!secs || secs < 1 || secs > 600) return showMsg('Enter 1–600 seconds.', '#f87171');
-  recDuration = secs;
-  document.querySelectorAll('.fs-dur-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('durCustomBtn').classList.add('active');
-  document.getElementById('customDurRow').style.display = 'none';
-  if (!isRecording) document.getElementById('recBtn').textContent = `🎬 Record ${formatDur(secs)}`;
+function syncDuration() {
+  const m    = Math.max(0, Math.min(59, parseInt(document.getElementById('durMins').value) || 0));
+  const s    = Math.max(0, Math.min(59, parseInt(document.getElementById('durSecs').value) || 0));
+  const total = m * 60 + s;
+  recDuration = total < 1 ? 1 : total;
+  document.getElementById('durTotal').textContent = `= ${formatDur(recDuration)}`;
+  if (!isRecording) document.getElementById('recBtn').textContent = `🎬 Record ${formatDur(recDuration)}`;
 }
 function formatDur(secs) {
   if (secs < 60) return `${secs}s`;
