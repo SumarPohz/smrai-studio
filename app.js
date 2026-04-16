@@ -3722,7 +3722,8 @@ app.get("/auth/youtube/callback", ensureAuthenticated, async (req, res) => {
     const sep = returnTo.includes('?') ? '&' : '?';
     res.redirect(`${returnTo}${sep}ytConnected=1`);
   } catch (err) {
-    console.error("[YouTube OAuth] callback error:", err.message);
+    console.error("[YouTube OAuth] callback error:", err.message,
+      err.response?.status, JSON.stringify(err.response?.data));
     const returnTo = req.session.ytReturnTo || '/reels/create?step=7';
     delete req.session.ytReturnTo;
     const sep = returnTo.includes('?') ? '&' : '?';
