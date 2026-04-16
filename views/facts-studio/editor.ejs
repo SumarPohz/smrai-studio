@@ -104,7 +104,7 @@ body, #fs-page { background:var(--bg); color:#f4f4f5; font-family:'Inter',sans-s
 }
 .fs-dur-btn.active { border-color:var(--accent); color:#c4b5fd; background:rgba(124,58,237,.12); }
 
-/* ── Recording indicator ── */
+/* ── Recording indicator + timer ── */
 #recIndicator {
   display:none; position:absolute; top:10px; right:14px;
   background:#ef4444; color:#fff; font-size:11px; font-weight:700;
@@ -112,6 +112,19 @@ body, #fs-page { background:var(--bg); color:#f4f4f5; font-family:'Inter',sans-s
   animation: recBlink 1s ease-in-out infinite;
 }
 @keyframes recBlink { 0%,100%{opacity:1} 50%{opacity:.4} }
+#recTimer {
+  display:none; position:absolute; top:10px; left:14px;
+  background:rgba(0,0,0,.65); color:#fff; font-size:11px; font-weight:700;
+  padding:3px 10px; border-radius:999px; letter-spacing:.04em;
+  font-variant-numeric:tabular-nums;
+}
+
+/* ── Music controls ── */
+.music-vol-row { display:flex; align-items:center; gap:8px; margin-top:8px; }
+input[type=range].music-vol {
+  flex:1; height:4px; accent-color:var(--accent); cursor:pointer;
+  background:var(--border); border-radius:999px; outline:none; border:none;
+}
 
 /* ── Drafts panel ── */
 .draft-card {
@@ -234,6 +247,7 @@ body, #fs-page { background:var(--bg); color:#f4f4f5; font-family:'Inter',sans-s
     <div class="fs-card" style="padding:12px;">
       <div id="previewWrap">
         <span class="preview-label">PREVIEW · 1080×1920</span>
+        <span id="recTimer"></span>
         <span id="recIndicator">● REC</span>
         <canvas id="previewCanvas" width="1080" height="1920"></canvas>
       </div>
@@ -280,6 +294,25 @@ body, #fs-page { background:var(--bg); color:#f4f4f5; font-family:'Inter',sans-s
         <p style="font-size:11px;color:#52525b;margin-top:6px;">Flip moves gradient &amp; text to top. Live shifts text up above comments.</p>
       </div>
 
+      <!-- Music -->
+      <div class="fs-card">
+        <span class="fs-label">Background Music</span>
+        <label style="display:block;border:1.5px dashed var(--border);border-radius:8px;padding:14px;text-align:center;cursor:pointer;color:#71717a;font-size:13px;" for="musicFileInput">
+          🎵 Upload MP3 / AAC / WAV
+        </label>
+        <input type="file" id="musicFileInput" style="display:none;" accept="audio/*" onchange="loadMusic(this)" />
+        <div id="musicControls" style="display:none;margin-top:10px;">
+          <div id="musicName" style="font-size:11px;color:#a1a1aa;margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
+          <div class="music-vol-row">
+            <button class="fs-btn fs-btn-outline" id="musicPlayBtn" onclick="toggleMusicPlay()" style="padding:5px 14px;font-size:13px;">▶ Play</button>
+            <input type="range" class="music-vol" id="musicVolumeSlider" min="0" max="100" value="50" oninput="setMusicVolume(this.value)" />
+            <span id="musicVolLabel" style="font-size:11px;color:#71717a;min-width:32px;text-align:right;">50%</span>
+          </div>
+          <button class="fs-btn fs-btn-outline fs-btn-full" style="margin-top:8px;font-size:12px;" onclick="clearMusic()">✕ Remove Track</button>
+        </div>
+        <p style="font-size:11px;color:#52525b;margin-top:6px;">Music plays during recording and is mixed into the exported video.</p>
+      </div>
+
       <!-- Export -->
       <div class="fs-card">
         <span class="fs-label">Export</span>
@@ -301,6 +334,13 @@ body, #fs-page { background:var(--bg); color:#f4f4f5; font-family:'Inter',sans-s
             <button class="fs-btn fs-btn-primary" style="padding:5px 12px;font-size:12px;" onclick="applyCustomDur()">Set</button>
           </div>
           <button class="fs-btn fs-btn-outline fs-btn-full" id="recBtn" onclick="toggleRecording()">🎬 Record 5s Video</button>
+          <!-- Recording progress bar -->
+          <div id="recProgress" style="display:none;margin-top:8px;">
+            <div style="background:var(--border);border-radius:999px;height:4px;overflow:hidden;">
+              <div id="recProgressBar" style="background:var(--accent);height:100%;width:0%;transition:width .25s linear;"></div>
+            </div>
+            <div id="recProgressText" style="font-size:11px;color:#71717a;text-align:center;margin-top:4px;font-variant-numeric:tabular-nums;">0:00 / 5s</div>
+          </div>
         </div>
       </div>
 
@@ -341,6 +381,19 @@ let bodyFontSize   = 58;
 let bodyFontFamily = 'Arial';
 let bodyAlign      = 'left';
 let recDuration    = 5;
+
+// Music state
+let musicAudio    = null;
+let musicVolume   = 0.5;
+let musicPlaying  = false;
+let audioCtx      = null;
+let musicSrcNode  = null;
+let musicGainNode = null;
+let musicDestNode = null;
+
+// Recording timer state
+let recTimerInterval = null;
+let recStartTime     = 0;
 
 // Live mode — shifts text up to avoid YouTube live comment zone
 let liveMode = false;
@@ -406,6 +459,72 @@ function formatDur(secs) {
   if (secs < 60) return `${secs}s`;
   const m = Math.floor(secs / 60), s = secs % 60;
   return s ? `${m}m ${s}s` : `${m}m`;
+}
+
+// ── Music ─────────────────────────────────────────────────────────────────────
+function loadMusic(input) {
+  if (!input.files[0]) return;
+  const file = input.files[0];
+  clearMusic(true); // tear down old audio graph, keep UI
+  const url = URL.createObjectURL(file);
+  musicAudio = new Audio(url);
+  musicAudio.loop = true;
+  musicAudio.volume = musicVolume;
+  document.getElementById('musicName').textContent = file.name;
+  document.getElementById('musicControls').style.display = '';
+  document.getElementById('musicPlayBtn').textContent = '▶ Play';
+  musicPlaying = false;
+}
+
+function initAudioGraph() {
+  if (!musicAudio || musicSrcNode) return;
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const src  = audioCtx.createMediaElementSource(musicAudio);
+    const gain = audioCtx.createGain();
+    gain.gain.value = musicVolume;
+    musicDestNode   = audioCtx.createMediaStreamDestination();
+    src.connect(gain);
+    gain.connect(audioCtx.destination); // play through speakers
+    gain.connect(musicDestNode);         // also captured for video export
+    musicSrcNode  = src;
+    musicGainNode = gain;
+  } catch(e) {
+    console.warn('[music] Web Audio init failed:', e);
+  }
+}
+
+function toggleMusicPlay() {
+  if (!musicAudio) return;
+  if (musicPlaying) {
+    musicAudio.pause();
+    musicPlaying = false;
+    document.getElementById('musicPlayBtn').textContent = '▶ Play';
+  } else {
+    if (!musicSrcNode) initAudioGraph();
+    if (audioCtx?.state === 'suspended') audioCtx.resume();
+    musicAudio.play().catch(() => {});
+    musicPlaying = true;
+    document.getElementById('musicPlayBtn').textContent = '⏸ Pause';
+  }
+}
+
+function setMusicVolume(val) {
+  musicVolume = val / 100;
+  if (musicAudio) musicAudio.volume = musicVolume;
+  if (musicGainNode) musicGainNode.gain.value = musicVolume;
+  document.getElementById('musicVolLabel').textContent = val + '%';
+}
+
+function clearMusic(silent) {
+  if (musicAudio) { musicAudio.pause(); musicAudio = null; }
+  if (audioCtx)   { audioCtx.close().catch(() => {}); audioCtx = null; }
+  musicSrcNode = null; musicGainNode = null; musicDestNode = null;
+  musicPlaying = false;
+  if (!silent) {
+    document.getElementById('musicControls').style.display = 'none';
+    document.getElementById('musicFileInput').value = '';
+  }
 }
 
 // Recording
@@ -773,8 +892,27 @@ function toggleRecording() {
     : 'video/webm';
 
   try {
-    const stream = canvas.captureStream(30);
-    mediaRec  = new MediaRecorder(stream, { mimeType });
+    const videoStream = canvas.captureStream(30);
+    let finalStream   = videoStream;
+
+    // Mix in background music if loaded
+    if (musicAudio) {
+      if (!musicSrcNode) initAudioGraph();
+      if (audioCtx?.state === 'suspended') audioCtx.resume();
+      if (!musicPlaying) {
+        musicAudio.play().catch(() => {});
+        musicPlaying = true;
+        document.getElementById('musicPlayBtn').textContent = '⏸ Pause';
+      }
+      if (musicDestNode) {
+        finalStream = new MediaStream([
+          ...videoStream.getVideoTracks(),
+          ...musicDestNode.stream.getAudioTracks(),
+        ]);
+      }
+    }
+
+    mediaRec  = new MediaRecorder(finalStream, { mimeType });
     recChunks = [];
     mediaRec.ondataavailable = e => { if (e.data.size) recChunks.push(e.data); };
     mediaRec.onstop = downloadWebm;
@@ -782,6 +920,24 @@ function toggleRecording() {
     isRecording = true;
     document.getElementById('recBtn').textContent = '⏹ Stop Recording';
     document.getElementById('recIndicator').style.display = '';
+
+    // Start recording timer
+    recStartTime = Date.now();
+    document.getElementById('recTimer').style.display = '';
+    document.getElementById('recProgress').style.display = '';
+    document.getElementById('recProgressBar').style.width = '0%';
+    document.getElementById('recProgressText').textContent = `0:00 / ${formatDur(recDuration)}`;
+    recTimerInterval = setInterval(() => {
+      const elapsed = (Date.now() - recStartTime) / 1000;
+      const m = Math.floor(elapsed / 60);
+      const s = Math.floor(elapsed % 60);
+      const timeStr = `${m}:${s.toString().padStart(2, '0')}`;
+      const pct = Math.min(100, (elapsed / recDuration) * 100);
+      document.getElementById('recTimer').textContent = `${timeStr} / ${formatDur(recDuration)}`;
+      document.getElementById('recProgressBar').style.width = pct + '%';
+      document.getElementById('recProgressText').textContent = `${timeStr} / ${formatDur(recDuration)}`;
+    }, 250);
+
     // Start animation loop for recording
     animLoop();
     recTimeout = setTimeout(stopRecording, recDuration * 1000);
@@ -793,11 +949,14 @@ function toggleRecording() {
 function stopRecording() {
   if (!isRecording) return;
   clearTimeout(recTimeout);
+  clearInterval(recTimerInterval);
   isRecording = false;
   mediaRec?.stop();
   cancelAnimationFrame(rafId);
   document.getElementById('recBtn').textContent = `🎬 Record ${formatDur(recDuration)}`;
   document.getElementById('recIndicator').style.display = 'none';
+  document.getElementById('recTimer').style.display = 'none';
+  document.getElementById('recProgress').style.display = 'none';
 }
 
 function animLoop() {
