@@ -84,6 +84,26 @@ body, #fs-page { background:var(--bg); color:#f4f4f5; font-family:'Inter',sans-s
 }
 .bg-type-btn.active { border-color:var(--accent); color:#c4b5fd; background:rgba(124,58,237,.12); }
 
+/* ── Typography controls ── */
+.fs-font-btn {
+  padding:5px 10px; border-radius:6px; font-size:12px; font-weight:600;
+  cursor:pointer; border:1.5px solid var(--border); color:#a1a1aa; background:transparent;
+  transition:border-color .15s, color .15s;
+}
+.fs-font-btn.active { border-color:var(--accent); color:#c4b5fd; background:rgba(124,58,237,.12); }
+.fs-align-btn {
+  flex:1; padding:6px 8px; border-radius:6px; font-size:12px; font-weight:600;
+  cursor:pointer; border:1.5px solid var(--border); color:#a1a1aa; background:transparent;
+  transition:border-color .15s, color .15s;
+}
+.fs-align-btn.active { border-color:var(--accent); color:#c4b5fd; background:rgba(124,58,237,.12); }
+.fs-dur-btn {
+  flex:1; padding:5px 6px; border-radius:6px; font-size:12px; font-weight:700;
+  cursor:pointer; border:1.5px solid var(--border); color:#a1a1aa; background:transparent;
+  transition:border-color .15s, color .15s;
+}
+.fs-dur-btn.active { border-color:var(--accent); color:#c4b5fd; background:rgba(124,58,237,.12); }
+
 /* ── Recording indicator ── */
 #recIndicator {
   display:none; position:absolute; top:10px; right:14px;
@@ -176,6 +196,36 @@ body, #fs-page { background:var(--bg); color:#f4f4f5; font-family:'Inter',sans-s
         </div>
       </div>
 
+      <!-- Typography -->
+      <div class="fs-card">
+        <span class="fs-label">Typography</span>
+
+        <!-- Font size -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+          <span style="font-size:12px;color:#71717a;flex:1;">Body Size</span>
+          <button class="fs-btn fs-btn-outline" style="padding:5px 12px;" onclick="changeFontSize(-4)">−</button>
+          <span id="fontSizeDisplay" style="font-size:13px;font-weight:700;color:#e4e4e7;min-width:36px;text-align:center;">58</span>
+          <button class="fs-btn fs-btn-outline" style="padding:5px 12px;" onclick="changeFontSize(4)">+</button>
+        </div>
+
+        <!-- Font family -->
+        <span class="fs-label">Font Style</span>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">
+          <button class="fs-font-btn active" data-font="Arial"         onclick="setBodyFont('Arial',this)"         style="font-family:Arial;">Clean</button>
+          <button class="fs-font-btn"        data-font="Impact"        onclick="setBodyFont('Impact',this)"        style="font-family:Impact;">Bold</button>
+          <button class="fs-font-btn"        data-font="Georgia"       onclick="setBodyFont('Georgia',this)"       style="font-family:Georgia;">Serif</button>
+          <button class="fs-font-btn"        data-font="Courier New"   onclick="setBodyFont('Courier New',this)"   style="font-family:'Courier New';">Mono</button>
+        </div>
+
+        <!-- Alignment -->
+        <span class="fs-label">Alignment</span>
+        <div style="display:flex;gap:6px;">
+          <button class="fs-align-btn active" data-align="left"   onclick="setBodyAlign('left',this)"  >☰ Left</button>
+          <button class="fs-align-btn"        data-align="center" onclick="setBodyAlign('center',this)">≡ Center</button>
+          <button class="fs-align-btn"        data-align="right"  onclick="setBodyAlign('right',this)" >☷ Right</button>
+        </div>
+      </div>
+
       <input type="hidden" id="currentDraftId" value="" />
       <p id="fsMsg"></p>
     </div>
@@ -235,6 +285,12 @@ body, #fs-page { background:var(--bg); color:#f4f4f5; font-family:'Inter',sans-s
         <span class="fs-label">Export</span>
         <div style="display:flex;flex-direction:column;gap:8px;">
           <button class="fs-btn fs-btn-primary fs-btn-full" onclick="exportPng()">📷 Download PNG</button>
+          <div style="display:flex;gap:6px;margin-bottom:8px;">
+            <button class="fs-dur-btn active" data-dur="5"  onclick="setRecDur(5,this)" >5s</button>
+            <button class="fs-dur-btn"        data-dur="10" onclick="setRecDur(10,this)">10s</button>
+            <button class="fs-dur-btn"        data-dur="15" onclick="setRecDur(15,this)">15s</button>
+            <button class="fs-dur-btn"        data-dur="30" onclick="setRecDur(30,this)">30s</button>
+          </div>
           <button class="fs-btn fs-btn-outline fs-btn-full" id="recBtn" onclick="toggleRecording()">🎬 Record 5s Video</button>
         </div>
       </div>
@@ -262,14 +318,20 @@ body, #fs-page { background:var(--bg); color:#f4f4f5; font-family:'Inter',sans-s
 
 <script>
 // ── State ─────────────────────────────────────────────────────────────────────
-let titleColor  = '#22c55e';
-let bgType      = 'color';
-let bgColorVal  = '#000000';
-let bgImageEl   = null;   // HTMLImageElement
-let bgVideoEl   = null;   // HTMLVideoElement
-let bgUrl       = '';
-let rafId       = null;
+let titleColor     = '#22c55e';
+let bgType         = 'color';
+let bgColorVal     = '#000000';
+let bgImageEl      = null;   // HTMLImageElement
+let bgVideoEl      = null;   // HTMLVideoElement
+let bgUrl          = '';
+let rafId          = null;
 let renderScheduled = false;
+
+// Typography state
+let bodyFontSize   = 58;
+let bodyFontFamily = 'Arial';
+let bodyAlign      = 'left';
+let recDuration    = 5;
 
 // Live mode — shifts text up to avoid YouTube live comment zone
 let liveMode = false;
@@ -291,6 +353,31 @@ function toggleFlipMode() {
   btn.style.borderColor = flipMode ? '#a78bfa' : '';
   btn.style.color       = flipMode ? '#c4b5fd' : '';
   scheduleRender();
+}
+
+// ── Typography controls ───────────────────────────────────────────────────────
+function changeFontSize(delta) {
+  bodyFontSize = Math.min(120, Math.max(24, bodyFontSize + delta));
+  document.getElementById('fontSizeDisplay').textContent = bodyFontSize;
+  scheduleRender();
+}
+function setBodyFont(font, el) {
+  bodyFontFamily = font;
+  document.querySelectorAll('.fs-font-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  scheduleRender();
+}
+function setBodyAlign(align, el) {
+  bodyAlign = align;
+  document.querySelectorAll('.fs-align-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  scheduleRender();
+}
+function setRecDur(secs, el) {
+  recDuration = secs;
+  document.querySelectorAll('.fs-dur-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  if (!isRecording) document.getElementById('recBtn').textContent = `🎬 Record ${secs}s Video`;
 }
 
 // Recording
@@ -498,7 +585,7 @@ function drawCanvas() {
   const SIDE_PAD   = 72;
   const MAX_W      = W - SIDE_PAD * 2;
   const TITLE_SIZE = 96;
-  const BODY_SIZE  = 58;
+  const BODY_SIZE  = bodyFontSize;
   const LINE_H     = BODY_SIZE * 1.5;
 
   const segments  = parseBodySegments();
@@ -521,12 +608,13 @@ function drawCanvas() {
   const TITLE = document.getElementById('titleInput').value || 'DID YOU KNOW?';
   ctx.save();
   ctx.font         = `bold ${TITLE_SIZE}px Impact, 'Arial Black', sans-serif`;
-  ctx.textAlign    = 'left';
+  ctx.textAlign    = bodyAlign;
   ctx.textBaseline = 'top';
   ctx.shadowColor  = titleColor;
   ctx.shadowBlur   = 24;
   ctx.fillStyle    = titleColor;
-  wrapText(ctx, TITLE.toUpperCase(), SIDE_PAD, titleTop, MAX_W, TITLE_SIZE * 1.22);
+  const titleX = bodyAlign === 'center' ? W / 2 : bodyAlign === 'right' ? W - SIDE_PAD : SIDE_PAD;
+  wrapText(ctx, TITLE.toUpperCase(), titleX, titleTop, MAX_W, TITLE_SIZE * 1.22);
   ctx.restore();
 
   // Body text
@@ -536,7 +624,7 @@ function drawCanvas() {
   if (bgType === 'video' && bgVideoEl) scheduleRender();
 }
 
-// Simple single-color word-wrap helper (for title)
+// Word-wrap helper for title — respects ctx.textAlign already set by caller
 function wrapText(c, text, x, y, maxW, lineH) {
   const words = text.split(' ');
   let line = '', curY = y;
@@ -552,7 +640,7 @@ function wrapText(c, text, x, y, maxW, lineH) {
 
 // Pre-measure body text into line objects (for bottom-anchor positioning)
 function measureBodyLines(segments, maxW, fontSize) {
-  const font   = `bold ${fontSize}px Arial, sans-serif`;
+  const font   = `bold ${fontSize}px ${bodyFontFamily}, sans-serif`;
   const tmp    = document.createElement('canvas').getContext('2d');
   tmp.font     = font;
   const words  = [];
@@ -584,12 +672,17 @@ function measureBodyLines(segments, maxW, fontSize) {
 // Draw pre-measured lines onto main canvas
 function drawBodyLines(lines, x, y, fontSize, lineH) {
   ctx.save();
-  ctx.font         = `bold ${fontSize}px Arial, sans-serif`;
+  ctx.font         = `bold ${fontSize}px ${bodyFontFamily}, sans-serif`;
   ctx.textBaseline = 'top';
-  ctx.textAlign    = 'left';
+  ctx.textAlign    = 'left'; // we calculate curX manually per alignment
   lines.forEach((line, li) => {
-    let curX = x;
     const curY = y + li * lineH;
+    // Calculate total line width for alignment
+    const lineWidth = line.reduce((sum, { text, space }) => sum + ctx.measureText(space + text).width, 0);
+    let curX;
+    if      (bodyAlign === 'center') curX = W / 2 - lineWidth / 2;
+    else if (bodyAlign === 'right')  curX = W - x - lineWidth;
+    else                             curX = x;
     line.forEach(({ text, color, space }) => {
       ctx.shadowColor = 'rgba(0,0,0,0.9)';
       ctx.shadowBlur  = 10;
@@ -663,7 +756,7 @@ function toggleRecording() {
     document.getElementById('recIndicator').style.display = '';
     // Start animation loop for recording
     animLoop();
-    recTimeout = setTimeout(stopRecording, 5000);
+    recTimeout = setTimeout(stopRecording, recDuration * 1000);
   } catch(e) {
     showMsg('Recording not supported in this browser.', '#f87171');
   }
@@ -675,7 +768,7 @@ function stopRecording() {
   isRecording = false;
   mediaRec?.stop();
   cancelAnimationFrame(rafId);
-  document.getElementById('recBtn').textContent = '🎬 Record 5s Video';
+  document.getElementById('recBtn').textContent = `🎬 Record ${recDuration}s Video`;
   document.getElementById('recIndicator').style.display = 'none';
 }
 
