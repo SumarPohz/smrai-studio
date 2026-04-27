@@ -26,8 +26,9 @@ import adminRouter     from "./routes/admin.js";
 import reelsRouter     from "./routes/reels.js";
 import ttsRouter       from "./routes/tts.js";
 import magicLiveRouter from "./routes/magicLive.js";
-import factsStudioRouter from "./routes/factsStudio.js";
-import studioRouter      from "./routes/studio.js";
+import factsStudioRouter  from "./routes/factsStudio.js";
+import studioRouter       from "./routes/studio.js";
+import whiteboardRouter   from "./routes/whiteboard.js";
 import { getOverlay, getSubmitPage, postSubmit } from "./controllers/magicLiveController.js";
 import { removeBackgroundFromImageBase64 } from "remove.bg";
 import compression from "compression";
@@ -606,6 +607,9 @@ await db.query(`
     await db.query(`ALTER TABLE reels MODIFY COLUMN status ENUM('processing','completed','failed','script_ready') DEFAULT 'processing'`).catch(() => {});
     await db.query(`ALTER TABLE reels ADD COLUMN description TEXT`).catch(() => {});
     await db.query(`ALTER TABLE reel_video_payments ADD COLUMN refunded TINYINT(1) NOT NULL DEFAULT 0`).catch(() => {});
+    await db.query(`ALTER TABLE reels ADD COLUMN reel_type VARCHAR(20) DEFAULT 'ai'`).catch(() => {});
+    await db.query(`ALTER TABLE reels ADD COLUMN script TEXT`).catch(() => {});
+    await db.query(`INSERT IGNORE INTO admin_settings (\`key\`, value) VALUES ('media_reel_price', '99')`).catch(() => {});
 
     // One-time fix: refund wallet for any failed reels that weren't auto-refunded
     try {
@@ -1003,6 +1007,22 @@ await db.query(`
         bg_value    TEXT,
         created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_user (user_id, created_at)
+      )
+    `);
+
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS whiteboard_projects (
+        id            INT AUTO_INCREMENT PRIMARY KEY,
+        user_id       INT NOT NULL,
+        topic         TEXT,
+        title         VARCHAR(255),
+        scenes_json   LONGTEXT,
+        status        VARCHAR(30) DEFAULT 'processing',
+        video_url     VARCHAR(500),
+        error_message TEXT,
+        voice         VARCHAR(30) DEFAULT 'alloy',
+        created_at    DATETIME DEFAULT NOW(),
+        INDEX idx_wb_user (user_id, created_at)
       )
     `);
 
@@ -3310,7 +3330,10 @@ app.use("/magic-live", ensureAuthenticated, (req, res, next) => magicLiveRouter(
 app.use("/facts-studio", ensureAuthenticated, factsStudioRouter(db, upload));
 
 // Video Studio
-app.use("/studio", ensureAuthenticated, studioRouter(db, upload));
+app.use("/studio",      ensureAuthenticated, studioRouter(db, upload));
+
+// Whiteboard Video Generator
+app.use("/whiteboard",  ensureAuthenticated, whiteboardRouter(db));
 
 // ── Admin: Magic Live History API ─────────────────────────────────────────────
 app.get("/api/admin/magic-live/history", ensureAdmin, async (req, res) => {
@@ -3920,18 +3943,28 @@ io.use((socket, next) => sessionMiddleware(socket.request, {}, next));
 io.use((socket, next) => passport.initialize()(socket.request, {}, next));
 io.use((socket, next) => passport.session()(socket.request, {}, next));
 
+// userId → musicId — survives socket reconnects so overlays get music on re-join
+const magicLiveMusicState = new Map();
+
 io.on("connection", (socket) => {
   const user = socket.request.user;
 
   // Magic Live overlay room — public, no auth required (OBS browser source)
   socket.on("join-magic", (userId) => {
     const uid = parseInt(userId, 10);
-    if (uid) socket.join(`magic:${uid}`);
+    if (!uid) return;
+    socket.join(`magic:${uid}`);
+    // Re-send current music to the (re)connecting overlay so it doesn't miss the event
+    const savedMusic = magicLiveMusicState.get(uid);
+    if (savedMusic) socket.emit("loop-music", { musicId: savedMusic });
   });
 
   // Background music relay — dashboard emits, server forwards to overlay room
   socket.on("loop-music", ({ musicId }) => {
     if (!user) return;
+    // Persist so reconnecting overlays get the right track
+    if (musicId) magicLiveMusicState.set(user.id, musicId);
+    else magicLiveMusicState.delete(user.id);
     io.to(`magic:${user.id}`).emit("loop-music", { musicId: musicId || null });
   });
 

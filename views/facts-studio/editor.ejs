@@ -253,8 +253,61 @@ input[type=range].music-vol {
       </div>
     </div>
 
-    <!-- ── RIGHT: Background + Export ── -->
+    <!-- ── RIGHT: Export (top) + Background + Layout + Music + Save ── -->
     <div style="display:flex;flex-direction:column;gap:14px;">
+
+      <!-- Export — pinned at top for quick recording access -->
+      <div class="fs-card">
+        <span class="fs-label">Export</span>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <!-- Duration input — always visible -->
+          <div style="margin:0 0 2px;">
+            <span class="fs-label" style="margin-bottom:6px;">Video Duration</span>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <input type="number" id="durMins" min="0" max="59" value="0"
+                class="fs-input" style="width:60px;text-align:center;padding:7px 6px;font-size:15px;font-weight:700;"
+                oninput="syncDuration()" />
+              <span style="font-size:12px;color:#71717a;">min</span>
+              <input type="number" id="durSecs" min="0" max="59" value="16"
+                class="fs-input" style="width:60px;text-align:center;padding:7px 6px;font-size:15px;font-weight:700;"
+                oninput="syncDuration()" />
+              <span style="font-size:12px;color:#71717a;">sec</span>
+              <span id="durTotal" style="font-size:11px;color:#71717a;white-space:nowrap;">= 16s</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:6px;">
+            <button class="fs-btn fs-btn-outline" style="flex:1;" id="recBtn" onclick="startRecordSingle()">🎬 Record &amp; Save</button>
+            <button class="fs-btn fs-btn-outline" style="flex:1;border-color:#a78bfa;color:#a78bfa;" id="queueBtn" onclick="startRecordQueue()">➕ Add to Queue</button>
+          </div>
+          <!-- Recording progress bar -->
+          <div id="recProgress" style="display:none;margin-top:4px;">
+            <div style="background:var(--border);border-radius:999px;height:4px;overflow:hidden;">
+              <div id="recProgressBar" style="background:var(--accent);height:100%;width:0%;transition:width .25s linear;"></div>
+            </div>
+            <div id="recProgressText" style="font-size:11px;color:#71717a;text-align:center;margin-top:4px;font-variant-numeric:tabular-nums;">0:00 / 16s</div>
+          </div>
+          <button class="fs-btn fs-btn-primary fs-btn-full" onclick="exportPng()" style="margin-top:2px;">📷 Download PNG</button>
+        </div>
+      </div>
+
+      <!-- Clip Queue (shown when ≥1 clip in queue) -->
+      <div class="fs-card" id="clipTraySection" style="display:none;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <span class="fs-label" style="margin:0;">CLIP QUEUE (<span id="clipCount">0</span>)</span>
+          <button onclick="clearQueue()" style="background:none;border:none;color:#71717a;font-size:12px;cursor:pointer;padding:2px 6px;">🗑 Clear All</button>
+        </div>
+        <div id="clipTray" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;"></div>
+        <button class="fs-btn fs-btn-full" onclick="openExportModal()"
+          style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;font-weight:700;font-size:14px;padding:13px;">
+          🚀 Export Merged MP4
+        </button>
+      </div>
+
+      <!-- Save -->
+      <div class="fs-card">
+        <span class="fs-label">Draft</span>
+        <button class="fs-btn fs-btn-green fs-btn-full" onclick="saveDraft()">💾 Save Draft</button>
+      </div>
 
       <!-- Background -->
       <div class="fs-card">
@@ -313,44 +366,70 @@ input[type=range].music-vol {
         <p style="font-size:11px;color:#52525b;margin-top:6px;">Music plays during recording and is mixed into the exported video.</p>
       </div>
 
-      <!-- Export -->
-      <div class="fs-card">
-        <span class="fs-label">Export</span>
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          <button class="fs-btn fs-btn-primary fs-btn-full" onclick="exportPng()">📷 Download PNG</button>
-          <!-- Duration input — always visible -->
-          <div style="margin:4px 0 6px;">
-            <span class="fs-label" style="margin-bottom:6px;">Video Duration</span>
-            <div style="display:flex;align-items:center;gap:6px;">
-              <input type="number" id="durMins" min="0" max="59" value="0"
-                class="fs-input" style="width:60px;text-align:center;padding:7px 6px;font-size:15px;font-weight:700;"
-                oninput="syncDuration()" />
-              <span style="font-size:12px;color:#71717a;">min</span>
-              <input type="number" id="durSecs" min="0" max="59" value="5"
-                class="fs-input" style="width:60px;text-align:center;padding:7px 6px;font-size:15px;font-weight:700;"
-                oninput="syncDuration()" />
-              <span style="font-size:12px;color:#71717a;">sec</span>
-              <span id="durTotal" style="font-size:11px;color:#71717a;white-space:nowrap;">= 5s</span>
-            </div>
-          </div>
-          <button class="fs-btn fs-btn-outline fs-btn-full" id="recBtn" onclick="toggleRecording()">🎬 Record 5s Video</button>
-          <!-- Recording progress bar -->
-          <div id="recProgress" style="display:none;margin-top:8px;">
-            <div style="background:var(--border);border-radius:999px;height:4px;overflow:hidden;">
-              <div id="recProgressBar" style="background:var(--accent);height:100%;width:0%;transition:width .25s linear;"></div>
-            </div>
-            <div id="recProgressText" style="font-size:11px;color:#71717a;text-align:center;margin-top:4px;font-variant-numeric:tabular-nums;">0:00 / 5s</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Save -->
-      <div class="fs-card">
-        <span class="fs-label">Draft</span>
-        <button class="fs-btn fs-btn-green fs-btn-full" onclick="saveDraft()">💾 Save Draft</button>
-      </div>
-
     </div>
+  </div>
+</div>
+
+<!-- ── Export Merged Modal ── -->
+<div id="exportMergedModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#18181b;border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:28px 24px;max-width:400px;width:90%;box-shadow:0 25px 60px rgba(0,0,0,0.5);position:relative;">
+    <button onclick="closeExportModal()" style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:#71717a;line-height:1;">✕</button>
+
+    <div style="text-align:center;margin-bottom:20px;">
+      <div style="width:48px;height:48px;background:rgba(124,58,237,0.15);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+        <svg width="22" height="22" fill="none" stroke="#a78bfa" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.069A1 1 0 0121 8.87v6.26a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg>
+      </div>
+      <h3 style="font-size:1.1rem;font-weight:800;color:#f4f4f5;margin:0 0 4px;">Export Merged MP4</h3>
+      <p id="exportClipCountLabel" style="font-size:13px;color:#71717a;margin:0;">Merging 0 clips into one YouTube Short</p>
+    </div>
+
+    <!-- TTS toggle -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:rgba(255,255,255,0.04);border-radius:10px;margin-bottom:12px;">
+      <div>
+        <div style="font-size:14px;font-weight:600;color:#e4e4e7;">🎤 Voice Narration (TTS)</div>
+        <div style="font-size:12px;color:#71717a;margin-top:2px;">Reads each card's text aloud</div>
+      </div>
+      <button id="ttsToggleBtn" onclick="toggleTTS()" style="width:44px;height:24px;background:#3f3f46;border:none;border-radius:999px;cursor:pointer;position:relative;transition:background .15s;flex-shrink:0;">
+        <span style="position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .15s;display:block;" id="ttsToggleThumb"></span>
+      </button>
+    </div>
+
+    <!-- Background Music row -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:rgba(255,255,255,0.04);border-radius:10px;margin-bottom:12px;">
+      <div style="min-width:0;flex:1;">
+        <div style="font-size:14px;font-weight:600;color:#e4e4e7;">🎵 Background Music</div>
+        <div id="exportMusicLabel" style="font-size:12px;color:#71717a;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">No track loaded — loops if shorter than video</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;margin-left:10px;">
+        <label for="exportMusicInput" style="padding:5px 10px;border:1.5px solid rgba(255,255,255,0.15);border-radius:7px;color:#a1a1aa;font-size:12px;cursor:pointer;white-space:nowrap;">📂 Pick</label>
+        <input type="file" id="exportMusicInput" style="display:none;" accept="audio/*" onchange="loadExportMusic(this)" />
+        <button id="exportMusicClearBtn" onclick="clearExportMusic()" style="display:none;padding:5px 10px;border:1.5px solid #7f1d1d;border-radius:7px;color:#fca5a5;font-size:12px;cursor:pointer;background:none;">✕</button>
+      </div>
+    </div>
+
+    <!-- Voice picker (shown when TTS on) -->
+    <div id="voicePickerRow" style="display:none;margin-bottom:12px;">
+      <div style="font-size:11px;font-weight:700;color:#71717a;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Voice</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">
+        <% ['alloy','echo','fable','nova','onyx','shimmer'].forEach(v => { %>
+        <button onclick="selectVoice('<%= v %>',this)"
+          style="padding:6px 12px;border:1.5px solid rgba(255,255,255,0.1);border-radius:8px;background:transparent;color:#a1a1aa;font-size:13px;cursor:pointer;transition:all .15s;"
+          class="voice-pill<%= v === 'alloy' ? ' voice-active' : '' %>"><%= v %></button>
+        <% }) %>
+      </div>
+    </div>
+
+    <button id="doExportBtn" onclick="doExportMerged()"
+      style="width:100%;padding:13px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;">
+      <span id="doExportBtnTxt">🚀 Export MP4</span>
+    </button>
+    <div id="exportProgress" style="display:none;margin-top:14px;">
+      <div style="background:rgba(255,255,255,0.06);border-radius:999px;height:4px;overflow:hidden;margin-bottom:6px;">
+        <div id="exportProgressBar" style="background:linear-gradient(90deg,#7c3aed,#a855f7);height:100%;width:0%;transition:width .4s;"></div>
+      </div>
+      <div id="exportProgressTxt" style="font-size:12px;color:#71717a;text-align:center;">Uploading clips…</div>
+    </div>
+    <div id="exportError" style="font-size:13px;color:#f87171;text-align:center;margin-top:8px;"></div>
   </div>
 </div>
 
@@ -380,7 +459,7 @@ let renderScheduled = false;
 let bodyFontSize   = 58;
 let bodyFontFamily = 'Arial';
 let bodyAlign      = 'left';
-let recDuration    = 5;
+let recDuration    = 16;
 
 // Music state
 let musicAudio    = null;
@@ -394,6 +473,15 @@ let musicDestNode = null;
 // Recording timer state
 let recTimerInterval = null;
 let recStartTime     = 0;
+
+// Clip queue (multi-clip merge)
+let clipQueue   = [];  // [{ blob, bodyText, url }]
+let queueMode   = false; // true = add to queue, false = direct download
+let musicFile   = null;  // File object for music upload (kept for merge)
+
+// Export modal state
+let ttsEnabled    = true;
+let selectedVoice = 'alloy';
 
 // Live mode — shifts text up to avoid YouTube live comment zone
 let liveMode = false;
@@ -441,7 +529,11 @@ function syncDuration() {
   const total = m * 60 + s;
   recDuration = total < 1 ? 1 : total;
   document.getElementById('durTotal').textContent = `= ${formatDur(recDuration)}`;
-  if (!isRecording) document.getElementById('recBtn').textContent = `🎬 Record ${formatDur(recDuration)}`;
+  if (!isRecording) {
+    const lbl = formatDur(recDuration);
+    document.getElementById('recBtn').textContent   = `🎬 Record ${lbl}`;
+    document.getElementById('queueBtn').textContent = '➕ Add to Queue';
+  }
 }
 function formatDur(secs) {
   if (secs < 60) return `${secs}s`;
@@ -453,6 +545,7 @@ function formatDur(secs) {
 function loadMusic(input) {
   if (!input.files[0]) return;
   const file = input.files[0];
+  musicFile = file; // keep File reference for merge upload
   clearMusic(true); // tear down old audio graph, keep UI
   const url = URL.createObjectURL(file);
   musicAudio = new Audio(url);
@@ -869,6 +962,9 @@ function exportPng() {
 
 let recTimeout = null;
 
+function startRecordSingle() { queueMode = false; toggleRecording(); }
+function startRecordQueue()  { queueMode = true;  toggleRecording(); }
+
 function toggleRecording() {
   if (isRecording) { stopRecording(); return; }
 
@@ -903,10 +999,12 @@ function toggleRecording() {
     mediaRec  = new MediaRecorder(finalStream, { mimeType });
     recChunks = [];
     mediaRec.ondataavailable = e => { if (e.data.size) recChunks.push(e.data); };
-    mediaRec.onstop = downloadWebm;
+    mediaRec.onstop = queueMode ? handleQueueStop : downloadWebm;
     mediaRec.start(200);
     isRecording = true;
-    document.getElementById('recBtn').textContent = '⏹ Stop Recording';
+    const stopLabel = '⏹ Stop Recording';
+    document.getElementById('recBtn').textContent   = queueMode ? stopLabel : stopLabel;
+    document.getElementById('queueBtn').textContent = queueMode ? stopLabel : '➕ Add to Queue';
     document.getElementById('recIndicator').style.display = '';
 
     // Start recording timer
@@ -941,7 +1039,9 @@ function stopRecording() {
   isRecording = false;
   mediaRec?.stop();
   cancelAnimationFrame(rafId);
-  document.getElementById('recBtn').textContent = `🎬 Record ${formatDur(recDuration)}`;
+  const durLabel = formatDur(recDuration);
+  document.getElementById('recBtn').textContent   = `🎬 Record ${durLabel}`;
+  document.getElementById('queueBtn').textContent = '➕ Add to Queue';
   document.getElementById('recIndicator').style.display = 'none';
   document.getElementById('recTimer').style.display = 'none';
   document.getElementById('recProgress').style.display = 'none';
@@ -961,6 +1061,195 @@ function downloadWebm() {
   a.click();
   URL.revokeObjectURL(a.href);
   showMsg('✅ Video downloaded!', '#4ade80');
+}
+
+// ── Clip Queue ────────────────────────────────────────────────────────────────
+
+function handleQueueStop() {
+  const blob     = new Blob(recChunks, { type: 'video/webm' });
+  const url      = URL.createObjectURL(blob);
+  const bodyText = document.getElementById('bodyEditor').innerText.trim();
+  clipQueue.push({ blob, bodyText, url });
+  renderClipTray();
+  showMsg(`✅ Clip ${clipQueue.length} added to queue!`, '#4ade80');
+}
+
+function renderClipTray() {
+  const section = document.getElementById('clipTraySection');
+  const tray    = document.getElementById('clipTray');
+  const count   = document.getElementById('clipCount');
+
+  count.textContent = clipQueue.length;
+  section.style.display = clipQueue.length ? '' : 'none';
+
+  tray.innerHTML = clipQueue.map((c, i) => `
+    <div style="position:relative;width:54px;flex-shrink:0;">
+      <video src="${c.url}" style="width:54px;aspect-ratio:9/16;object-fit:cover;border-radius:8px;display:block;" muted></video>
+      <div style="position:absolute;top:3px;left:4px;font-size:10px;color:#fff;font-weight:700;text-shadow:0 1px 2px rgba(0,0,0,.7);">${i + 1}</div>
+      <button onclick="removeClip(${i})"
+        style="position:absolute;top:2px;right:2px;width:18px;height:18px;background:rgba(0,0,0,.65);border:none;border-radius:50%;color:#fff;font-size:10px;cursor:pointer;line-height:18px;text-align:center;padding:0;">✕</button>
+    </div>
+  `).join('');
+}
+
+function removeClip(idx) {
+  URL.revokeObjectURL(clipQueue[idx].url);
+  clipQueue.splice(idx, 1);
+  renderClipTray();
+}
+
+function clearQueue() {
+  clipQueue.forEach(c => URL.revokeObjectURL(c.url));
+  clipQueue = [];
+  renderClipTray();
+}
+
+// ── Export Merged Modal ───────────────────────────────────────────────────────
+
+function openExportModal() {
+  if (!clipQueue.length) return showMsg('Add at least one clip to the queue first.', '#f87171');
+  document.getElementById('exportClipCountLabel').textContent =
+    `Merging ${clipQueue.length} clip${clipQueue.length !== 1 ? 's' : ''} into one YouTube Short`;
+  document.getElementById('exportError').textContent = '';
+  document.getElementById('exportProgress').style.display = 'none';
+  document.getElementById('doExportBtn').disabled = false;
+  document.getElementById('doExportBtnTxt').textContent = '🚀 Export MP4';
+  // Sync music label from the main panel's loaded track
+  syncExportMusicLabel();
+  document.getElementById('exportMergedModal').style.display = 'flex';
+}
+
+function syncExportMusicLabel() {
+  const label = document.getElementById('exportMusicLabel');
+  const clearBtn = document.getElementById('exportMusicClearBtn');
+  if (musicFile) {
+    label.textContent = musicFile.name;
+    label.style.color = '#a78bfa';
+    clearBtn.style.display = '';
+  } else {
+    label.textContent = 'No track loaded — loops if shorter than video';
+    label.style.color = '#71717a';
+    clearBtn.style.display = 'none';
+  }
+}
+
+function loadExportMusic(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  // Update the shared musicFile reference used by doExportMerged
+  musicFile = file;
+  const url = URL.createObjectURL(file);
+  if (musicAudio) { musicAudio.pause(); musicAudio = null; }
+  musicAudio = new Audio(url);
+  musicAudio.loop = true;
+  musicAudio.volume = musicVolume;
+  // Sync main panel controls too
+  document.getElementById('musicName').textContent = file.name;
+  document.getElementById('musicControls').style.display = '';
+  syncExportMusicLabel();
+}
+
+function clearExportMusic() {
+  musicFile = null;
+  if (musicAudio) { musicAudio.pause(); musicAudio = null; }
+  document.getElementById('musicFileInput').value = '';
+  document.getElementById('exportMusicInput').value = '';
+  document.getElementById('musicControls').style.display = 'none';
+  syncExportMusicLabel();
+}
+
+function closeExportModal() {
+  document.getElementById('exportMergedModal').style.display = 'none';
+}
+
+function toggleTTS() {
+  ttsEnabled = !ttsEnabled;
+  const btn   = document.getElementById('ttsToggleBtn');
+  const thumb = document.getElementById('ttsToggleThumb');
+  btn.style.background   = ttsEnabled ? '#7c3aed' : '#3f3f46';
+  thumb.style.transform  = ttsEnabled ? 'translateX(20px)' : 'translateX(0)';
+  document.getElementById('voicePickerRow').style.display = ttsEnabled ? '' : 'none';
+}
+
+function selectVoice(v, btn) {
+  selectedVoice = v;
+  document.querySelectorAll('.voice-pill').forEach(b => {
+    b.style.borderColor = 'rgba(255,255,255,0.1)';
+    b.style.color = '#a1a1aa';
+  });
+  btn.style.borderColor = '#7c3aed';
+  btn.style.color = '#c4b5fd';
+}
+
+async function doExportMerged() {
+  if (!clipQueue.length) return;
+  const btn = document.getElementById('doExportBtn');
+  const txt = document.getElementById('doExportBtnTxt');
+  const err = document.getElementById('exportError');
+  const prog = document.getElementById('exportProgress');
+  const bar  = document.getElementById('exportProgressBar');
+  const ptxt = document.getElementById('exportProgressTxt');
+
+  btn.disabled = true;
+  txt.textContent = 'Uploading…';
+  err.textContent = '';
+  prog.style.display = '';
+  bar.style.width = '5%';
+  ptxt.textContent = 'Uploading clips to server…';
+
+  try {
+    const fd = new FormData();
+    clipQueue.forEach((c, i) => fd.append('clips', c.blob, `clip-${i}.webm`));
+    fd.append('bodies', JSON.stringify(clipQueue.map(c => c.bodyText)));
+    fd.append('voice',  selectedVoice);
+    fd.append('tts',    ttsEnabled ? '1' : '0');
+    if (musicFile) fd.append('music', musicFile);
+
+    bar.style.width = '20%';
+    const upRes  = await fetch('/facts-studio/merge-clips', { method: 'POST', body: fd });
+    const upData = await upRes.json();
+    if (!upRes.ok) throw new Error(upData.error || 'Upload failed');
+
+    const { jobId } = upData;
+    bar.style.width = '40%';
+    ptxt.textContent = ttsEnabled ? 'Generating voice narration…' : 'Merging clips…';
+
+    // Poll for completion
+    let done = false;
+    let attempts = 0;
+    while (!done && attempts < 180) { // max 6 min
+      await new Promise(r => setTimeout(r, 2000));
+      attempts++;
+      const sRes  = await fetch(`/facts-studio/merge-status/${jobId}`);
+      const sData = await sRes.json();
+
+      if (sData.status === 'done') {
+        done = true;
+        bar.style.width = '100%';
+        ptxt.textContent = 'Done! Downloading…';
+        // Trigger download
+        const a = document.createElement('a');
+        a.href     = sData.url;
+        a.download = `facts-shorts-${Date.now()}.mp4`;
+        a.click();
+        showMsg('✅ Merged MP4 downloaded!', '#4ade80');
+        setTimeout(closeExportModal, 1500);
+      } else if (sData.status === 'failed') {
+        throw new Error(sData.error || 'Server processing failed');
+      } else {
+        // still processing — animate bar
+        const pct = Math.min(90, 40 + attempts * 2);
+        bar.style.width = pct + '%';
+        ptxt.textContent = attempts > 15 ? 'Merging video…' : ptxt.textContent;
+      }
+    }
+    if (!done) throw new Error('Timed out waiting for server');
+  } catch (e) {
+    err.textContent = e.message;
+    btn.disabled = false;
+    txt.textContent = '🚀 Export MP4';
+    prog.style.display = 'none';
+  }
 }
 
 // ── Save / Load Drafts ────────────────────────────────────────────────────────

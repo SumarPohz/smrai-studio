@@ -1,0 +1,734 @@
+<%- include('../partials/header', { title }) %>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+<style>
+#smap-page { background:#fff; min-height:100vh; color:#111827; }
+
+/* Mapper rows */
+.mapper-row { display:flex; gap:16px; align-items:flex-start; padding:16px 0; border-bottom:1px solid #f3f4f6; border-left:3px solid transparent; padding-left:0; transition:all .15s; }
+.mapper-row.active { border-left-color:#7c3aed; padding-left:13px; background:#faf5ff; margin-left:-13px; padding-right:4px; }
+.line-text { flex:0 0 38%; min-width:0; font-size:14px; color:#374151; line-height:1.6; word-break:break-word; }
+.line-num { font-size:11px; color:#9ca3af; font-weight:700; margin-bottom:4px; letter-spacing:.04em; }
+.slots-wrap { flex:1; display:flex; gap:10px; min-width:0; }
+
+/* Upload slots */
+.upload-slot { flex:1; border:2px dashed #e5e7eb; border-radius:12px; min-height:110px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all .15s; position:relative; overflow:hidden; background:#fafafa; }
+.upload-slot:hover, .upload-slot.drag { border-color:#7c3aed; background:#faf5ff; }
+.upload-slot.filled { border-style:solid; border-color:#a78bfa; background:#fff; }
+.slot-label { font-size:10px; font-weight:700; color:#9ca3af; position:absolute; top:5px; left:7px; z-index:2; letter-spacing:.05em; }
+.upload-slot.filled .slot-label { color:#fff; background:rgba(0,0,0,.45); padding:1px 5px; border-radius:3px; }
+.slot-empty-inner { display:flex; flex-direction:column; align-items:center; gap:4px; pointer-events:none; }
+.slot-preview { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+.slot-rm { position:absolute; top:4px; right:4px; width:22px; height:22px; background:rgba(0,0,0,.6); border:none; border-radius:50%; color:#fff; font-size:11px; cursor:pointer; z-index:3; display:flex; align-items:center; justify-content:center; line-height:1; }
+
+/* Settings panel */
+.smap-section { border:1.5px solid #e5e7eb; border-radius:16px; overflow:hidden; margin-bottom:20px; }
+.smap-section-hd { padding:14px 20px; border-bottom:1px solid #f3f4f6; background:#f9fafb; }
+.smap-section-hd .title { font-size:14px; font-weight:700; color:#111827; }
+.smap-section-hd .sub   { font-size:12px; color:#9ca3af; margin-top:2px; }
+.smap-section-body { padding:18px 20px; }
+
+/* Voice */
+.wiz-card { border:1.5px solid #e5e7eb; border-radius:12px; overflow:hidden; }
+.voice-item { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid #f3f4f6; cursor:pointer; transition:background .12s; }
+.voice-item:last-child { border-bottom:none; }
+.voice-item.selected { background:#faf5ff; }
+.v-radio { width:16px; height:16px; border-radius:50%; border:2px solid #d1d5db; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.voice-item.selected .v-radio { border-color:#7c3aed; }
+.v-dot { width:8px; height:8px; border-radius:50%; background:#7c3aed; display:none; }
+.voice-item.selected .v-dot { display:block; }
+.v-badge { display:inline-block; padding:2px 8px; border-radius:999px; background:#dbeafe; color:#1d4ed8; font-size:11px; font-weight:700; margin-left:6px; }
+.v-badge.female { background:#fce7f3; color:#9d174d; }
+
+/* Effect pills */
+.effect-pill { padding:7px 14px; border:1.5px solid #e5e7eb; border-radius:999px; font-size:13px; font-weight:600; color:#6b7280; cursor:pointer; background:#fff; transition:all .15s; }
+.effect-pill.active { border-color:#7c3aed; background:#faf5ff; color:#7c3aed; }
+.effect-pills-row { display:flex; gap:8px; flex-wrap:wrap; }
+
+/* Music */
+.music-item { display:flex; align-items:center; gap:12px; padding:12px 16px; border:1.5px solid #e5e7eb; border-radius:12px; margin-bottom:8px; cursor:pointer; transition:border-color .15s; }
+.music-item:last-child { margin-bottom:0; }
+.music-item.selected { border-color:#7c3aed; background:#faf5ff; }
+.music-color { width:36px; height:36px; border-radius:8px; flex-shrink:0; }
+.wiz-tabs { display:flex; border-bottom:1.5px solid #e5e7eb; margin-bottom:14px; }
+.wiz-tab { padding:10px 16px; font-size:13px; font-weight:500; color:#6b7280; cursor:pointer; border:none; border-bottom:2.5px solid transparent; margin-bottom:-1.5px; background:none; }
+.wiz-tab.active { color:#7c3aed; border-bottom-color:#7c3aed; }
+.upload-zone { border:2px dashed #e5e7eb; border-radius:12px; padding:24px; text-align:center; cursor:pointer; transition:border-color .15s; }
+.upload-zone:hover { border-color:#a78bfa; }
+
+/* Inputs */
+.smap-input  { width:100%; border:1.5px solid #e5e7eb; border-radius:10px; padding:12px 14px; font-size:15px; color:#111827; background:#fff; outline:none; transition:border-color .15s; box-sizing:border-box; }
+.smap-input:focus { border-color:#7c3aed; }
+.smap-textarea { resize:vertical; min-height:130px; font-family:inherit; line-height:1.6; }
+
+/* Error / util */
+.err-box { display:none; background:rgba(239,68,68,.08); border:1px solid rgba(239,68,68,.25); border-radius:10px; padding:12px 16px; color:#dc2626; font-size:14px; margin-bottom:14px; }
+@keyframes spin { to { transform:rotate(360deg); } }
+@media(max-width:600px) {
+  .mapper-row { flex-direction:column; }
+  .line-text { flex:none; width:100%; }
+  .slots-wrap { width:100%; }
+}
+</style>
+
+<div id="smap-page" style="padding-top:80px;padding-bottom:80px;">
+<div style="max-width:800px;margin:0 auto;padding:0 20px;">
+
+  <!-- Back -->
+  <a href="/reels/create" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#6b7280;text-decoration:none;margin-bottom:20px;">
+    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+    Back to Create
+  </a>
+
+  <!-- Page title -->
+  <h1 style="font-size:1.75rem;font-weight:800;color:#111827;margin:0 0 6px;">Script Visual Mapper</h1>
+  <p style="font-size:14px;color:#6b7280;margin:0 0 28px;">Paste your narration script, split it line by line, then assign images or videos to each line. The order you assign determines the final video.</p>
+
+  <!-- ── Script Input Panel ─────────────────────────────────────────────── -->
+  <div style="background:#f9fafb;border:1.5px solid #e5e7eb;border-radius:16px;padding:22px;margin-bottom:24px;">
+    <label style="font-size:14px;font-weight:700;color:#111827;display:block;margin-bottom:10px;">Your Script</label>
+    <textarea id="scriptInput" class="smap-input smap-textarea" maxlength="5000"
+      placeholder="Paste your narration script here…&#10;&#10;Example:&#10;Every morning, 70% of people check their phones before getting out of bed.&#10;Social media companies spend billions engineering this habit.&#10;Here's what's really happening inside your brain.&#10;And how you can take back control."
+      oninput="document.getElementById('scriptCharCount').textContent=this.value.length+'/5000'"></textarea>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;flex-wrap:wrap;gap:8px;">
+      <span id="scriptCharCount" style="font-size:12px;color:#9ca3af;">0/5000</span>
+      <button onclick="splitScript()"
+        style="padding:11px 22px;background:#7c3aed;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:background .15s;display:flex;align-items:center;gap:7px;">
+        Split into Lines
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+      </button>
+    </div>
+    <div id="scriptErr" class="err-box" style="margin-top:12px;margin-bottom:0;"></div>
+  </div>
+
+  <!-- ── Mapper + Settings (hidden until split) ──────────────────────────── -->
+  <div id="mapperSection" style="display:none;">
+
+    <!-- Header row -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+      <div style="font-size:15px;font-weight:700;color:#111827;">
+        Visual Assignment
+        <span id="lineCountBadge" style="display:inline-block;padding:3px 10px;border-radius:999px;border:1.5px solid #7c3aed;color:#7c3aed;font-size:12px;font-weight:600;margin-left:8px;vertical-align:middle;"></span>
+      </div>
+      <button onclick="splitScript()" style="font-size:13px;color:#7c3aed;background:none;border:none;cursor:pointer;font-weight:600;padding:0;">
+        Re-split ↺
+      </button>
+    </div>
+
+    <div id="mapperErr" class="err-box"></div>
+
+    <!-- Mapper rows -->
+    <div id="mapperRows" style="margin-bottom:28px;border-top:1px solid #f3f4f6;"></div>
+
+    <!-- ── Generation Settings ─────────────────────────────────────────── -->
+
+    <!-- Voice -->
+    <div class="smap-section">
+      <div class="smap-section-hd">
+        <div class="title">Voice</div>
+        <div class="sub">Choose the narration voice for your reel</div>
+      </div>
+      <div class="smap-section-body" style="padding:0;">
+        <div class="wiz-card" style="border:none;border-radius:0;">
+          <% [
+            ['alloy',   'Alloy',   'Neutral', false, 'Neutral &amp; balanced — great for any content.'],
+            ['echo',    'Echo',    'Male',    false, 'Deep &amp; authoritative — the well known TikTok voice.'],
+            ['fable',   'Fable',   'Male',    false, 'British &amp; storytelling — ideal for narratives.'],
+            ['onyx',    'Onyx',    'Male',    false, 'Rich &amp; powerful — perfect for storytelling.'],
+            ['nova',    'Nova',    'Female',  true,  'Warm &amp; friendly — great for lifestyle content.'],
+            ['shimmer', 'Shimmer', 'Female',  true,  'Soft &amp; calm — ideal for relaxing content.'],
+          ].forEach((v, vi) => { %>
+          <div class="voice-item <%= vi===0?'selected':'' %>" onclick="pickVoice('<%= v[0] %>')" data-voice="<%= v[0] %>">
+            <div style="display:flex;align-items:center;gap:12px;flex:1;">
+              <div class="v-radio"><div class="v-dot"></div></div>
+              <div>
+                <div style="display:flex;align-items:center;">
+                  <span style="font-size:14px;font-weight:700;color:#111827;"><%= v[1] %></span>
+                  <span class="v-badge <%= v[3]?'female':'' %>"><%= v[2] %></span>
+                </div>
+                <div style="font-size:12px;color:#6b7280;margin-top:2px;"><%- v[4] %></div>
+              </div>
+            </div>
+            <button class="play-btn" onclick="event.stopPropagation();playVoice('<%= v[0] %>',this)" title="Preview voice"
+              style="width:32px;height:32px;border-radius:8px;border:1.5px solid #e5e7eb;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#374151;flex-shrink:0;">
+              <svg width="10" height="10" fill="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            </button>
+          </div>
+          <% }) %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Image Animation Effect -->
+    <div class="smap-section">
+      <div class="smap-section-hd">
+        <div class="title">Image Animation Effect</div>
+        <div class="sub">How still images move in the final video</div>
+      </div>
+      <div class="smap-section-body">
+        <div class="effect-pills-row">
+          <button class="effect-pill active" data-effect="kenburns" onclick="setEffect('kenburns',this)">Ken Burns</button>
+          <button class="effect-pill" data-effect="zoom" onclick="setEffect('zoom',this)">Zoom In</button>
+          <button class="effect-pill" data-effect="shake" onclick="setEffect('shake',this)">Shake</button>
+          <button class="effect-pill" data-effect="none" onclick="setEffect('none',this)">Static</button>
+        </div>
+        <div style="font-size:12px;color:#9ca3af;margin-top:10px;">Ken Burns = slow pan + zoom. Shake = subtle camera motion. Applied to images only — videos play as-is.</div>
+      </div>
+    </div>
+
+    <!-- Background Music -->
+    <div class="smap-section">
+      <div class="smap-section-hd">
+        <div class="title">Background Music</div>
+        <div class="sub">Optional — plays softly under the voiceover</div>
+      </div>
+      <div class="smap-section-body">
+        <div class="wiz-tabs">
+          <button class="wiz-tab active" id="mt-a" onclick="sMTab('a')">Preset Tracks</button>
+          <button class="wiz-tab" id="mt-b" onclick="sMTab('b')">Custom Upload</button>
+        </div>
+
+        <div id="mp-a">
+          <% if (!availableMusic || availableMusic.length === 0) { %>
+          <div style="text-align:center;padding:20px;color:#9ca3af;font-size:13px;background:#f9fafb;border-radius:10px;">
+            No preset tracks available yet. Use <strong>Custom Upload</strong> tab to add your own.
+          </div>
+          <% } else { %>
+          <% (availableMusic || []).forEach(m => { %>
+          <div class="music-item" onclick="toggleMusic('<%= m[0] %>')" data-music="<%= m[0] %>">
+            <div class="music-color" style="background:<%= m[3] %>;"></div>
+            <div style="flex:1;">
+              <div style="font-size:13px;font-weight:600;color:#111827;"><%= m[1] %></div>
+              <div style="font-size:12px;color:#9ca3af;"><%= m[2] %></div>
+            </div>
+            <button class="play-btn" onclick="event.stopPropagation();playMusicPreview('<%= m[0] %>',this)" title="Preview"
+              style="width:32px;height:32px;border-radius:8px;border:1.5px solid #e5e7eb;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#374151;flex-shrink:0;">
+              <svg width="10" height="10" fill="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            </button>
+          </div>
+          <% }) %>
+          <% } %>
+        </div>
+
+        <div id="mp-b" style="display:none;">
+          <input type="file" id="customMusicFile" accept=".mp3,.wav,audio/mpeg,audio/wav" style="display:none;" onchange="onCustomMusicSelected(this)">
+          <div class="upload-zone" onclick="document.getElementById('customMusicFile').click()" id="customMusicZone">
+            <svg width="26" height="26" fill="none" stroke="#9ca3af" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto 8px;display:block;"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+            <div id="customMusicName" style="font-size:13px;font-weight:600;color:#374151;">Click to upload or drag &amp; drop</div>
+            <div style="font-size:12px;color:#9ca3af;margin-top:4px;">MP3, WAV · up to 15MB</div>
+          </div>
+          <div id="customMusicPreviewWrap" style="display:none;margin-top:12px;">
+            <audio id="customMusicPreview" controls style="width:100%;border-radius:8px;"></audio>
+            <button onclick="clearCustomMusic()" style="margin-top:6px;font-size:12px;color:#dc2626;background:none;border:none;cursor:pointer;padding:0;">✕ Remove music</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Generate -->
+    <div id="generateSummary" style="text-align:center;font-size:13px;color:#6b7280;margin-bottom:12px;"></div>
+    <button id="generateBtn" onclick="openGenerateModal()"
+      style="width:100%;padding:16px;background:#7c3aed;color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;transition:background .15s;display:flex;align-items:center;justify-content:center;gap:8px;">
+      <span id="generateBtnTxt">Generate Reel</span>
+      <span id="generateBtnIco"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></span>
+    </button>
+    <div style="text-align:center;font-size:12px;color:#9ca3af;margin-top:10px;">₹<%= mediaReelPrice %> · one-time · includes voiceover, captions &amp; effects</div>
+
+  </div><!-- /mapperSection -->
+
+</div>
+</div>
+
+<!-- ── Payment Modal ──────────────────────────────────────────────────────── -->
+<div id="payOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:20px;padding:32px 28px;max-width:420px;width:90%;box-shadow:0 25px 60px rgba(0,0,0,0.3);position:relative;">
+    <button onclick="closePayModal()" style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:22px;cursor:pointer;color:#9ca3af;line-height:1;">✕</button>
+
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="width:52px;height:52px;background:#f3f0ff;border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+        <svg width="24" height="24" fill="none" stroke="#7c3aed" stroke-width="2" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><path d="M1 10h22"/></svg>
+      </div>
+      <h3 style="font-size:1.3rem;font-weight:800;color:#111827;margin:0 0 6px;">Generate this Reel</h3>
+      <p style="font-size:14px;color:#6b7280;margin:0;">One-time payment — download &amp; keep forever</p>
+    </div>
+
+    <% if (walletBalance > 0) { %>
+    <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:13px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:36px;height:36px;background:#dcfce7;border-radius:9px;display:flex;align-items:center;justify-content:center;">
+          <svg width="18" height="18" fill="none" stroke="#16a34a" stroke-width="2" viewBox="0 0 24 24"><path d="M21 12V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2"/><path d="M16 12h5v4h-5a2 2 0 0 1 0-4z"/></svg>
+        </div>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:#15803d;">Wallet Balance</div>
+          <div style="font-size:13px;color:#16a34a;">₹<%= walletBalance.toFixed(2) %> available</div>
+        </div>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+        <input type="checkbox" id="useWalletChk" onchange="onWalletToggle()" style="width:18px;height:18px;accent-color:#7c3aed;cursor:pointer;">
+        <span style="font-size:13px;font-weight:600;color:#374151;">Use</span>
+      </label>
+    </div>
+    <% } %>
+
+    <!-- Coupon -->
+    <div style="margin-bottom:18px;">
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="payCoupon" placeholder="Coupon code (optional)"
+          style="flex:1;border:1.5px solid #e5e7eb;border-radius:10px;padding:12px 14px;font-size:14px;color:#111827;background:#fff;outline:none;text-transform:uppercase;box-sizing:border-box;"
+          oninput="this.value=this.value.toUpperCase()">
+        <button onclick="applyPayCoupon()"
+          style="padding:12px 14px;background:#f3f0ff;border:1.5px solid #7c3aed;border-radius:10px;color:#7c3aed;font-weight:600;cursor:pointer;white-space:nowrap;font-size:14px;">
+          Apply
+        </button>
+      </div>
+      <div id="payCouponMsg" style="font-size:13px;margin-top:6px;min-height:18px;"></div>
+    </div>
+
+    <!-- Price -->
+    <div style="background:#f9fafb;border-radius:12px;padding:16px 18px;margin-bottom:22px;display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div style="font-size:14px;font-weight:600;color:#374151;">Total</div>
+        <div style="font-size:12px;color:#9ca3af;margin-top:2px;">One video · instant download</div>
+      </div>
+      <div style="text-align:right;">
+        <span id="payOriginalPrice" style="font-size:13px;color:#9ca3af;text-decoration:line-through;display:none;margin-right:6px;">₹…</span>
+        <span id="payFinalPrice" style="font-size:1.6rem;font-weight:800;color:#111827;">₹<%= mediaReelPrice %></span>
+      </div>
+    </div>
+
+    <button id="payBtn" onclick="startMapperPay()"
+      style="width:100%;padding:14px;background:#7c3aed;color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;transition:background .15s;">
+      <span id="payBtnTxt">Pay ₹<%= mediaReelPrice %> &amp; Generate</span>
+    </button>
+  </div>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+let lines       = [];      // string[] — split from textarea
+let media       = {};      // { "lineIdx-slot": File }
+let voice       = 'alloy';
+let musicList   = [];      // selected preset track IDs
+let imageEffect = 'kenburns';
+let customMusicFile = null;
+let payAppliedCoupon = null;
+let mediaPriceVal    = <%= mediaReelPrice %>;
+let payFinalAmount   = mediaPriceVal;
+
+// ── Script splitting ──────────────────────────────────────────────────────────
+function splitScript() {
+  const raw = document.getElementById('scriptInput').value;
+  const split = raw.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  if (split.length === 0) {
+    showErr('scriptErr', 'Please enter at least one line of script.');
+    return;
+  }
+  hideErr('scriptErr');
+  lines = split;
+  media = {};  // clear existing assignments on re-split
+  renderRows();
+  document.getElementById('lineCountBadge').textContent = lines.length + (lines.length === 1 ? ' line' : ' lines');
+  document.getElementById('mapperSection').style.display = 'block';
+  document.getElementById('mapperSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  updateGenerateSummary();
+}
+
+// ── Row rendering ─────────────────────────────────────────────────────────────
+function renderRows() {
+  const container = document.getElementById('mapperRows');
+  container.innerHTML = '';
+  lines.forEach((line, i) => {
+    const row = document.createElement('div');
+    row.className = 'mapper-row';
+    row.id = 'row-' + i;
+    row.addEventListener('click', () => setActiveRow(i));
+    row.innerHTML =
+      '<div class="line-text">' +
+        '<div class="line-num">LINE ' + (i + 1) + '</div>' +
+        '<div>' + escHtml(line) + '</div>' +
+      '</div>' +
+      '<div class="slots-wrap">' +
+        makeSlotHTML(i, 'a') +
+        makeSlotHTML(i, 'b') +
+      '</div>';
+    container.appendChild(row);
+  });
+}
+
+function makeSlotHTML(lineIdx, slot) {
+  const label = slot === 'a' ? 'CLIP A' : 'CLIP B';
+  return (
+    '<div class="upload-slot" id="slot-' + lineIdx + '-' + slot + '" ' +
+         'onclick="handleSlotClick(' + lineIdx + ',\'' + slot + '\')" ' +
+         'ondragover="event.preventDefault();this.classList.add(\'drag\')" ' +
+         'ondragleave="this.classList.remove(\'drag\')" ' +
+         'ondrop="event.preventDefault();this.classList.remove(\'drag\');handleSlotDrop(event,' + lineIdx + ',\'' + slot + '\')">' +
+      '<span class="slot-label">' + label + '</span>' +
+      '<div class="slot-empty-inner" id="se-' + lineIdx + '-' + slot + '">' +
+        '<svg width="20" height="20" fill="none" stroke="#d1d5db" stroke-width="1.5" viewBox="0 0 24 24">' +
+          '<path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>' +
+        '</svg>' +
+        '<div style="font-size:11px;color:#d1d5db;margin-top:2px;">drop or click</div>' +
+      '</div>' +
+      '<input type="file" id="fi-' + lineIdx + '-' + slot + '" ' +
+             'accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm" ' +
+             'style="display:none;" ' +
+             'onchange="setSlotFile(' + lineIdx + ',\'' + slot + '\',this.files[0])">' +
+    '</div>'
+  );
+}
+
+// ── Slot interactions ─────────────────────────────────────────────────────────
+function handleSlotClick(lineIdx, slot) {
+  document.getElementById('fi-' + lineIdx + '-' + slot)?.click();
+}
+
+function handleSlotDrop(e, lineIdx, slot) {
+  const file = e.dataTransfer.files[0];
+  if (file) setSlotFile(lineIdx, slot, file);
+}
+
+function setSlotFile(lineIdx, slot, file) {
+  if (!file) return;
+  const allowed = /^(image\/(jpeg|png|webp|gif)|video\/(mp4|webm))$/;
+  if (!allowed.test(file.type)) return;
+  if (file.size > 50 * 1024 * 1024) { alert('File too large — max 50MB'); return; }
+
+  media[lineIdx + '-' + slot] = file;
+  updateSlotUI(lineIdx, slot, file);
+  updateGenerateSummary();
+}
+
+function updateSlotUI(lineIdx, slot, file) {
+  const slotEl = document.getElementById('slot-' + lineIdx + '-' + slot);
+  const emptyEl = document.getElementById('se-' + lineIdx + '-' + slot);
+  if (!slotEl) return;
+
+  // Hide empty placeholder
+  if (emptyEl) emptyEl.style.display = 'none';
+
+  // Remove any existing preview
+  slotEl.querySelector('.slot-preview')?.remove();
+  slotEl.querySelector('.slot-rm')?.remove();
+
+  // Create preview element
+  const isVid = file.type.startsWith('video/');
+  const prev = document.createElement(isVid ? 'video' : 'img');
+  prev.className = 'slot-preview';
+  prev.src = URL.createObjectURL(file);
+  if (isVid) { prev.muted = true; prev.loop = true; prev.autoplay = false; }
+
+  // Remove button
+  const rm = document.createElement('button');
+  rm.className = 'slot-rm';
+  rm.innerHTML = '✕';
+  rm.addEventListener('click', (e) => { e.stopPropagation(); removeSlot(lineIdx, slot); });
+
+  slotEl.classList.add('filled');
+  slotEl.appendChild(prev);
+  slotEl.appendChild(rm);
+}
+
+function removeSlot(lineIdx, slot) {
+  delete media[lineIdx + '-' + slot];
+
+  const slotEl  = document.getElementById('slot-' + lineIdx + '-' + slot);
+  const emptyEl = document.getElementById('se-' + lineIdx + '-' + slot);
+  if (!slotEl) return;
+
+  slotEl.classList.remove('filled');
+  slotEl.querySelector('.slot-preview')?.remove();
+  slotEl.querySelector('.slot-rm')?.remove();
+  if (emptyEl) emptyEl.style.display = '';
+
+  // Reset hidden file input
+  const fi = document.getElementById('fi-' + lineIdx + '-' + slot);
+  if (fi) fi.value = '';
+
+  updateGenerateSummary();
+}
+
+function setActiveRow(lineIdx) {
+  document.querySelectorAll('.mapper-row').forEach(r => r.classList.remove('active'));
+  document.getElementById('row-' + lineIdx)?.classList.add('active');
+}
+
+function countFiles() {
+  return Object.keys(media).length;
+}
+
+function updateGenerateSummary() {
+  const n   = countFiles();
+  const el  = document.getElementById('generateSummary');
+  if (el) el.textContent = n > 0 ? n + ' file' + (n !== 1 ? 's' : '') + ' assigned across ' + lines.length + ' line' + (lines.length !== 1 ? 's' : '') : '';
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+function pickVoice(v) {
+  document.querySelectorAll('.voice-item').forEach(el => el.classList.remove('selected'));
+  document.querySelector('[data-voice="' + v + '"]')?.classList.add('selected');
+  voice = v;
+}
+
+function setEffect(eff, btn) {
+  imageEffect = eff;
+  document.querySelectorAll('.effect-pill').forEach(p => p.classList.toggle('active', p.dataset.effect === eff));
+}
+
+function toggleMusic(id) {
+  const el = document.querySelector('[data-music="' + id + '"]');
+  if (!el) return;
+  el.classList.toggle('selected');
+  const idx = musicList.indexOf(id);
+  if (idx === -1) musicList.push(id); else musicList.splice(idx, 1);
+}
+
+function sMTab(t) {
+  document.getElementById('mp-a').style.display = t === 'a' ? 'block' : 'none';
+  document.getElementById('mp-b').style.display = t === 'b' ? 'block' : 'none';
+  document.getElementById('mt-a').classList.toggle('active', t === 'a');
+  document.getElementById('mt-b').classList.toggle('active', t === 'b');
+}
+
+function onCustomMusicSelected(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 15 * 1024 * 1024) { alert('File too large — max 15MB'); input.value = ''; return; }
+  customMusicFile = file;
+  document.getElementById('customMusicName').textContent = '🎵 ' + file.name;
+  document.getElementById('customMusicZone').style.borderColor = '#7c3aed';
+  const preview = document.getElementById('customMusicPreview');
+  preview.src = URL.createObjectURL(file);
+  document.getElementById('customMusicPreviewWrap').style.display = 'block';
+}
+
+function clearCustomMusic() {
+  customMusicFile = null;
+  document.getElementById('customMusicFile').value = '';
+  document.getElementById('customMusicName').textContent = 'Click to upload or drag & drop';
+  document.getElementById('customMusicZone').style.borderColor = '';
+  document.getElementById('customMusicPreviewWrap').style.display = 'none';
+  document.getElementById('customMusicPreview').src = '';
+}
+
+// ── Payment modal ─────────────────────────────────────────────────────────────
+function openGenerateModal() {
+  if (lines.length === 0) { showErr('mapperErr', 'Please split your script first.'); return; }
+  if (countFiles() === 0) { showErr('mapperErr', 'Please assign at least one media file before generating.'); return; }
+  hideErr('mapperErr');
+
+  payFinalAmount = mediaPriceVal;
+  payAppliedCoupon = null;
+  document.getElementById('payFinalPrice').textContent    = '₹' + mediaPriceVal;
+  document.getElementById('payBtnTxt').textContent        = 'Pay ₹' + mediaPriceVal + ' & Generate';
+  document.getElementById('payOriginalPrice').style.display = 'none';
+  const msgEl = document.getElementById('payCouponMsg');
+  if (msgEl) msgEl.textContent = '';
+  document.getElementById('payCoupon').value = '';
+  document.getElementById('payOverlay').style.display = 'flex';
+}
+
+function closePayModal() {
+  document.getElementById('payOverlay').style.display = 'none';
+}
+
+function onWalletToggle() {
+  const chk = document.getElementById('useWalletChk');
+  if (!chk) return;
+  const walletBal = <%= walletBalance %>;
+  if (chk.checked && walletBal >= payFinalAmount) {
+    document.getElementById('payBtnTxt').textContent  = 'Pay with Wallet — Free';
+    document.getElementById('payFinalPrice').textContent = '₹0';
+  } else {
+    document.getElementById('payBtnTxt').textContent  = 'Pay ₹' + payFinalAmount + ' & Generate';
+    document.getElementById('payFinalPrice').textContent = '₹' + payFinalAmount;
+  }
+}
+
+async function applyPayCoupon() {
+  const code  = document.getElementById('payCoupon').value.trim();
+  if (!code) return;
+  const msgEl = document.getElementById('payCouponMsg');
+  msgEl.textContent = 'Checking…'; msgEl.style.color = '#6b7280';
+  try {
+    const res  = await fetch('/api/reels/video-pay/apply-promo', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ code }),
+    });
+    const data = await res.json();
+    if (data.valid) {
+      payAppliedCoupon = data;
+      payFinalAmount = data.discountType === 'percent'
+        ? Math.max(1, Math.round(mediaPriceVal * (1 - data.discountValue / 100)))
+        : Math.max(1, mediaPriceVal - data.discountValue);
+      msgEl.textContent = data.message; msgEl.style.color = '#059669';
+      document.getElementById('payOriginalPrice').style.display = 'inline';
+      document.getElementById('payOriginalPrice').textContent   = '₹' + mediaPriceVal;
+      document.getElementById('payFinalPrice').textContent      = '₹' + payFinalAmount;
+      document.getElementById('payBtnTxt').textContent          = 'Pay ₹' + payFinalAmount + ' & Generate';
+    } else {
+      payAppliedCoupon = null; payFinalAmount = mediaPriceVal;
+      msgEl.textContent = data.message; msgEl.style.color = '#dc2626';
+      document.getElementById('payOriginalPrice').style.display = 'none';
+      document.getElementById('payFinalPrice').textContent      = '₹' + mediaPriceVal;
+      document.getElementById('payBtnTxt').textContent          = 'Pay ₹' + mediaPriceVal + ' & Generate';
+    }
+  } catch {
+    msgEl.textContent = 'Could not apply coupon.'; msgEl.style.color = '#dc2626';
+  }
+}
+
+async function startMapperPay() {
+  const btn    = document.getElementById('payBtn');
+  const btnTxt = document.getElementById('payBtnTxt');
+  const useWallet = !!document.getElementById('useWalletChk')?.checked;
+  btn.disabled = true; btnTxt.textContent = 'Processing…';
+  try {
+    const orderRes = await fetch('/api/reels/video-pay/create-order', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ useWallet, amount: payFinalAmount, couponCode: payAppliedCoupon?.code || null }),
+    });
+    const order = await orderRes.json();
+    if (!order.success) throw new Error(order.message || 'Order creation failed');
+
+    if (order.walletOnly) {
+      closePayModal();
+      await doGenerateMapper({ walletOnly: true });
+      return;
+    }
+
+    const rzp = new Razorpay({
+      key:         '<%= razorpayKey %>',
+      amount:      order.amount * 100,
+      currency:    'INR',
+      name:        'SmrAI Studio',
+      description: 'Script Mapper Reel — ₹' + order.amount,
+      order_id:    order.orderId,
+      handler: async function(response) {
+        closePayModal();
+        await doGenerateMapper({
+          razorpay_order_id:   response.razorpay_order_id,
+          razorpay_payment_id: response.razorpay_payment_id,
+          razorpay_signature:  response.razorpay_signature,
+          walletDeduction:     order.walletDeduction || 0,
+        });
+      },
+      modal: { ondismiss: function() { btn.disabled = false; btnTxt.textContent = 'Pay ₹' + payFinalAmount + ' & Generate'; } },
+      prefill: { name: '<%= currentUser?.name || "" %>', email: '<%= currentUser?.email || "" %>' },
+      theme: { color: '#7c3aed' },
+    });
+    rzp.open();
+  } catch(err) {
+    btn.disabled = false; btnTxt.textContent = 'Pay ₹' + payFinalAmount + ' & Generate';
+    showErr('mapperErr', err.message);
+    closePayModal();
+  }
+}
+
+// ── Generate pipeline ─────────────────────────────────────────────────────────
+async function doGenerateMapper(paymentFields) {
+  const genBtn = document.getElementById('generateBtn');
+  const genTxt = document.getElementById('generateBtnTxt');
+  const genIco = document.getElementById('generateBtnIco');
+  genBtn.disabled = true;
+  genTxt.textContent = 'Uploading media…';
+  genIco.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:spin 1s linear infinite"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>';
+
+  try {
+    // 1. Collect files in order: line0-a, line0-b, line1-a, line1-b …
+    const fd = new FormData();
+    lines.forEach((_, i) => {
+      if (media[i + '-a']) fd.append('media', media[i + '-a']);
+      if (media[i + '-b']) fd.append('media', media[i + '-b']);
+    });
+
+    const upRes  = await fetch('/reels/upload-media', { method: 'POST', body: fd });
+    const upData = await upRes.json();
+    if (!upData.ok) throw new Error('Upload failed. Please try again.');
+    const mediaPaths = upData.files.map(f => f.path);
+
+    // 2. Upload custom music if selected
+    let customMusicPath = null;
+    if (customMusicFile) {
+      const mfd = new FormData();
+      mfd.append('file', customMusicFile);
+      const mRes  = await fetch('/reels/upload-music', { method: 'POST', body: mfd });
+      const mData = await mRes.json();
+      if (mData.path) customMusicPath = mData.path;
+    }
+
+    genTxt.textContent = 'Generating reel…';
+
+    // 3. Kick off generation
+    const script = lines.join('\n');
+    const res = await fetch('/reels/generate-media', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        script,
+        voice,
+        effects:        { filmGrain: false, shake: false },
+        music:          musicList,
+        mediaPaths,
+        imageEffect,
+        customMusicPath,
+        ...paymentFields,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'Server error. Please try again.');
+    window.location.href = '/reels/loading/' + data.reel_id;
+
+  } catch(err) {
+    showErr('mapperErr', err.message);
+    genBtn.disabled = false;
+    genTxt.textContent = 'Generate Reel';
+    genIco.innerHTML = '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>';
+  }
+}
+
+// ── Voice preview player ──────────────────────────────────────────────────────
+const PLAY_ICON  = '<svg width="10" height="10" fill="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
+const PAUSE_ICON = '<svg width="10" height="10" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+const SPIN_ICON  = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin 1s linear infinite"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>';
+let _activeAudio = null, _activeBtn = null;
+
+function playVoice(v, btn) {
+  if (_activeAudio && _activeBtn === btn) {
+    _activeAudio.pause(); _activeAudio = null; _activeBtn = null; btn.innerHTML = PLAY_ICON; return;
+  }
+  if (_activeAudio) { _activeAudio.pause(); if (_activeBtn) _activeBtn.innerHTML = PLAY_ICON; }
+  btn.innerHTML = SPIN_ICON; _activeBtn = btn;
+  const audio = new Audio('/reels/voice-preview/' + v);
+  _activeAudio = audio;
+  audio.oncanplaythrough = () => { if (_activeAudio !== audio) return; btn.innerHTML = PAUSE_ICON; audio.play(); };
+  audio.onended = () => { btn.innerHTML = PLAY_ICON; _activeAudio = null; _activeBtn = null; };
+  audio.onerror = () => { btn.innerHTML = PLAY_ICON; _activeAudio = null; _activeBtn = null; };
+  audio.load();
+}
+
+let _activeMusicAudio = null, _activeMusicBtn = null;
+
+function playMusicPreview(id, btn) {
+  if (_activeMusicAudio && _activeMusicBtn === btn) {
+    _activeMusicAudio.pause(); _activeMusicAudio = null; _activeMusicBtn = null; btn.innerHTML = PLAY_ICON; return;
+  }
+  if (_activeMusicAudio) { _activeMusicAudio.pause(); if (_activeMusicBtn) _activeMusicBtn.innerHTML = PLAY_ICON; }
+  btn.innerHTML = SPIN_ICON; _activeMusicBtn = btn;
+  const audio = new Audio('/music/preview-' + id + '.mp3');
+  _activeMusicAudio = audio;
+  audio.oncanplaythrough = () => { if (_activeMusicAudio !== audio) return; btn.innerHTML = PAUSE_ICON; audio.play(); };
+  audio.onended = () => { btn.innerHTML = PLAY_ICON; _activeMusicAudio = null; _activeMusicBtn = null; };
+  audio.onerror = () => { btn.innerHTML = PLAY_ICON; _activeMusicAudio = null; _activeMusicBtn = null; };
+  audio.load();
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function showErr(id, msg) { const el = document.getElementById(id); if (el) { el.textContent = msg; el.style.display = 'block'; } }
+function hideErr(id)       { const el = document.getElementById(id); if (el) el.style.display = 'none'; }
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+
+<%- include('../partials/footer') %>

@@ -1,7 +1,7 @@
 import { generateScript, generateMetadata, generateDescription } from '../services/geminiReelService.js';
 import { generateTTS, getWordTimestamps, getWordTimestampsViaGoogle, AVAILABLE_VOICES } from '../services/ttsService.js';
 import { generateVideoClips, cleanupTempVideos }     from '../services/videoService.js';
-import { mergeReelFromVideos }                      from '../services/ffmpegService.js';
+import { mergeReelFromVideos, imageToVideoClip, getMediaDuration } from '../services/ffmpegService.js';
 import path                                         from 'path';
 import fs                                           from 'fs/promises';
 import crypto                                       from 'crypto';
@@ -39,12 +39,14 @@ async function canGenerateReel(userId, db) {
 
 export async function getCreatePage(req, res, db) {
   try {
-    const [countRes, walletRes] = await Promise.all([
+    const [countRes, walletRes, mediaPriceRes] = await Promise.all([
       db.query(`SELECT COUNT(*) AS cnt FROM reels WHERE user_id = ? AND status != 'failed'`, [req.user.id]),
       db.query(`SELECT wallet_balance FROM users WHERE id = ?`, [req.user.id]),
+      db.query("SELECT value FROM admin_settings WHERE `key` = 'media_reel_price'"),
     ]);
     const totalReels    = parseInt(countRes.rows[0]?.cnt || 0, 10);
     const walletBalance = parseFloat(walletRes.rows[0]?.wallet_balance || 0);
+    const mediaReelPrice = parseInt(mediaPriceRes.rows[0]?.value || '99', 10);
 
     // Check which art style GIFs have been uploaded by admin
     const artGifDir = path.join(process.cwd(), 'public', 'uploads', 'art-gifs');
@@ -74,6 +76,7 @@ export async function getCreatePage(req, res, db) {
       walletBalance,
       artGifs,
       availableMusic,
+      mediaReelPrice,
       razorpayKey: process.env.RAZORPAY_KEY_ID,
     });
   } catch (err) {
@@ -86,6 +89,7 @@ export async function getCreatePage(req, res, db) {
       walletBalance: 0,
       artGifs:      {},
       availableMusic: [],
+      mediaReelPrice: 99,
       razorpayKey:  process.env.RAZORPAY_KEY_ID,
     });
   }
@@ -97,7 +101,7 @@ export async function getLoadingPage(req, res, db) {
 
   try {
     const { rows } = await db.query(
-      'SELECT id, status, error_message FROM reels WHERE id = ? AND user_id = ?',
+      'SELECT id, status, error_message, reel_type FROM reels WHERE id = ? AND user_id = ?',
       [reelId, req.user.id]
     );
     if (!rows.length) return res.redirect('/reels/create');
@@ -123,7 +127,7 @@ export async function getResultPage(req, res, db) {
 
   try {
     const { rows } = await db.query(
-      'SELECT id, topic, title, hashtags, caption, description, script, video_url, status, created_at FROM reels WHERE id = ? AND user_id = ?',
+      'SELECT id, topic, title, hashtags, caption, description, script, video_url, status, reel_type, created_at FROM reels WHERE id = ? AND user_id = ?',
       [reelId, req.user.id]
     );
     if (!rows.length) return res.redirect('/reels/create');
@@ -617,5 +621,234 @@ export async function regenerateScript(req, res, db) {
   } catch (err) {
     console.error('[Reels] regenerateScript error:', err);
     res.status(500).json({ error: 'Failed to regenerate script' });
+  }
+}
+
+// ─── Media Reel: user uploads images/videos + writes own script ───────────────
+
+const USER_MEDIA_DIR = path.join(process.cwd(), 'public', 'videos', 'temp', 'user-media');
+
+/**
+ * POST /reels/generate-media
+ * Users upload their own images/videos, provide a script, pick a voice.
+ * No AI video generation — only TTS + FFmpeg assembly.
+ */
+export async function generateMediaReel(req, res, db) {
+  const {
+    script,
+    voice             = 'alloy',
+    effects           = {},
+    music             = [],
+    customMusicPath   = null,
+    mediaPaths        = [],
+    imageEffect       = 'kenburns',
+    razorpay_order_id,
+    razorpay_payment_id,
+    razorpay_signature,
+    walletOnly        = false,
+    walletDeduction   = 0,
+  } = req.body;
+
+  if (!script || script.trim().length < 10) {
+    return res.status(400).json({ error: 'Script must be at least 10 characters.' });
+  }
+  if (script.trim().length > 20000) {
+    return res.status(400).json({ error: 'Script must be under 2000 characters.' });
+  }
+  const parsedPaths = Array.isArray(mediaPaths) ? mediaPaths : [];
+  if (parsedPaths.length < 1 || parsedPaths.length > 30) {
+    return res.status(400).json({ error: 'Upload between 1 and 30 media files.' });
+  }
+
+  // Validate all media paths are inside the user-media dir
+  for (const p of parsedPaths) {
+    const resolved = path.resolve(p);
+    if (!resolved.startsWith(USER_MEDIA_DIR + path.sep) && !resolved.startsWith(USER_MEDIA_DIR + '/')) {
+      return res.status(400).json({ error: 'Invalid media file path.' });
+    }
+  }
+
+  // ── Payment ────────────────────────────────────────────────────────────────
+  const priceRow = await db.query("SELECT value FROM admin_settings WHERE `key` = 'media_reel_price'").catch(() => ({ rows: [] }));
+  const price    = parseInt(priceRow.rows[0]?.value || '99', 10);
+
+  if (walletOnly) {
+    const wRow = await db.query('SELECT wallet_balance FROM users WHERE id = ?', [req.user.id]);
+    const bal  = parseFloat(wRow.rows[0]?.wallet_balance || 0);
+    if (bal < price) return res.status(402).json({ error: 'Insufficient wallet balance.' });
+  } else {
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return res.status(402).json({ requiresPayment: true, amount: price });
+    }
+    const body        = `${razorpay_order_id}|${razorpay_payment_id}`;
+    const expectedSig = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET).update(body).digest('hex');
+    if (expectedSig !== razorpay_signature) return res.status(400).json({ error: 'Invalid payment signature.' });
+
+    const dup = await db.query('SELECT id FROM reel_video_payments WHERE razorpay_payment_id = ?', [razorpay_payment_id]);
+    if (dup.rows.length) return res.status(400).json({ error: 'This payment has already been used.' });
+  }
+
+  // ── Insert reel record ─────────────────────────────────────────────────────
+  let reelId;
+  try {
+    const topic  = script.trim().slice(0, 80);
+    const result = await db.query(
+      `INSERT INTO reels (user_id, topic, script, status, reel_type) VALUES (?, ?, ?, 'processing', 'media')`,
+      [req.user.id, topic, script.trim()]
+    );
+    reelId = result.insertId;
+  } catch (err) {
+    console.error('[MediaReel] DB insert error:', err);
+    return res.status(500).json({ error: 'Failed to start reel generation. Please try again.' });
+  }
+
+  // ── Store payment record ───────────────────────────────────────────────────
+  if (walletOnly) {
+    await db.query('UPDATE users SET wallet_balance = wallet_balance - ? WHERE id = ?', [price, req.user.id]).catch(() => {});
+    await db.query('INSERT INTO reel_video_payments (user_id, reel_id, amount) VALUES (?, ?, ?)', [req.user.id, reelId, price]).catch(() => {});
+  } else {
+    if (walletDeduction > 0) {
+      await db.query('UPDATE users SET wallet_balance = wallet_balance - ? WHERE id = ?', [walletDeduction, req.user.id]).catch(() => {});
+    }
+    await db.query(
+      'INSERT INTO reel_video_payments (user_id, reel_id, razorpay_order_id, razorpay_payment_id, razorpay_signature) VALUES (?, ?, ?, ?, ?)',
+      [req.user.id, reelId, razorpay_order_id, razorpay_payment_id, razorpay_signature]
+    ).catch(() => {});
+  }
+
+  await savePipelineParams(reelId, { script: script.trim(), voice, effects, music, customMusicPath, mediaPaths: parsedPaths, imageEffect });
+
+  res.json({ reel_id: reelId });
+  setImmediate(() => runMediaPipeline(reelId, db));
+}
+
+
+
+/**
+ * Background pipeline: TTS → image-to-video clips → FFmpeg merge
+ */
+async function runMediaPipeline(reelId, db) {
+  console.log(`[MediaReel] #${reelId} — pipeline start`);
+  let tempMusicPath      = null;
+  let customMusicPathUsed = null;
+  const tempClipPaths    = [];
+
+  try {
+    const params = await loadPipelineParams(reelId);
+    const { script, voice, effects, music, customMusicPath, mediaPaths, imageEffect } = params;
+
+    // Step 1: TTS
+    const { rows: ttsProvRows } = await db.query("SELECT value FROM admin_settings WHERE `key` = 'tts_provider'");
+    const ttsProvider = ttsProvRows[0]?.value || 'openai';
+    console.log(`[MediaReel] #${reelId} — Step 1: TTS (voice=${voice}, provider=${ttsProvider})…`);
+    const audioPath = await generateTTS(script, voice, reelId, ttsProvider);
+
+    // Step 2: Word-level timestamps
+    let wtResult = null;
+    if (ttsProvider === 'google') {
+      wtResult = await getWordTimestampsViaGoogle(audioPath);
+    } else {
+      wtResult = await getWordTimestamps(audioPath);
+    }
+    const captionSegments = wtResult?.segments || null;
+    const captionWords    = wtResult?.words    || null;
+
+    // Step 3: Get audio duration and calculate per-clip duration
+    const audioDuration = await getMediaDuration(audioPath);
+    const clipDuration  = audioDuration / mediaPaths.length;
+    console.log(`[MediaReel] #${reelId} — audio=${audioDuration.toFixed(1)}s, ${mediaPaths.length} clips @ ${clipDuration.toFixed(1)}s each`);
+
+    // Step 4: Convert images to video clips; pass videos through as-is
+    const clipPaths = [];
+    for (let i = 0; i < mediaPaths.length; i++) {
+      const mediaPath = mediaPaths[i];
+      const ext       = path.extname(mediaPath).toLowerCase();
+      const isImage   = /\.(jpg|jpeg|png|webp|gif)$/.test(ext);
+
+      if (isImage) {
+        const isGif  = /\.gif$/i.test(ext);
+        const outPath = path.join(process.cwd(), 'public', 'videos', 'temp', `media-clip-${reelId}-${i}.mp4`);
+        console.log(`[MediaReel] #${reelId} — Step 4: Converting ${isGif ? 'GIF' : 'image'} ${i + 1}/${mediaPaths.length} (effect=${imageEffect})…`);
+        await imageToVideoClip(mediaPath, clipDuration, imageEffect, outPath, isGif);
+        clipPaths.push(outPath);
+        tempClipPaths.push(outPath);
+      } else {
+        // Video — pass through directly; mergeReelFromVideos will scale it
+        clipPaths.push(mediaPath);
+      }
+    }
+
+    // Step 5: Resolve BGM
+    let musicPath = null;
+    if (customMusicPath) {
+      const resolved = path.resolve(customMusicPath);
+      if (resolved.startsWith(CUSTOM_MUSIC_DIR + path.sep) || resolved.startsWith(CUSTOM_MUSIC_DIR + '/')) {
+        try { await fs.access(resolved); musicPath = resolved; customMusicPathUsed = resolved; } catch {}
+      }
+    }
+    const musicId = Array.isArray(music) && music[0] ? music[0] : null;
+    if (!musicPath && musicId) {
+      const { rows: mRows } = await db.query('SELECT full_audio FROM reels_music_presets WHERE id = ?', [musicId]);
+      if (mRows.length && mRows[0].full_audio) {
+        tempMusicPath = path.join(process.cwd(), 'public', 'videos', 'temp', `bgm-${reelId}.mp3`);
+        await fs.writeFile(tempMusicPath, mRows[0].full_audio);
+        musicPath = tempMusicPath;
+      }
+    }
+
+    // Step 6: FFmpeg merge — same function as AI reel pipeline
+    console.log(`[MediaReel] #${reelId} — Step 6: Merging ${clipPaths.length} clips…`);
+    await mergeReelFromVideos(reelId, clipPaths, audioPath, script, { effects, musicPath, captionSegments, captionWords, audioDuration });
+
+    // Step 7: Cleanup temp clips + media files
+    for (const p of tempClipPaths) await fs.unlink(p).catch(() => {});
+    for (const p of mediaPaths)    await fs.unlink(p).catch(() => {});
+    if (tempMusicPath)       await fs.unlink(tempMusicPath).catch(() => {});
+    if (customMusicPathUsed) await fs.unlink(customMusicPathUsed).catch(() => {});
+    await deletePipelineParams(reelId);
+
+    // Step 8: Generate metadata then mark completed
+    const [meta, description] = await Promise.all([
+      generateMetadata(script),
+      generateDescription(script),
+    ]);
+    const videoUrl = `/videos/${reelId}.mp4`;
+    await db.query(
+      'UPDATE reels SET status = ?, video_url = ?, title = ?, hashtags = ?, caption = ?, description = ? WHERE id = ?',
+      ['completed', videoUrl,
+       meta.title || script.trim().slice(0, 60),
+       JSON.stringify(meta.hashtags || []),
+       meta.caption  || '',
+       description   || '',
+       reelId]
+    );
+    console.log(`[MediaReel] #${reelId} — Done! → ${videoUrl}`);
+  } catch (err) {
+    console.error(`[MediaReel] #${reelId} — failed:`, err.message);
+    await db.query('UPDATE reels SET status = ?, error_message = ? WHERE id = ?', ['failed', err.message, reelId]).catch(() => {});
+    for (const p of tempClipPaths) await fs.unlink(p).catch(() => {});
+    if (tempMusicPath)       await fs.unlink(tempMusicPath).catch(() => {});
+    if (customMusicPathUsed) await fs.unlink(customMusicPathUsed).catch(() => {});
+    await deletePipelineParams(reelId);
+
+    // Auto-refund
+    try {
+      const { rows: payRows } = await db.query(
+        'SELECT id, user_id, amount FROM reel_video_payments WHERE reel_id = ? AND refunded = 0 LIMIT 1',
+        [reelId]
+      );
+      if (payRows.length) {
+        const pay = payRows[0];
+        await db.query('UPDATE reel_video_payments SET refunded = 1 WHERE id = ?', [pay.id]);
+        await db.query('UPDATE users SET wallet_balance = wallet_balance + ? WHERE id = ?', [pay.amount, pay.user_id]);
+        await db.query(
+          "INSERT INTO wallet_transactions (user_id, amount, type, reason, ref_id) VALUES (?, ?, 'credit', 'reel_gen_refund', ?)",
+          [pay.user_id, pay.amount, String(reelId)]
+        );
+        console.log(`[MediaReel] #${reelId} — ₹${pay.amount} refunded to user #${pay.user_id}`);
+      }
+    } catch (refundErr) {
+      console.error(`[MediaReel] #${reelId} — Refund failed:`, refundErr.message);
+    }
   }
 }

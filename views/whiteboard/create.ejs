@@ -1,0 +1,155 @@
+<%- include('../partials/header', { title: 'Whiteboard Video Generator — SmrAI Studio' }) %>
+
+<style>
+:root { --wb-bg:#09090b; --wb-card:#18181b; --wb-border:#27272a; --wb-accent:#7c3aed; }
+body { background:var(--wb-bg); color:#f4f4f5; font-family:'Inter',sans-serif; min-height:100vh; }
+
+#wb-page { max-width:760px; margin:0 auto; padding:40px 20px 80px; }
+
+.wb-header { text-align:center; margin-bottom:36px; }
+.wb-header h1 {
+  font-size:2rem; font-weight:900; margin:0 0 8px;
+  background:linear-gradient(135deg,#a78bfa,#7c3aed); -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+}
+.wb-header p { font-size:1rem; color:#71717a; margin:0; }
+
+.wb-card {
+  background:var(--wb-card); border:1px solid var(--wb-border);
+  border-radius:20px; padding:28px;
+}
+
+.wb-label {
+  font-size:0.72rem; font-weight:700; color:#71717a;
+  text-transform:uppercase; letter-spacing:.07em; margin-bottom:8px; display:block;
+}
+
+.wb-input {
+  width:100%; background:#09090b; border:1px solid var(--wb-border);
+  border-radius:10px; color:#f4f4f5; font-size:15px; padding:13px 16px;
+  box-sizing:border-box; outline:none; font-family:inherit; transition:border-color .15s;
+}
+.wb-input:focus { border-color:var(--wb-accent); }
+.wb-input::placeholder { color:#52525b; }
+
+.voice-grid { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+.voice-pill {
+  padding:7px 16px; border:1.5px solid rgba(255,255,255,0.1); border-radius:20px;
+  background:transparent; color:#a1a1aa; font-size:13px; cursor:pointer; transition:all .15s;
+}
+.voice-pill:hover  { border-color:var(--wb-accent); color:#c4b5fd; }
+.voice-pill.active { border-color:var(--wb-accent); color:#c4b5fd; background:rgba(124,58,237,.15); }
+
+.feature-pills { display:flex; gap:8px; flex-wrap:wrap; margin:16px 0 0; }
+.feature-pill {
+  display:flex; align-items:center; gap:6px;
+  padding:6px 14px; border-radius:20px; font-size:12px;
+  background:rgba(124,58,237,.12); border:1px solid rgba(124,58,237,.3); color:#c4b5fd;
+}
+
+.wb-submit {
+  width:100%; padding:15px; margin-top:24px;
+  background:linear-gradient(135deg,#7c3aed,#a855f7); color:#fff;
+  border:none; border-radius:12px; font-size:16px; font-weight:700;
+  cursor:pointer; transition:opacity .15s, transform .1s;
+}
+.wb-submit:hover   { opacity:.9; }
+.wb-submit:active  { transform:scale(.98); }
+.wb-submit:disabled { opacity:.45; cursor:not-allowed; }
+
+#errorMsg { font-size:13px; color:#f87171; text-align:center; margin-top:10px; display:none; }
+</style>
+
+<div id="wb-page">
+
+  <div class="wb-header">
+    <div style="font-size:3rem;margin-bottom:10px;">🖊️</div>
+    <h1>Whiteboard Video Generator</h1>
+    <p>Enter a topic → AI writes the script → animated whiteboard video with narration</p>
+    <div class="feature-pills">
+      <span class="feature-pill">✨ AI Script</span>
+      <span class="feature-pill">🪄 Magic Writing</span>
+      <span class="feature-pill">🎙️ Voice Narration</span>
+      <span class="feature-pill">📊 Visual Comparisons</span>
+    </div>
+  </div>
+
+  <div class="wb-card">
+
+    <div style="margin-bottom:20px;">
+      <label class="wb-label" for="topicInput">Your Topic</label>
+      <input type="text" id="topicInput" class="wb-input"
+        placeholder="e.g. How does compound interest work?" maxlength="300" />
+    </div>
+
+    <div style="margin-bottom:20px;">
+      <label class="wb-label" for="titleInput">Custom Title (optional)</label>
+      <input type="text" id="titleInput" class="wb-input"
+        placeholder="Leave blank to let AI choose" maxlength="120" />
+    </div>
+
+    <div>
+      <span class="wb-label">Narrator Voice</span>
+      <div class="voice-grid">
+        <% ['alloy','echo','fable','nova','onyx','shimmer'].forEach(v => { %>
+        <button class="voice-pill<%= v === 'alloy' ? ' active' : '' %>"
+          onclick="selectVoice('<%= v %>',this)"><%= v %></button>
+        <% }) %>
+      </div>
+    </div>
+
+    <button disabled class="wb-submit" id="generateBtn" onclick="startGenerate()">
+      🎬 Generate Whiteboard Video
+    </button>
+    <div id="errorMsg"></div>
+  </div>
+
+</div>
+
+<script>
+let selectedVoice = 'alloy';
+
+function selectVoice(v, btn) {
+  selectedVoice = v;
+  document.querySelectorAll('.voice-pill').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+async function startGenerate() {
+  const topic  = document.getElementById('topicInput').value.trim();
+  const title  = document.getElementById('titleInput').value.trim();
+  const errEl  = document.getElementById('errorMsg');
+  const btn    = document.getElementById('generateBtn');
+
+  errEl.style.display = 'none';
+  if (!topic) { errEl.textContent = 'Please enter a topic.'; errEl.style.display = 'block'; return; }
+  if (topic.length < 5) { errEl.textContent = 'Topic is too short.'; errEl.style.display = 'block'; return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Generating…';
+
+  try {
+    const res  = await fetch('/whiteboard/generate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || '',
+      },
+      body: JSON.stringify({ topic, title, voice: selectedVoice }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || 'Failed to start generation');
+    window.location.href = '/whiteboard/loading/' + data.projectId;
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = '🎬 Generate Whiteboard Video';
+  }
+}
+
+document.getElementById('topicInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') startGenerate();
+});
+</script>
+
+<%- include('../partials/footer') %>

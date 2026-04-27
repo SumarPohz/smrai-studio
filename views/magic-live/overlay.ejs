@@ -300,21 +300,40 @@
     });
 
     let pendingMusicId = null;
+    let musicRetryId   = null; // periodic retry interval
 
     function playBgMusic(musicId) {
       const a = document.getElementById('bgMusic');
-      if (!musicId) { a.pause(); a.src = ''; pendingMusicId = null; return; }
-      pendingMusicId = musicId;
-      if (a.src !== location.origin + `/music/${musicId}.mp3`) {
-        a.src = `/music/${musicId}.mp3`;
+      if (!musicId) {
+        a.pause(); a.src = ''; pendingMusicId = null;
+        if (musicRetryId) { clearInterval(musicRetryId); musicRetryId = null; }
+        return;
       }
+      pendingMusicId = musicId;
+      const targetSrc = location.origin + `/music/${musicId}.mp3`;
+      if (a.src !== targetSrc) { a.src = targetSrc; }
       a.volume = 0.08;
       a.loop   = true;
-      const p  = a.play();
-      if (p) p.catch(() => {
-        // Autoplay blocked — will retry on first tick/interaction
-      });
+
+      // Start a retry interval — keeps trying every 2s until music actually plays
+      if (musicRetryId) clearInterval(musicRetryId);
+      musicRetryId = setInterval(() => {
+        if (!pendingMusicId) { clearInterval(musicRetryId); musicRetryId = null; return; }
+        if (!a.paused) { clearInterval(musicRetryId); musicRetryId = null; return; } // playing — done
+        if (a.src !== location.origin + `/music/${pendingMusicId}.mp3`) {
+          a.src = location.origin + `/music/${pendingMusicId}.mp3`;
+        }
+        a.play().catch(() => {});
+      }, 2000);
+
+      a.play().catch(() => {}); // first attempt — may be blocked; retry interval covers it
     }
+
+    // Also play as soon as the audio is ready (handles OBS preload delay)
+    document.getElementById('bgMusic').addEventListener('canplaythrough', () => {
+      const a = document.getElementById('bgMusic');
+      if (pendingMusicId && a.paused) a.play().catch(() => {});
+    });
 
     socket.on('loop-music', ({ musicId }) => playBgMusic(musicId));
 

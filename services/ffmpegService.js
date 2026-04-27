@@ -1,9 +1,11 @@
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
+import ffprobeInstaller from '@ffprobe-installer/ffprobe';
 import path from 'path';
 import fs from 'fs/promises';
 
 ffmpeg.setFfmpegPath(ffmpegInstaller.path);
+ffmpeg.setFfprobePath(ffprobeInstaller.path);
 
 // ── Caption style drawtext configurations ─────────────────────────────────────
 const CAPTION_STYLES = {
@@ -43,7 +45,7 @@ function sanitizeLine(text) {
 // Each word gets its own segment for word-by-word highlight effect.
 // Dramatic/emotional words hold 35% longer. Sentence-end punctuation adds a
 // 0.25s pause so the screen briefly clears, mimicking natural speech rhythm.
-function buildSubtitleSegments(script) {
+export function buildSubtitleSegments(script) {
   const BASE_SPW = 60 / 175;  // ~0.343s per word — matches Google Neural2 TTS pace
   const DRAMATIC = /^(but|wait|listen|however|because|love|truth|real|change|life|time|never|always|every|only|just|now|stop|think|feel|remember|imagine|believe|know|understand|people|world|story|dream|fear|hope|fail|win|lose|moment|chance|choice|power|mind|heart|soul|pain|joy|wrong|right|end|start|begin|yet|still|already)$/i;
 
@@ -157,6 +159,7 @@ export async function mergeReelFromImages(reelId, imagePaths, audioPath, script,
   const captionParams = CAPTION_STYLES[captionStyle] || CAPTION_STYLES['bold-stroke'];
   const grainFilter   = effects.filmGrain ? ',noise=alls=20:allf=t' : '';
   const hasShake      = !!effects.shake;
+  const hasZoom       = !!effects.smoothZoom;
   const hasBGM        = !!musicPath;
 
   // Word highlight params: white text on a colored box — one word at a time, CapCut style
@@ -212,7 +215,11 @@ export async function mergeReelFromImages(reelId, imagePaths, audioPath, script,
     const shakeStage  = hasShake
       ? `[vcat]scale=1116:1996,crop=1080:1920:x='18+18*sin(t*4)':y='18+18*sin(t*3)'[vshaken]`
       : null;
-    const drawtextSrc = hasShake ? '[vshaken]' : '[vcat]';
+    const afterShake  = hasShake ? '[vshaken]' : '[vcat]';
+    const zoomStage   = hasZoom
+      ? `${afterShake}scale=1134:2016,crop=1080:1920:x='27+27*sin(t*0.3)':y='48+48*sin(t*0.25)'[vzoom]`
+      : null;
+    const drawtextSrc = hasZoom ? '[vzoom]' : afterShake;
 
     // Timed subtitle filters (identical logic to mergeReel)
     let subtitleFilters;
@@ -257,6 +264,7 @@ export async function mergeReelFromImages(reelId, imagePaths, audioPath, script,
       ...imageFilters,
       `${concatInputLabels}concat=n=${n}:v=1:a=0[vcat]`,
       ...(shakeStage      ? [shakeStage]      : []),
+      ...(zoomStage       ? [zoomStage]        : []),
       ...subtitleFilters,
       ...(audioFilterPart ? [audioFilterPart] : []),
     ].join(';');
@@ -415,6 +423,7 @@ export async function mergeReelFromVideos(reelId, clipPaths, audioPath, script, 
     captionSegments = null,
     captionWords    = null,
     videoSpeed      = 1.0,
+    audioDuration   = null,
   } = options;
 
   const outputPath = path.resolve(`./public/videos/${reelId}.mp4`);
@@ -422,12 +431,13 @@ export async function mergeReelFromVideos(reelId, clipPaths, audioPath, script, 
 
   const grainFilter    = effects.filmGrain    ? ',noise=alls=20:allf=t' : '';
   const hasShake       = !!effects.shake;
+  const hasZoom        = !!effects.smoothZoom;
   const hasAnimatedHook = !!effects.animatedHook;
   const hasBGM         = !!musicPath;
   const n              = clipPaths.length;
-  // Hard cap: detect actual clip length from first clip name, fallback to 8s (Veo) or 10s
+  // Use real audio duration when provided (media reels), otherwise estimate from clip count
   const clipSec        = duration === '60-70' ? 12 : 8;
-  const maxDuration    = n * clipSec;
+  const maxDuration    = audioDuration ? Math.ceil(audioDuration) + 2 : n * clipSec;
 
   // Use Whisper-derived timestamps if available, otherwise fall back to WPM estimation
   const segments = captionSegments || buildSentenceSegments(script);
@@ -483,11 +493,16 @@ export async function mergeReelFromVideos(reelId, clipPaths, audioPath, script, 
       ? `[vcat]scale=1116:1996,crop=1080:1920:x='18+18*sin(t*4)':y='18+18*sin(t*3)'[vshaken]`
       : null;
     const afterShake  = hasShake ? '[vshaken]' : '[vcat]';
+    // Smooth zoom: 5% scale-up + slow sinusoidal crop → subtle breathe-zoom effect
+    const zoomStage   = hasZoom
+      ? `${afterShake}scale=1134:2016,crop=1080:1920:x='27+27*sin(t*0.3)':y='48+48*sin(t*0.25)'[vzoom]`
+      : null;
+    const afterZoom   = hasZoom ? '[vzoom]' : afterShake;
     // Animated hook: 0.3s fade-in from black (pairs with 1.15× zoom-in on clip 0)
     const hookStage   = hasAnimatedHook
-      ? `${afterShake}fade=t=in:st=0:d=0.3[vhooked]`
+      ? `${afterZoom}fade=t=in:st=0:d=0.3[vhooked]`
       : null;
-    const afterHook   = hasAnimatedHook ? '[vhooked]' : afterShake;
+    const afterHook   = hasAnimatedHook ? '[vhooked]' : afterZoom;
 
     // Video-only slow-motion: scale PTS without touching audio
     const ptsMult     = videoSpeed > 0 && videoSpeed !== 1.0 ? (1 / videoSpeed).toFixed(4) : null;
@@ -533,6 +548,7 @@ export async function mergeReelFromVideos(reelId, clipPaths, audioPath, script, 
       ...scaleFilters,
       ...xfadeFilters,
       ...(shakeStage      ? [shakeStage]      : []),
+      ...(zoomStage       ? [zoomStage]        : []),
       ...(hookStage       ? [hookStage]        : []),
       ...(speedStage      ? [speedStage]       : []),
       ...subtitleFilters,
@@ -585,6 +601,7 @@ export async function mergeReel(reelId, clipPaths, audioPath, script, options = 
   const captionParams = CAPTION_STYLES[captionStyle] || CAPTION_STYLES['bold-stroke'];
   const grainFilter   = effects.filmGrain ? ',noise=alls=20:allf=t' : '';
   const hasShake      = !!effects.shake;
+  const hasZoom       = !!effects.smoothZoom;
   const hasBGM        = !!musicPath;
 
   // Word highlight params: white text on a colored box — one word at a time, CapCut style
@@ -626,7 +643,11 @@ export async function mergeReel(reelId, clipPaths, audioPath, script, options = 
     const shakeStage  = hasShake
       ? `[vcat]scale=1116:1996,crop=1080:1920:x='18+18*sin(t*4)':y='18+18*sin(t*3)'[vshaken]`
       : null;
-    const drawtextSrc = hasShake ? '[vshaken]' : '[vcat]';
+    const afterShake  = hasShake ? '[vshaken]' : '[vcat]';
+    const zoomStage   = hasZoom
+      ? `${afterShake}scale=1134:2016,crop=1080:1920:x='27+27*sin(t*0.3)':y='48+48*sin(t*0.25)'[vzoom]`
+      : null;
+    const drawtextSrc = hasZoom ? '[vzoom]' : afterShake;
 
     // ── Timed subtitle filters ────────────────────────────────────────────────
     // Each segment gets its own drawtext with enable='between(t,start,end)'.
@@ -675,6 +696,7 @@ export async function mergeReel(reelId, clipPaths, audioPath, script, options = 
       ...scaleFilters,
       `${concatInputLabels}concat=n=${n}:v=1:a=0[vcat]`,
       ...(shakeStage        ? [shakeStage]        : []),
+      ...(zoomStage         ? [zoomStage]         : []),
       ...subtitleFilters,
       ...(audioFilterPart   ? [audioFilterPart]   : []),
     ].join(';');
@@ -707,6 +729,366 @@ export async function mergeReel(reelId, clipPaths, audioPath, script, options = 
         console.error(`[FFmpeg] Reel ${reelId} error:`, err.message);
         console.error('[FFmpeg stderr]', stderr);
         reject(new Error(`FFmpeg failed: ${err.message}`));
+      })
+      .run();
+  });
+}
+
+/**
+ * Get duration of an audio/video file in seconds.
+ * @param {string} filePath
+ * @returns {Promise<number>}
+ */
+export function getMediaDuration(filePath) {
+  return new Promise((resolve, reject) => {
+    ffmpeg.ffprobe(filePath, (err, meta) => {
+      if (err) return reject(err);
+      resolve(meta?.format?.duration || 0);
+    });
+  });
+}
+
+/**
+ * Convert a single image to a short video clip with animation effects.
+ * Used by the Media Reel pipeline to turn uploaded images into video segments.
+ *
+ * @param {string} imagePath    - path to input image (jpg/png/webp)
+ * @param {number} durationSec  - desired clip duration in seconds
+ * @param {string} effect       - 'kenburns' | 'zoom' | 'shake' | 'none'
+ * @param {string} outputPath   - path for the output .mp4 clip
+ * @returns {Promise<string>}   outputPath
+ */
+export async function imageToVideoClip(imagePath, durationSec, effect, outputPath, isGif = false) {
+  const fps = 24;
+  const frames = Math.round(durationSec * fps);
+
+  // Cover base: scale to fill 1080×1920 maintaining aspect ratio (no stretch, crops excess)
+  const coverBase = `scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920`;
+  // Zoom base: 20% larger than output — gives zoompan room to pan without hitting edges
+  const zoomBase  = `scale=1296:2304:force_original_aspect_ratio=increase,crop=1296:2304`;
+
+  let vfFilter;
+  if (effect === 'kenburns') {
+    vfFilter = `${zoomBase},zoompan=z='min(zoom+0.0015,1.15)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=1080x1920:fps=${fps},setsar=1`;
+  } else if (effect === 'zoom') {
+    vfFilter = `${zoomBase},zoompan=z='min(zoom+0.002,1.2)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=1080x1920:fps=${fps},setsar=1`;
+  } else if (effect === 'shake') {
+    vfFilter = `${coverBase},scale=1116:1996,crop=1080:1920:x='18+12*sin(n/12)':y='18+12*cos(n/15)',setsar=1,fps=${fps}`;
+  } else {
+    vfFilter = `${coverBase},setsar=1,fps=${fps}`;
+  }
+
+  return new Promise((resolve, reject) => {
+    const cmd = ffmpeg().input(imagePath);
+    if (isGif) {
+      // Animated GIF: loop continuously for the clip duration
+      cmd.inputOptions(['-ignore_loop', '0']);
+    } else {
+      // Static image: loop the single frame
+      cmd.inputOptions(['-loop', '1']);
+    }
+    cmd
+      .duration(durationSec)
+      .videoFilters(vfFilter)
+      .videoCodec('libx264')
+      .outputOptions(['-pix_fmt', 'yuv420p', '-preset', 'ultrafast', '-crf', '26', '-an'])
+      .output(outputPath)
+      .on('end', () => resolve(outputPath))
+      .on('error', (err) => reject(new Error(`imageToVideoClip failed: ${err.message}`)))
+      .run();
+  });
+}
+
+/**
+ * Merge multiple WebM browser-recorded clips into a single 1080×1920 MP4 (YouTube Shorts).
+ * Optionally mixes in an audio track (TTS narration or background music).
+ *
+ * @param {string[]} clipPaths  - array of WebM file paths on disk
+ * @param {string|null} audioPath - optional audio file path (mp3/wav/aac)
+ * @param {string} outputPath   - destination MP4 path
+ */
+export async function mergeFactsClips(clipPaths, audioPath, outputPath) {
+  if (!clipPaths.length) throw new Error('mergeFactsClips: no clips provided');
+  await fs.mkdir(path.dirname(outputPath), { recursive: true });
+
+  const n = clipPaths.length;
+
+  return new Promise((resolve, reject) => {
+    const cmd = ffmpeg();
+    clipPaths.forEach(p => cmd.input(p));
+    if (audioPath) cmd.input(audioPath).inputOptions(['-stream_loop', '-1']);
+
+    // Scale/crop each clip to 1080×1920 portrait
+    const scaleFilters = clipPaths.map((_, i) =>
+      `[${i}:v]scale=1080:1920:force_original_aspect_ratio=increase,` +
+      `crop=1080:1920,setsar=1,fps=30[v${i}]`
+    );
+    const concatLabels = clipPaths.map((_, i) => `[v${i}]`).join('');
+    const concatFilter = n === 1
+      ? `[v0]copy[vout]`
+      : `${concatLabels}concat=n=${n}:v=1:a=0[vout]`;
+
+    const filterComplex = [...scaleFilters, concatFilter].join(';');
+
+    cmd
+      .complexFilter(filterComplex)
+      .outputOptions([
+        '-map [vout]',
+        audioPath ? `-map ${n}:a` : '-an',
+        '-c:v libx264',
+        '-c:a aac',
+        '-b:a 128k',
+        '-crf 26',
+        '-preset ultrafast',
+        '-r 30',
+        '-shortest',
+        '-movflags +faststart',
+        '-pix_fmt yuv420p',
+      ])
+      .output(outputPath)
+      .on('start', cmd => console.log(`[FactsMerge] FFmpeg start: ${cmd}`))
+      .on('end', () => { console.log(`[FactsMerge] Done → ${outputPath}`); resolve(outputPath); })
+      .on('error', (err, _stdout, stderr) => {
+        console.error('[FactsMerge] FFmpeg error:', stderr || err.message);
+        reject(new Error(stderr || err.message));
+      })
+      .run();
+  });
+}
+
+/**
+ * Generate a silent MP3 of the given duration (for clips with no body text).
+ */
+export function generateSilentAudio(durationSec, outputPath) {
+  return new Promise((resolve, reject) => {
+    ffmpeg()
+      .input('anullsrc=r=44100:cl=stereo')
+      .inputOptions(['-f', 'lavfi'])
+      .duration(durationSec)
+      .audioCodec('libmp3lame')
+      .audioBitrate('128k')
+      .output(outputPath)
+      .on('end', resolve)
+      .on('error', reject)
+      .run();
+  });
+}
+
+/**
+ * Merge WebM clips into 1080×1920 MP4 with per-clip TTS audio sync.
+ * Each clip video loops to match its TTS audio duration.
+ * Optional background music is mixed underneath at 40% volume.
+ *
+ * @param {string[]} clipPaths     - WebM files (one per fact card)
+ * @param {string[]} audioPaths    - MP3 TTS files, parallel to clipPaths
+ * @param {number[]} clipDurations - Seconds each clip should run (matches TTS duration)
+ * @param {string}   outputPath    - Destination MP4
+ * @param {string|null} musicPath  - Optional background music (loops if short)
+ */
+export async function mergeFactsClipsSync(clipPaths, audioPaths, clipDurations, outputPath, musicPath = null) {
+  if (!clipPaths.length) throw new Error('mergeFactsClipsSync: no clips provided');
+  await fs.mkdir(path.dirname(outputPath), { recursive: true });
+
+  const n = clipPaths.length;
+
+  return new Promise((resolve, reject) => {
+    const cmd = ffmpeg();
+
+    // Video inputs — no special input flags needed; tpad handles extension in filter
+    clipPaths.forEach(p => cmd.input(p));
+
+    // Per-clip TTS audio inputs
+    audioPaths.forEach(p => cmd.input(p));
+
+    // Background music input — must call input() THEN inputOptions() for correct order
+    if (musicPath) cmd.input(musicPath).inputOptions(['-stream_loop', '-1']);
+
+    const musicIdx = n * 2;
+
+    // Scale + crop each video, then tpad to freeze last frame until TTS duration is reached
+    const vFilters = clipPaths.map((_, i) => {
+      const d = clipDurations[i].toFixed(3);
+      return `[${i}:v]scale=1080:1920:force_original_aspect_ratio=increase,` +
+             `crop=1080:1920,setsar=1,fps=30,` +
+             `tpad=stop=-1:stop_mode=clone,trim=duration=${d},setpts=PTS-STARTPTS[v${i}]`;
+    });
+
+    // Trim each TTS audio to its duration
+    const aFilters = audioPaths.map((_, i) => {
+      const d = clipDurations[i].toFixed(3);
+      return `[${n + i}:a]atrim=duration=${d},asetpts=PTS-STARTPTS[a${i}]`;
+    });
+
+    // Concat video segments
+    const vLabels = clipPaths.map((_, i) => `[v${i}]`).join('');
+    const concatV = n === 1 ? `[v0]copy[vout]` : `${vLabels}concat=n=${n}:v=1:a=0[vout]`;
+
+    // Concat audio segments
+    const aLabels = audioPaths.map((_, i) => `[a${i}]`).join('');
+    const concatA = n === 1 ? `[a0]acopy[narration]` : `${aLabels}concat=n=${n}:v=0:a=1[narration]`;
+
+    const filters = [...vFilters, ...aFilters, concatV, concatA];
+
+    let audioMap;
+    if (musicPath) {
+      // aloop keeps music running until narration ends; amix blends at 40% volume
+      filters.push(
+        `[${musicIdx}:a]aloop=loop=-1:size=2000000000[musicloop]`,
+        `[narration][musicloop]amix=inputs=2:duration=first:weights=1 0.4[aout]`
+      );
+      audioMap = '[aout]';
+    } else {
+      audioMap = '[narration]';
+    }
+
+    cmd
+      .complexFilter(filters.join(';'))
+      .outputOptions([
+        '-map [vout]',
+        `-map ${audioMap}`,
+        '-c:v libx264',
+        '-c:a aac',
+        '-b:a 128k',
+        '-crf 26',
+        '-preset ultrafast',
+        '-r 30',
+        '-movflags +faststart',
+        '-pix_fmt yuv420p',
+      ])
+      .output(outputPath)
+      .on('start', c => console.log(`[FactsMergeSync] FFmpeg start: ${c}`))
+      .on('end', () => { console.log(`[FactsMergeSync] Done → ${outputPath}`); resolve(outputPath); })
+      .on('error', (err, _stdout, stderr) => {
+        console.error('[FactsMergeSync] FFmpeg error:', stderr || err.message);
+        reject(new Error(stderr || err.message));
+      })
+      .run();
+  });
+}
+
+/**
+ * Concatenate pre-built scene clips (already correct duration) with per-clip
+ * audio tracks into a single 1080×1920 MP4. Optionally mixes background music
+ * underneath the narration at 15% volume.
+ *
+ * @param {string[]} clipPaths   - MP4 clips (one per scene, already correct duration)
+ * @param {string[]} audioPaths  - MP3 narration files parallel to clipPaths
+ * @param {string}   outputPath  - destination MP4
+ * @param {string|null} musicPath - optional background music (looped)
+ */
+export async function mergeSceneClips(clipPaths, audioPaths, outputPath, musicPath = null) {
+  if (!clipPaths.length) throw new Error('mergeSceneClips: no clips provided');
+  await fs.mkdir(path.dirname(outputPath), { recursive: true });
+
+  const n = clipPaths.length;
+
+  return new Promise((resolve, reject) => {
+    const cmd = ffmpeg();
+
+    clipPaths.forEach(p  => cmd.input(p));
+    audioPaths.forEach(p => cmd.input(p));
+    if (musicPath) cmd.input(musicPath).inputOptions(['-stream_loop', '-1']);
+
+    const musicIdx = n * 2;
+
+    const vLabels = clipPaths.map((_, i) => `[${i}:v]`).join('');
+    const concatV  = n === 1
+      ? `[0:v]copy[vout]`
+      : `${vLabels}concat=n=${n}:v=1:a=0[vout]`;
+
+    const aLabels = audioPaths.map((_, i) => `[${n + i}:a]`).join('');
+    const concatA  = n === 1
+      ? `[${n}:a]acopy[narration]`
+      : `${aLabels}concat=n=${n}:v=0:a=1[narration]`;
+
+    const filters = [concatV, concatA];
+    let audioMap;
+
+    if (musicPath) {
+      filters.push(`[${musicIdx}:a]aloop=loop=-1:size=2000000000[ml]`);
+      filters.push(`[narration][ml]amix=inputs=2:duration=first:weights=1 0.15[aout]`);
+      audioMap = '[aout]';
+    } else {
+      audioMap = '[narration]';
+    }
+
+    cmd
+      .complexFilter(filters.join(';'))
+      .outputOptions([
+        '-map [vout]',
+        `-map ${audioMap}`,
+        '-c:v libx264',
+        '-c:a aac',
+        '-b:a 128k',
+        '-crf 24',
+        '-preset fast',
+        '-r 30',
+        '-movflags +faststart',
+        '-pix_fmt yuv420p',
+      ])
+      .output(outputPath)
+      .on('start', c  => console.log(`[SceneMerge] FFmpeg start: ${c}`))
+      .on('end',   () => { console.log(`[SceneMerge] Done → ${outputPath}`); resolve(outputPath); })
+      .on('error', (err, _stdout, stderr) => {
+        console.error('[SceneMerge] FFmpeg error:', stderr || err.message);
+        reject(new Error(stderr || err.message));
+      })
+      .run();
+  });
+}
+
+/**
+ * Build one animated scene clip from progressive reveal PNGs.
+ * Each reveal frame (all but last) is shown statically for revealDur seconds.
+ * The final frame plays with Ken Burns zoom for holdDur seconds.
+ *
+ * @param {string[]} framePaths - PNG files: [titleFrame, ...elementFrames]
+ * @param {number}   revealDur  - seconds each reveal frame is shown
+ * @param {number}   holdDur    - seconds final frame plays with Ken Burns
+ * @param {string}   outputPath - destination MP4 (video only, no audio)
+ */
+export async function buildRevealClip(framePaths, revealDur, holdDur, outputPath) {
+  await fs.mkdir(path.dirname(outputPath), { recursive: true });
+  const n   = framePaths.length;
+  const fps = 30;
+
+  return new Promise((resolve, reject) => {
+    const cmd = ffmpeg();
+
+    // Each frame as a looping still image for its duration
+    framePaths.forEach((p, i) => {
+      const dur = i < n - 1 ? revealDur : holdDur;
+      cmd.input(p).inputOptions(['-loop', '1', '-t', String(dur)]);
+    });
+
+    // Scale every frame to 1080×1920 at 30fps (static — no zoompan)
+    const scaleFilters = framePaths.map((_, i) =>
+      `[${i}:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1,fps=${fps}[f${i}]`
+    );
+
+    const labels        = framePaths.map((_, i) => `[f${i}]`).join('');
+    const concatFilter  = n === 1
+      ? `[f0]copy[vout]`
+      : `${labels}concat=n=${n}:v=1:a=0[vout]`;
+
+    const filterComplex = [...scaleFilters, concatFilter].join(';');
+
+    cmd
+      .complexFilter(filterComplex)
+      .outputOptions([
+        '-map [vout]',
+        '-c:v libx264',
+        '-pix_fmt yuv420p',
+        '-preset fast',
+        '-crf 23',
+        '-an',
+      ])
+      .output(outputPath)
+      .on('start', c  => console.log(`[RevealClip] FFmpeg start: ${c.slice(0, 120)}`))
+      .on('end',   () => { console.log(`[RevealClip] Done → ${outputPath}`); resolve(outputPath); })
+      .on('error', (err, _stdout, stderr) => {
+        console.error('[RevealClip] FFmpeg error:', stderr || err.message);
+        reject(new Error(stderr || err.message));
       })
       .run();
   });

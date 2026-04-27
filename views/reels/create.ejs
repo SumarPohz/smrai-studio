@@ -121,6 +121,29 @@
 .err-box { display:none; background:rgba(239,68,68,.08); border:1px solid rgba(239,68,68,.25); border-radius:10px; padding:12px 16px; color:#dc2626; font-size:14px; margin-bottom:16px; }
 @keyframes spin { to { transform:rotate(360deg); } }
 
+/* Mode toggle */
+.mode-toggle { display:flex; gap:10px; margin-bottom:28px; }
+.mode-btn { flex:1; padding:12px 16px; border:2px solid #e5e7eb; border-radius:12px; background:#fff; color:#6b7280; font-size:14px; font-weight:600; cursor:pointer; transition:all .18s; display:flex; align-items:center; justify-content:center; gap:7px; }
+.mode-btn.active { border-color:#7c3aed; background:#faf5ff; color:#7c3aed; }
+.mode-btn:hover:not(.active) { border-color:#a78bfa; }
+
+/* Media upload step */
+.media-drop-zone { border:2px dashed #a78bfa; border-radius:14px; padding:30px 20px; text-align:center; cursor:pointer; transition:border-color .15s,background .15s; background:#fdfcff; }
+.media-drop-zone:hover,.media-drop-zone.drag { border-color:#7c3aed; background:#f5f0ff; }
+.media-thumb-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:14px; }
+@media(min-width:480px){ .media-thumb-grid{ grid-template-columns:repeat(6,1fr); } }
+.media-thumb { position:relative; aspect-ratio:1/1; border-radius:8px; overflow:hidden; background:#f3f4f6; }
+.media-thumb img,.media-thumb video { width:100%; height:100%; object-fit:cover; display:block; }
+.media-thumb .rm-btn { position:absolute; top:3px; right:3px; width:20px; height:20px; background:rgba(0,0,0,.6); border:none; border-radius:50%; color:#fff; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1; }
+.effect-pill { padding:8px 14px; border:1.5px solid #e5e7eb; border-radius:999px; font-size:13px; font-weight:600; color:#6b7280; cursor:pointer; background:#fff; transition:all .15s; }
+.effect-pill.active { border-color:#7c3aed; background:#faf5ff; color:#7c3aed; }
+.effect-pills-row { display:flex; gap:8px; flex-wrap:wrap; }
+
+/* Media sub-mode toggle */
+.sub-mode-btn { flex:1; padding:10px 14px; border:1.5px solid #e5e7eb; border-radius:10px; background:#fff; color:#6b7280; font-size:13px; font-weight:600; cursor:pointer; transition:all .18s; display:flex; align-items:center; justify-content:center; gap:6px; }
+.sub-mode-btn.active { border-color:#7c3aed; background:#faf5ff; color:#7c3aed; }
+.sub-mode-btn:hover:not(.active) { border-color:#a78bfa; }
+
 /* Story hint popup */
 #storyHintOverlay {
   display:none;position:fixed;inset:0;z-index:9999;
@@ -165,9 +188,91 @@
 <div id="reel-wizard" style="padding-top:80px;padding-bottom:60px;">
 <div style="max-width:720px;margin:0 auto;padding:0 20px;">
 
+  <!-- Mode toggle -->
+  <div class="mode-toggle">
+    <button class="mode-btn active" id="modeAIBtn" onclick="setMode('ai')">🤖 AI Generated</button>
+    <button class="mode-btn"        id="modeMediaBtn" onclick="setMode('media')">📸 Upload Media</button>
+  </div>
+
   <!-- Progress -->
   <div class="wiz-progress" id="wizProg">
     <% for(let i=0;i<4;i++){%><div class="wiz-seg" id="seg<%=i%>"></div><%}%>
+  </div>
+
+  <!-- ── STEP M1: Media Upload + Script (media mode only) ──────────────── -->
+  <div id="step-m1" class="wiz-step" style="display:none;">
+    <h2 class="step-title">Upload your media <span class="step-badge">Step 1 of 4</span></h2>
+    <p id="sm1Sub" class="step-sub">Add images or videos — they'll be animated with your chosen effect</p>
+    <div id="sm1err" class="err-box"></div>
+
+    <!-- Sub-mode toggle -->
+    <div style="display:flex;gap:8px;margin-bottom:18px;">
+      <button id="subBulkBtn" class="sub-mode-btn active" onclick="setMediaSubMode('bulk')">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Bulk Upload
+      </button>
+      <button id="subMapperBtn" class="sub-mode-btn" onclick="setMediaSubMode('mapper')">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        Script Mapper
+      </button>
+    </div>
+
+    <!-- ── Bulk upload panel ──────────────────────────────────────────── -->
+    <div id="subBulkPanel" class="wiz-body">
+      <!-- Upload zone -->
+      <div class="media-drop-zone" id="mediaDropZone" onclick="document.getElementById('mediaFileInput').click()"
+           ondragover="event.preventDefault();this.classList.add('drag')"
+           ondragleave="this.classList.remove('drag')"
+           ondrop="event.preventDefault();this.classList.remove('drag');handleMediaDrop(event.dataTransfer.files)">
+        <svg width="32" height="32" fill="none" stroke="#a78bfa" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto 10px;display:block;"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        <div style="font-size:15px;font-weight:700;color:#374151;">Click or drag &amp; drop images / videos</div>
+        <div style="font-size:13px;color:#9ca3af;margin-top:4px;">JPG, PNG, WebP, GIF, MP4, WebM · up to 50MB each · max 30 files</div>
+      </div>
+      <input type="file" id="mediaFileInput" multiple accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm" style="display:none;" onchange="handleMediaFiles(this.files)">
+
+      <!-- Thumbnails -->
+      <div id="mediaThumbGrid" class="media-thumb-grid"></div>
+      <div id="mediaCount" style="font-size:13px;color:#9ca3af;margin-top:6px;"></div>
+
+      <!-- Script -->
+      <div style="margin-top:22px;padding-top:18px;border-top:1px solid #f3f4f6;">
+        <label class="wiz-label">Your Script <span style="color:red">*</span></label>
+        <p style="font-size:13px;color:#6b7280;margin:0 0 10px;">This becomes the voiceover and captions. Write exactly what you want said.</p>
+        <textarea id="mediaScriptInput" class="wiz-textarea" maxlength="20000" style="min-height:140px;"
+          placeholder="Write your script here…&#10;&#10;Example: &quot;Every sunrise is a reminder that you get another chance. Make it count today.&quot;"
+          oninput="cc('mediaScriptInput','mediaScriptCount',20000)"></textarea>
+        <div style="display:flex;justify-content:space-between;margin-top:4px;">
+          <span style="font-size:13px;color:#7c3aed;">Be descriptive — this is your voiceover</span>
+          <span class="char-count" id="mediaScriptCount">0/20000</span>
+        </div>
+      </div>
+    </div><!-- /subBulkPanel -->
+
+    <!-- ── Script Mapper panel ────────────────────────────────────────── -->
+    <div id="subMapperPanel" style="display:none;">
+      <div style="border:2px dashed #a78bfa;border-radius:14px;padding:30px 24px;text-align:center;background:#fdfcff;">
+        <svg width="40" height="40" fill="none" stroke="#7c3aed" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto 14px;display:block;"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3" cy="6" r="1" fill="#7c3aed"/><circle cx="3" cy="12" r="1" fill="#7c3aed"/><circle cx="3" cy="18" r="1" fill="#7c3aed"/></svg>
+        <div style="font-size:16px;font-weight:700;color:#111827;margin-bottom:8px;">Script Visual Mapper</div>
+        <p style="font-size:13px;color:#6b7280;margin:0 0 20px;max-width:360px;margin-left:auto;margin-right:auto;">
+          Paste your narration script, split it line by line, then drag &amp; drop <strong>up to 2 images or videos per line</strong>. Perfect when you have a specific visual in mind for each sentence.
+        </p>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:20px;">
+          <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#6b7280;"><svg width="14" height="14" fill="none" stroke="#7c3aed" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Line-by-line media control</div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#6b7280;"><svg width="14" height="14" fill="none" stroke="#7c3aed" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Drag &amp; drop per line</div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#6b7280;"><svg width="14" height="14" fill="none" stroke="#7c3aed" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Images, GIFs &amp; videos</div>
+        </div>
+        <a href="/reels/script-mapper"
+          style="display:inline-flex;align-items:center;gap:8px;padding:13px 26px;background:#7c3aed;color:#fff;border-radius:10px;font-size:15px;font-weight:700;text-decoration:none;transition:background .15s;">
+          Open Script Mapper
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+    </div><!-- /subMapperPanel -->
+
+    <div class="wiz-nav">
+      <div></div>
+      <button id="m1NextBtn" class="btn-next" onclick="goMedia(2)">Continue <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></button>
+    </div>
   </div>
 
   <!-- ── STEP 1: Niche ──────────────────────────────────────────────────── -->
@@ -348,7 +453,14 @@
 
     <!-- Effects & Duration -->
     <div style="margin-top:26px;padding-top:22px;border-top:1px solid #f3f4f6;">
-      <div style="font-size:14px;font-weight:700;color:#111827;margin-bottom:14px;">Effects &amp; Duration</div>
+      <div id="effectsHeading" style="font-size:14px;font-weight:700;color:#111827;margin-bottom:14px;">Effects &amp; Duration</div>
+      <div class="effect-item">
+        <div>
+          <div style="font-size:15px;font-weight:700;color:#111827;display:flex;align-items:center;">Smooth Zoom <span class="eff-badge badge-new">NEW</span></div>
+          <div style="font-size:13px;color:#6b7280;margin-top:3px;">Gently breathes in and out — subtle zoom that looks great on portrait &amp; vertical videos.</div>
+        </div>
+        <button class="toggle" onclick="toggleEffect('smoothZoom',this)" type="button"></button>
+      </div>
       <div class="effect-item">
         <div>
           <div style="font-size:15px;font-weight:700;color:#111827;display:flex;align-items:center;">Shake effect <span class="eff-badge badge-new">NEW</span></div>
@@ -363,7 +475,7 @@
         </div>
         <button class="toggle" onclick="toggleEffect('filmGrain',this)" type="button"></button>
       </div>
-      <div style="margin-top:18px;">
+      <div id="durRow" style="margin-top:18px;">
         <label class="wiz-label" style="display:flex;align-items:center;gap:6px;">
           Video Duration
           <svg width="14" height="14" fill="none" stroke="#9ca3af" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
@@ -373,7 +485,7 @@
           <option value="60-70">Long (~90 sec) — ₹700</option>
         </select>
       </div>
-      <div style="margin-top:18px;">
+      <div id="speedRow" style="margin-top:18px;">
         <label class="wiz-label">Video Speed</label>
         <select id="speedSel" class="wiz-select" onchange="S.videoSpeed=parseFloat(this.value);saveWizardState()">
           <option value="1.0">Normal (1×)</option>
@@ -464,8 +576,252 @@
 </div>
 
 <script>
-const S = { step:1, niche:'', exScript:'', storyHint:'', voice:'alloy', music:[], art:'cinematic', cap:'bold-stroke', effects:{ filmGrain:false, shake:false, animatedHook:false }, videoSpeed: 1.0 };
+const S = { step:1, niche:'', exScript:'', storyHint:'', voice:'alloy', music:[], art:'cinematic', cap:'bold-stroke', effects:{ filmGrain:false, shake:false, smoothZoom:false, animatedHook:false }, videoSpeed: 1.0 };
 const needsPayment = <%= totalReels %> > 0;
+
+// ── Media mode state ──────────────────────────────────────────────────────────
+let M = { mode: 'ai', mediaFiles: [], imageEffect: 'kenburns', uploadedPaths: [] };
+let mediaPriceVal = <%= mediaReelPrice %>;
+
+function setMode(mode) {
+  M.mode = mode;
+  document.getElementById('modeAIBtn').classList.toggle('active', mode === 'ai');
+  document.getElementById('modeMediaBtn').classList.toggle('active', mode === 'media');
+
+  // Show image effect block + hide duration/speed in media mode
+  const isMedia = mode === 'media';
+  ['durRow','speedRow'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = isMedia ? 'none' : 'block';
+  });
+  const eh = document.getElementById('effectsHeading');
+  if (eh) eh.textContent = isMedia ? 'Effects' : 'Effects & Duration';
+
+  // Update step-5 subtitle
+  const s5sub = document.querySelector('#step-5 .step-sub');
+  if (s5sub) s5sub.textContent = isMedia
+    ? 'Choose image animation and video effects — captions are added automatically'
+    : 'Choose effects and video duration — captions are added automatically';
+
+  const aiStep1 = document.getElementById('step-1');
+  const mStep1  = document.getElementById('step-m1');
+
+  if (mode === 'ai') {
+    // Jump to AI step 1
+    if (S.step !== 1) {
+      document.getElementById('step-' + S.step)?.classList.remove('active');
+      mStep1.classList.remove('active');
+    }
+    S.step = 1;
+    aiStep1.classList.add('active');
+    mStep1.classList.remove('active');
+    updProg(1);
+  } else {
+    // Jump to media step 1
+    if (S.step !== 1) {
+      document.getElementById('step-' + S.step)?.classList.remove('active');
+    }
+    aiStep1.classList.remove('active');
+    mStep1.classList.add('active');
+    S.step = 'm1';
+    updProg(1);
+  }
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function setMediaSubMode(mode) {
+  const isBulk = mode === 'bulk';
+  document.getElementById('subBulkBtn').classList.toggle('active', isBulk);
+  document.getElementById('subMapperBtn').classList.toggle('active', !isBulk);
+  document.getElementById('subBulkPanel').style.display  = isBulk ? '' : 'none';
+  document.getElementById('subMapperPanel').style.display = isBulk ? 'none' : 'block';
+  const sub = document.getElementById('sm1Sub');
+  if (sub) sub.textContent = isBulk
+    ? 'Add images or videos — they\'ll be animated with your chosen effect'
+    : 'Assign specific media to each line of your script for full visual control';
+  // Hide the Continue button in mapper mode (user navigates via the link instead)
+  const btn = document.getElementById('m1NextBtn');
+  if (btn) btn.style.display = isBulk ? '' : 'none';
+}
+
+function goMedia(n) {
+  // Validate media step 1 before continuing
+  if (S.step === 'm1' && n > 1) {
+    if (M.mediaFiles.length < 1) { showErr('sm1err','Please upload at least one image or video.'); return; }
+    const script = document.getElementById('mediaScriptInput').value.trim();
+    if (script.length < 10) { showErr('sm1err','Please write a script of at least 10 characters.'); return; }
+    hideErr('sm1err');
+  }
+
+  const fromId = S.step === 'm1' ? 'step-m1' : 'step-' + S.step;
+  document.getElementById(fromId)?.classList.remove('active');
+  S.step = n;
+  document.getElementById('step-' + n).classList.add('active');
+  updProg(n === 2 ? 2 : n === 3 ? 3 : 4);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+
+// ── Media file management ─────────────────────────────────────────────────────
+function handleMediaFiles(fileList) {
+  const allowed = /^(image\/(jpeg|png|webp|gif)|video\/(mp4|webm))$/;
+  const maxSize = 50 * 1024 * 1024;
+  Array.from(fileList).forEach(f => {
+    if (!allowed.test(f.type)) return;
+    if (f.size > maxSize)      return;
+    if (M.mediaFiles.length >= 30) return;
+    M.mediaFiles.push(f);
+  });
+  renderMediaThumbs();
+}
+
+function handleMediaDrop(fileList) {
+  handleMediaFiles(fileList);
+}
+
+function renderMediaThumbs() {
+  const grid  = document.getElementById('mediaThumbGrid');
+  const count = document.getElementById('mediaCount');
+  grid.innerHTML = '';
+  M.mediaFiles.forEach((f, i) => {
+    const div = document.createElement('div');
+    div.className = 'media-thumb';
+    const isVid = f.type.startsWith('video/') && f.type !== 'image/gif';
+    const el    = document.createElement(isVid ? 'video' : 'img');
+    el.src = URL.createObjectURL(f);
+    if (isVid) { el.muted = true; el.loop = true; el.autoplay = false; }
+    const rm = document.createElement('button');
+    rm.className = 'rm-btn'; rm.innerHTML = '✕';
+    rm.onclick = (e) => { e.stopPropagation(); M.mediaFiles.splice(i,1); renderMediaThumbs(); };
+    div.appendChild(el); div.appendChild(rm);
+    grid.appendChild(div);
+  });
+  count.textContent = M.mediaFiles.length > 0 ? M.mediaFiles.length + ' file' + (M.mediaFiles.length > 1 ? 's' : '') + ' ready' : '';
+}
+
+function setImageEffect(eff, btn) {
+  M.imageEffect = eff;
+  document.querySelectorAll('.effect-pill').forEach(p => p.classList.toggle('active', p.dataset.effect === eff));
+}
+
+// ── Media reel payment + generate ────────────────────────────────────────────
+function handleCreateMedia() {
+  if (M.mediaFiles.length < 1) { showErr('s5err', 'Please upload at least one image or video.'); return; }
+  const script = document.getElementById('mediaScriptInput')?.value.trim();
+  if (!script || script.length < 10) { showErr('s5err', 'Script must be at least 10 characters.'); return; }
+  hideErr('s5err');
+  openMediaPayModal();
+}
+
+function openMediaPayModal() {
+  // Reuse the same payment modal, just update the price + label
+  document.getElementById('payFinalPrice').textContent = '₹' + mediaPriceVal;
+  document.getElementById('payBtnTxt').textContent     = 'Pay ₹' + mediaPriceVal + ' & Generate';
+  document.getElementById('payOriginalPrice').style.display = 'none';
+  // swap handler temporarily
+  document.getElementById('payBtn').onclick = () => startMediaPay();
+  openPayModal();
+}
+
+async function startMediaPay() {
+  const btn    = document.getElementById('payBtn');
+  const btnTxt = document.getElementById('payBtnTxt');
+  const useWallet = !!document.getElementById('useWalletChk')?.checked;
+  btn.disabled = true; btnTxt.textContent = 'Processing…';
+  try {
+    const orderRes = await fetch('/api/reels/video-pay/create-order', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ useWallet, amount: mediaPriceVal }),
+    });
+    const order = await orderRes.json();
+    if (!order.success) throw new Error(order.message || 'Order creation failed');
+
+    if (order.walletOnly) {
+      closePayModal();
+      await doGenerateMedia({ walletOnly: true });
+      return;
+    }
+
+    const rzp = new Razorpay({
+      key:         '<%= razorpayKey %>',
+      amount:      order.amount * 100,
+      currency:    'INR',
+      name:        'SmrAI Studio',
+      description: 'Upload Media Reel — ₹' + mediaPriceVal,
+      order_id:    order.orderId,
+      handler: async function(response) {
+        closePayModal();
+        await doGenerateMedia({
+          razorpay_order_id:   response.razorpay_order_id,
+          razorpay_payment_id: response.razorpay_payment_id,
+          razorpay_signature:  response.razorpay_signature,
+          walletDeduction:     order.walletDeduction || 0,
+        });
+      },
+      modal: { ondismiss: function() { btn.disabled = false; btnTxt.textContent = 'Pay ₹' + mediaPriceVal + ' & Generate'; } },
+      prefill: { name: '<%= currentUser.name || "" %>', email: '<%= currentUser.email || "" %>' },
+      theme: { color: '#7c3aed' },
+    });
+    rzp.open();
+  } catch(err) {
+    btn.disabled = false; btnTxt.textContent = 'Pay ₹' + mediaPriceVal + ' & Generate';
+    showErr('s5err', err.message);
+    closePayModal();
+  }
+}
+
+async function doGenerateMedia(paymentFields) {
+  const btn = document.getElementById('createBtn');
+  document.getElementById('createBtnTxt').textContent = 'Uploading…';
+  document.getElementById('createBtnIco').innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:spin 1s linear infinite"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>';
+  btn.disabled = true;
+
+  try {
+    // Step 1: upload media files
+    const fd = new FormData();
+    M.mediaFiles.forEach(f => fd.append('media', f));
+    const upRes  = await fetch('/reels/upload-media', { method: 'POST', body: fd });
+    const upData = await upRes.json();
+    if (!upData.ok) throw new Error('Upload failed. Please try again.');
+    const mediaPaths = upData.files.map(f => f.path);
+
+    // Step 2: upload custom music if any
+    let customMusicPath = null;
+    if (S.customMusicFile) {
+      const mfd = new FormData();
+      mfd.append('file', S.customMusicFile);
+      const mRes  = await fetch('/reels/upload-music', { method: 'POST', body: mfd });
+      const mData = await mRes.json();
+      if (mData.path) customMusicPath = mData.path;
+    }
+
+    document.getElementById('createBtnTxt').textContent = 'Generating…';
+
+    const script = document.getElementById('mediaScriptInput').value.trim();
+    const res    = await fetch('/reels/generate-media', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        script,
+        voice:      S.voice,
+        effects:    S.effects,
+        music:      S.music,
+        mediaPaths,
+        imageEffect: M.imageEffect,
+        customMusicPath,
+        ...paymentFields,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'Server error. Please try again.');
+    window.location.href = '/reels/loading/' + data.reel_id;
+  } catch(err) {
+    showErr('s5err', err.message);
+    document.getElementById('createBtnTxt').textContent = 'Generate Video';
+    document.getElementById('createBtnIco').innerHTML = '<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>';
+    btn.disabled = false;
+  }
+}
 
 function saveWizardState() {
   try {
@@ -607,6 +963,23 @@ function clearCustomMusic() {
 }
 
 function go(n) {
+  // ── Media mode routing ──────────────────────────────────────────────────────
+  if (M.mode === 'media') {
+    // n===1 means "Back to start" — go to media step 1
+    if (n === 1) {
+      const curId = S.step === 'm1' ? 'step-m1' : 'step-' + S.step;
+      document.getElementById(curId)?.classList.remove('active');
+      S.step = 'm1';
+      document.getElementById('step-m1').classList.add('active');
+      updProg(1);
+      window.scrollTo({top:0,behavior:'smooth'});
+      return;
+    }
+    goMedia(n);
+    return;
+  }
+
+  // ── AI mode routing ─────────────────────────────────────────────────────────
   // Validate step 1
   if (S.step===1 && n>1) {
     const isCustom = document.getElementById('p1b').style.display !== 'none';
@@ -703,7 +1076,15 @@ function showErr(id, msg) { const el=document.getElementById(id); el.textContent
 function hideErr(id)       { const el=document.getElementById(id); if(el) el.style.display='none'; }
 
 // ── Payment modal helpers ─────────────────────────────────────────────────────
-function openPayModal()  { document.getElementById('payOverlay').style.display = 'flex'; }
+function openPayModal()  {
+  // Reset to AI reel handler (media mode sets its own handler before calling this)
+  if (M.mode === 'ai') {
+    document.getElementById('payBtn').onclick = () => startVideoPay();
+    document.getElementById('payFinalPrice').textContent = '₹' + payFinalAmount;
+    document.getElementById('payBtnTxt').textContent     = `Pay ₹${payFinalAmount} & Generate`;
+  }
+  document.getElementById('payOverlay').style.display = 'flex';
+}
 function closePayModal() { document.getElementById('payOverlay').style.display = 'none'; }
 
 async function applyPayCoupon() {
@@ -800,6 +1181,8 @@ async function startVideoPay() {
 
 // ── Create entry point ────────────────────────────────────────────────────────
 function handleCreate() {
+  if (M.mode === 'media') { handleCreateMedia(); return; }
+
   const topic = S.niche;
   if (!topic || topic.length < 3) { showErr('s5err', 'Please select a niche to continue.'); return; }
   hideErr('s5err');
@@ -959,6 +1342,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Fetch admin-set reel price for current duration
   await refreshReelPrice();
+
 
   updProg(1);
   const tp = qp.get('topic');

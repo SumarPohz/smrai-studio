@@ -1,0 +1,104 @@
+<%- include('../partials/header', { title: (project.title || 'Whiteboard Video') + ' — SmrAI Studio' }) %>
+
+<style>
+body { background:#09090b; color:#f4f4f5; font-family:'Inter',sans-serif; min-height:100vh; }
+#wb-result { max-width:680px; margin:0 auto; padding:40px 20px 80px; }
+
+.wb-result-header { text-align:center; margin-bottom:28px; }
+.wb-result-header h1 {
+  font-size:1.6rem; font-weight:800; margin:0 0 6px;
+  background:linear-gradient(135deg,#a78bfa,#7c3aed); -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+}
+.wb-result-header p { font-size:13px; color:#71717a; margin:0; }
+
+.video-wrap {
+  background:#000; border-radius:20px; overflow:hidden;
+  box-shadow:0 20px 60px rgba(0,0,0,.6); margin-bottom:24px;
+  position:relative;
+}
+.video-wrap video {
+  display:block; width:100%; max-height:80vh; object-fit:contain;
+}
+
+.action-row {
+  display:flex; gap:12px; flex-wrap:wrap; margin-bottom:24px;
+}
+.wb-btn {
+  flex:1; min-width:140px; padding:12px 20px; border-radius:10px; font-size:14px;
+  font-weight:600; cursor:pointer; border:none; text-align:center; text-decoration:none;
+  transition:opacity .15s, transform .1s;
+}
+.wb-btn:active { transform:scale(.97); }
+.wb-btn-primary  { background:linear-gradient(135deg,#7c3aed,#a855f7); color:#fff; }
+.wb-btn-outline  { background:transparent; border:1.5px solid #3f3f46; color:#d4d4d8; }
+.wb-btn-outline:hover { border-color:#7c3aed; color:#c4b5fd; }
+
+.meta-card {
+  background:#18181b; border:1px solid #27272a; border-radius:16px; padding:20px; margin-bottom:16px;
+}
+.meta-label { font-size:.7rem; font-weight:700; color:#52525b; text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px; }
+.meta-value { font-size:14px; color:#d4d4d8; line-height:1.6; }
+
+.share-note {
+  font-size:12px; color:#52525b; text-align:center; margin-top:20px;
+}
+</style>
+
+<div id="wb-result">
+
+  <div class="wb-result-header">
+    <div style="font-size:2.5rem;margin-bottom:10px;">🖊️</div>
+    <h1><%= project.title || 'Whiteboard Video' %></h1>
+    <p>Generated from: "<%= (project.topic || '').slice(0,80) %><%= (project.topic?.length||0)>80?'…':'' %>"</p>
+  </div>
+
+  <div class="video-wrap">
+    <video
+      src="<%= project.video_url %>"
+      controls
+      playsinline
+      preload="metadata"
+    ></video>
+  </div>
+
+  <div class="action-row">
+    <a class="wb-btn wb-btn-primary" href="<%= project.video_url %>" download="whiteboard-<%= project.id %>.mp4">
+      ⬇️ Download MP4
+    </a>
+    <a class="wb-btn wb-btn-outline" href="/whiteboard">
+      ✨ Generate Another
+    </a>
+  </div>
+
+  <% if (project.title) { %>
+  <div class="meta-card">
+    <div class="meta-label">Video Title</div>
+    <div class="meta-value"><%= project.title %></div>
+  </div>
+  <% } %>
+
+  <% if (project.scenes_json) { %>
+  <%
+    let scenes = [];
+    try { scenes = JSON.parse(project.scenes_json); } catch {}
+  %>
+  <% if (scenes.length) { %>
+  <div class="meta-card">
+    <div class="meta-label"><%= scenes.length %> Scenes</div>
+    <% scenes.forEach((s, i) => { %>
+    <div style="padding:8px 0;<%= i > 0 ? 'border-top:1px solid #27272a;margin-top:8px;' : '' %>">
+      <div style="font-size:13px;font-weight:600;color:#a78bfa;margin-bottom:2px;"><%= i+1 %>. <%= s.title %></div>
+      <div style="font-size:12px;color:#71717a;"><%= s.narration?.slice(0,100) %>…</div>
+    </div>
+    <% }) %>
+  </div>
+  <% } %>
+  <% } %>
+
+  <div class="share-note">
+    Video is available for 1 hour · 1080×1920 (YouTube Shorts / TikTok) · H.264 MP4
+  </div>
+
+</div>
+
+<%- include('../partials/footer') %>

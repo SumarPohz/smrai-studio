@@ -1151,6 +1151,19 @@ let loopRunning   = false;
 let loopPaused    = false;
 let loopTimeout   = null;
 let loopQuestion  = 0;
+const loopTimers  = new Set(); // tracks ALL active loop timers so they can all be cleared
+
+function loopSetTimeout(fn, ms) {
+  let id;
+  id = setTimeout(() => { loopTimers.delete(id); fn(); }, ms);
+  loopTimers.add(id);
+  return id;
+}
+function clearAllLoopTimers() {
+  loopTimers.forEach(id => clearTimeout(id));
+  loopTimers.clear();
+  loopTimeout = null;
+}
 
 function setLoopStatus(text, color) {
   const badge = document.getElementById('loopStatusBadge');
@@ -1179,7 +1192,7 @@ async function startAutoLoop() {
 function stopAutoLoop() {
   loopRunning = false;
   loopPaused  = false;
-  if (loopTimeout) { clearTimeout(loopTimeout); loopTimeout = null; }
+  clearAllLoopTimers();
   document.getElementById('loopPauseBtn').style.display  = 'none';
   document.getElementById('loopResumeBtn').style.display = 'none';
   if (pollInterval) {
@@ -1221,7 +1234,7 @@ function pauseLoop() {
   if (!loopRunning || loopPaused) return;
   loopPaused  = true;
   loopRunning = false;
-  if (loopTimeout) { clearTimeout(loopTimeout); loopTimeout = null; }
+  clearAllLoopTimers();
   if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
   // Unlock all manual controls so user can post questions, answers, shoutouts freely
   unlockAfterPoll();
@@ -1246,9 +1259,23 @@ function resumeLoop() {
 async function runLoopIteration() {
   if (!loopRunning) return;
 
-  // Step 1: Load next question
+  // Step 1: Load next question — retry once on network failure
   setLoopStatus('Loading question…', '#a78bfa');
-  const q = await fetch('/magic-live/api/quiz/next').then(r => r.json()).catch(() => ({}));
+  let q = {};
+  try {
+    const r = await fetch('/magic-live/api/quiz/next');
+    if (r.ok) q = await r.json();
+  } catch (e) {
+    // Network blip — wait 3s and retry once before giving up
+    await new Promise(res => loopSetTimeout(res, 3000));
+    if (!loopRunning) return;
+    try {
+      const r2 = await fetch('/magic-live/api/quiz/next');
+      if (r2.ok) q = await r2.json();
+    } catch {}
+  }
+
+  if (!loopRunning) return; // stopped while fetching
 
   if (!q.question) {
     // All questions done — loop complete
@@ -1282,6 +1309,8 @@ async function runLoopIteration() {
     body: JSON.stringify({ question: q.question, options: opts, answer: q.answer, duration: loopPollDuration }),
   }).catch(() => {});
 
+  if (!loopRunning) return;
+
   pollStartTime = Date.now();
   document.getElementById('pollLiveQuestion').textContent = q.question;
   document.getElementById('pollSetup').style.display = 'none';
@@ -1290,7 +1319,7 @@ async function runLoopIteration() {
   pollInterval = setInterval(refreshPollResults, 1000);
 
   // Step 3: Auto-reveal after selected timer duration
-  loopTimeout = setTimeout(async () => {
+  loopTimeout = loopSetTimeout(async () => {
     if (!loopRunning) return;
     clearInterval(pollInterval); pollInterval = null;
     setLoopStatus(`Q${loopQuestion}: Revealing answer…`, '#f9a8d4');
@@ -1298,7 +1327,7 @@ async function runLoopIteration() {
     unlockAfterPoll();
 
     // Step 4: Fire shoutouts AFTER answer has shown + faded (7s reveal + 3s buffer = 10s)
-    setTimeout(() => {
+    loopSetTimeout(() => {
       if (!loopRunning && !loopPaused) return;
       fetch('/magic-live/api/poll/winners', {
         method: 'POST',
@@ -1314,15 +1343,16 @@ async function runLoopIteration() {
     setLoopStatus(`Q${loopQuestion}: Loading next question…`, '#06b6d4');
 
     // Reset poll UI
-    setTimeout(() => {
+    loopSetTimeout(() => {
       document.getElementById('pollSetup').style.display = '';
       document.getElementById('pollLive').style.display  = 'none';
       resetPollForm();
     }, 2000);
 
-    loopTimeout = setTimeout(() => {
+    // Schedule next question — only if still running
+    loopTimeout = loopSetTimeout(() => {
       if (!loopRunning || loopPaused) return;
-      runLoopIteration(); // next question
+      runLoopIteration();
     }, waitMs);
 
   }, loopPollDuration * 1000);

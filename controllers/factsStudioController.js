@@ -1,7 +1,10 @@
 import OpenAI from 'openai';
 import fs from 'fs';
+import fsp from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { generateTTS } from '../services/ttsService.js';
+import { mergeFactsClips, mergeFactsClipsSync, getMediaDuration, generateSilentAudio } from '../services/ffmpegService.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -148,5 +151,113 @@ Example: [{"word":"145 km/h","color":"#f59e0b"},{"word":"sinks into it","color":
   } catch (err) {
     console.error('[factsStudio] aiHighlight error:', err);
     res.json({ ok: false, error: 'AI highlight failed' });
+  }
+}
+
+// ── In-memory job status store (process-scoped, good enough for single-server) ─
+const mergeJobs = new Map(); // jobId → { status, url, error }
+
+// ── POST /facts-studio/merge-clips ───────────────────────────────────────────
+export async function mergeClips(req, res, db) {
+  const clipFiles = req.files?.['clips'] || [];
+  const musicFile = req.files?.['music']?.[0] || null;
+  const bodies    = JSON.parse(req.body?.bodies || '[]');
+  const voice     = req.body?.voice || 'alloy';
+  const doTTS     = req.body?.tts === '1';
+
+  if (!clipFiles.length) return res.status(400).json({ error: 'No clips uploaded' });
+
+  const jobId = `fsc-${req.user.id}-${Date.now()}`;
+  mergeJobs.set(jobId, { status: 'processing', url: null, error: null });
+  res.json({ jobId });
+
+  setImmediate(() => runFactsMergePipeline({
+    jobId, clipFiles, bodies, voice, doTTS, musicFile, userId: req.user.id, db,
+  }));
+}
+
+// ── GET /facts-studio/merge-status/:jobId ────────────────────────────────────
+export async function mergeStatus(req, res) {
+  const job = mergeJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ error: 'Job not found' });
+  res.json(job);
+}
+
+async function runFactsMergePipeline({ jobId, clipFiles, bodies, voice, doTTS, musicFile, userId, db }) {
+  const tempDir    = path.join(process.cwd(), 'public', 'videos', 'temp');
+  const outputPath = path.join(process.cwd(), 'public', 'videos', `facts-${jobId}.mp4`);
+  const clipPaths  = clipFiles.map(f => f.path);
+  const perClipAudioPaths = [];
+
+  try {
+    await fsp.mkdir(tempDir, { recursive: true });
+
+    if (doTTS && bodies.length) {
+      let ttsProvider = 'openai';
+      try {
+        const { rows } = await db.query("SELECT value FROM admin_settings WHERE `key` = 'tts_provider'");
+        ttsProvider = rows[0]?.value || 'openai';
+      } catch {}
+
+      console.log(`[FactsMerge] #${jobId} — Per-clip TTS (${ttsProvider}, voice=${voice}) for ${bodies.length} clips…`);
+
+      // Generate TTS separately for each clip's body text
+      for (let i = 0; i < clipPaths.length; i++) {
+        const body = (bodies[i] || '').trim();
+        if (!body) {
+          perClipAudioPaths.push(null); // will be replaced with silence
+          continue;
+        }
+        const ap = await generateTTS(body, voice, `${jobId}-clip${i}`, ttsProvider);
+        perClipAudioPaths.push(ap);
+      }
+
+      // Determine each clip's playback duration from its TTS audio (or recorded clip if silent)
+      const clipDurations = await Promise.all(
+        clipPaths.map(async (clipPath, i) => {
+          if (perClipAudioPaths[i]) return await getMediaDuration(perClipAudioPaths[i]);
+          return await getMediaDuration(clipPath);
+        })
+      );
+
+      // Replace null entries (empty body) with a generated silent audio
+      const finalAudioPaths = await Promise.all(
+        perClipAudioPaths.map(async (ap, i) => {
+          if (ap) return ap;
+          const silentPath = path.join(tempDir, `${jobId}-silent${i}.mp3`);
+          await generateSilentAudio(clipDurations[i], silentPath);
+          return silentPath;
+        })
+      );
+
+      const musicPath = musicFile ? musicFile.path : null;
+      console.log(`[FactsMerge] #${jobId} — Merging ${clipPaths.length} clips with per-clip sync, durations: [${clipDurations.map(d => d.toFixed(1)).join(', ')}]s…`);
+      await mergeFactsClipsSync(clipPaths, finalAudioPaths, clipDurations, outputPath, musicPath);
+
+      for (const p of clipPaths)        await fsp.unlink(p).catch(() => {});
+      for (const p of finalAudioPaths)  await fsp.unlink(p).catch(() => {});
+      if (musicFile) await fsp.unlink(musicFile.path).catch(() => {});
+
+    } else {
+      // No TTS — music-only or silent merge
+      const audioPath = musicFile ? musicFile.path : null;
+      console.log(`[FactsMerge] #${jobId} — Merging ${clipPaths.length} clips (no TTS)…`);
+      await mergeFactsClips(clipPaths, audioPath, outputPath);
+
+      for (const p of clipPaths) await fsp.unlink(p).catch(() => {});
+      if (musicFile) await fsp.unlink(musicFile.path).catch(() => {});
+    }
+
+    const url = `/videos/facts-${jobId}.mp4`;
+    mergeJobs.set(jobId, { status: 'done', url, error: null });
+    console.log(`[FactsMerge] #${jobId} — Done → ${url}`);
+
+    setTimeout(() => fsp.unlink(outputPath).catch(() => {}), 15 * 60 * 1000);
+  } catch (err) {
+    console.error(`[FactsMerge] #${jobId} — failed:`, err.message);
+    mergeJobs.set(jobId, { status: 'failed', url: null, error: err.message });
+    for (const p of clipPaths)         await fsp.unlink(p).catch(() => {});
+    for (const p of perClipAudioPaths) if (p) await fsp.unlink(p).catch(() => {});
+    if (musicFile) await fsp.unlink(musicFile.path).catch(() => {});
   }
 }

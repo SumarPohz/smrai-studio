@@ -1,0 +1,174 @@
+<%- include('../partials/header', { title: 'Generating Whiteboard Video…' }) %>
+
+<style>
+body { background:#09090b; color:#f4f4f5; font-family:'Inter',sans-serif; min-height:100vh; }
+#wb-loading { max-width:560px; margin:0 auto; padding:60px 20px; text-align:center; }
+
+.wb-spinner {
+  width:72px; height:72px; border-radius:50%;
+  border:5px solid rgba(124,58,237,0.2);
+  border-top-color:#7c3aed;
+  animation:spin 1s linear infinite;
+  margin:0 auto 28px;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+
+.wb-title { font-size:1.4rem; font-weight:800; margin:0 0 6px; }
+.wb-subtitle { font-size:14px; color:#71717a; margin:0 0 40px; }
+
+.steps-list { list-style:none; padding:0; margin:0 0 36px; text-align:left; }
+.steps-list li {
+  display:flex; align-items:center; gap:14px;
+  padding:12px 16px; border-radius:10px; margin-bottom:8px;
+  font-size:14px; font-weight:500; color:#71717a;
+  background:#18181b; border:1px solid #27272a;
+  transition:all .3s;
+}
+.steps-list li.active  { color:#c4b5fd; border-color:#7c3aed; background:rgba(124,58,237,.08); }
+.steps-list li.done    { color:#4ade80; border-color:#166534; background:rgba(20,83,45,.12); }
+.step-icon-wrap { font-size:20px; width:32px; text-align:center; flex-shrink:0; }
+.step-check { color:#4ade80; font-weight:700; }
+
+.progress-bar-wrap {
+  background:#27272a; border-radius:999px; height:6px; overflow:hidden; margin-bottom:12px;
+}
+.progress-bar-fill {
+  background:linear-gradient(90deg,#7c3aed,#a855f7); height:100%; width:0%;
+  transition:width .6s ease; border-radius:999px;
+}
+.progress-label { font-size:12px; color:#71717a; }
+
+.tip-box {
+  margin-top:32px; padding:16px 20px; background:#18181b;
+  border:1px solid #27272a; border-radius:14px;
+  font-size:13px; color:#71717a; line-height:1.5;
+}
+.tip-box strong { color:#a78bfa; }
+
+/* Error / done states */
+#failedState { display:none; }
+#failedState .err-card {
+  background:#1c0a0a; border:1px solid #7f1d1d; border-radius:16px; padding:28px;
+}
+.err-title { font-size:1.1rem; font-weight:700; color:#fca5a5; margin:0 0 8px; }
+.err-msg   { font-size:13px; color:#f87171; margin:0 0 20px; }
+</style>
+
+<div id="wb-loading">
+
+  <div id="processingState">
+    <div class="wb-spinner"></div>
+    <div class="wb-title">Generating Your Whiteboard Video</div>
+    <div class="wb-subtitle" id="topicLabel">
+      "<%= (project.topic || '').split('\n')[0].slice(0,80) %><%= (project.topic || '').split('\n')[0].length > 80 ? '…' : '' %>"
+    </div>
+
+    <ul class="steps-list" id="stepsList">
+      <li id="step0"><span class="step-icon-wrap">✍️</span> Generating AI script</li>
+      <li id="step1"><span class="step-icon-wrap">🎨</span> Rendering whiteboard scenes</li>
+      <li id="step2"><span class="step-icon-wrap">🎙️</span> Creating voice narration</li>
+      <li id="step3"><span class="step-icon-wrap">🎬</span> Encoding final video</li>
+    </ul>
+
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="progressBar"></div>
+    </div>
+    <div class="progress-label" id="progressLabel">Initialising…</div>
+
+    <div class="tip-box">
+      <strong>💡 Did you know?</strong> <span id="tipText"></span>
+    </div>
+  </div>
+
+  <div id="failedState">
+    <div class="err-card">
+      <div style="font-size:2.5rem;margin-bottom:16px;">⚠️</div>
+      <div class="err-title">Generation Failed</div>
+      <div class="err-msg" id="errMsg">An unexpected error occurred.</div>
+      <a href="/whiteboard" style="display:inline-block;padding:10px 24px;background:#7c3aed;color:#fff;border-radius:8px;font-weight:600;font-size:14px;text-decoration:none;">Try Again</a>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const PROJECT_ID = <%= project.id %>;
+const POLL_MS    = 3000;
+
+const STEPS = ['step0','step1','step2','step3'];
+const STATUS_STEP = { processing: 0, generating: 0, rendering: 1, encoding: 3 };
+
+const TIPS = [
+  'Your video will be 1080×1920 — perfect for YouTube Shorts and TikTok.',
+  'Each scene has a Ken Burns zoom animation to keep viewers engaged.',
+  'The narrator voice was generated using AI text-to-speech.',
+  'Each scene plays for exactly as long as the narration takes.',
+  'You can generate videos on any topic — science, history, business, and more.',
+  'Whiteboard videos get 3× more engagement than static slides.',
+];
+let tipIdx = 0;
+function rotateTip() {
+  document.getElementById('tipText').textContent = TIPS[tipIdx++ % TIPS.length];
+}
+rotateTip();
+setInterval(rotateTip, 7000);
+
+let ticks = 0;
+let pollTimer;
+
+function setStep(activeStep) {
+  STEPS.forEach((id, i) => {
+    const el = document.getElementById(id);
+    el.className = '';
+    if (i < activeStep)  el.classList.add('done');
+    if (i === activeStep) el.classList.add('active');
+    const iconWrap = el.querySelector('.step-icon-wrap');
+    if (i < activeStep) iconWrap.innerHTML = '<span class="step-check">✓</span>';
+  });
+}
+
+function setProgress(pct, label) {
+  document.getElementById('progressBar').style.width = pct + '%';
+  document.getElementById('progressLabel').textContent = label;
+}
+
+async function poll() {
+  ticks++;
+  try {
+    const res  = await fetch(`/whiteboard/${PROJECT_ID}/status`);
+    const data = await res.json();
+
+    if (data.status === 'completed') {
+      clearInterval(pollTimer);
+      setStep(4);
+      setProgress(100, 'Done! Redirecting…');
+      setTimeout(() => { window.location.href = `/whiteboard/result/${PROJECT_ID}`; }, 800);
+      return;
+    }
+
+    if (data.status === 'failed') {
+      clearInterval(pollTimer);
+      document.getElementById('processingState').style.display = 'none';
+      document.getElementById('failedState').style.display = 'block';
+      document.getElementById('errMsg').textContent = data.error_message || 'Generation failed.';
+      return;
+    }
+
+    // Update step based on status
+    const stepIdx = STATUS_STEP[data.status] ?? 0;
+    setStep(stepIdx);
+
+    const pct   = Math.min(90, 5 + ticks * 3);
+    const labels = ['Generating script…','Rendering scenes…','Generating narration…','Encoding video…'];
+    setProgress(pct, labels[stepIdx] || 'Processing…');
+
+  } catch (e) {
+    console.warn('Poll error:', e.message);
+  }
+}
+
+poll();
+pollTimer = setInterval(poll, POLL_MS);
+</script>
+
+<%- include('../partials/footer') %>

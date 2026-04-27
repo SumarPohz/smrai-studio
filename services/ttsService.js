@@ -11,7 +11,11 @@ ffmpeg.setFfmpegPath(ffmpegInstaller.path);
 // ── OpenAI TTS client ──────────────────────────────────────────────────────────
 let _openaiClient = null;
 function getClient() {
-  if (!_openaiClient) _openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  if (!_openaiClient) _openaiClient = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+    maxRetries: 0,   // never auto-retry — 429s would hang for 10+ minutes
+    timeout: 30_000, // 30s hard timeout per request
+  });
   return _openaiClient;
 }
 
@@ -101,9 +105,9 @@ export async function generateTTS(script, voice, reelId, provider = 'openai', _r
 
   if (provider === 'google') {
     try {
-      // 60s hard timeout — Google gRPC default is 300s which hangs the whole pipeline
+      // 20s timeout — Google gRPC default is 300s which hangs the pipeline
       const timeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Google TTS timeout after 60s')), 60_000)
+        setTimeout(() => reject(new Error('Google TTS timeout after 20s')), 20_000)
       );
       return await Promise.race([generateTTSViaGoogle(script, safeVoice, audioPath), timeout]);
     } catch (err) {
@@ -124,6 +128,10 @@ export async function generateTTS(script, voice, reelId, provider = 'openai', _r
     await fs.writeFile(audioPath, buffer);
     return audioPath;
   } catch (err) {
+    // 429 quota exceeded — fail immediately, no point retrying
+    if (err.status === 429 || err.code === 429) {
+      throw new Error('OpenAI quota exceeded. Please add credits at platform.openai.com/billing');
+    }
     if (_retries > 0 && (err.message === 'terminated' || err.code === 'ECONNRESET')) {
       console.warn(`[TTS] Request terminated, retrying (${_retries} left)…`);
       await new Promise(r => setTimeout(r, 3000));
@@ -213,12 +221,18 @@ async function generateTTSViaGoogle(script, voice, outputPath) {
 export async function getWordTimestamps(audioPath) {
   try {
     const { createReadStream } = await import('fs');
-    const resp = await getClient().audio.transcriptions.create({
-      file:                    createReadStream(audioPath),
-      model:                   'whisper-1',
-      response_format:         'verbose_json',
-      timestamp_granularities: ['word'],
-    });
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Whisper timeout after 25s')), 25_000)
+    );
+    const resp = await Promise.race([
+      getClient().audio.transcriptions.create({
+        file:                    createReadStream(audioPath),
+        model:                   'whisper-1',
+        response_format:         'verbose_json',
+        timestamp_granularities: ['word'],
+      }),
+      timeoutPromise,
+    ]);
 
     if (!resp.words?.length) return null;
 
